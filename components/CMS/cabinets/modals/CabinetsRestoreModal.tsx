@@ -12,7 +12,6 @@ import { Button } from '@/components/shared/ui/button';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { useUserStore } from '@/lib/store/userStore';
 import { RotateCcw, Loader2, X } from 'lucide-react';
 import { gsap } from 'gsap';
 
@@ -23,7 +22,6 @@ export default function CabinetsRestoreModal({
 }) {
   const { isRestoreModalOpen, closeRestoreModal, selectedCabinet } =
     useCabinetsActionsStore();
-  const { user } = useUserStore();
   const [loading, setLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -44,55 +42,6 @@ export default function CabinetsRestoreModal({
     }
   }, [isRestoreModalOpen]);
 
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
-
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-    if (user.profile?.firstName) return user.profile.firstName;
-    if (user.profile?.lastName) return user.profile.lastName;
-    if (user.username) return user.username;
-    if (user.emailAddress) return user.emailAddress;
-    return 'Unknown User';
-  };
-
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string
-  ) => {
-    try {
-      await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: selectedCabinet,
-          newData: { deletedAt: null },
-          changes: [
-            {
-              field: 'deletedAt',
-              oldValue: selectedCabinet?.deletedAt,
-              newValue: null,
-            },
-          ],
-        }),
-      });
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
-  };
-
   const handleRestore = async () => {
     if (!selectedCabinet) return;
 
@@ -101,14 +50,6 @@ export default function CabinetsRestoreModal({
       await axios.patch(`/api/cabinets/${selectedCabinet._id}`, {
         action: 'restore',
       });
-
-      await logActivity(
-        'restore',
-        'machine',
-        selectedCabinet._id,
-        selectedCabinet.assetNumber || 'Unknown Cabinet',
-        `Restored cabinet from archive: ${selectedCabinet.assetNumber || selectedCabinet._id}`
-      );
 
       toast.success('Cabinet restored successfully');
       onCabinetRestored?.();

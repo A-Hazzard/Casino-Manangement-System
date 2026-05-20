@@ -175,10 +175,10 @@ export function useMobileEditCollectionModal({
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
-    isMachineListVisible: true,
+    isMachineListVisible: false,
     isFormVisible: false,
-    isCollectedListVisible: false,
-    navigationStack: [], // Track navigation history
+    isCollectedListVisible: true,
+    navigationStack: ['list'], // Track navigation history
     isViewingFinancialForm: false, // Start with machine list view
     showViewMachineConfirmation: false,
     searchTerm: '',
@@ -1354,7 +1354,7 @@ export function useMobileEditCollectionModal({
           }));
 
           const reportResponse = await axios.get(
-            `/api/collection-report/${reportId}`
+            `/api/collection-reports/${reportId}`
           );
           const reportData = reportResponse.data;
 

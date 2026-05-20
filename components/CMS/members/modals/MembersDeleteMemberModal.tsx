@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { Button } from '@/components/shared/ui/button';
 import { useMembersActionsStore } from '@/lib/store/memberActionsStore';
-import { useUserStore } from '@/lib/store/userStore';
+
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Loader2, X } from 'lucide-react';
@@ -31,59 +31,11 @@ export default function MembersDeleteMemberModal({
 }: MembersDeleteMemberModalProps) {
   const { isDeleteModalOpen, selectedMember, closeDeleteModal } =
     useMembersActionsStore();
-  const { user } = useUserStore();
+
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-  // Helper function to get proper user display name for activity logging
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
-
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    if (user.username && user.username.trim() !== '') {
-      return user.username;
-    }
-
-    return user.emailAddress || 'Unknown User';
-  };
-
-  // Activity logging
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string,
-    previousData?: Record<string, unknown> | null,
-    newData?: Record<string, unknown> | null
-  ) => {
-    try {
-      await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData,
-          newData,
-        }),
-      });
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
-  };
 
   useEffect(() => {
     if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
@@ -117,19 +69,6 @@ export default function MembersDeleteMemberModal({
       const response = await axios.delete(`/api/members/${selectedMember._id}`);
 
       if (response.status === 200) {
-        const memberName = `${selectedMember.profile?.firstName || 'Unknown'} ${
-          selectedMember.profile?.lastName || 'Member'
-        }`;
-
-        await logActivity(
-          'delete',
-          'member',
-          selectedMember._id,
-          memberName,
-          `Deleted member: ${memberName}`,
-          selectedMember,
-          null
-        );
 
         toast.success('Member deleted successfully');
         onDelete();

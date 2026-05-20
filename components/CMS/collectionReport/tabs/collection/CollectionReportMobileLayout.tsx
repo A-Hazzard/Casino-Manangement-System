@@ -16,6 +16,7 @@
 import { useMemo } from 'react';
 import CollectionReportFilters from './CollectionReportFilters';
 import CollectionReportCards from './CollectionReportCards';
+import Link from 'next/link';
 import type { CollectionReportMobileUIProps } from '@/lib/types/components';
 
 export default function CollectionReportMobileLayout(
@@ -32,16 +33,24 @@ export default function CollectionReportMobileLayout(
     }
     if (Array.isArray(props.selectedLocation)) {
       if (props.selectedLocation.length === 1) {
-        return (
-          props.locations.find(l => l._id === props.selectedLocation[0])
-            ?.name || 'Selected Location'
+        const loc = props.locations.find(l => l._id === props.selectedLocation[0]);
+        return loc?.slug ? (
+          <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+            {loc.name}
+          </Link>
+        ) : (
+          loc?.name || 'Selected Location'
         );
       }
       return `${props.selectedLocation.length} Locations`;
     }
-    return (
-      props.locations.find(l => l._id === props.selectedLocation)?.name ||
-      'Selected Location'
+    const loc = props.locations.find(l => l._id === props.selectedLocation);
+    return loc?.slug ? (
+      <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+        {loc.name}
+      </Link>
+    ) : (
+      loc?.name || 'Selected Location'
     );
   }, [props.selectedLocation, props.locations]);
 
@@ -68,6 +77,8 @@ export default function CollectionReportMobileLayout(
         onLocationChange={props.onLocationChange}
         search={props.search}
         onSearchChange={props.onSearchChange}
+        searchType={props.searchType}
+        onSearchTypeChange={props.onSearchTypeChange}
         onSearchSubmit={props.onSearchSubmit}
         showUncollectedOnly={props.showUncollectedOnly}
         onShowUncollectedOnlyChange={props.onShowUncollectedOnlyChange}

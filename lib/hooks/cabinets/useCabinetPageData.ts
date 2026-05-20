@@ -89,7 +89,7 @@ export function useCabinetPageData() {
   // ============================================================================
   const [activeTab, setActiveTab] = useState<string>(() => {
     const section = searchParams?.get('section');
-    if (section === 'live-metrics') return 'Live Metrics';
+    if (section === 'live-meters') return 'Live Meters';
     if (section === 'bill-validator') return 'Bill Validator';
     if (section === 'activity-log') return 'Activity Log';
     if (section === 'collection-history') return 'Collection History';
@@ -189,7 +189,7 @@ export function useCabinetPageData() {
       setActiveTab(tab);
       const sectionMap: Record<string, string> = {
         'Movement Metrics': '',
-        'Live Metrics': 'live-metrics',
+        'Live Meters': 'live-meters',
         'Bill Validator': 'bill-validator',
         'Activity Log': 'activity-log',
         'Collection History': 'collection-history',

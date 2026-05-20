@@ -51,7 +51,7 @@ import {
   TableRow,
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
-import { formatDateString } from '@/lib/utils/formatting';
+import { safeFormatDate } from '@/lib/utils/formatting';
 import {
   Activity,
   ArrowUpDown,
@@ -109,6 +109,8 @@ function AdministrationActivityLogsTable({
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isClearLogsModalOpen, setIsClearLogsModalOpen] = useState(false);
+  const [isClearingLogs, setIsClearingLogs] = useState(false);
 
   // ObjectID resolution state (developer-only)
   const [resolveProgress, setResolveProgress] = useState<{
@@ -432,6 +434,8 @@ function AdministrationActivityLogsTable({
         return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-semibold';
       case 'update':
         return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold';
+      case 'archive':
+        return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 font-semibold';
       case 'delete':
         return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200 font-semibold';
       case 'view':
@@ -456,6 +460,8 @@ function AdministrationActivityLogsTable({
       case 'location':
         return 'bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200 font-medium';
       case 'collection':
+      case 'collection-report':
+      case 'collection_report':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium';
       case 'member':
         return 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium';
@@ -472,14 +478,6 @@ function AdministrationActivityLogsTable({
     }
   };
 
-  // Clear filters
-  const clearFilters = () => {
-    setSearchTerm('');
-    setActionFilter('all');
-    setResourceFilter('all');
-    setDateFilter(undefined);
-    setCurrentPage(1);
-  };
 
   // Handle description click
   const handleDescriptionClick = (log: ActivityLog) => {
@@ -583,6 +581,28 @@ function AdministrationActivityLogsTable({
     }
   };
 
+  const handleClearLogs = async () => {
+    setIsClearingLogs(true);
+    try {
+      const response = await fetch('/api/activity-logs', {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || 'Successfully cleared all activity logs');
+        setIsClearLogsModalOpen(false);
+        fetchInitialBatch();
+      } else {
+        toast.error(data.message || 'Failed to clear activity logs');
+      }
+    } catch (error) {
+      console.error('Error clearing activity logs:', error);
+      toast.error('An error occurred while clearing activity logs');
+    } finally {
+      setIsClearingLogs(false);
+    }
+  };
+
   return (
     <div className={className}>
       {/* Developer-only: ObjectID resolution progress banner */}
@@ -640,11 +660,22 @@ function AdministrationActivityLogsTable({
         </div>
       )}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Activity Logs ({allLogs.length.toLocaleString()})
           </CardTitle>
+          {isDeveloper && (
+            <Button
+              onClick={() => setIsClearLogsModalOpen(true)}
+              variant="destructive"
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 self-start sm:self-auto"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear Activity Logs
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {/* Search Bar */}
@@ -682,6 +713,7 @@ function AdministrationActivityLogsTable({
                 <SelectItem value="machine">Machine</SelectItem>
                 <SelectItem value="location">Location</SelectItem>
                 <SelectItem value="collection">Collection</SelectItem>
+                <SelectItem value="collection-report">Collection Report</SelectItem>
                 <SelectItem value="licencee">Licencee</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="session">Session</SelectItem>
@@ -696,9 +728,6 @@ function AdministrationActivityLogsTable({
                 setDate={setDateFilter}
                 disabled={loading}
               />
-              <Button onClick={clearFilters} variant="outline" size="sm">
-                Clear
-              </Button>
             </div>
           </div>
 
@@ -767,7 +796,7 @@ function AdministrationActivityLogsTable({
                       logs.map((log: ActivityLog) => (
                         <TableRow key={log._id}>
                           <TableCell className="font-mono text-sm">
-                            {formatDateString(log.timestamp)}
+                            {safeFormatDate(log.timestamp)}
                           </TableCell>
                           <TableCell centered>
                             <div className="space-y-1">
@@ -850,7 +879,9 @@ function AdministrationActivityLogsTable({
                                 log.action || 'unknown'
                               )}
                             >
-                              {(log.action || 'unknown').toUpperCase()}
+                              {(log.action || 'unknown').toLowerCase() === 'archive'
+                                ? 'Archived'
+                                : (log.action || 'unknown').toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell centered>
@@ -1035,7 +1066,7 @@ function AdministrationActivityLogsTable({
               </p>
               <p>
                 <span className="font-semibold text-gray-600">Time</span> &nbsp;
-                {logToDelete && formatDateString(logToDelete.timestamp)}
+                {logToDelete && safeFormatDate(logToDelete.timestamp)}
               </p>
             </div>
 
@@ -1098,6 +1129,59 @@ function AdministrationActivityLogsTable({
                 : deleteType === 'hard'
                   ? 'Delete permanently'
                   : 'Soft delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Logs Confirmation Modal */}
+      <Dialog open={isClearLogsModalOpen} onOpenChange={setIsClearLogsModalOpen}>
+        <DialogContent className="h-full gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-w-md sm:rounded-xl">
+          <DialogTitle className="sr-only">Clear All Activity Logs</DialogTitle>
+          {/* Header */}
+          <div className="flex items-center gap-2.5 border-b bg-red-50 px-5 py-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-700">
+                Clear All Activity Logs
+              </p>
+              <p className="text-xs text-red-500">
+                This action is extremely destructive and irreversible
+              </p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="space-y-4 px-5 py-4">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete all activity logs</span> from the database? This will clear the entire history of actions, edits, creations, and deletions.
+            </p>
+            <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 text-xs text-red-800 leading-relaxed flex gap-2">
+              <span className="font-bold shrink-0">WARNING:</span>
+              <span>This cannot be undone. All audit trails for compliance and troubleshooting will be lost forever.</span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-2 border-t bg-gray-50 px-5 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsClearLogsModalOpen(false)}
+              disabled={isClearingLogs}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleClearLogs}
+              disabled={isClearingLogs}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold"
+            >
+              {isClearingLogs ? 'Clearing…' : 'Yes, clear all logs'}
             </Button>
           </div>
         </DialogContent>

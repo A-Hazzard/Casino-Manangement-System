@@ -11,9 +11,12 @@ type SessionDetail = {
   sessionStatus: 'in-progress' | 'submitted';
   locationId: string;
   locationName: string;
+  noSMIBLocation?: boolean;
   licencee: string;
   collector: string;
   collectorName: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   machinesTotal: number;
   machinesCaptured: number;
   machinesConfirmed: number;
@@ -32,14 +35,19 @@ type SessionMachine = {
   game?: string;
   status: 'pending' | 'captured' | 'confirmed' | 'skipped';
   sequenceOrder: number;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  manualMetersIn?: number;
+  manualMetersOut?: number;
   sasStartTime?: string;
   sasEndTime?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   imageData?: string;
-  imageFileId?: string;
-  imageName?: string;
   metersMatch?: boolean;
+  machineGross?: number;
+  sasGross?: number;
+  grossDifference?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -53,7 +61,28 @@ export default function CollectionReportV2SessionReportSummaryTab({
 }: SummaryTabProps) {
   const withPhotos = session.machines.filter(m => m.imageData).length;
   const withoutPhotos = session.machinesTotal - withPhotos;
-  const capturedCount = session.machinesCaptured - session.machinesConfirmed;
+
+  // Compute machine breakdown from individual machine statuses
+  const confirmedCount = session.machines.filter(m => m.status === 'confirmed').length;
+  const capturedCount = session.machines.filter(m => m.status === 'captured').length;
+  const skippedCount = session.machines.filter(m => m.status === 'skipped').length;
+
+  // Compute the SAS collection period from individual machine times
+  const sasStartTimes = session.machines
+    .map(m => m.sasStartTime)
+    .filter((t): t is string => !!t)
+    .map(t => new Date(t).getTime());
+  const sasEndTimes = session.machines
+    .map(m => m.sasEndTime)
+    .filter((t): t is string => !!t)
+    .map(t => new Date(t).getTime());
+
+  const earliestSasStart = sasStartTimes.length > 0
+    ? new Date(Math.min(...sasStartTimes)).toISOString()
+    : null;
+  const latestSasEnd = sasEndTimes.length > 0
+    ? new Date(Math.max(...sasEndTimes)).toISOString()
+    : null;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -93,12 +122,30 @@ export default function CollectionReportV2SessionReportSummaryTab({
               {session.collectorName || session.collector}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Submitted</span>
-            <span className="font-medium text-gray-900">
-              {formatDate(session.createdAt)}
-            </span>
-          </div>
+          {earliestSasStart && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">SAS Start</span>
+              <span className="font-medium text-gray-900">
+                {formatDate(earliestSasStart)}
+              </span>
+            </div>
+          )}
+          {latestSasEnd && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">SAS End</span>
+              <span className="font-medium text-gray-900">
+                {formatDate(latestSasEnd)}
+              </span>
+            </div>
+          )}
+          {session.sessionEndTime && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">Submitted</span>
+              <span className="font-medium text-gray-900">
+                {formatDate(session.sessionEndTime)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -111,13 +158,13 @@ export default function CollectionReportV2SessionReportSummaryTab({
           <div className="flex justify-between border-b border-gray-100 pb-2">
             <span className="text-gray-500">Total Machines</span>
             <span className="font-bold text-gray-900">
-              {session.machinesTotal}
+              {session.machines.length}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Confirmed</span>
             <span className="font-medium text-green-700">
-              {session.machinesConfirmed}
+              {confirmedCount}
             </span>
           </div>
           <div className="flex justify-between">
@@ -127,7 +174,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
           <div className="flex justify-between">
             <span className="text-gray-500">Skipped</span>
             <span className="font-medium text-amber-700">
-              {session.machinesSkipped}
+              {skippedCount}
             </span>
           </div>
           <div className="flex justify-between border-t border-gray-100 pt-2">
@@ -143,6 +190,62 @@ export default function CollectionReportV2SessionReportSummaryTab({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Gross Summary */}
+      {(session.machines.some(m => m.machineGross !== undefined) ||
+        (!session.noSMIBLocation && session.machines.some(m => m.sasGross !== undefined))) && (
+        <GrossSummary session={session} />
+      )}
+    </div>
+  );
+}
+
+function GrossSummary({ session }: { session: SessionDetail }) {
+  const totalMachineGross = session.machines.reduce(
+    (sum, m) => sum + (m.machineGross ?? 0),
+    0
+  );
+  const totalSasGross = session.machines.reduce(
+    (sum, m) => sum + (m.sasGross ?? 0),
+    0
+  );
+  const totalDifference = totalMachineGross === 0 ? 0 : (totalMachineGross - totalSasGross);
+
+  return (
+    <div className="rounded-lg bg-white p-5 shadow">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        Gross Summary
+      </h3>
+      <div className="space-y-3 text-sm">
+        <div className="flex justify-between border-b border-gray-100 pb-2">
+          <span className="text-gray-500">Total Machine Gross</span>
+          <span className="font-bold text-gray-900">
+            {totalMachineGross?.toLocaleString() ?? '0'}
+          </span>
+        </div>
+        {!session.noSMIBLocation && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Total SAS Gross</span>
+              <span className="font-bold text-gray-900">
+                {totalSasGross?.toLocaleString() ?? '0'}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-gray-100 pt-2">
+              <span className="text-gray-500">Total Variation</span>
+              <span
+                className={`font-bold ${
+                  totalDifference === 0
+                    ? 'text-green-700'
+                    : 'text-red-600'
+                }`}
+              >
+                {totalDifference?.toLocaleString() ?? '0'}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

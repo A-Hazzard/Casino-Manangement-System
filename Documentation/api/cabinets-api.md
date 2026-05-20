@@ -1,6 +1,6 @@
 # Cabinets API Documentation
 
-**Author:** Evolution One Engineering  
+**Author:** Aaron Hazzard | Senior Full-Stack Software Engineer 
 **Base Path:** `/api/cabinets`
 
 This API provides centralized management for all gaming cabinets across property locations. It consolidates legacy machine-related logic and location-scoped routes into a unified, high-performance architecture.

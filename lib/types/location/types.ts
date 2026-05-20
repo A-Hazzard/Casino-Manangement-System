@@ -26,6 +26,7 @@ export type UpdateLocationData = {
 export type LocationSelectItem = {
   _id: string;
   name: string;
+  slug?: string;
   licenceeId?: string | null;
 };
 
@@ -35,7 +36,8 @@ export type LocationSortOption =
   | 'moneyOut'
   | 'gross'
   | 'totalMachines'
-  | 'onlineMachines';
+  | 'onlineMachines'
+  | 'default';
 
 export type LocationFilter =
   | 'NoSMIBLocation'
@@ -109,4 +111,5 @@ export type LocationTableProps = {
   formatCurrency: (amount: number) => string;
   selectedFilters?: LocationFilter[];
   showArchived?: boolean;
+  canPermanentlyDelete?: boolean;
 };

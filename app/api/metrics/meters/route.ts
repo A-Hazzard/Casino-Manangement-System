@@ -254,6 +254,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 6: Fetch meter trends data
     // ============================================================================
+    const scaleReferenceDate = endDate || startDate || null;
     const aggregatedMetrics = await getMeterTrends(
       {
         timePeriod,
@@ -271,13 +272,20 @@ export async function GET(req: NextRequest) {
       userRoles,
       userLocationPermissions,
       getMoneyInScale(
-        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        userPayload as {
+          moneyInMultiplier?: number | null;
+          roles?: string[];
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       ),
       getMoneyOutAndJackpotScale(
         userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
-        }
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       )
     );
 

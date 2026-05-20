@@ -9,13 +9,11 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import { IMAGES } from '@/lib/constants';
 import { Plus, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 
 type LocationsPageHeaderSectionProps = {
-  loading: boolean;
   refreshing: boolean;
   canManage: boolean;
   onRefresh: () => void;
@@ -23,7 +21,6 @@ type LocationsPageHeaderSectionProps = {
 };
 
 export default function LocationsPageHeaderSection({
-  loading,
   refreshing,
   canManage,
   onRefresh,
@@ -57,10 +54,8 @@ export default function LocationsPageHeaderSection({
           />
         </button>
 
-        {/* Show skeleton while loading, button if user can manage, otherwise nothing */}
-        {loading ? (
-          <ActionButtonSkeleton width="w-32 sm:w-36" showIcon={true} />
-        ) : canManage ? (
+        {/* Show button if user can manage, otherwise nothing */}
+        {canManage ? (
           <Button
             onClick={onNew}
             className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-buttonActive sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"

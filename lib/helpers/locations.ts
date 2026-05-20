@@ -72,6 +72,7 @@ export async function fetchAllGamingLocations(licencee?: string) {
             (locObj.name as string) ||
             (locObj.locationName as string) ||
             'Unknown Location',
+          slug: (locObj.slug as string) || '',
           licenceeId:
             (locObj.licenceeId as string) ||
             (locObj.licencee as string) ||

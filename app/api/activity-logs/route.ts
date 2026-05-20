@@ -6,7 +6,10 @@
  * @module app/api/activity-logs/route
  */
 
-import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  mapDeletedFieldsToChanges,
+} from '@/app/api/lib/helpers/activityLogger';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -17,6 +20,7 @@ import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import {
   logRouteFetch,
   logRouteCreate,
+  logRouteDelete,
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
@@ -110,6 +114,7 @@ export async function GET(request: NextRequest) {
           { _id: { $regex: search, $options: 'i' } },
           { resourceId: { $regex: search, $options: 'i' } },
           { userId: { $regex: search, $options: 'i' } },
+          { ipAddress: { $regex: search, $options: 'i' } },
         ];
       }
 
@@ -245,6 +250,19 @@ export async function GET(request: NextRequest) {
                       0,
                     ],
                   },
+                  {
+                    $cond: [
+                      {
+                        $regexMatch: {
+                          input: '$ipAddress',
+                          regex: `^${searchLower}`,
+                          options: 'i',
+                        },
+                      },
+                      5,
+                      0,
+                    ],
+                  },
                 ],
               },
             },
@@ -341,6 +359,10 @@ export async function POST(request: NextRequest) {
     let changes = body.changes || [];
     if (body.previousData && body.newData) {
       changes = calculateChanges(body.previousData, body.newData);
+    } else if (body.newData) {
+      changes = calculateChanges({}, body.newData);
+    } else if (body.previousData) {
+      changes = mapDeletedFieldsToChanges(body.previousData);
     }
 
     const ipInfo = getIPInfo(request);
@@ -383,5 +405,56 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true, data: { activityLog } });
+  });
+}
+
+/**
+ * DELETE /api/activity-logs
+ *
+ * Deletes all activity logs from the database. Restricted to developers only.
+ */
+export async function DELETE(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/activity-logs';
+  const user = extractUserFromRequest(request);
+
+  return withApiAuth(request, async ({ userRoles }) => {
+    const isDeveloper = userRoles.some(
+      role => role.toLowerCase() === 'developer'
+    );
+    if (!isDeveloper) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/activity-logs',
+        'Forbidden - developer role required',
+        user
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Forbidden: Only developers can clear activity logs',
+        },
+        { status: 403 }
+      );
+    }
+
+    // Permanently deletes all documents from the ActivityLog collection
+    const deleteResult = await ActivityLog.deleteMany({});
+
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/activity-logs',
+      deleteResult.deletedCount || 0,
+      user,
+      duration
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully cleared all activity logs (${deleteResult.deletedCount} entries).`,
+    });
   });
 }

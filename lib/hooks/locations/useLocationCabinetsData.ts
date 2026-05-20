@@ -95,14 +95,15 @@ export function useLocationCabinetsData({
   const [locationData, setLocationData] = useState<AggregatedLocation | null>(
     null
   );
-  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
   const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+  const isFirstMount = useRef(true);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
+  const [sortOption, setSortOption] = useState<CabinetSortOption>('gross');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(
@@ -114,6 +115,12 @@ export function useLocationCabinetsData({
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
+    // Skip automatic sort override on initial mount to respect 'gross' default
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     if (selectedStatus === 'OfflineLongest') {
       setSortOption('offlineTime');
       setSortOrder('desc');
@@ -126,9 +133,9 @@ export function useLocationCabinetsData({
       selectedStatus === 'Online'
     ) {
       // If we are currently sorting by offlineTime but switched away from offline status,
-      // reset to default moneyIn-desc sort to ensure Online machines have priority again
+      // reset to default gross-desc sort to ensure Online machines have priority again
       if (sortOption === 'offlineTime') {
-        setSortOption('moneyIn');
+        setSortOption('gross');
         setSortOrder('desc');
       }
     }
@@ -352,6 +359,8 @@ export function useLocationCabinetsData({
         onlineStatus,
         showArchived,
         selectedSmibStatus,
+        sortOption,
+        sortOrder,
         undefined // signal
       )
         .then(result => {
@@ -426,6 +435,8 @@ export function useLocationCabinetsData({
         onlineStatus,
         showArchived,
         selectedSmibStatus,
+        sortOption,
+        sortOrder,
         undefined // signal
       )
         .then(result => {
@@ -555,7 +566,7 @@ export function useLocationCabinetsData({
         ? JSON.stringify(customDateRange)
         : 'none';
 
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${selectedSmibStatus}-${showArchived}`;
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${selectedSmibStatus}-${showArchived}-${sortOption}-${sortOrder}`;
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -771,6 +782,8 @@ export function useLocationCabinetsData({
               onlineStatus,
               showArchived,
               selectedSmibStatus,
+              sortOption,
+              sortOrder,
               signal
             );
           });
@@ -859,6 +872,8 @@ export function useLocationCabinetsData({
     selectedStatus,
     selectedSmibStatus,
     showArchived,
+    sortOption,
+    sortOrder,
   ]);
 
   // Clear isFilterResetting when new data arrives

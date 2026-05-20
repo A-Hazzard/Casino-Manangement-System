@@ -3,12 +3,73 @@ import type { GamingMachine } from './entities';
 
 export type MachinePayload = Omit<
   GamingMachine,
-  '_id' | 'createdAt' | 'updatedAt'
+  '_id' | 'createdAt' | 'updatedAt' | 'gameConfig'
 > & {
+  gameConfig?: {
+    accountingDenomination?: number | string;
+    theoreticalRtp?: number | string;
+    maxBet?: string;
+    payTableId?: string;
+    additionalId?: string;
+    gameOptions?: string;
+    progressiveGroup?: string;
+  };
+  locationId?: string;
+  relayId?: string;
+  installedGame?: string;
+  status?: string;
+  collectionMultiplier?: number;
+  collectionTime?: string;
+  collectionMeters?: { metersIn: number; metersOut: number };
+  manuf?: string;
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;
     lastMetersOut?: string;
+  };
+  // Snake_case variants for incoming data compatibility
+  is_sas_machine?: boolean;
+  sas_version?: string;
+  current_session?: string;
+  logged_in?: boolean;
+  last_activity?: string | Date;
+  last_sas_meter_at?: string | Date;
+  last_bill_meter_at?: string | Date;
+  // Nested snake_case support
+  sasMeters?: GamingMachine['sasMeters'] & {
+    total_cancelled_credits?: number;
+    games_played?: number;
+    money_out?: number;
+    slot_door_opened?: number;
+    power_reset?: number;
+    total_hand_paid_cancelled_credits?: number;
+    coin_in?: number;
+    coin_out?: number;
+    total_won_credits?: number;
+    current_credits?: number;
+    games_won?: number;
+  };
+  billMeters?: GamingMachine['billMeters'] & {
+    dollar_1?: number;
+    dollar_2?: number;
+    dollar_5?: number;
+    dollar_10?: number;
+    dollar_20?: number;
+    dollar_50?: number;
+    dollar_100?: number;
+    dollar_500?: number;
+    dollar_1000?: number;
+    dollar_2000?: number;
+    dollar_5000?: number;
+    dollar_total?: number;
+    dollar_total_unknown?: number;
+  };
+  machineMembershipSettings?: GamingMachine['machineMembershipSettings'] & {
+    is_points_allowed?: boolean;
+    is_free_play_allowed?: boolean;
+    points_award_method?: string;
+    free_play_amount?: number;
+    free_play_credits_timeout?: number;
   };
 };
 

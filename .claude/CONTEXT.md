@@ -1,7 +1,7 @@
 # Evolution1 CMS — Latest Work Summary
 
-**Last Updated:** 2026-05-09  
-**Status:** Collection Report V2 Feature Complete ✅
+**Last Updated:** 2026-05-11  
+**Status:** Collection Report V2 Feature Complete (Google Drive OAuth2) ✅
 
 ---
 
@@ -276,6 +276,22 @@ Pattern: `/^[a-fA-F0-9]{24}$/` (24 hexadecimal characters)
 - `lib/constants/maintenance.ts` — maintenance toggle
 - `components/CMS/collectionReport/CollectionReportPageContent.tsx` — V2 tab rendering
 - `next.config.ts` — allowedDevOrigins
+
+### Google Drive OAuth2 Migration (2026-05-11)
+**Problem:** Service account had no Drive storage quota. Google requires Shared Drives for SA file creation, but personal `@gmail.com` accounts can't create Shared Drives.
+
+**Solution:** Migrated from Service Account (JWT) to OAuth2 Desktop app:
+- Created new OAuth 2.0 Client ID (Desktop app) in GCP Console
+- One-time auth flow: consent URL → authorization code → exchange for refresh token
+- `getDriveClient()` in `lib/utils/drive.ts` now uses `google.auth.OAuth2` with refresh token instead of `GoogleAuth` with JWT credentials
+- Files count against the user's personal Drive quota
+
+**Files changed:**
+- `lib/utils/drive.ts` — replaced JWT auth with OAuth2
+- `.env` — removed 8 service account vars, added `GOOGLE_DRIVE_OAUTH_CLIENT_ID`, `GOOGLE_DRIVE_OAUTH_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`
+- `scripts/exchange-drive-code.js` — reads from `.env`, exchanges auth code for refresh token
+- `Documentation/google-drive-image-storage.md` — rewritten to document OAuth2 flow
+- `.claude/collection-report-v2-plan.md` — updated with Drive storage, edit mode, submitted report view
 
 ---
 

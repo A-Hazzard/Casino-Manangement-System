@@ -1,12 +1,3 @@
-/**
- * Collection Report V2 — Session Report View
- *
- * Full report view for submitted sessions with tabbed layout.
- * Desktop: sidebar tabs + main content. Mobile: select dropdown + content.
- * Machines tab: searchable, sortable, paginated table of capture data.
- * Summary tab: aggregated session-level statistics.
- */
-
 'use client';
 
 import { useState } from 'react';
@@ -24,14 +15,24 @@ type SessionMachine = {
   game?: string;
   status: 'pending' | 'captured' | 'confirmed' | 'skipped';
   sequenceOrder: number;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  sasGross?: number;
+  manualMetersIn?: number;
+  manualMetersOut?: number;
   sasStartTime?: string;
   sasEndTime?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   imageData?: string;
-  imageFileId?: string;
-  imageName?: string;
   metersMatch?: boolean;
+  machineGross?: number;
+  grossDifference?: number;
+  movement?: {
+    manualMetersIn?: number;
+    manualMetersOut?: number;
+    machineGross?: number;
+  };
   createdAt?: string;
   updatedAt?: string;
 };
@@ -41,9 +42,15 @@ type SessionDetail = {
   sessionStatus: 'in-progress' | 'submitted';
   locationId: string;
   locationName: string;
+  noSMIBLocation?: boolean;
   licencee: string;
   collector: string;
   collectorName: string;
+  collectorFirstName?: string;
+  collectorLastName?: string;
+  collectorEmail?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   machinesTotal: number;
   machinesCaptured: number;
   machinesConfirmed: number;
@@ -55,11 +62,16 @@ type SessionDetail = {
 type ReportProps = {
   session: SessionDetail;
   router: ReturnType<typeof useRouter>;
+  onEdit?: () => void;
+  /** Override for the Back button — when omitted uses router.push('/collection-report') */
+  onBack?: () => void;
 };
 
 export default function CollectionReportV2SessionReport({
   session,
   router,
+  onEdit,
+  onBack,
 }: ReportProps) {
   const [activeTab, setActiveTab] = useState<'machines' | 'summary'>(
     'machines'
@@ -100,27 +112,40 @@ export default function CollectionReportV2SessionReport({
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Back button */}
-        <button
-          type="button"
-          onClick={() => router.push('/collection-report')}
-          className="mb-6 flex items-center text-sm text-gray-500 hover:text-gray-700"
-        >
-          <svg
-            className="mr-1 h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        {/* Back button + Edit */}
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() =>
+              onBack ? onBack() : router.push('/collection-report')
+            }
+            className="flex items-center text-sm text-gray-500 hover:text-gray-700"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to Reports
-        </button>
+            <svg
+              className="mr-1 h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Close
+          </button>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Edit Session
+            </button>
+          )}
+        </div>
 
         {/* Header card */}
         <div className="mb-6 rounded-lg bg-white py-4 text-center shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
@@ -132,10 +157,33 @@ export default function CollectionReportV2SessionReport({
               {session.locationName}
             </h1>
             <p className="mb-2 text-sm text-gray-600 lg:text-base">
-              Collector: {session.collectorName || session.collector}
+              Collector:{' '}
+              <span className="group relative">
+                <span className="cursor-help border-b border-dotted border-gray-400">
+                  {session.collectorName || session.collector}
+                </span>
+                <span className="absolute left-0 top-full z-50 mt-1 hidden w-max max-w-xs rounded bg-gray-800 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                  <span className="space-y-1">
+                    {(session.collectorFirstName || session.collectorLastName) && (
+                      <span className="block font-semibold">
+                        {[session.collectorFirstName, session.collectorLastName]
+                          .filter(Boolean)
+                          .join(' ')}
+                      </span>
+                    )}
+                    {session.collector && (
+                      <span className="block text-gray-300">ID: {session.collector}</span>
+                    )}
+                    {session.collectorEmail && (
+                      <span className="block text-gray-300">{session.collectorEmail}</span>
+                    )}
+                  </span>
+                </span>
+              </span>
               {' · '}
               {formatDate(session.createdAt)}
             </p>
+
             <p className="text-sm text-gray-500">
               <span className="font-medium text-green-700">
                 {session.machinesConfirmed}
@@ -185,6 +233,7 @@ export default function CollectionReportV2SessionReport({
             {activeTab === 'machines' && (
               <CollectionReportV2SessionReportMachinesTab
                 machines={session.machines}
+                noSMIBLocation={session.noSMIBLocation}
               />
             )}
             {activeTab === 'summary' && (
@@ -214,6 +263,7 @@ export default function CollectionReportV2SessionReport({
           {activeTab === 'machines' && (
             <CollectionReportV2SessionReportMachinesTab
               machines={session.machines}
+              noSMIBLocation={session.noSMIBLocation}
             />
           )}
           {activeTab === 'summary' && (

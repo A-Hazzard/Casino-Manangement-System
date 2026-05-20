@@ -60,6 +60,23 @@ export async function GET(request: NextRequest) {
       .sort({ collectionTime: -1 })
       .lean<CollectionDocument | null>();
 
+    let collectionTime: Date | null = lastCollection?.collectionTime ?? null;
+    let metersIn: number | null = lastCollection?.metersIn ?? null;
+    let metersOut: number | null = lastCollection?.metersOut ?? null;
+    const hasPreviousCollection = !!lastCollection;
+
+    if (!lastCollection) {
+      const { Machine } = await import('@/app/api/lib/models/machines');
+      const machine = await Machine.findOne({ _id: machineId })
+        .select('collectionTime collectionMeters')
+        .lean<{ collectionTime?: Date; collectionMeters?: { metersIn?: number; metersOut?: number } }>();
+      if (machine) {
+        collectionTime = machine.collectionTime ?? null;
+        metersIn = machine.collectionMeters?.metersIn ?? null;
+        metersOut = machine.collectionMeters?.metersOut ?? null;
+      }
+    }
+
     const duration = Date.now() - startTime;
     logRouteFetch(
       functionName,
@@ -72,10 +89,10 @@ export async function GET(request: NextRequest) {
 
     return createSuccessResponse(
       {
-        collectionTime: lastCollection?.collectionTime ?? null,
-        metersIn: lastCollection?.metersIn ?? null,
-        metersOut: lastCollection?.metersOut ?? null,
-        hasPreviousCollection: !!lastCollection,
+        collectionTime,
+        metersIn,
+        metersOut,
+        hasPreviousCollection,
       },
       lastCollection
         ? 'Last collection time found'

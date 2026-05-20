@@ -154,6 +154,7 @@ export function useNewCollectionModal({
   >(undefined);
   const [isLoadingExistingCollections, setIsLoadingExistingCollections] =
     useState(false);
+  const [isLoadingTime, setIsLoadingTime] = useState(false);
 
   // Processing State
   const [isProcessing, setIsProcessing] = useState(false);
@@ -805,6 +806,7 @@ export function useNewCollectionModal({
         setCurrentRamClear(false);
 
         // Fetch last collection time from API
+        setIsLoadingTime(true);
         axios
           .get(
             `/api/collection-reports/collections/last-collection-time?machineId=${selectedMachineId}`
@@ -859,6 +861,9 @@ export function useNewCollectionModal({
                 new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000)
               );
             }
+          })
+          .finally(() => {
+            setIsLoadingTime(false);
           });
       }
 
@@ -1652,6 +1657,7 @@ export function useNewCollectionModal({
       setHasChanges(true);
       setShowCreateReportConfirmation(false);
       if (onSuccess) onSuccess();
+      if (onRefresh) onRefresh();
       handleClose();
     } catch (error) {
       const errorMessage =
@@ -1790,6 +1796,7 @@ export function useNewCollectionModal({
     locations,
     isLoadingLocations,
     isLoadingMachines,
+    isLoadingTime,
     selectedLocationId,
     selectedLocationName,
     machinesOfSelectedLocation,

@@ -65,7 +65,8 @@ export function useCabinetsPageData() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Sorting and Pagination state managed by local state, driving useCabinetData
-  const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
+  const isFirstMount = useRef(true);
+  const [sortOption, setSortOption] = useState<CabinetSortOption>('gross');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
   // Use ref instead of state for synchronous clearing when filters change
@@ -364,6 +365,12 @@ export function useCabinetsPageData() {
 
   // Sync sort state from Status changes
   useEffect(() => {
+    // Skip automatic sort override on initial mount to respect 'gross' default
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
+
     if (selectedStatus === 'OfflineLongest') {
       setSortOption('offlineTime');
       setSortOrder('desc');

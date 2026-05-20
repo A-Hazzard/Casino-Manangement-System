@@ -54,6 +54,7 @@ import { useRef } from 'react';
 
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
+import { IMAGES } from '@/lib/constants';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const LocationsLocationTable: FC<LocationTableProps> = ({
@@ -65,9 +66,9 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
   onAction,
   formatCurrency,
   canManageLocations = true,
-  isDeveloper = false,
   selectedFilters = [],
   showArchived = false,
+  canPermanentlyDelete = false,
 }) => {
   const router = useRouter();
   const tableRef = useRef<HTMLTableElement>(null);
@@ -131,9 +132,6 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                   <TableHead className="font-semibold text-white">
                     ARCHIVED WHEN
                   </TableHead>
-                  <TableHead className="font-semibold text-white">
-                    ARCHIVED FOR
-                  </TableHead>
                 </>
               )}
               <TableHead className="font-semibold text-white">
@@ -143,7 +141,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
           </TableHeader>
           <TableBody>
             {locations.map(loc => {
-              const location = loc as Record<string, unknown>;
+              const location = loc;
               return (
                 <TableRow
                   key={String(
@@ -166,8 +164,36 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                         title="Click to view location details"
                         disabled={!location.location}
                       >
-                        {(location.locationName as string) ||
-                          'Unknown Location'}
+                        <span className="flex items-center gap-2">
+                          {(location.locationName as string) ||
+                            'Unknown Location'}
+                          {location.googleMapsLink && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <a
+                                    href={location.googleMapsLink as string}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className="inline-flex transition-transform hover:scale-110"
+                                  >
+                                    <Image
+                                      src={IMAGES.locationIcon}
+                                      alt="Location Icon"
+                                      width={20}
+                                      height={20}
+                                      className="h-4 w-4 flex-shrink-0"
+                                    />
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  Navigate to location on Google Maps
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </span>
                       </button>
                       {/* Status icons row */}
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -442,13 +468,6 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                           '-'
                         )}
                       </TableCell>
-                      <TableCell className="text-gray-600">
-                        {loc.deletedAt
-                          ? formatDistanceToNow(new Date(loc.deletedAt), {
-                              addSuffix: true,
-                            })
-                          : '-'}
-                      </TableCell>
                     </>
                   )}
                   <TableCell>
@@ -470,7 +489,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           )}
-                          {isDeveloper && (
+                          {canPermanentlyDelete && (
                             <Button
                               variant="ghost"
                               size="sm"

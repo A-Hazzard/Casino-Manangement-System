@@ -9,7 +9,6 @@
 'use client';
 
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 type LocationItem = {
@@ -20,13 +19,15 @@ type LocationItem = {
 type StartSessionDialogProps = {
   locations: LocationItem[];
   onClose: () => void;
+  /** Called with the new sessionId after the session is created. */
+  onSessionCreated?: (sessionId: string) => void;
 };
 
 export default function CollectionReportV2StartSessionDialog({
   locations,
   onClose,
+  onSessionCreated,
 }: StartSessionDialogProps) {
-  const router = useRouter();
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +46,9 @@ export default function CollectionReportV2StartSessionDialog({
       });
 
       if (res.data?.success) {
-        const sessionId = res.data.data.sessionId;
-        router.push(`/collection-report/report/session/${sessionId}`);
+        const newSessionId = res.data.data.sessionId as string;
+        onClose();
+        onSessionCreated?.(newSessionId);
       } else {
         setError(res.data?.error || 'Failed to start session');
       }

@@ -20,7 +20,7 @@ import type { CashierShiftDocument } from '@shared/types';
 import { connectDB } from '../../middleware/db';
 import { apiLogger, LogContext } from '../../services/loggerService';
 import { comparePassword, hashPassword } from '../../utils/validation';
-import { logActivity } from '../activityLogger';
+import { logActivity, mapDeletedFieldsToChanges } from '../activityLogger';
 
 /**
  * Validates database context from JWT token
@@ -127,6 +127,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       multiplier?: number | null;
       moneyInMultiplier?: number | null;
       moneyOutAndJackpotMultiplier?: number | null;
+      reviewerMultiplierStartTime?: Date | string | null;
     } | null = null;
 
     if (jwtPayload._id) {
@@ -135,7 +136,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
         dbUser = await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier moneyInMultiplier moneyOutAndJackpotMultiplier'
+            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier moneyInMultiplier moneyOutAndJackpotMultiplier reviewerMultiplierStartTime'
           )
           .lean<LeanUserDocument>();
 
@@ -259,9 +260,13 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         dbUser.moneyInMultiplier ?? legacyMultiplier;
       (jwtPayload as Record<string, unknown>).moneyOutAndJackpotMultiplier =
         dbUser.moneyOutAndJackpotMultiplier ?? legacyMultiplier;
+      (jwtPayload as Record<string, unknown>).reviewerMultiplierStartTime =
+        dbUser.reviewerMultiplierStartTime ?? null;
     } else {
       (jwtPayload as Record<string, unknown>).moneyInMultiplier = null;
       (jwtPayload as Record<string, unknown>).moneyOutAndJackpotMultiplier =
+        null;
+      (jwtPayload as Record<string, unknown>).reviewerMultiplierStartTime =
         null;
     }
 
@@ -395,6 +400,7 @@ export async function createUser(
     tempPassword?: string;
     moneyInMultiplier?: number | null;
     moneyOutAndJackpotMultiplier?: number | null;
+    reviewerMultiplierStartTime?: Date | string | null;
   },
   request: NextRequest
 ) {
@@ -424,6 +430,7 @@ export async function createUser(
     tempPassword,
     moneyInMultiplier,
     moneyOutAndJackpotMultiplier,
+    reviewerMultiplierStartTime,
   } = data;
 
   // Get current user to check permissions for role assignment
@@ -609,6 +616,9 @@ export async function createUser(
       assignedLicencees: finalAssignedLicencees,
       moneyInMultiplier: moneyInMultiplier ?? null,
       moneyOutAndJackpotMultiplier: moneyOutAndJackpotMultiplier ?? null,
+      reviewerMultiplierStartTime: roles.includes('reviewer')
+        ? reviewerMultiplierStartTime || new Date('2026-04-01T00:00:00.000Z')
+        : null,
       tempPasswordChanged: isCashier && hasTemp ? false : true, // Cashiers must change on first login
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
@@ -649,6 +659,37 @@ export async function createUser(
   const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress) {
     try {
+      const changes: Array<{ field: string; oldValue: null; newValue: string }> = [
+        { field: 'username', oldValue: null, newValue: newUser.username },
+        { field: 'emailAddress', oldValue: null, newValue: newUser.emailAddress },
+        { field: 'roles', oldValue: null, newValue: newUser.roles?.join(', ') || '' },
+        { field: 'isEnabled', oldValue: null, newValue: String(newUser.isEnabled) },
+        { field: 'assignedLocations', oldValue: null, newValue: newUser.assignedLocations?.join(', ') || '' },
+        { field: 'assignedLicencees', oldValue: null, newValue: newUser.assignedLicencees?.join(', ') || '' },
+        { field: 'moneyInMultiplier', oldValue: null, newValue: String(newUser.moneyInMultiplier || '') },
+        { field: 'moneyOutAndJackpotMultiplier', oldValue: null, newValue: String(newUser.moneyOutAndJackpotMultiplier || '') },
+        { field: 'reviewerMultiplierStartTime', oldValue: null, newValue: newUser.reviewerMultiplierStartTime ? new Date(newUser.reviewerMultiplierStartTime).toISOString() : '' },
+      ];
+      if (newUser.profile) {
+        Object.entries(newUser.profile).forEach(([key, val]) => {
+          if (typeof val === 'object' && val !== null) {
+            Object.entries(val).forEach(([subKey, subVal]) => {
+              changes.push({
+                field: `profile.${key}.${subKey}`,
+                oldValue: null,
+                newValue: String(subVal),
+              });
+            });
+          } else {
+            changes.push({
+              field: `profile.${key}`,
+              oldValue: null,
+              newValue: String(val),
+            });
+          }
+        });
+      }
+
       await logActivity({
         action: 'CREATE',
         details: `Created user "${username}"`,
@@ -660,9 +701,10 @@ export async function createUser(
           userId: currentUser._id as string,
           userEmail: currentUser.emailAddress as string,
           userRole: (currentUser.roles as string[])?.[0] || 'user',
-          resource: 'User',
+          resource: 'user',
           resourceId: newUser._id.toString(),
           resourceName: username,
+          changes,
         },
       });
     } catch (logError) {
@@ -815,6 +857,12 @@ export async function updateUser(
       );
       delete updateFields.moneyOutAndJackpotMultiplier;
     }
+    if (updateFields.reviewerMultiplierStartTime !== undefined) {
+      console.warn(
+        `[updateUser] Stripping reviewerMultiplierStartTime from update by non-admin user ${requestingUser?._id}`
+      );
+      delete updateFields.reviewerMultiplierStartTime;
+    }
     // Block legacy fields
     if (updateFields.rel !== undefined) delete updateFields.rel;
     if (updateFields.resourcePermissions !== undefined)
@@ -825,11 +873,32 @@ export async function updateUser(
     }
   }
 
+  if (updateFields.roles !== undefined) {
+    const rolesToPersist = Array.isArray(updateFields.roles)
+      ? (updateFields.roles as string[])
+      : [];
+    if (!rolesToPersist.includes('reviewer')) {
+      updateFields.moneyInMultiplier = null;
+      updateFields.moneyOutAndJackpotMultiplier = null;
+      updateFields.reviewerMultiplierStartTime = null;
+    }
+  }
+
   // Validate role assignments if roles are being updated
   if (updateFields.roles !== undefined) {
     const rolesToUpdate = Array.isArray(updateFields.roles)
       ? (updateFields.roles as string[])
       : [];
+
+    if (
+      rolesToUpdate.includes('reviewer') &&
+      updateFields.reviewerMultiplierStartTime === undefined &&
+      !user.reviewerMultiplierStartTime
+    ) {
+      updateFields.reviewerMultiplierStartTime = new Date(
+        '2026-04-01T00:00:00.000Z'
+      );
+    }
 
     const ALLOWED_ROLES = [
       'owner',
@@ -933,6 +1002,16 @@ export async function updateUser(
         );
       }
     }
+  }
+
+  const effectiveRoles = Array.isArray(updateFields.roles)
+    ? (updateFields.roles as string[])
+    : ((user.roles as string[]) || []);
+  if (
+    !effectiveRoles.includes('reviewer') &&
+    updateFields.reviewerMultiplierStartTime !== undefined
+  ) {
+    updateFields.reviewerMultiplierStartTime = null;
   }
 
   // For managers, ensure they can only toggle isEnabled for users in their licencee
@@ -1517,40 +1596,10 @@ export async function deleteUser(_id: string, request: NextRequest) {
   }
   if (currentUser && currentUser.emailAddress) {
     try {
-      const deleteChanges = [
-        { field: 'username', oldValue: deletedUser.username, newValue: null },
-        {
-          field: 'emailAddress',
-          oldValue: deletedUser.emailAddress,
-          newValue: null,
-        },
-        {
-          field: 'roles',
-          oldValue: deletedUser.roles?.join(', ') || '',
-          newValue: null,
-        },
-        { field: 'isEnabled', oldValue: deletedUser.isEnabled, newValue: null },
-        {
-          field: 'firstName',
-          oldValue: deletedUser.profile?.firstName || '',
-          newValue: null,
-        },
-        {
-          field: 'lastName',
-          oldValue: deletedUser.profile?.lastName || '',
-          newValue: null,
-        },
-        {
-          field: 'gender',
-          oldValue: deletedUser.profile?.gender || '',
-          newValue: null,
-        },
-        {
-          field: 'profilePicture',
-          oldValue: deletedUser.profilePicture || 'None',
-          newValue: null,
-        },
-      ];
+      const deleteChanges = mapDeletedFieldsToChanges(
+        deletedUser.toObject ? deletedUser.toObject() : deletedUser,
+        ['passwordHash', 'passwordSalt', 'totpSecret', 'otpSecret', 'pin']
+      );
 
       await logActivity({
         action: 'DELETE',
@@ -1772,6 +1821,31 @@ function calculateUserChanges(
       original: originalUser.moneyOutAndJackpotMultiplier,
       updated: updateFields.moneyOutAndJackpotMultiplier,
     },
+    {
+      field: 'reviewerMultiplierStartTime',
+      original: originalUser.reviewerMultiplierStartTime,
+      updated: updateFields.reviewerMultiplierStartTime,
+    },
+    {
+      field: 'roles',
+      original: originalUser.roles?.join(', '),
+      updated: Array.isArray(updateFields.roles) ? updateFields.roles.join(', ') : updateFields.roles,
+    },
+    {
+      field: 'isEnabled',
+      original: originalUser.isEnabled,
+      updated: updateFields.isEnabled,
+    },
+    {
+      field: 'assignedLocations',
+      original: originalUser.assignedLocations?.join(', '),
+      updated: Array.isArray(updateFields.assignedLocations) ? updateFields.assignedLocations.join(', ') : updateFields.assignedLocations,
+    },
+    {
+      field: 'assignedLicencees',
+      original: originalUser.assignedLicencees?.join(', '),
+      updated: Array.isArray(updateFields.assignedLicencees) ? updateFields.assignedLicencees.join(', ') : updateFields.assignedLicencees,
+    },
   ];
 
   fieldChecks.forEach(({ field, original, updated }) => {
@@ -1834,6 +1908,9 @@ type UserItem = Record<string, unknown> & {
   enabled?: boolean;
   assignedLocations?: string[];
   assignedLicencees?: string[];
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
   profile?: Record<string, unknown>;
   roles?: string[];
   discrepancy?: number;
@@ -1866,6 +1943,11 @@ export async function handleDeletedUsersRequest(
     profile: user.profile as Record<string, unknown>,
     assignedLocations: (user.assignedLocations as string[]) || undefined,
     assignedLicencees: (user.assignedLicencees as string[]) || undefined,
+    moneyInMultiplier: (user.moneyInMultiplier as number | null) ?? null,
+    moneyOutAndJackpotMultiplier:
+      (user.moneyOutAndJackpotMultiplier as number | null) ?? null,
+    reviewerMultiplierStartTime:
+      (user.reviewerMultiplierStartTime as Date | string | null) ?? null,
     loginCount: user.loginCount,
     lastLoginAt: user.lastLoginAt,
     sessionVersion: user.sessionVersion,
@@ -1985,6 +2067,11 @@ export async function handleCashiersRequest(
       profile: user.profile as Record<string, unknown>,
       assignedLocations: (user.assignedLocations as string[]) || undefined,
       assignedLicencees: (user.assignedLicencees as string[]) || undefined,
+      moneyInMultiplier: (user.moneyInMultiplier as number | null) ?? null,
+      moneyOutAndJackpotMultiplier:
+        (user.moneyOutAndJackpotMultiplier as number | null) ?? null,
+      reviewerMultiplierStartTime:
+        (user.reviewerMultiplierStartTime as Date | string | null) ?? null,
       loginCount: user.loginCount as number,
       lastLoginAt: user.lastLoginAt as Date,
       sessionVersion: user.sessionVersion as number,
@@ -2065,6 +2152,11 @@ export async function handleAllUsersRequest(
     profile: user.profile as Record<string, unknown>,
     assignedLocations: (user.assignedLocations as string[]) || undefined,
     assignedLicencees: (user.assignedLicencees as string[]) || undefined,
+    moneyInMultiplier: (user.moneyInMultiplier as number | null) ?? null,
+    moneyOutAndJackpotMultiplier:
+      (user.moneyOutAndJackpotMultiplier as number | null) ?? null,
+    reviewerMultiplierStartTime:
+      (user.reviewerMultiplierStartTime as Date | string | null) ?? null,
     loginCount: user.loginCount as number,
     lastLoginAt: user.lastLoginAt as Date,
     sessionVersion: user.sessionVersion as number,

@@ -260,10 +260,20 @@ export function CollectionReportDetailsCollectionsTable({
                   />
                 </TableCell>
 
-                <TableCell
-                  className={`px-4 py-4 font-bold ${Number(metric.variation) < 0 ? 'text-red-600' : 'text-green-600'}`}
-                >
-                  {smartCurrency(metric.variation ?? 0)}
+                <TableCell className="px-4 py-4">
+                  {metric.variation === 'No SMIB for this Machine' ? (
+                    <span className="font-medium italic text-gray-500">
+                      No SMIB for this Machine
+                    </span>
+                  ) : (
+                    <span
+                      className={`font-bold ${
+                        Number(metric.variation ?? 0) < 0 ? 'text-red-600' : 'text-green-600'
+                      }`}
+                    >
+                      {smartCurrency(metric.variation ?? 0)}
+                    </span>
+                  )}
                 </TableCell>
 
                 <TableCell className="min-w-[160px] whitespace-nowrap px-4 py-4 text-xs text-gray-500">
@@ -364,12 +374,22 @@ export function CollectionReportDetailsCollectionsTable({
                 </div>
                 <CollectionReportDetailsMobileField
                   label="Variation"
-                  value={smartCurrency(metric.variation ?? 0)}
+                  value={
+                    metric.variation === 'No SMIB for this Machine' ? (
+                      <span className="italic text-gray-500">
+                        No SMIB for this Machine
+                      </span>
+                    ) : (
+                      smartCurrency(metric.variation ?? 0)
+                    )
+                  }
                   isBold
                   className={
-                    Number(metric.variation || 0) < 0
-                      ? 'text-red-600'
-                      : 'text-green-600'
+                    metric.variation === 'No SMIB for this Machine'
+                      ? ''
+                      : Number(metric.variation || 0) < 0
+                        ? 'text-red-600'
+                        : 'text-green-600'
                   }
                 />
                 <div className="col-span-2 grid grid-cols-2 gap-y-3 border-t border-gray-100 pt-2">

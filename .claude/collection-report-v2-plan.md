@@ -1,13 +1,13 @@
 # Collection Report V2 — Feature Plan
 
-## Status: Feature Complete (Polish Phase)
+## Status: Feature Complete (with Google Drive image storage + OAuth2)
 
 ## Purpose of This File
 This is the **working plan** for the Collection Report V2 feature. It tracks:
 - What's been done (✅)
-- What's pending
 - How the camera/overlay works end-to-end
 - HTTPS/certificate requirements
+- Google Drive image storage with OAuth2
 - Every file involved
 
 Use this file to:
@@ -20,51 +20,29 @@ Use this file to:
 
 ## Progress
 
-### ✅ Done
+### ✅ Complete
 
-- Created POST/GET `/api/collection-reports-v2/sessions` — start a session (creates ReportedMachine docs in DB) and list sessions
-- Created GET `/api/collection-reports-v2/sessions/[sessionId]` — fetch session detail with all machines
-- Created PATCH `/api/collection-reports-v2/machines?id=xxx` — update machine capture (status, meters, imageData)
-- Created POST `/api/collection-reports-v2/machines` — create machine capture record
-- Created PATCH `/api/collection-reports-v2/sessions/[sessionId]/submit` — submit all machines in session
-- Built `CameraOverlay.tsx` — custom full-screen camera using MediaDevices API with machine info overlay
-- Built `CollectionReportV2SessionDetail.tsx` — inline capture wizard with progress bar, photo capture, meter verification, review, and submit
-- Built `CollectionReportV2StartSessionDialog.tsx` — location selector → starts session
-- Built `CollectionReportV2Desktop.tsx` / `CollectionReportV2Mobile.tsx` — session list views
-- Built `CollectionReportV2SessionsSkeleton.tsx` — skeleton loader for session list
-- Added `imageData?: string` to `ReportedMachine` model (base64 storage, not GridFS)
-- Added `collection-v2` tab to maintenance config and collection tab config
+- All API routes: POST/GET `/sessions`, GET `/sessions/[sessionId]`, POST/PATCH `/machines`, PATCH `/sessions/[sessionId]/submit`, DELETE `/sessions/[sessionId]`
+- `CameraOverlay.tsx` — full-screen camera with machine info overlay, gallery fallback, keep/retake prompt
+- `CollectionReportV2SessionDetail.tsx` — inline capture wizard: progress bar, photo capture, meters match toggle, manual entry, review, submit, **edit mode** for developers
+- `CollectionReportV2StartSessionDialog.tsx` — location selector → starts session
+- `CollectionReportV2Desktop.tsx` / `CollectionReportV2Mobile.tsx` — session list views with delete
+- `CollectionReportV2SessionReport.tsx` — submitted report view with sidebar tabs (Machines / Summary), photo modal, refresh, **edit button** (developers only)
+- `CollectionReportV2SessionReportMachinesTab.tsx` — searchable/sortable/paginated machine table + mobile cards
+- `CollectionReportV2SessionReportSummaryTab.tsx` — aggregated stats
+- `CollectionReportV2StatusBadge.tsx` — status badge component
+- Edit mode reuses inline wizard — all machines pre-filled, index-based navigation, "Exit Edit" returns to refreshed report
+- Google Drive image storage via OAuth2 (Desktop app) — files stored under user's personal Drive quota
+- Drive folder hierarchy: Root → Location → Machine → Year → Month → Date
+- `lib/utils/drive.ts` — Drive client, `ensureFolder()`, `ensureFolderPath()`, `uploadImage()`, `getDriveFileMeta()`, `deleteDriveFile()`
+- Image proxy endpoint: `GET /api/collection-reports-v2/drive-files/[fileId]`
 - V2 tab only visible to users with `developer` role
-- Fixed `params` Promise error (Next.js 15 requires `await params` in route handlers)
-- Fixed POST sessions route: now persists ReportedMachine documents in DB (was returning data without saving — caused 404 on session detail)
-- Label changes: "Start Session" → "Start Collection Report"
-- Mobile responsive tweaks: stacked layout for meters match buttons, action bar, review header, summary bar
-- Added `allowedDevOrigins` to next.config.ts for cross-origin mobile dev access
-- HTTPS dev setup with mkcert for camera API access on mobile
-- Camera fallback: "Choose Photo" file input when `getUserMedia` unavailable (e.g., HTTP)
-- Cleaned up package.json: removed redundant scripts, fixed trailing comma JSON error, fixed analyze script
-- Created `.claude/collection-report-v2-plan.md` — full feature plan with camera docs and HTTPS notes
+- Skeleton loaders for session list and session detail
 
-### ✅ Polish & Bug Fixes (2026-05-09)
-
-- **Bug fix: Skip persistence** — `handleSkip` now POSTs a new ReportedMachine doc with `status: 'skipped'` when `reportedMachineId` is absent (previously skipped unsaved machines silently — they'd reappear on page reload)
-- **Bug fix: Loading flash** — `fetchSession` now accepts `background=true` param to skip setting `loading: true` during save/refresh operations, preventing the UI from flashing "Loading session..." on every save
-- **Skeleton loader** — Created `CollectionReportV2SessionDetailSkeleton.tsx` matching the wizard card layout, replaces "Loading session..." text
-- **Gallery button** — Added "Gallery" button alongside the capture button in CameraOverlay, opens native file picker to select existing photos even when camera is available
-- **Keep/Retake prompt** — After capture, shows explicit confirmation overlay with "Keep Photo" / "Retake" buttons instead of immediately returning to wizard
-- **Image resize** — Client-side resize before `toDataURL` (max 1200px dimension), reduces base64 size ~4x
-- **Error recovery** — Added `saveError` state + error banner with dismiss button in capture wizard on save failure
-- **Session deletion** — Added `DELETE /api/collection-reports-v2/sessions/[sessionId]` (dev/admin only, in-progress only). Delete buttons on desktop table, mobile cards, and session detail page with confirmation dialog
-- **Label** — "Collection Report V2" → "V2 Capture" in tab config
-- **Pending count fix** — Review view now correctly separates `pending` vs `captured` machines in summary
-- **Manual meters reset** — Fixed `useEffect` dependency from `reportedMachineId` to `currentIndex` to properly reset manual meter inputs when switching machines
-
-### What's Left / Known Gaps
+### Known Gaps
 
 - **Mobile end-to-end test** — capture wizard + camera overlay + submit flow hasn't been fully tested on a real mobile device with HTTPS
-- **"Resolve now" button** — ObjectID resolution banner from Activity Logs could use a manual trigger button (from earlier session, not V2-specific)
-- **`imageData` fallback** — Review view shows `imageData` but could also support `imageFileId` as fallback for backward compat
-- **No location grouping** — Sessions list groups by sessionId but has no location filter/group toggle
+- **No location grouping** — Sessions list has no location filter/group toggle
 
 ---
 
@@ -105,8 +83,7 @@ Capture Wizard opens (one machine at a time)
   │      │      │
   │      │      ▼
   │      │   Photo saved as base64 → preview shown
-  │      │   [X] to retake
-  │      │   (No explicit "keep or retake" prompt — just shows preview)
+  │      │   [Keep Photo] / [Retake] prompt
   │      │
   │      └── [X] Cancel (top-left) → returns to wizard
   │
@@ -120,8 +97,10 @@ Capture Wizard opens (one machine at a time)
   ├─── [Skip] → skips machine (status: skipped)
   │
   └─── [Save & Next] or [Save & Review] (last machine)
-         │   POST or PATCH /api/collection-reports-v2/machines
-         │   → saves status, metersMatch, imageData to DB
+         │   PATCH /api/collection-reports-v2/machines?id=xxx
+         │   → uploads base64 image to Google Drive (OAuth2 as the user)
+         │   → stores driveFileId in MongoDB
+         │   → saves status, metersMatch
          │
          ▼
       Next machine → repeat until all done
@@ -136,42 +115,26 @@ Capture Wizard opens (one machine at a time)
             │  → sets all machines to sessionStatus: 'submitted'
             │
             ▼
-      [Session Submitted] screen
-         ✓ Checkmark, location name, summary (X confirmed, Y skipped)
-         [Back to Reports] → returns to session list
+      [Session Submitted] → Submitted Report View
+         │  Sidebar tabs: Machines (table) / Summary (stats)
+         │  Photo modal on thumbnail click
+         │  Edit button (developers only)
+         │  Refresh button
 ```
 
-### Comparison with original requirements
+### Developer Edit Mode
 
-| Original Requirement | Status | Notes |
-|---------------------|--------|-------|
-| Collector logs in on mobile/tablet | ✅ Works | Standard auth, responsive layout |
-| Select from camera roll (not physically at location) | ❌ **Missing** | Only camera capture, no gallery/file picker from within the overlay |
-| Photo metadata timing concerns | ❌ **Missing** | No EXIF/metadata reading from photos |
-| Start a Collection Report V2 | ✅ Works | Dialog → POST session → redirect |
-| Browser asks for camera permissions | ✅ Works | Browser handles this natively |
-| Camera with overlay | ✅ Works | Custom CameraOverlay component |
-| Overlay: Serial, Name, Manufacturer, Meters In/Out | ✅ Works | All five fields displayed |
-| Take picture of meters | ✅ Works | Capture button draws frame to canvas |
-| Confirm/retake after capture | ⚠️ Partial | Preview shown with X to retake, but no explicit "Keep or Retake?" prompt |
-| Ask if meters match system (Yes/No) | ✅ Works | Two-button toggle |
-| Move to next machine, update overlay | ✅ Works | findNextPending() + re-render |
-| Repeat until all machines complete | ✅ Works | Loop through machines array |
-| Review before submitting | ✅ Works | ReviewView component |
-| Store in DB including images | ✅ Works | base64 in ReportedMachine.imageData |
-| Tablet-friendly interface | ⚠️ Partial | Responsive tweaks done, but no tablet-specific optimizations |
-
-### Gaps to address
-
-1. **Gallery/photo roll selection** — CameraOverlay's fallback error screen has a "Choose Photo" file input, but there's no option to pick from gallery when the camera IS available. Should add a gallery button alongside the capture button.
-
-2. **Photo metadata (EXIF)** — If user selects from gallery, we could read the photo's taken-at timestamp using `canvas` or a library. Not implemented.
-
-3. **Explicit "Keep or Retake"** — Currently the preview shows the photo with a remove button. Original spec asks for a clear "Keep / Retake" prompt step between capture and meter confirmation. The current flow skips this and shows both photo and meters toggle at once.
-
-4. **Tablet layout** — Currently uses mobile-first responsive. Layout works on phones, but could benefit from a split-pane tablet mode (camera on left, overlay on right).
+When viewing a submitted session report as a developer:
+1. Click **Edit Session** button
+2. Wizard opens with all machines pre-filled (first machine shown)
+3. **Save & Next** → PATCHs current machine, advances to next
+4. **Save & Exit** → saves current machine, fetches fresh session data, exits edit mode
+5. No Skip, no Cancel, no standalone Next in edit mode
+6. Navigation is by index (not pending-status) — all machines editable
 
 ---
+
+## Camera Details
 
 ### What happens when you tap "Take a photo"
 
@@ -193,8 +156,8 @@ Capture Wizard opens (one machine at a time)
    - Exports the canvas as a **JPEG base64 string** (`canvas.toDataURL('image/jpeg', 0.8)`)
    - Stops the camera stream (frees the camera for other apps)
    - Returns the base64 string to the parent component via `onCapture()`
-6. **Preview shown** — The capture wizard shows the photo thumbnail with a red X to retake
-7. **User can "Choose Photo" instead** — If the camera API fails (e.g., not on HTTPS), a fallback `<input type="file" capture="environment">` button appears. This opens the native OS camera app instead (works on HTTP but has NO overlay)
+6. **Keep/Retake prompt** — Shows "Keep Photo" / "Retake" overlay
+7. **Gallery fallback** — If camera API fails (e.g., not on HTTPS), `<input type="file" capture="environment">` shown. Resized client-side (max 1200px) before `toDataURL`
 
 ### Key code pieces
 
@@ -208,14 +171,20 @@ CameraOverlay.tsx
 └── <canvas hidden> → used to capture the still image
 ```
 
-### Data flow
+### Data flow with Drive
 
 ```
 Tap photo → CameraOverlay mounts → camera starts → overlay shows machine info
   → Tap capture → frame drawn to canvas → exported as base64 JPEG
   → CameraOverlay unmounts (camera stops)
   → imageData stored in state → shown as preview
-  → "Save & Next" sends base64 to API → stored in MongoDB
+  → "Save & Next" sends base64 to API
+  → PATCH /api/collection-reports-v2/machines:
+      1. Ensure folder hierarchy on Drive (Root → Location → Machine → Year → Month → Date)
+      2. Upload image to Drive via OAuth2 (acts as the authenticated user)
+      3. Store only driveFileId in MongoDB
+      4. If editing, delete old Drive file before uploading new one
+  → Frontend stores proxy URL as imageData for display
 ```
 
 ---
@@ -244,57 +213,94 @@ This is a browser security rule — you cannot bypass it.
 6. Accept the "Not Secure" warning (tap Advanced → Proceed)
 7. Camera API now works because the page is served over HTTPS
 
-**Option 2: Tunnel service (no cert setup)**
+**Option 2: Caddy reverse proxy (used in production)**
 
-- `npx ngrok http 3000` — gives you a public `https://xxxx.ngrok.io` URL
-- Works immediately, no certs needed
-- Downside: external URL, rate limits on free tier
+Caddy at `https://192.168.0.39` (port 443) proxies to `http://localhost:3000`:
+```
+192.168.0.39 {
+    reverse_proxy localhost:3000
+}
+```
 
-### Important notes for future development
+### Compatibility matrix
 
 | Scenario                          | Works?            | Why                                |
 | --------------------------------- | ----------------- | ---------------------------------- |
 | Desktop `localhost:3000`          | ✅ Camera works   | localhost is secure context        |
 | Desktop `127.0.0.1:3000`          | ✅ Camera works   | loopback is secure context         |
 | Mobile `192.168.x.x:3000` (HTTP)  | ❌ Camera blocked | non-localhost HTTP is insecure     |
-| Mobile `192.168.x.x:3000` (HTTPS) | ✅ Works          | HTTPS is secure (self-signed cert) |
-| ngrok tunnel URL                  | ✅ Works          | ngrok provides valid HTTPS         |
+| Mobile `192.168.x.x` via Caddy    | ✅ Works          | HTTPS via Caddy reverse proxy      |
 | Production (HTTPS)                | ✅ Works          | production should always be HTTPS  |
 
-### How to restart HTTPS dev server
+---
 
-```bash
-bun run dev --experimental-https
+## Google Drive Image Storage
+
+### Why OAuth2 (not Service Account)
+
+- **Service accounts have no Drive storage quota** — they cannot create files in Google Drive unless the files live in a Shared Drive (requires Google Workspace).
+- **OAuth2 (Desktop app)** — acts as the authenticated user. Files count against the user's personal Drive quota. Works with `@gmail.com` accounts.
+- The initial one-time auth flow authorizes the app, returns a refresh token stored in `.env`, and the backend uses it silently thereafter.
+
+### Folder Structure on Drive
+
+```
+Root Folder (GOOGLE_DRIVE_ROOT_FOLDER_ID)
+  → Location Name (e.g., "Mapau South")
+    → Machine Name (e.g., "Machine 104")
+      → Year (e.g., "2026")
+        → Month (e.g., "April")
+          → Date (e.g., "2026-04-13")
+            → image-file.jpg
 ```
 
-If certs need regeneration:
+### Environment Variables
 
-```bash
-mkcert -install   # run as Administrator once
+```env
+GOOGLE_DRIVE_OAUTH_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRET=GOCSPX-...
+GOOGLE_DRIVE_REFRESH_TOKEN=1//0xxx...
+GOOGLE_DRIVE_ROOT_FOLDER_ID=abc123xyz
 ```
 
-### next.config.ts note
+### Key Files
 
-`allowedDevOrigins: ['192.168.0.39']` was added to prevent cross-origin warnings when accessing from a network IP in dev mode.
+| File | Purpose |
+|------|---------|
+| `lib/utils/drive.ts` | Drive client (OAuth2), folder management, upload/download/delete |
+| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts` | Image proxy endpoint (streams from Drive to browser) |
+| `scripts/exchange-drive-code.js` | One-time token exchange (reads from .env, outputs refresh token) |
 
 ---
 
 ## File Map
 
-| File                                                                                          | Purpose                                    |
-| --------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `app/api/collection-reports-v2/sessions/route.ts`                                             | POST (start session) + GET (list sessions) |
-| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts`                                 | GET session detail                         |
-| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts`                          | PATCH submit session                       |
-| `app/api/collection-reports-v2/machines/route.ts`                                             | POST/PATCH machine capture data            |
-| `app/api/lib/models/reportedMachines.ts`                                                      | ReportedMachine Mongoose model             |
-| `components/CMS/collectionReport/tabs/collection-v2/CameraOverlay.tsx`                        | Full-screen camera with overlay            |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx`      | Capture wizard + review + submit views     |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop.tsx`            | Session list (desktop table)               |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile.tsx`             | Session list (mobile cards)                |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog.tsx` | Start session dialog                       |
-| `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx`                              | Session list skeleton loader               |
-| `components/ui/skeletons/CollectionReportV2SessionDetailSkeleton.tsx`                         | Session detail wizard skeleton loader      |
-| `lib/constants/collection.ts`                                                                 | Tab config                                 |
-| `lib/constants/maintenance.ts`                                                                | Maintenance env var toggle                 |
-| `next.config.ts`                                                                              | `allowedDevOrigins` config                 |
+| File | Purpose |
+|------|---------|
+| `app/api/collection-reports-v2/sessions/route.ts` | POST (start session) + GET (list sessions) |
+| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts` | GET session detail + DELETE session |
+| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts` | PATCH submit session |
+| `app/api/collection-reports-v2/machines/route.ts` | POST/PATCH machine capture data (image upload to Drive) |
+| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts` | GET proxy — streams image from Drive |
+| `app/api/lib/models/reportedMachines.ts` | ReportedMachine Mongoose model (with `driveFileId`) |
+| `lib/utils/drive.ts` | Drive client, folder management, upload/download/delete |
+| `lib/utils/cookieSecurity.ts` | Cookie security helpers |
+| `scripts/exchange-drive-code.js` | One-time OAuth2 token exchange |
+| `components/CMS/collectionReport/tabs/collection-v2/CameraOverlay.tsx` | Full-screen camera with overlay |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx` | Capture wizard + review + edit mode |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReport.tsx` | Submitted report view (Machines/Summary tabs, edit button) |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx` | Searchable/sortable/paginated machine table |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportSummaryTab.tsx` | Aggregated stats |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StatusBadge.tsx` | Status badge |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop.tsx` | Session list (desktop table) |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile.tsx` | Session list (mobile cards) |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog.tsx` | Start session dialog |
+| `components/CMS/collectionReport/CollectionReportPageContent.tsx` | V2 tab rendering + refresh handling |
+| `components/CMS/collectionReport/CollectionReportHeader.tsx` | Global refresh + create buttons |
+| `lib/hooks/collectionReport/useCollectionReportV2Data.ts` | V2 data hook |
+| `lib/constants/collection.ts` | Tab config |
+| `lib/constants/maintenance.ts` | Maintenance toggle |
+| `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx` | Session list skeleton |
+| `components/ui/skeletons/CollectionReportV2SessionDetailSkeleton.tsx` | Wizard skeleton |
+| `next.config.ts` | `allowedDevOrigins` config |
+| `lib/store/userStore.ts` | Zustand user store (for `isDeveloper` check) |

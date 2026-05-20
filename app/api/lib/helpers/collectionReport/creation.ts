@@ -455,23 +455,24 @@ async function getPreviousCollectionMeters(
     // Priority: sasMeters.drop / sasMeters.totalCancelledCredits (set via the Edit Cabinet modal)
     // Fallback:  collectionMeters.metersIn / metersOut (legacy field)
     // Last resort: 0
-    const sasIn = (machine.sasMeters?.drop as number | undefined) ?? null;
-    const sasOut = (machine.sasMeters?.coinOut as number | undefined) ?? null;
     const legacyIn = machine.collectionMeters?.metersIn ?? null;
     const legacyOut = machine.collectionMeters?.metersOut ?? null;
+    const sasIn = (machine.sasMeters?.drop as number | undefined) ?? null;
+    const sasOut = (machine.sasMeters?.totalCancelledCredits as number | undefined) ?? null;
 
-    // Use sasMeters if present and non-zero, otherwise fall back to collectionMeters, then 0
-    prevMetersIn = sasIn !== null && sasIn > 0 ? sasIn : (legacyIn ?? 0);
-    prevMetersOut = sasOut !== null && sasOut > 0 ? sasOut : (legacyOut ?? 0);
+    // CRITICAL: Prioritize collectionMeters (manual baseline) over sasMeters (live lifetime meters)
+    // This ensures that operator-entered baselines are respected during the first collection.
+    prevMetersIn = legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0);
+    prevMetersOut = legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0);
 
     console.warn(
-      '⚠️ No previous collection found, using machine sasMeters as initial prev values:',
+      '⚠️ No previous collection found, using machine collectionMeters as initial prev values:',
       {
         machineId,
-        sasMetersIn: sasIn,
-        sasMetersOut: sasOut,
         legacyMetersIn: legacyIn,
         legacyMetersOut: legacyOut,
+        sasMetersIn: sasIn,
+        sasMetersOut: sasOut,
         resolvedPrevIn: prevMetersIn,
         resolvedPrevOut: prevMetersOut,
       }

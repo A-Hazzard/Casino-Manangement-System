@@ -16,10 +16,10 @@ import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store/userStore';
-import { Archive, Loader2, X } from 'lucide-react';
+import { Archive, Loader2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { gsap } from 'gsap';
 
-type ModalStep = 'choose' | 'confirmArchive';
+type ModalStep = 'choose' | 'confirmArchive' | 'confirmDelete';
 
 export default function LocationsDeleteLocationModal({
   onDelete,
@@ -34,14 +34,12 @@ export default function LocationsDeleteLocationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  const isDeveloper = useMemo(() => {
-    const roles = user?.roles || [];
-    return roles.map((r: string) => r.toLowerCase()).includes('developer');
-  }, [user]);
-
   const canPermanentlyDelete = useMemo(() => {
-    return isDeveloper;
-  }, [isDeveloper]);
+    const roles = user?.roles || [];
+    return ['developer', 'owner', 'admin', 'location admin'].some(r =>
+      roles.map((x: string) => x.toLowerCase()).includes(r)
+    );
+  }, [user]);
 
   useEffect(() => {
     if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
@@ -56,83 +54,42 @@ export default function LocationsDeleteLocationModal({
         { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
       setLoading(false);
-      if (canPermanentlyDelete) {
+
+      const isArchived = Boolean((selectedLocation as { deletedAt?: string | Date })?.deletedAt);
+      if (isArchived) {
+        setStep('confirmDelete');
+      } else if (canPermanentlyDelete) {
         setStep('choose');
       } else {
         setStep('confirmArchive');
       }
     }
-  }, [isDeleteModalOpen, canPermanentlyDelete]);
-
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-    if (user.profile?.firstName) return user.profile.firstName;
-    if (user.profile?.lastName) return user.profile.lastName;
-    if (user.username) return user.username;
-    if (user.emailAddress) return user.emailAddress;
-    return 'Unknown User';
-  };
-
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string,
-    previousData?: Record<string, unknown> | null,
-    newData?: Record<string, unknown> | null
-  ) => {
-    try {
-      await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: [],
-        }),
-      });
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
-  };
+  }, [isDeleteModalOpen, canPermanentlyDelete, selectedLocation]);
 
   const handleArchive = async () => {
     const location = selectedLocation as Record<string, unknown>;
     if (!location?.location) return;
 
+    const isArchived = Boolean(location.deletedAt);
     setLoading(true);
     try {
-      // No hardDelete param = soft delete (archive)
-      await axios.delete(`/api/locations?id=${location.location}`);
+      if (isArchived) {
+        // Hard delete (permanent delete)
+        await axios.delete(`/api/locations?id=${location.location}&hardDelete=true`);
 
-      await logActivity(
-        'archive',
-        'location',
-        location.location as string,
-        (location.locationName as string) || 'Unknown Location',
-        `Archived location: ${location.locationName as string}`,
-        location,
-        null
-      );
+        toast.success('Location permanently deleted successfully');
+      } else {
+        // No hardDelete param = soft delete (archive)
+        await axios.delete(`/api/locations?id=${location.location}`);
 
-      toast.success('Location archived successfully');
+        toast.success('Location archived successfully');
+      }
+
       onDelete();
       closeDeleteModal();
     } catch (error) {
-      console.error('Error archiving location:', error);
-      toast.error('Failed to archive location');
+      console.error('Error removing location:', error);
+      toast.error(isArchived ? 'Failed to permanently delete location' : 'Failed to archive location');
     } finally {
       setLoading(false);
     }
@@ -168,6 +125,7 @@ export default function LocationsDeleteLocationModal({
               <h2 className="text-xl font-bold text-buttonActive">
                 {step === 'choose' && 'Remove Location'}
                 {step === 'confirmArchive' && 'Archive Location'}
+                {step === 'confirmDelete' && 'Permanently Delete Location'}
               </h2>
               <Button
                 variant="ghost"
@@ -243,6 +201,33 @@ export default function LocationsDeleteLocationModal({
                 </p>
               </div>
             )}
+
+            {/* ── Step 2b: Confirm Delete ── */}
+            {step === 'confirmDelete' && (
+              <div className="text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                    <AlertTriangle className="h-8 w-8 text-red-600" />
+                  </div>
+                </div>
+                <p className="mb-4 text-lg font-semibold text-grayHighlight">
+                  Are you sure you want to permanently delete
+                  {locationName && (
+                    <span className="font-bold text-buttonActive">
+                      {' '}
+                      {locationName}
+                    </span>
+                  )}
+                  ?
+                </p>
+                <p className="text-sm text-red-600 font-semibold mb-2">
+                  WARNING: This action is irreversible.
+                </p>
+                <p className="text-sm text-grayHighlight">
+                  This will permanently delete the location and all its associated machines. This cannot be undone.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -282,6 +267,35 @@ export default function LocationsDeleteLocationModal({
                     disabled={loading}
                   >
                     Back
+                  </Button>
+                </>
+              )}
+
+              {step === 'confirmDelete' && (
+                <>
+                  <Button
+                    onClick={handleArchive}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Permanently Delete
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleClose}
+                    className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                    disabled={loading}
+                  >
+                    Cancel
                   </Button>
                 </>
               )}

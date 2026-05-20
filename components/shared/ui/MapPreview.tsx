@@ -440,6 +440,15 @@ export default function MapPreview(props: MapPreviewProps) {
   const validLocations = useMemo(() => {
     return (
       (props.gamingLocations as Location[])?.filter(location => {
+        if (location.deletedAt) {
+          try {
+            const d = new Date(location.deletedAt);
+            if (d.getFullYear() >= 2025) {
+              return false;
+            }
+          } catch {}
+        }
+
         if (!location.geoCoords) {
           return false;
         }
@@ -464,20 +473,46 @@ export default function MapPreview(props: MapPreviewProps) {
     );
   }, [normalizedSelected, validLocations]);
 
-  const locationsWithoutCoords = useMemo(() => {
-    return (
-      (props.gamingLocations as Location[])?.filter(location => {
-        if (!location.geoCoords) return true;
+  const isActiveLocation = (location: Location): boolean => {
+    if (!location.deletedAt) return true;
+    try {
+      return new Date(location.deletedAt).getFullYear() < 2025;
+    } catch {
+      return true;
+    }
+  };
 
-        const validLongitude = getValidLongitude(location.geoCoords);
-        return (
-          location.geoCoords.latitude === 0 ||
-          validLongitude === undefined ||
-          validLongitude === 0
-        );
-      }) || []
-    );
-  }, [props.gamingLocations]);
+  // A location HAS coordinates if ANY of: googleMapsIframe, googleMapsLink, or valid geoCoords is present.
+  // It is MISSING coordinates only when ALL are absent.
+  const isMissingCoordinates = (location: Location): boolean => {
+    if (location.googleMapsIframe) return false;
+    if (location.googleMapsLink) return false;
+    if (location.geoCoords) {
+      const validLongitude = getValidLongitude(location.geoCoords);
+      if (location.geoCoords.latitude && location.geoCoords.latitude !== 0) return false;
+      if (validLongitude !== undefined && validLongitude !== 0) return false;
+    }
+    return true;
+  };
+
+  const locationsWithoutCoords = useMemo(() => {
+    const allLocations = props.gamingLocations as Location[];
+    const source =
+      !normalizedSelected || normalizedSelected === 'all'
+        ? allLocations
+        : allLocations?.filter(loc => matchesLicencee(loc, normalizedSelected));
+
+    return source?.filter(loc => isActiveLocation(loc) && isMissingCoordinates(loc)) || [];
+  }, [props.gamingLocations, normalizedSelected]);
+
+  const totalActiveLicenceeLocations = useMemo(() => {
+    const allLocations = props.gamingLocations as Location[];
+    const source =
+      !normalizedSelected || normalizedSelected === 'all'
+        ? allLocations
+        : allLocations?.filter(loc => matchesLicencee(loc, normalizedSelected));
+    return source?.filter(isActiveLocation)?.length || 0;
+  }, [props.gamingLocations, normalizedSelected]);
 
   const centersEqual = (a: [number, number], b: [number, number]): boolean =>
     a[0] === b[0] && a[1] === b[1];
@@ -799,10 +834,7 @@ export default function MapPreview(props: MapPreviewProps) {
             <div className="flex items-center gap-1.5 text-[10px] text-yellow-800 sm:gap-2 sm:text-xs">
               <MapPin className="h-2.5 w-2.5 flex-shrink-0 sm:h-3 sm:w-3" />
               <span>
-                <strong>{locationsWithoutCoords.length}</strong> location
-                {locationsWithoutCoords.length !== 1 ? 's' : ''}
-                {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
-                coordinates and can&apos;t be displayed on the map
+                <strong>{locationsWithoutCoords.length}/{totalActiveLicenceeLocations}</strong> locations without coordinates
               </span>
             </div>
             {locationsWithoutCoords.length <= 3 && (
@@ -944,10 +976,7 @@ export default function MapPreview(props: MapPreviewProps) {
                 <div className="flex items-center gap-2 text-xs text-yellow-800 sm:text-sm">
                   <MapPin className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
                   <span>
-                    <strong>{locationsWithoutCoords.length}</strong> location
-                    {locationsWithoutCoords.length !== 1 ? 's' : ''}
-                    {locationsWithoutCoords.length === 1 ? ' has' : ' have'} no
-                    coordinates and can&apos;t be displayed on the map
+                    <strong>{locationsWithoutCoords.length}/{totalActiveLicenceeLocations}</strong> locations without coordinates
                   </span>
                 </div>
                 {locationsWithoutCoords.length <= 5 && (

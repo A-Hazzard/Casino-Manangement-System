@@ -14,8 +14,9 @@
 
 'use client';
 
-import { FC, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -29,7 +30,11 @@ import CollectionReportDesktopLayout from '@/components/CMS/collectionReport/tab
 import CollectionReportMobileLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportMobileLayout';
 import CollectionReportV2Desktop from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop';
 import CollectionReportV2Mobile from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile';
+import CollectionReportV2Filters from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Filters';
 import CollectionReportV2StartSessionDialog from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog';
+import CollectionReportV2DeleteSessionModal from '@/components/CMS/collectionReport/modals/CollectionReportV2DeleteSessionModal';
+import CollectionReportV2EditSessionModal from '@/components/CMS/collectionReport/modals/CollectionReportV2EditSessionModal';
+import CollectionReportV2WizardModal from '@/components/CMS/collectionReport/modals/CollectionReportV2WizardModal';
 
 // === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
@@ -101,14 +106,52 @@ const CollectionReportPageContent: FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showV2StartSession, setShowV2StartSession] = useState(false);
   const [v2DeleteConfirm, setV2DeleteConfirm] = useState<string | null>(null);
-  const [v2Deleting, setV2Deleting] = useState(false);
-  const [v2GroupByLocation, setV2GroupByLocation] = useState(false);
+  const [v2EditSessionId, setV2EditSessionId] = useState<string | null>(null);
+  const [v2WizardSessionId, setV2WizardSessionId] = useState<string | null>(
+    null
+  );
+
+  // ============================================================================
+  // URL ↔ View-modal sync (?view=<sessionId>) — lets a shared link open
+  // the session report modal automatically.
+  // ============================================================================
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // On mount + whenever the URL changes, mirror ?view= into local state.
+  useEffect(() => {
+    const viewParam = searchParams?.get('view') ?? null;
+    setV2EditSessionId(prev => (prev === viewParam ? prev : viewParam));
+  }, [searchParams]);
+
+  // Open a session in view-mode AND push the URL so it's shareable.
+  const openV2View = useCallback(
+    (sessionId: string) => {
+      setV2EditSessionId(sessionId);
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('view', sessionId);
+      router.push(`/collection-report?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  // Close the view modal AND strip ?view= from the URL.
+  const closeV2View = useCallback(() => {
+    setV2EditSessionId(null);
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.delete('view');
+    const query = params.toString();
+    router.push(query ? `/collection-report?${query}` : '/collection-report', {
+      scroll: false,
+    });
+  }, [router, searchParams]);
 
   // Destructure hook for better readability
   const {
     activeTab,
     loading,
     refreshing,
+    allReports,
     locations,
     locationsWithMachines,
     showNewCollectionMobile,
@@ -117,7 +160,6 @@ const CollectionReportPageContent: FC = () => {
     showEditDesktop,
     editingReportId,
     showDeleteConfirmation,
-    isDeleting,
     filters,
     handleTabChange,
     handleRefresh,
@@ -152,6 +194,14 @@ const CollectionReportPageContent: FC = () => {
   const userRoles = (user?.roles || []) as UserRole[];
   const canSeeManagerTabs = hasManagerAccess(userRoles);
   const isDeveloper = userRoles.includes('developer');
+  const canManageV2 = isDeveloper || userRoles.includes('admin');
+  // Only these roles may view and restore archived V2 sessions.
+  // location admin sees only their assigned locations (enforced by the API).
+  const canViewArchivedV2 =
+    userRoles.includes('developer') ||
+    userRoles.includes('owner') ||
+    userRoles.includes('admin') ||
+    userRoles.includes('location admin');
 
   const visibleTabs = COLLECTION_TABS_CONFIG.filter(tab => {
     if (tab.id === 'monthly' || tab.id === 'manager') return canSeeManagerTabs;
@@ -166,6 +216,34 @@ const CollectionReportPageContent: FC = () => {
       : activeTab === 'collection-v2' && !isDeveloper
         ? ('collection' as const)
         : activeTab;
+
+  // Wrapped refresh that calls correct hook based on active tab
+  const handleRefreshAll = () => {
+    if (effectiveTab === 'collection') {
+      handleRefresh();
+    } else if (effectiveTab === 'collection-v2') {
+      v2Hook.onRefresh();
+    } else if (effectiveTab === 'monthly') {
+      monthlyHook.onApplyDateRange();
+    } else if (effectiveTab === 'collector') {
+      collectorHook.onRefresh();
+    } else if (effectiveTab === 'manager') {
+      managerHook.onRefresh();
+    }
+  };
+
+  const activeRefreshing =
+    effectiveTab === 'collection'
+      ? refreshing
+      : effectiveTab === 'collection-v2'
+        ? v2Hook.isRefreshing
+        : effectiveTab === 'monthly'
+          ? monthlyHook.monthlyLoading
+          : effectiveTab === 'collector'
+            ? collectorHook.loadingCollectorSchedules
+            : effectiveTab === 'manager'
+              ? managerHook.loadingSchedulers
+              : false;
 
   // ============================================================================
   // Early Returns: Authentication & Tenancy Checks
@@ -197,14 +275,14 @@ const CollectionReportPageContent: FC = () => {
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
+        onRefresh={handleRefreshAll}
+        refreshing={activeRefreshing}
       >
         {/* Header Section */}
         <CollectionReportHeader
           activeTab={effectiveTab}
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
+          refreshing={activeRefreshing}
+          onRefresh={handleRefreshAll}
           onCreateDesktop={() => {
             if (effectiveTab === 'collection-v2') {
               setShowV2StartSession(true);
@@ -222,7 +300,7 @@ const CollectionReportPageContent: FC = () => {
         />
 
         {/* Navigation Section */}
-        <div className="mb-8 mt-8">
+        <div className="mb-4 mt-4">
           <CollectionReportNavigation
             tabs={visibleTabs}
             activeView={effectiveTab}
@@ -234,13 +312,30 @@ const CollectionReportPageContent: FC = () => {
         {/* Global Filters Section */}
         {(effectiveTab === 'collection' ||
           effectiveTab === 'collection-v2') && (
-          <div className="mb-6">
+          <div className="mb-2 flex flex-col gap-y-4">
             <DateFilters hideAllTime={false} customRangeGoLabel="Get Reports" />
+            {effectiveTab === 'collection-v2' && (
+              <CollectionReportV2Filters
+                search={v2Hook.searchTerm}
+                onSearchChange={v2Hook.setSearchTerm}
+                searchType={v2Hook.searchType}
+                onSearchTypeChange={v2Hook.setSearchType}
+                locations={locations}
+                selectedLocation={filters.selectedLocation}
+                onLocationChange={filters.setSelectedLocation}
+                onClearFilters={filters.clearFilters}
+                showArchived={canViewArchivedV2 ? v2Hook.showArchived : false}
+                onShowArchivedChange={
+                  canViewArchivedV2 ? v2Hook.setShowArchived : undefined
+                }
+                canViewArchived={canViewArchivedV2}
+              />
+            )}
           </div>
         )}
 
         {/* Main Tab Content Section */}
-        <div className="mt-6 flex-1 overflow-hidden">
+        <div className="mt-0 flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <MotionDiv
               key={effectiveTab}
@@ -266,6 +361,8 @@ const CollectionReportPageContent: FC = () => {
                         setSearchTerm(value);
                         setIsSearching(value.length > 0);
                       }}
+                      searchType={hook.searchType}
+                      onSearchTypeChange={hook.setSearchType}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
                       onShowUncollectedOnlyChange={
@@ -300,6 +397,8 @@ const CollectionReportPageContent: FC = () => {
                         setSearchTerm(value);
                         setIsSearching(value.length > 0);
                       }}
+                      searchType={hook.searchType}
+                      onSearchTypeChange={hook.setSearchType}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
                       onShowUncollectedOnlyChange={
@@ -410,53 +509,17 @@ const CollectionReportPageContent: FC = () => {
               {/* === COLLECTION REPORT V2 TAB (Developer only) === */}
               {effectiveTab === 'collection-v2' && (
                 <div className="tab-content-wrapper">
-                  {/* V2 Location Filter & Group Toggle */}
-                  {v2Hook.locations.length > 0 && (
-                    <div className="mb-4 flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                          Location
-                        </label>
-                        <select
-                          value={v2Hook.selectedLocation}
-                          onChange={e =>
-                            v2Hook.setSelectedLocation(e.target.value)
-                          }
-                          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="all">All Locations</option>
-                          {v2Hook.locations.map(loc => (
-                            <option key={String(loc._id)} value={String(loc._id)}>
-                              {loc.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setV2GroupByLocation(prev => !prev)
-                        }
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                          v2GroupByLocation
-                            ? 'border-blue-300 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {v2GroupByLocation
-                          ? 'Grouped by Location'
-                          : 'Group by Location'}
-                      </button>
-                    </div>
-                  )}
                   <div className="hidden md:block">
                     <CollectionReportV2Desktop
                       sessions={v2Hook.sessions}
                       loading={v2Hook.loading}
-                      groupByLocation={v2GroupByLocation}
-                      onViewSession={sessionId => {
-                        window.location.href = `/collection-report/report/session/${sessionId}`;
-                      }}
+                      isRefreshing={v2Hook.isRefreshing}
+                      canManage={canManageV2}
+                      showArchived={v2Hook.showArchived}
+                      onViewSession={sessionId => openV2View(sessionId)}
+                      onEditSession={sessionId =>
+                        setV2WizardSessionId(sessionId)
+                      }
                       onSubmitSession={async sessionId => {
                         try {
                           await axios.patch(
@@ -464,12 +527,51 @@ const CollectionReportPageContent: FC = () => {
                           );
                           v2Hook.onRefresh();
                         } catch (error) {
-                          console.error('Failed to submit session:', error);
+                          console.error(
+                            '[CollectionReportPageContent] Failed to submit session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
                         }
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
                       }}
+                      onRestoreSession={async sessionId => {
+                        try {
+                          await axios.patch(
+                            `/api/collection-reports-v2/sessions/${sessionId}`,
+                            { action: 'restore' }
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error(
+                            '[CollectionReportPageContent] Failed to restore session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
+                        }
+                      }}
+                      onPermanentDeleteSession={async sessionId => {
+                        try {
+                          await axios.delete(
+                            `/api/collection-reports-v2/sessions/${sessionId}`
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error(
+                            '[CollectionReportPageContent] Failed to permanently delete session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
+                        }
+                      }}
+                      sortField={v2Hook.sortField}
+                      sortDirection={v2Hook.sortDirection}
+                      onSort={v2Hook.handleSort}
                     />
                   </div>
 
@@ -477,10 +579,13 @@ const CollectionReportPageContent: FC = () => {
                     <CollectionReportV2Mobile
                       sessions={v2Hook.sessions}
                       loading={v2Hook.loading}
-                      groupByLocation={v2GroupByLocation}
-                      onViewSession={sessionId => {
-                        window.location.href = `/collection-report/report/session/${sessionId}`;
-                      }}
+                      isRefreshing={v2Hook.isRefreshing}
+                      canManage={canManageV2}
+                      showArchived={v2Hook.showArchived}
+                      onViewSession={sessionId => openV2View(sessionId)}
+                      onEditSession={sessionId =>
+                        setV2WizardSessionId(sessionId)
+                      }
                       onSubmitSession={async sessionId => {
                         try {
                           await axios.patch(
@@ -488,11 +593,47 @@ const CollectionReportPageContent: FC = () => {
                           );
                           v2Hook.onRefresh();
                         } catch (error) {
-                          console.error('Failed to submit session:', error);
+                          console.error(
+                            '[CollectionReportPageContent] Failed to submit session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
                         }
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
+                      }}
+                      onRestoreSession={async sessionId => {
+                        try {
+                          await axios.patch(
+                            `/api/collection-reports-v2/sessions/${sessionId}`,
+                            { action: 'restore' }
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error(
+                            '[CollectionReportPageContent] Failed to restore session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
+                        }
+                      }}
+                      onPermanentDeleteSession={async sessionId => {
+                        try {
+                          await axios.delete(
+                            `/api/collection-reports-v2/sessions/${sessionId}`
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error(
+                            '[CollectionReportPageContent] Failed to permanently delete session:',
+                            error instanceof Error
+                              ? error.message
+                              : 'Unknown error'
+                          );
+                        }
                       }}
                     />
                   </div>
@@ -588,7 +729,8 @@ const CollectionReportPageContent: FC = () => {
         showEditDesktop={showEditDesktop}
         editingReportId={editingReportId}
         showDeleteConfirm={showDeleteConfirmation}
-        isDeleting={isDeleting}
+        reportToDelete={hook.reportToDelete}
+        allReports={allReports}
         locationsWithMachines={locationsWithMachines}
         onCloseNewMobile={() => setShowNewCollectionMobile(false)}
         onCloseNewDesktop={() => setShowNewCollectionDesktop(false)}
@@ -607,53 +749,49 @@ const CollectionReportPageContent: FC = () => {
         <CollectionReportV2StartSessionDialog
           locations={locations}
           onClose={() => setShowV2StartSession(false)}
+          onSessionCreated={sessionId => {
+            setV2WizardSessionId(sessionId);
+            v2Hook.onRefresh();
+          }}
         />
       )}
 
-      {v2DeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">
-              Delete Session
-            </h3>
-            <p className="mb-6 text-sm text-gray-600">
-              Are you sure you want to delete this in-progress session? This
-              will remove all captured data permanently.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setV2DeleteConfirm(null)}
-                disabled={v2Deleting}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setV2Deleting(true);
-                  try {
-                    await axios.delete(
-                      `/api/collection-reports-v2/sessions/${v2DeleteConfirm}`
-                    );
-                    setV2DeleteConfirm(null);
-                    v2Hook.onRefresh();
-                  } catch (error) {
-                    console.error('Failed to delete session:', error);
-                  } finally {
-                    setV2Deleting(false);
-                  }
-                }}
-                disabled={v2Deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {v2Deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CollectionReportV2DeleteSessionModal
+        isOpen={!!v2DeleteConfirm}
+        sessionId={v2DeleteConfirm ?? ''}
+        onClose={() => setV2DeleteConfirm(null)}
+        onArchive={async sessionId => {
+          await axios.delete(
+            `/api/collection-reports-v2/sessions/${sessionId}?action=archive`
+          );
+          v2Hook.onRefresh();
+        }}
+        onDelete={async sessionId => {
+          await axios.delete(
+            `/api/collection-reports-v2/sessions/${sessionId}`
+          );
+          v2Hook.onRefresh();
+        }}
+      />
+
+      <CollectionReportV2EditSessionModal
+        isOpen={!!v2EditSessionId}
+        sessionId={v2EditSessionId ?? ''}
+        onClose={closeV2View}
+        onEdit={sessionId => {
+          closeV2View();
+          setV2WizardSessionId(sessionId);
+        }}
+      />
+
+      <CollectionReportV2WizardModal
+        isOpen={!!v2WizardSessionId}
+        sessionId={v2WizardSessionId ?? ''}
+        onClose={() => {
+          setV2WizardSessionId(null);
+          v2Hook.onRefresh();
+        }}
+      />
     </>
   );
 };

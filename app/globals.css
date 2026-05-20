@@ -383,3 +383,81 @@ input[type='checkbox'] {
   opacity: 0;
   transform: translateY(-20px);
 }
+
+/* MuiDateCalendar — make it fit comfortably on mobile screens */
+@media (max-width: 639px) {
+  .mui-calendar-popover {
+    max-width: calc(100vw - 16px) !important;
+    width: calc(100vw - 16px) !important;
+  }
+  .mui-calendar-popover .MuiPaper-root {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .mui-calendar-popover .MuiDateCalendar-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 220px !important;
+    min-height: 0 !important;
+  }
+  .mui-calendar-popover .MuiPickersDay-root {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 11px !important;
+    margin: 0 !important;
+  }
+  .mui-calendar-popover .MuiDayCalendar-weekDayLabel {
+    width: 26px !important;
+    height: 22px !important;
+    font-size: 10px !important;
+    margin: 0 !important;
+  }
+  .mui-calendar-popover .MuiPickersCalendarHeader-root {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+  }
+  .mui-calendar-popover .MuiPickersCalendarHeader-label {
+    font-size: 12px !important;
+  }
+  .mui-calendar-popover .MuiPickersArrowSwitcher-button,
+  .mui-calendar-popover .MuiPickersCalendarHeader-switchViewButton {
+    padding: 2px !important;
+  }
+  .mui-calendar-popover .MuiPickersArrowSwitcher-button svg,
+  .mui-calendar-popover .MuiPickersCalendarHeader-switchViewButton svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .mui-calendar-popover .MuiDayCalendar-header,
+  .mui-calendar-popover .MuiDayCalendar-weekContainer {
+    justify-content: space-around !important;
+  }
+  .mui-calendar-popover .MuiDayCalendar-weekContainer {
+    margin: 0 !important;
+  }
+  .mui-calendar-popover .MuiButton-root {
+    font-size: 12px !important;
+    padding: 4px 10px !important;
+    min-height: 0 !important;
+  }
+  /* Time pickers at the top of the calendar */
+  .mui-calendar-popover input[type='text'] {
+    font-size: 12px !important;
+    padding: 2px 4px !important;
+  }
+  .mui-calendar-popover select {
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+  }
+  /* Tighten the Paper/Stack/Box padding inside the calendar */
+  .mui-calendar-popover .MuiBox-root {
+    padding: 4px !important;
+  }
+  .mui-calendar-popover .MuiStack-root {
+    gap: 4px !important;
+  }
+}

@@ -31,8 +31,11 @@ export type OriginalUserType = {
   profilePicture?: string;
   moneyInMultiplier?: number;
   moneyOutAndJackpotMultiplier?: number;
+  reviewerMultiplierStartTime?: Date | string | null;
   isEnabled?: boolean;
   roles?: string[];
+  assignedLocations?: string[];
+  assignedLicencees?: string[];
 };
 
 export type ProfileUpdatePayload = {

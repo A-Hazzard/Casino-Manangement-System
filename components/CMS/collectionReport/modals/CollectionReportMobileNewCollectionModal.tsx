@@ -146,6 +146,7 @@ export default function CollectionReportMobileNewCollectionModal({
     useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] =
     useState(false);
+  const [isLoadingTime, setIsLoadingTime] = useState(false);
 
   // Reset variation check when modal opens/closes
   useEffect(() => {
@@ -574,6 +575,7 @@ export default function CollectionReportMobileNewCollectionModal({
                                         );
                                         setStoreSelectedMachineData(machine);
                                         // Auto-populate sasStartTime from the last completed collection
+                                        setIsLoadingTime(true);
                                         axios
                                           .get(
                                             `/api/collection-reports/collections/last-collection-time?machineId=${String(machine._id)}`
@@ -661,6 +663,9 @@ export default function CollectionReportMobileNewCollectionModal({
                                                 ),
                                               });
                                             }
+                                          })
+                                          .finally(() => {
+                                            setIsLoadingTime(false);
                                           });
                                         setStoreFormData({
                                           metersIn: '',
@@ -851,6 +856,7 @@ export default function CollectionReportMobileNewCollectionModal({
               }}
               baseBalanceCorrection={baseBalanceCorrection}
               onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
+              isLoadingTime={isLoadingTime}
             />
           )}
 
@@ -956,8 +962,8 @@ export default function CollectionReportMobileNewCollectionModal({
                     entry.machineId,
                   metersIn: entry.metersIn || 0,
                   metersOut: entry.metersOut || 0,
-                  sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-                  sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+                  sasStartTime: entry.sasStartTime || undefined,
+                  sasEndTime: entry.sasEndTime || undefined,
                   prevMetersIn: entry.prevIn || 0,
                   prevMetersOut: entry.prevOut || 0,
                 }));

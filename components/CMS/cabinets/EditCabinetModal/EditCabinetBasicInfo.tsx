@@ -274,28 +274,36 @@ export default function EditCabinetBasicInfo({
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Cabinet Type
           </label>
-          <Select
-            value={formData.cabinetType as string}
-            onValueChange={value => onFormDataChange({ cabinetType: value })}
-          >
-            <SelectTrigger className="border-border bg-container">
-              <SelectValue placeholder="Select Cabinet Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Standing">Standing</SelectItem>
-              <SelectItem value="Slant Top">Slant Top</SelectItem>
-              <SelectItem value="Bar Top">Bar Top</SelectItem>
-            </SelectContent>
-          </Select>
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <Select
+              value={formData.cabinetType as string}
+              onValueChange={value => onFormDataChange({ cabinetType: value })}
+            >
+              <SelectTrigger className="border-border bg-container">
+                <SelectValue placeholder="Select Cabinet Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Standing">Standing</SelectItem>
+                <SelectItem value="Slant Top">Slant Top</SelectItem>
+                <SelectItem value="Bar Top">Bar Top</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="flex items-center space-x-2">
-          <Checkbox
-            id="isCronosMachine"
-            checked={Boolean(formData.isCronosMachine)}
-            onCheckedChange={checked =>
-              onFormDataChange({ isCronosMachine: Boolean(checked) })
-            }
-          />
+          {cabinetDataLoading ? (
+            <Skeleton className="h-5 w-5 rounded" />
+          ) : (
+            <Checkbox
+              id="isCronosMachine"
+              checked={Boolean(formData.isCronosMachine)}
+              onCheckedChange={checked =>
+                onFormDataChange({ isCronosMachine: Boolean(checked) })
+              }
+            />
+          )}
           <label
             htmlFor="isCronosMachine"
             className="text-sm font-medium text-grayHighlight"
@@ -310,16 +318,20 @@ export default function EditCabinetBasicInfo({
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Accounting Denomination (Cronos Only)
           </label>
-          <Input
-            id="accountingDenominationCronos"
-            name="accountingDenomination"
-            value={formData.accountingDenomination}
-            onChange={e =>
-              onFormDataChange({ accountingDenomination: e.target.value })
-            }
-            placeholder="Enter denomination"
-            className="border-border bg-container"
-          />
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <Input
+              id="accountingDenominationCronos"
+              name="accountingDenomination"
+              value={formData.accountingDenomination}
+              onChange={e =>
+                onFormDataChange({ accountingDenomination: e.target.value })
+              }
+              placeholder="Enter denomination"
+              className="border-border bg-container"
+            />
+          )}
         </div>
       )}
     </div>

@@ -186,6 +186,7 @@ export async function POST(request: NextRequest) {
       tempPassword,
       moneyInMultiplier,
       moneyOutAndJackpotMultiplier,
+      reviewerMultiplierStartTime,
     } = body;
 
     if (!username || typeof username !== 'string') {
@@ -277,6 +278,7 @@ export async function POST(request: NextRequest) {
           tempPassword,
           moneyInMultiplier,
           moneyOutAndJackpotMultiplier,
+          reviewerMultiplierStartTime,
         },
         request
       );

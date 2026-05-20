@@ -9,6 +9,13 @@ export const COLLECTION_TABS_CONFIG: CollectionTab[] = [
     available: isTabAvailable('collection-report', 'collection'),
   },
   {
+    id: 'collection-v2',
+    label: 'Collection Reports - V2',
+    icon: '⚡',
+    available: isTabAvailable('collection-report', 'collection-v2'),
+    highlight: true,
+  },
+  {
     id: 'monthly',
     label: 'Monthly Report',
     icon: '📅',
@@ -25,12 +32,5 @@ export const COLLECTION_TABS_CONFIG: CollectionTab[] = [
     label: 'Collectors Schedule',
     icon: '👥',
     available: isTabAvailable('collection-report', 'collector'),
-  },
-  {
-    id: 'collection-v2',
-    label: 'V2 Capture',
-    icon: '⚡',
-    available: isTabAvailable('collection-report', 'collection-v2'),
-    highlight: true,
   },
 ];

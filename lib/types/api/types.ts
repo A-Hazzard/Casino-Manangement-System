@@ -211,8 +211,8 @@ export type LocationMetric = {
   metersGross: number;
   jackpot?: number;
   netGross?: number;
-  variation: number;
-  sasGross: number;
+  variation: number | string;
+  sasGross: number | string;
   locationRevenue: number;
   amountUncollected: number;
   amountToCollect: number;
@@ -245,6 +245,8 @@ export type CollectionReportData = {
   isEditing?: boolean;
   includeJackpot?: boolean;
   useNetGross?: boolean;
+  collector?: string;
+  collectorName?: string;
 };
 
 export type MachineVariationData = {

@@ -41,11 +41,10 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { KeyboardEvent } from 'react';
-import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
+import UnifiedSearchBar from './UnifiedSearchBar';
 
 import { gsap } from 'gsap';
 import type { CollectionReportFiltersProps } from '@/lib/types/components';
@@ -56,6 +55,8 @@ export default function CollectionReportFilters({
   onLocationChange,
   search,
   onSearchChange,
+  searchType,
+  onSearchTypeChange,
   onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
@@ -118,11 +119,6 @@ export default function CollectionReportFilters({
     }
   }, [showUncollectedOnly]);
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      onSearchSubmit();
-    }
-  };
 
   return (
     <div
@@ -131,24 +127,23 @@ export default function CollectionReportFilters({
     >
       {/* Top row - Search and Location (md: side by side, lg: with Clear Button) */}
       <div className="flex flex-col gap-y-3 md:flex-row md:items-center md:gap-3 lg:gap-4">
-        {/* Search Input */}
-        <div className="relative w-full md:max-w-[400px] md:flex-1 lg:w-[320px] lg:min-w-[280px] lg:flex-none">
-          <input
-            type="text"
-            placeholder="Search Collector or Location..."
-            className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-sm"
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            onKeyPress={handleKeyPress}
+        {/* Unified Search Bar */}
+        <div className="min-w-0 flex-1 md:max-w-[400px] lg:w-[320px] lg:min-w-[280px] lg:flex-none">
+          <UnifiedSearchBar
+            searchType={searchType}
+            onSearchTypeChange={onSearchTypeChange}
+            searchValue={search}
+            onSearchChange={onSearchChange}
+            onSearchSubmit={onSearchSubmit}
+            searchOptions={[
+              { value: 'collector', label: 'Collector' },
+              { value: 'location', label: 'Location' },
+              { value: 'locationReportId', label: 'Report ID' },
+              { value: 'locationId', label: 'Location ID' },
+              { value: 'collectorId', label: 'Collector ID' },
+            ]}
+            isSearching={isSearching}
           />
-          <button
-            onClick={onSearchSubmit}
-            aria-label="Submit search"
-            title="Submit search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
-          >
-            <MagnifyingGlassIcon className="h-5 w-5 text-black" />
-          </button>
         </div>
 
         {/* Location Select Dropdown */}

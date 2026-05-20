@@ -1,0 +1,143 @@
+'use client';
+
+import { Skeleton } from '@/components/shared/ui/skeleton';
+
+/**
+ * Locations Archived Location Skeleton Loader
+ * Matches the exact structure of LocationsLocationCard (mobile) and LocationsLocationTable (desktop) for archived status.
+ */
+export default function LocationsArchivedLocationSkeleton() {
+  return (
+    <>
+      {/* Desktop skeleton (table) - matches LocationsLocationTable with showArchived=true */}
+      <div className="m-0 hidden w-full overflow-x-auto lg:block">
+        <div className="overflow-x-auto bg-white shadow">
+          <table className="w-full table-fixed">
+            <thead>
+              <tr className="bg-[#00b517] hover:bg-[#00b517]">
+                <th className="relative cursor-pointer p-3 text-left font-semibold text-white">
+                  LOCATION NAME
+                </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  MONEY IN
+                </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  MONEY OUT
+                </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  GROSS
+                </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  JACKPOT
+                </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  ARCHIVED WHEN
+                </th>
+                <th className="p-3 text-center font-semibold text-white">
+                  ACTIONS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }).map((_, idx) => (
+                <tr key={idx} className="hover:bg-muted border-b border-gray-100">
+                  {/* First column: Location name with icons and badges */}
+                  <td className="p-3">
+                    <div className="flex flex-col gap-1.5">
+                      {/* Row 1: Location name with icons */}
+                      <div className="flex items-center gap-1.5">
+                        <Skeleton className="h-4 w-32" />
+                        {/* Icon placeholders */}
+                        <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
+                      </div>
+                      {/* Row 2: Status badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </div>
+                    </div>
+                  </td>
+                  {/* Financial columns */}
+                  <td className="p-3 text-center">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
+                  <td className="p-3 text-center">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
+                  <td className="p-3 text-center">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
+                  <td className="p-3 text-center">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
+                  {/* Archived When column */}
+                  <td className="p-3 text-center">
+                    <div className="flex flex-col gap-1 items-center justify-center">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </td>
+                  {/* Actions column */}
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Skeleton className="h-8 w-8 rounded" />
+                      <Skeleton className="h-8 w-8 rounded" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Mobile skeleton (card) - matches LocationsLocationCard with showArchived=true - single card per skeleton */}
+      <div className="relative mx-auto w-full rounded-lg border border-amber-100 bg-gray-50 p-4 shadow-sm lg:hidden">
+        {/* Location Name with Icons */}
+        <div className="mb-3 flex flex-col gap-2">
+          <div className="inline-flex items-start gap-1.5">
+            <Skeleton className="h-5 w-3/4" />
+            {/* Icon placeholders */}
+            <Skeleton className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full" />
+          </div>
+
+          {/* Status Badges Below Name */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+        </div>
+
+        {/* Financial Metrics */}
+        <div className="mb-2 flex flex-col space-y-2 text-sm">
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+
+        {/* Gross (separate row) */}
+        <div className="mb-3 mt-1 flex justify-between">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+
+        {/* Archived Info Box Placeholder */}
+        <div className="mb-3 flex flex-col gap-1.5 rounded border border-amber-100/50 bg-amber-50/50 p-2">
+          <Skeleton className="h-3.5 w-1/2" />
+          <Skeleton className="ml-[18px] h-3 w-1/3" />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+          <Skeleton className="h-8 flex-1 rounded" />
+          <Skeleton className="h-8 w-16 rounded" />
+        </div>
+      </div>
+    </>
+  );
+}

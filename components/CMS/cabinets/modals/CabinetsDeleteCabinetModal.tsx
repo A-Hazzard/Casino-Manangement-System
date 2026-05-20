@@ -60,67 +60,12 @@ export default function CabinetsDeleteCabinetModal({
     }
   }, [isDeleteModalOpen]);
 
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
-
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-    if (user.profile?.firstName) return user.profile.firstName;
-    if (user.profile?.lastName) return user.profile.lastName;
-    if (user.username) return user.username;
-    if (user.emailAddress) return user.emailAddress;
-    return 'Unknown User';
-  };
-
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string,
-    previousData?: Record<string, unknown> | null,
-    newData?: Record<string, unknown> | null
-  ) => {
-    try {
-      await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: [],
-        }),
-      });
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
-  };
-
   const handleArchive = async () => {
     if (!selectedCabinet) return;
 
     setLoading(true);
     try {
       await axios.delete(`/api/cabinets?id=${selectedCabinet._id}`);
-
-      await logActivity(
-        'archive',
-        'cabinet',
-        selectedCabinet._id,
-        selectedCabinet.assetNumber || 'Unknown Cabinet',
-        `Archived cabinet: ${selectedCabinet.assetNumber || selectedCabinet._id}`,
-        selectedCabinet,
-        null
-      );
 
       toast.success('Cabinet archived successfully');
       onCabinetDeleted?.();
@@ -140,16 +85,6 @@ export default function CabinetsDeleteCabinetModal({
     try {
       await axios.delete(
         `/api/cabinets/${selectedCabinet._id}?hardDelete=true`
-      );
-
-      await logActivity(
-        'delete',
-        'cabinet',
-        selectedCabinet._id,
-        selectedCabinet.assetNumber || 'Unknown Cabinet',
-        `Permanently deleted cabinet: ${selectedCabinet.assetNumber || selectedCabinet._id}`,
-        selectedCabinet,
-        null
       );
 
       toast.success('Cabinet permanently deleted');

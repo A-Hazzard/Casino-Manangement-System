@@ -211,19 +211,107 @@ export function safeFormatDate(
  * @param fieldName - Optional field name for context-specific formatting
  * @returns Formatted string representation
  */
+/**
+ * Formats an object recursively into an elegant, Title Case human-readable string.
+ * @param obj - The object to format
+ * @param depth - Current recursion depth
+ * @returns Formatted string
+ */
+function formatObjectRecursively(obj: Record<string, unknown>, depth = 0): string {
+  if (depth > 3) return '[Object]';
+
+  const formatKey = (key: string): string => {
+    return key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/[_-]/g, ' ')
+      .replace(/\./g, ' › ')
+      .split(' ')
+      .filter(word => word.length > 0)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+      .trim();
+  };
+
+  // Special check for geoCoords
+  if ('latitude' in obj || 'longitude' in obj || 'longtitude' in obj) {
+    const lat = obj.latitude ?? obj.lat;
+    const lng = obj.longitude ?? obj.longtitude ?? obj.lng;
+    if (lat !== undefined && lng !== undefined) {
+      return `Lat: ${lat}, Lng: ${lng}`;
+    }
+  }
+
+  // Special check for billValidatorOptions
+  if ('denom1' in obj) {
+    const enabled = Object.entries(obj)
+      .filter(([k, v]) => k.startsWith('denom') && v === true)
+      .map(([k]) => k.replace('denom', '$'));
+    return enabled.length > 0 ? `Enabled: ${enabled.join(', ')}` : 'None';
+  }
+
+  const entries = Object.entries(obj)
+    .filter(([k, v]) => {
+      // Filter out internal fields and empty/null/undefined values
+      if (['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(k)) return false;
+      return v !== null && v !== undefined && v !== '';
+    })
+    .map(([k, v]) => {
+      const prettyKey = formatKey(k);
+      if (typeof v === 'object' && v !== null) {
+        if (Array.isArray(v)) {
+          if (v.length === 0) return `${prettyKey}: Empty`;
+          const formattedItems = v.map((item: unknown) => {
+            if (typeof item === 'object' && item !== null) {
+              return formatObjectRecursively(item as Record<string, unknown>, depth + 1);
+            }
+            return String(item);
+          });
+          return `${prettyKey}: [${formattedItems.join(', ')}]`;
+        }
+        return `${prettyKey}: { ${formatObjectRecursively(v as Record<string, unknown>, depth + 1)} }`;
+      }
+      if (typeof v === 'boolean') {
+        return `${prettyKey}: ${v ? 'Yes' : 'No'}`;
+      }
+      return `${prettyKey}: ${v}`;
+    });
+
+  return entries.length > 0 ? entries.join(', ') : 'Empty object';
+}
+
+/**
+ * Formats a date value with smart handling of different formats
+ * @param value - The value to format (could be string, Date, or other)
+ * @param fieldName - Optional field name for context-specific formatting
+ * @returns Formatted string representation
+ */
 export function formatValue(value: unknown, fieldName?: string): string {
   if (value === null || value === undefined) return 'Not set';
   if (typeof value === 'string' && value.trim() === '') return 'Empty';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+
+  // Try parsing stringified JSON objects/arrays
+  let parsedValue = value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        parsedValue = JSON.parse(trimmed);
+      } catch {
+        // Keep as string
+      }
+    }
+  }
+
+  if (typeof parsedValue === 'boolean') return parsedValue ? 'Yes' : 'No';
 
   // Special handling for complex field types
-  if (fieldName === 'profile' && typeof value === 'object' && value !== null) {
-    return formatProfileObject(value as Record<string, unknown>);
+  if (fieldName === 'profile' && typeof parsedValue === 'object' && parsedValue !== null) {
+    return formatProfileObject(parsedValue as Record<string, unknown>);
   }
 
   // Check if the value is a date string (ISO format or Date object)
-  if (typeof value === 'string' || value instanceof Date) {
-    const dateValue = typeof value === 'string' ? value : value.toISOString();
+  if (typeof parsedValue === 'string' || parsedValue instanceof Date) {
+    const dateValue = typeof parsedValue === 'string' ? parsedValue : parsedValue.toISOString();
 
     // Check if it's a valid ISO date string with time (more flexible regex)
     const isoDateTimeRegex =
@@ -256,9 +344,9 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
     // Check if it's a simple date string (YYYY-MM-DD)
     const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (typeof value === 'string' && simpleDateRegex.test(value)) {
+    if (typeof parsedValue === 'string' && simpleDateRegex.test(parsedValue)) {
       try {
-        const date = new Date(value + 'T00:00:00');
+        const date = new Date(parsedValue + 'T00:00:00');
         if (!isNaN(date.getTime())) {
           // Format as readable date only
           return format(date, 'MMMM d, yyyy');
@@ -269,9 +357,9 @@ export function formatValue(value: unknown, fieldName?: string): string {
     }
 
     // Check if it's a timestamp number (milliseconds since epoch)
-    if (typeof value === 'string' && /^\d{13}$/.test(value)) {
+    if (typeof parsedValue === 'string' && /^\d{13}$/.test(parsedValue)) {
       try {
-        const date = new Date(parseInt(value));
+        const date = new Date(parseInt(parsedValue));
         if (!isNaN(date.getTime())) {
           return format(date, "MMMM d, yyyy 'at' h:mm a");
         }
@@ -282,152 +370,121 @@ export function formatValue(value: unknown, fieldName?: string): string {
   }
 
   // For arrays, show count and content if small
-  if (Array.isArray(value)) {
-    if (value.length === 0) return 'Empty array';
-    if (value.length <= 3) {
-      return value
-        .map(item => (typeof item === 'object' ? '[Object]' : String(item)))
-        .join(', ');
-    }
-    return `${value.length} items`;
+  if (Array.isArray(parsedValue)) {
+    if (parsedValue.length === 0) return 'Empty array';
+    const formattedItems = parsedValue.map((item: unknown) => {
+      if (typeof item === 'object' && item !== null) {
+        return `{ ${formatObjectRecursively(item as Record<string, unknown>)} }`;
+      }
+      return String(item);
+    });
+    return formattedItems.join(', ');
   }
 
   // For objects, show formatted JSON or specific object properties
-  if (typeof value === 'object' && value !== null) {
-    // Handle specific object types with meaningful display
-    if (value && typeof value === 'object') {
-      const keys = Object.keys(value);
-      if (keys.length === 0) return 'Empty object';
+  if (typeof parsedValue === 'object' && parsedValue !== null) {
+    const keys = Object.keys(parsedValue);
+    if (keys.length === 0) return 'Empty object';
 
-      // Check for sasMeters object
-      if (fieldName === 'sasMeters' || ('drop' in value && 'gross' in value)) {
-        const sas = value as Record<string, unknown>;
-        return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
-      }
+    // Check for sasMeters object
+    if (fieldName === 'sasMeters' || ('drop' in parsedValue && 'gross' in parsedValue)) {
+      const sas = parsedValue as Record<string, unknown>;
+      return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
+    }
 
-      // Check for movement object
-      if (
-        fieldName === 'movement' ||
-        ('metersIn' in value && 'metersOut' in value && 'gross' in value)
-      ) {
-        const movementData = value as Record<string, unknown>;
-        return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
-      }
+    // Check for movement object
+    if (
+      fieldName === 'movement' ||
+      ('metersIn' in parsedValue && 'metersOut' in parsedValue && 'gross' in parsedValue)
+    ) {
+      const movementData = parsedValue as Record<string, unknown>;
+      return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
+    }
 
-      // Check if it's a profile object (has profile-like properties)
-      if (
-        'firstName' in value ||
-        'lastName' in value ||
-        'gender' in value ||
-        'middleName' in value
-      ) {
-        const profile = value as Record<string, unknown>;
-        const parts = [];
+    // Check if it's a profile object (has profile-like properties)
+    if (
+      'firstName' in parsedValue ||
+      'lastName' in parsedValue ||
+      'gender' in parsedValue ||
+      'middleName' in parsedValue
+    ) {
+      const profile = parsedValue as Record<string, unknown>;
+      const parts = [];
 
-        // Handle basic profile fields
-        if (profile.firstName && profile.firstName !== '')
-          parts.push(`First: ${profile.firstName}`);
-        if (profile.lastName && profile.lastName !== '')
-          parts.push(`Last: ${profile.lastName}`);
-        if (profile.middleName && profile.middleName !== '')
-          parts.push(`Middle: ${profile.middleName}`);
-        if (profile.gender && profile.gender !== '')
-          parts.push(`Gender: ${profile.gender}`);
-        if (profile.email && profile.email !== '')
-          parts.push(`Email: ${profile.email}`);
+      // Handle basic profile fields
+      if (profile.firstName && profile.firstName !== '')
+        parts.push(`First: ${profile.firstName}`);
+      if (profile.lastName && profile.lastName !== '')
+        parts.push(`Last: ${profile.lastName}`);
+      if (profile.middleName && profile.middleName !== '')
+        parts.push(`Middle: ${profile.middleName}`);
+      if (profile.gender && profile.gender !== '')
+        parts.push(`Gender: ${profile.gender}`);
+      if (profile.email && profile.email !== '')
+        parts.push(`Email: ${profile.email}`);
 
-        // Handle nested address object
-        if (profile.address && typeof profile.address === 'object') {
-          const address = profile.address as Record<string, unknown>;
-          const addressParts = [];
-          if (address.street && address.street !== '')
-            addressParts.push(`Street: ${address.street}`);
-          if (address.town && address.town !== '')
-            addressParts.push(`Town: ${address.town}`);
-          if (address.country && address.country !== '')
-            addressParts.push(`Country: ${address.country}`);
-          if (addressParts.length > 0)
-            parts.push(`Address: ${addressParts.join(', ')}`);
-        }
-
-        // Handle nested identification object
-        if (
-          profile.identification &&
-          typeof profile.identification === 'object'
-        ) {
-          const identification = profile.identification as Record<
-            string,
-            unknown
-          >;
-          const idParts = [];
-          if (identification.idType && identification.idType !== '')
-            idParts.push(`Type: ${identification.idType}`);
-          if (identification.idNumber && identification.idNumber !== '')
-            idParts.push(`Number: ${identification.idNumber}`);
-          if (idParts.length > 0) parts.push(`ID: ${idParts.join(', ')}`);
-        }
-
-        return parts.length > 0 ? parts.join('; ') : 'Empty profile';
-      }
-
-      // Check if it's an address object
-      if ('street' in value || 'city' in value || 'country' in value) {
-        const address = value as Record<string, unknown>;
-        const parts = [];
+      // Handle nested address object
+      if (profile.address && typeof profile.address === 'object') {
+        const address = profile.address as Record<string, unknown>;
+        const addressParts = [];
         if (address.street && address.street !== '')
-          parts.push(`Street: ${address.street}`);
-        if (address.city && address.city !== '')
-          parts.push(`City: ${address.city}`);
+          addressParts.push(`Street: ${address.street}`);
+        if (address.town && address.town !== '')
+          addressParts.push(`Town: ${address.town}`);
         if (address.country && address.country !== '')
-          parts.push(`Country: ${address.country}`);
-        return parts.length > 0 ? parts.join(', ') : 'Empty address';
+          addressParts.push(`Country: ${address.country}`);
+        if (addressParts.length > 0)
+          parts.push(`Address: ${addressParts.join(', ')}`);
       }
 
-      // Check if it's an identification object
-      if ('idType' in value || 'idNumber' in value) {
-        const identification = value as Record<string, unknown>;
-        const parts = [];
+      // Handle nested identification object
+      if (
+        profile.identification &&
+        typeof profile.identification === 'object'
+      ) {
+        const identification = profile.identification as Record<
+          string,
+          unknown
+        >;
+        const idParts = [];
         if (identification.idType && identification.idType !== '')
-          parts.push(`Type: ${identification.idType}`);
+          idParts.push(`Type: ${identification.idType}`);
         if (identification.idNumber && identification.idNumber !== '')
-          parts.push(`Number: ${identification.idNumber}`);
-        return parts.length > 0 ? parts.join(', ') : 'Empty identification';
+          idParts.push(`Number: ${identification.idNumber}`);
+        if (idParts.length > 0) parts.push(`ID: ${idParts.join(', ')}`);
       }
 
-      // For other objects, try to show meaningful properties
-      if (keys.length <= 5) {
-        const entries = Object.entries(value)
-          .filter(([, v]) => v !== null && v !== undefined && v !== '')
-          .map(([k, v]) => {
-            if (typeof v === 'object' && v !== null) {
-              // For nested objects, show a summary
-              const nestedKeys = Object.keys(v);
-              if (nestedKeys.length === 0) return `${k}: empty`;
-              if (nestedKeys.length === 1) return `${k}: ${nestedKeys[0]}`;
-              return `${k}: ${nestedKeys.length} properties`;
-            }
-            return `${k}: ${v}`;
-          })
-          .slice(0, 3); // Show max 3 properties
-        return entries.length > 0 ? entries.join(', ') : 'Empty object';
-      }
-
-      // For complex objects, show a summary
-      return `${keys.length} properties`;
+      return parts.length > 0 ? parts.join('; ') : 'Empty profile';
     }
 
-    // Final fallback - try to show at least some information
-    try {
-      const jsonStr = JSON.stringify(value);
-      if (jsonStr.length > 100) {
-        return `${Object.keys(value).length} properties (complex object)`;
-      }
-      return jsonStr;
-    } catch {
-      return '[Complex Object]';
+    // Check if it's an address object
+    if ('street' in parsedValue || 'city' in parsedValue || 'country' in parsedValue) {
+      const address = parsedValue as Record<string, unknown>;
+      const parts = [];
+      if (address.street && address.street !== '')
+        parts.push(`Street: ${address.street}`);
+      if (address.city && address.city !== '')
+        parts.push(`City: ${address.city}`);
+      if (address.country && address.country !== '')
+        parts.push(`Country: ${address.country}`);
+      return parts.length > 0 ? parts.join(', ') : 'Empty address';
     }
+
+    // Check if it's an identification object
+    if ('idType' in parsedValue || 'idNumber' in parsedValue) {
+      const identification = parsedValue as Record<string, unknown>;
+      const parts = [];
+      if (identification.idType && identification.idType !== '')
+        parts.push(`Type: ${identification.idType}`);
+      if (identification.idNumber && identification.idNumber !== '')
+        parts.push(`Number: ${identification.idNumber}`);
+      return parts.length > 0 ? parts.join(', ') : 'Empty identification';
+    }
+
+    // Custom human-readable formatter for any other objects
+    return formatObjectRecursively(parsedValue as Record<string, unknown>);
   }
 
   // Default: convert to string
-  return String(value);
+  return String(parsedValue);
 }

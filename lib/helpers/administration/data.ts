@@ -206,6 +206,7 @@ export const createUser = async (user: {
   assignedLocations?: string[];
   moneyInMultiplier?: number;
   moneyOutAndJackpotMultiplier?: number;
+  reviewerMultiplierStartTime?: string | Date | null;
 }) => {
   const response = await axios.post('/api/users', user);
   return response.data.user;

@@ -73,7 +73,7 @@ export function useCollectionReportPageData() {
   // ==========================================================================
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [refreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
@@ -83,6 +83,7 @@ export function useCollectionReportPageData() {
   // Local State - Search & Filter
   // ==========================================================================
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'collector' | 'location' | 'sessionId' | 'locationId' | 'locationReportId' | 'collectorId'>('collector');
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [locationsWithMachines, setLocationsWithMachines] = useState<
     CollectionReportLocationWithMachines[]
@@ -326,6 +327,7 @@ export function useCollectionReportPageData() {
           0,
           undefined,
           debouncedSearch,
+          searchType,
           controller.signal,
           Array.isArray(filters.selectedLocation)
             ? filters.selectedLocation
@@ -375,11 +377,13 @@ export function useCollectionReportPageData() {
    * Refresh reports by resetting state and fetching first batch
    */
   const refreshReports = useCallback(async () => {
+    setRefreshing(true);
     setAllReports([]);
     setTotalReports(0);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     await fetchReports(1);
+    setRefreshing(false);
   }, [fetchReports]);
 
   // ==========================================================================
@@ -430,15 +434,16 @@ export function useCollectionReportPageData() {
   /**
    * Execute report deletion
    */
-  const confirmDelete = async () => {
+  const confirmDelete = async (archive?: boolean) => {
     if (!reportToDelete) return;
     setIsDeleting(true);
     try {
-      await axios.delete(`/api/collection-reports/${reportToDelete}`);
-      toast.success('Report deleted');
+      const url = `/api/collection-reports/${reportToDelete}${archive ? '?action=archive' : ''}`;
+      await axios.delete(url);
+      toast.success(archive ? 'Report archived' : 'Report deleted');
       refreshReports();
     } catch {
-      toast.error('Failed to delete report');
+      toast.error(archive ? 'Failed to archive report' : 'Failed to delete report');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirmation(false);
@@ -474,18 +479,19 @@ export function useCollectionReportPageData() {
    * Fetch locations on licencee change
    * Uses lightweight metadata fetch for performance
    */
-  useEffect(() => {
-    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
-      // Map to standardized location format
-      const formatted = locs.map(loc => ({
-        _id: String(loc.id),
-        name: loc.name,
-      }));
-      setLocations(formatted);
-      // Initialize metadata array as empty, modals will handle their own rich fetching
-      setLocationsWithMachines([]);
-    });
-  }, [selectedLicencee]);
+    useEffect(() => {
+      fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
+        // Map to standardized location format
+        const formatted = locs.map(loc => ({
+          _id: String(loc.id),
+          name: loc.name,
+          slug: loc.slug,
+        }));
+        setLocations(formatted);
+        // Initialize metadata array as empty, modals will handle their own rich fetching
+        setLocationsWithMachines([]);
+      });
+    }, [selectedLicencee]);
 
   /**
    * Initial data fetch and reset on tab/filter change
@@ -573,62 +579,67 @@ export function useCollectionReportPageData() {
   // Return
   // ==========================================================================
 
-  return {
-    // State
-    activeTab,
-    loading:
-      loading ||
-      initialLoading ||
-      isDataMissingForPage ||
-      searchTerm !== debouncedSearch,
-    initialLoading,
-    refreshing,
-    allReports,
-    filteredReports,
-    paginatedReports,
-    currentPage,
-    totalPages,
-    totalReports,
-    searchTerm,
-    locations,
-    locationsWithMachines,
-    filters,
-    showNewCollectionMobile,
-    showNewCollectionDesktop,
-    showEditMobile,
-    showEditDesktop,
-    editingReportId,
-    showDeleteConfirmation,
-    isDeleting,
-    editableReportIds,
-    // Tab Handlers
-    handleTabChange,
-    handleRefresh: useCallback(async () => {
-      await refreshReports();
-    }, [refreshReports]),
-    // CRUD Handlers
-    handleCreate,
-    handleEdit,
-    handleDelete,
-    confirmDelete,
-    // Setters
-    setSearchTerm: handleSetSearchTerm,
-    setCurrentPage,
-    setShowNewCollectionMobile,
-    setShowNewCollectionDesktop,
-    setShowEditMobile,
-    setShowEditDesktop,
-    setShowDeleteConfirmation,
-    setEditingReportId,
-    // Data Refresh
-    onRefreshLocations: useCallback(async () => {
-      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
-      const formatted = locs.map(loc => ({
-        _id: String(loc.id),
-        name: loc.name,
-      }));
-      setLocations(formatted);
-      setLocationsWithMachines([]);
-    }, [selectedLicencee]),
-  };
+return {
+          // State
+          activeTab,
+          user,
+          loading:
+            loading ||
+            initialLoading ||
+            isDataMissingForPage ||
+            searchTerm !== debouncedSearch,
+          initialLoading,
+          refreshing,
+          selectedLicencee,
+          allReports,
+          filteredReports,
+          paginatedReports,
+          currentPage,
+          totalPages,
+          totalReports,
+          searchTerm,
+          searchType,
+          locations,
+          locationsWithMachines,
+          filters,
+       showNewCollectionMobile,
+       showNewCollectionDesktop,
+       showEditMobile,
+       showEditDesktop,
+       editingReportId,
+       showDeleteConfirmation,
+       reportToDelete,
+       isDeleting,
+       editableReportIds,
+       // Tab Handlers
+       handleTabChange,
+       handleRefresh: useCallback(async () => {
+         await refreshReports();
+       }, [refreshReports]),
+       // CRUD Handlers
+       handleCreate,
+       handleEdit,
+       handleDelete,
+       confirmDelete,
+       // Setters
+       setSearchTerm: handleSetSearchTerm,
+       setSearchType,
+       setCurrentPage,
+       setShowNewCollectionMobile,
+       setShowNewCollectionDesktop,
+       setShowEditMobile,
+       setShowEditDesktop,
+       setShowDeleteConfirmation,
+       setEditingReportId,
+       // Data Refresh
+       onRefreshLocations: useCallback(async () => {
+         const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
+         const formatted = locs.map(loc => ({
+           _id: String(loc.id),
+           name: loc.name,
+         }));
+         setLocations(formatted);
+         setLocationsWithMachines([]);
+       }, [selectedLicencee]),
+     };
 }

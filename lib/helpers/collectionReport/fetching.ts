@@ -19,6 +19,7 @@ export async function fetchCollectionReportsByLicencee(
   skip: number = 0,
   locationName?: string,
   search?: string,
+  searchType?: string,
   signal?: AbortSignal,
   locationIds?: string[]
 ) {
@@ -34,6 +35,7 @@ export async function fetchCollectionReportsByLicencee(
   if (locationIds && locationIds.length > 0)
     params.append('locationIds', locationIds.join(','));
   if (search) params.append('search', search);
+  if (searchType) params.append('searchType', searchType);
 
   const response = await axios.get(
     `/api/collection-reports?${params.toString()}`,

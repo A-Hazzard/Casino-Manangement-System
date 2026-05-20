@@ -125,6 +125,7 @@ export async function GET(req: NextRequest) {
         moneyInMultiplier: dbUser.moneyInMultiplier ?? null,
         moneyOutAndJackpotMultiplier:
           dbUser.moneyOutAndJackpotMultiplier ?? null,
+        reviewerMultiplierStartTime: dbUser.reviewerMultiplierStartTime ?? null,
         requiresProfileUpdate,
         requiresPasswordUpdate: !!invalidFields.password,
         invalidProfileFields: invalidFields,

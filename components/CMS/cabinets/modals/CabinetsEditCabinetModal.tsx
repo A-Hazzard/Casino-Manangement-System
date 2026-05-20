@@ -8,11 +8,11 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/cabinets';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
 import {
   normalizeGameTypeValue,
   normalizeStatusValue,
@@ -20,9 +20,7 @@ import {
 import {
   detectChanges,
   filterMeaningfulChanges,
-  getChangesSummary,
 } from '@/lib/utils/changeDetection';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
@@ -43,7 +41,6 @@ export default function CabinetsEditCabinetModal({
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetsActionsStore();
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
-  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -71,78 +68,7 @@ export default function CabinetsEditCabinetModal({
   const [collectionMultiplierError, setCollectionMultiplierError] =
     useState<string>('');
 
-  // Helper function to get proper user display name for activity logging
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
 
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== '') {
-      return user.username;
-    }
-
-    // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== '') {
-      return user.emailAddress;
-    }
-
-    // Fallback
-    return 'Unknown User';
-  };
-
-  // Activity logging is now handled via API calls
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string,
-    previousData?: Record<string, unknown> | null,
-    newData?: Record<string, unknown> | null,
-    changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
-  ) => {
-    try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: changes || [], // Use provided changes or empty array
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
-      }
-    } catch (_id) {
-      console.error('Error logging activity:', _id);
-    }
-  };
 
   const checkSerialNumberAvailability = async (serialNumber: string) => {
     if (!serialNumber || serialNumber.trim().length < 3) return;
@@ -320,15 +246,25 @@ export default function CabinetsEditCabinetModal({
       lastMetersOut: '',
     },
     custom: { name: '' },
+    gameConfig: {
+      theoreticalRtp: 0,
+      maxBet: '0',
+      payTableId: '',
+      additionalId: '',
+      gameOptions: '',
+      progressiveGroup: '',
+    },
   });
 
   useEffect(() => {
     userModifiedFieldsRef.current = userModifiedFields;
   }, [userModifiedFields]);
 
+
   useEffect(() => {
     // Initial form data setup from selected cabinet
     if (selectedCabinet) {
+      setCabinetDataLoading(true);
       // console.log("Selected cabinet gameType:", selectedCabinet.gameType);
       const initialCollectionTime = selectedCabinet.collectionTime
         ? new Date(selectedCabinet.collectionTime)
@@ -534,6 +470,32 @@ export default function CabinetsEditCabinetModal({
                     userModifiedFieldsRef.current.has('relayId')
                       ? prevData.smibBoard
                       : cabinetDetails.relayId || prevData.smibBoard,
+                  gameConfig: {
+                    theoreticalRtp:
+                      cabinetDetails.gameConfig?.theoreticalRtp ??
+                      prevData.gameConfig?.theoreticalRtp ??
+                      0,
+                    maxBet:
+                      cabinetDetails.gameConfig?.maxBet ||
+                      prevData.gameConfig?.maxBet ||
+                      '0',
+                    payTableId:
+                      cabinetDetails.gameConfig?.payTableId ||
+                      prevData.gameConfig?.payTableId ||
+                      '',
+                    additionalId:
+                      cabinetDetails.gameConfig?.additionalId ||
+                      prevData.gameConfig?.additionalId ||
+                      '',
+                    gameOptions:
+                      cabinetDetails.gameConfig?.gameOptions ||
+                      prevData.gameConfig?.gameOptions ||
+                      '',
+                    progressiveGroup:
+                      cabinetDetails.gameConfig?.progressiveGroup ||
+                      prevData.gameConfig?.progressiveGroup ||
+                      '',
+                  },
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -693,21 +655,15 @@ export default function CabinetsEditCabinetModal({
           lastCollectionTime: selectedCabinet.collectionTime
             ? new Date(selectedCabinet.collectionTime).toISOString()
             : '',
-          // Match what the form displays — prefer sasMeters for change detection baseline
-          lastMetersIn:
-            selectedCabinet.sasMeters?.drop != null &&
-            selectedCabinet.sasMeters.drop > 0
-              ? String(selectedCabinet.sasMeters.drop)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-                : '',
-          lastMetersOut:
-            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
-            selectedCabinet.sasMeters.totalCancelledCredits > 0
-              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-                : '',
+          // Collection meters (metersIn/Out) are the last-collected values from
+          // a submitted V2 collection report. These are distinct from sasMeters
+          // (which are the live, always-updating lifetime counters from the machine).
+          lastMetersIn: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+            : '',
+          lastMetersOut: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+            : '',
         },
       };
 
@@ -735,6 +691,14 @@ export default function CabinetsEditCabinetModal({
             formData.collectionSettings?.lastCollectionTime || '',
           lastMetersIn: formData.collectionSettings?.lastMetersIn || '',
           lastMetersOut: formData.collectionSettings?.lastMetersOut || '',
+        },
+        gameConfig: {
+          theoreticalRtp: formData.gameConfig?.theoreticalRtp || '',
+          maxBet: formData.gameConfig?.maxBet || '',
+          payTableId: formData.gameConfig?.payTableId || '',
+          additionalId: formData.gameConfig?.additionalId || '',
+          gameOptions: formData.gameConfig?.gameOptions || '',
+          progressiveGroup: formData.gameConfig?.progressiveGroup || '',
         },
       };
 
@@ -797,6 +761,8 @@ export default function CabinetsEditCabinetModal({
           // Special handling for objects that must be sent whole
           if (parent === 'custom') {
             updatePayload.custom = formData.custom;
+          } else if (parent === 'gameConfig') {
+            updatePayload.gameConfig = formData.gameConfig;
           } else if (parent === 'collectionSettings') {
             if (!pendingCollectionSettings) {
               pendingCollectionSettings = {};
@@ -830,27 +796,14 @@ export default function CabinetsEditCabinetModal({
       });
 
       if (pendingCollectionSettings) {
-        const { lastCollectionTime, lastMetersIn, lastMetersOut } =
-          pendingCollectionSettings;
-
-        if (lastCollectionTime) {
-          updatePayload.collectionTime = lastCollectionTime;
-        }
-
-        const metersInVal = lastMetersIn;
-        const metersOutVal = lastMetersOut;
-        const collectionMetersPayload: Record<string, number> = {};
-
-        if (metersInVal !== undefined && metersInVal !== '') {
-          collectionMetersPayload.metersIn = Number(metersInVal) || 0;
-        }
-        if (metersOutVal !== undefined && metersOutVal !== '') {
-          collectionMetersPayload.metersOut = Number(metersOutVal) || 0;
-        }
-
-        if (Object.keys(collectionMetersPayload).length > 0) {
-          updatePayload.collectionMeters = collectionMetersPayload;
-        }
+        // Map collectionSettings back to backend-expected format
+        // We send what's in formData.collectionSettings if ANY part of it changed
+        updatePayload.collectionTime = formData.collectionSettings?.lastCollectionTime || formData.collectionTime;
+        
+        updatePayload.collectionMeters = {
+          metersIn: Number(formData.collectionSettings?.lastMetersIn) || 0,
+          metersOut: Number(formData.collectionSettings?.lastMetersOut) || 0,
+        };
       }
 
       console.log(
@@ -862,31 +815,6 @@ export default function CabinetsEditCabinetModal({
       // Convert customDateRange to DateRange format expected by updateCabinet
       const success = await updateCabinet(updatePayload);
       if (success) {
-        // Log the cabinet update activity with proper change tracking
-        const changesSummary = getChangesSummary(meaningfulChanges);
-        await logActivity(
-          'update',
-          'machine',
-          selectedCabinet._id,
-          `${
-            selectedCabinet.installedGame ||
-            selectedCabinet.game ||
-            '(game name not provided)'
-          } - ${
-            selectedCabinet.assetNumber ||
-            getSerialNumberIdentifier(selectedCabinet) ||
-            'Unknown'
-          }`,
-          `Updated cabinet: ${changesSummary}`,
-          originalData, // Previous data (only editable fields)
-          updatePayload, // New data (only changed fields)
-          meaningfulChanges.map(change => ({
-            field: change.field,
-            oldValue: change.oldValue,
-            newValue: change.newValue,
-          }))
-        );
-
         // Call the callback to refresh data
         onCabinetUpdated?.();
 
@@ -894,7 +822,7 @@ export default function CabinetsEditCabinetModal({
         setUserModifiedFields(new Set());
 
         // Show success feedback
-        toast.success(`Cabinet updated successfully: ${changesSummary}`);
+        toast.success('Cabinet updated successfully');
 
         // Close the modal
         handleClose();
@@ -954,19 +882,27 @@ export default function CabinetsEditCabinetModal({
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine Created
                       </h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {formData.createdAt
-                          ? formatCreationDate(formData.createdAt)
-                          : 'Unknown'}
-                      </p>
+                      {cabinetDataLoading ? (
+                        <Skeleton className="mt-2 h-4 w-32" />
+                      ) : (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {formData.createdAt
+                            ? formatCreationDate(formData.createdAt)
+                            : 'Unknown'}
+                        </p>
+                      )}
                     </div>
                     <div className="flex-1 text-left sm:text-right">
                       <h3 className="text-sm font-medium text-gray-700">
                         Machine ID
                       </h3>
-                      <p className="mt-1 break-all font-mono text-sm text-gray-600">
-                        {formData._id || 'Unknown'}
-                      </p>
+                      {cabinetDataLoading ? (
+                        <Skeleton className="mt-2 h-4 w-40 sm:ml-auto" />
+                      ) : (
+                        <p className="mt-1 break-all font-mono text-sm text-gray-600">
+                          {formData._id || 'Unknown'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1020,6 +956,8 @@ export default function CabinetsEditCabinetModal({
                     });
                   }}
                 />
+
+                {/* Game Configuration Section Removed as per requirements */}
 
                 <EditCabinetLocationConfig
                   formData={{
@@ -1105,6 +1043,7 @@ export default function CabinetsEditCabinetModal({
                     collectionSettings: formData.collectionSettings,
                     collectionMultiplier: formData.collectionMultiplier,
                   }}
+                  cabinetDataLoading={cabinetDataLoading}
                   collectionTime={collectionTime}
                   collectionMultiplierError={collectionMultiplierError}
                   onFormDataChange={(updates: Record<string, unknown>) => {

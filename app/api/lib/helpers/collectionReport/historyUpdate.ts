@@ -224,7 +224,9 @@ async function processSingleMachineChange(
   // current meters and its entire collectionMetersHistory array.
   try {
     const { recalculateMachineCollections } = await import('./recalculation');
-    await recalculateMachineCollections(machineId);
+    // writeSasMeters=true: this is the finalising path (submit), so sasMeters
+    // must be updated for noSMIB locations.
+    await recalculateMachineCollections(machineId, true);
     console.warn(`🔄 Recalculation cascade completed for machine ${machineId}`);
   } catch (recalcError) {
     console.error(

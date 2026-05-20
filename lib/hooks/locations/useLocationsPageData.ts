@@ -45,7 +45,7 @@ export function useLocationsPageData() {
   // State Management
   // ============================================================================
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -58,7 +58,7 @@ export function useLocationsPageData() {
   const [filtersInitialized, setFiltersInitialized] = useState(false);
 
   // Sorting State
-  const [sortOption, setSortOption] = useState<LocationSortOption>('gross');
+  const [sortOption, setSortOption] = useState<LocationSortOption>('default');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // SMIB Sync State

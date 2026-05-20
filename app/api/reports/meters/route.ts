@@ -316,14 +316,22 @@ export async function GET(req: NextRequest) {
       console.log(
         '[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...'
       );
+      const scaleReferenceDate = queryEndDate || queryStartDate || null;
       const moneyInScale = getMoneyInScale(
-        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        userPayload as {
+          moneyInMultiplier?: number | null;
+          roles?: string[];
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       );
       const moneyOutScale = getMoneyOutAndJackpotScale(
         userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
-        }
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       );
       if (moneyInScale !== 1 || moneyOutScale !== 1) {
         transformedData = transformedData.map(item => {

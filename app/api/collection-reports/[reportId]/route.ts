@@ -13,7 +13,7 @@
  */
 
 import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails';
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { logActivity, mapDeletedFieldsToChanges } from '@/app/api/lib/helpers/activityLogger';
 import {
   deleteManualMetersPerCollection,
   removeCollectionHistoryFromMachines,
@@ -192,6 +192,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
     return NextResponse.json(reportData);
   } catch (error: unknown) {
+    console.error(`[GET /api/collection-reports/[reportId]] Error:`, error);
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(
@@ -201,7 +202,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       errorMessage,
       user
     );
-    console.error(`[Collection Reports GET API] Error:`, errorMessage);
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
@@ -314,7 +314,37 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           oldValue: unknown;
           newValue: unknown;
         }[] = [];
-        // Comparison logic... (same as in singular route)
+        const isDifferent = (oldVal: unknown, newVal: unknown): boolean => {
+          if (oldVal === newVal) return false;
+          if (oldVal == null || newVal == null) {
+            return (oldVal == null) !== (newVal == null);
+          }
+          if (typeof oldVal === 'number' || typeof newVal === 'number') {
+            return Number(oldVal) !== Number(newVal);
+          }
+          if (typeof oldVal === 'boolean' || typeof newVal === 'boolean') {
+            return Boolean(oldVal) !== Boolean(newVal);
+          }
+          if (oldVal instanceof Date || newVal instanceof Date) {
+            try {
+              const t1 = new Date(oldVal as Date).getTime();
+              const t2 = new Date(newVal as Date).getTime();
+              if (!isNaN(t1) && !isNaN(t2)) return t1 !== t2;
+            } catch {
+              // Fallback
+            }
+          }
+          if (typeof oldVal === 'string' && typeof newVal === 'string') {
+            const t1 = Date.parse(oldVal);
+            const t2 = Date.parse(newVal);
+            if (!isNaN(t1) && !isNaN(t2)) {
+              return t1 !== t2;
+            }
+            return oldVal.trim() !== newVal.trim();
+          }
+          return String(oldVal).trim() !== String(newVal).trim();
+        };
+
         const existingReportObj = existingReport.toObject();
         const fieldsToTrack = [
           'locationName',
@@ -325,11 +355,13 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           'taxes',
         ];
         fieldsToTrack.forEach(field => {
-          if (body[field as keyof typeof body] !== undefined) {
+          const newVal = (body as Record<string, unknown>)[field];
+          const oldVal = (existingReportObj as Record<string, unknown>)[field];
+          if (newVal !== undefined && isDifferent(oldVal, newVal)) {
             updateChanges.push({
               field,
-              oldValue: (existingReportObj as Record<string, unknown>)[field],
-              newValue: (body as Record<string, unknown>)[field],
+              oldValue: oldVal,
+              newValue: newVal,
             });
           }
         });
@@ -421,6 +453,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     );
     return NextResponse.json({ success: true, data: updateResult.data });
   } catch (error: unknown) {
+    console.error(`[PATCH /api/collection-reports/[reportId]] Error:`, error);
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(
@@ -466,9 +499,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Parse reportId from URL
+    // STEP 2: Parse reportId from URL and action param
     // ============================================================================
     const reportId = request.nextUrl.pathname.split('/').pop();
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action') || 'permanent';
+    const archive = action === 'archive';
 
     if (!reportId) {
       logRouteError(
@@ -550,40 +586,63 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // ============================================================================
-    // STEP 7: Delete manual meters per collection
+    // STEP 7: Delete/Archive manual meters per collection
     // ============================================================================
     const deleteMetersResult =
-      await deleteManualMetersPerCollection(resolvedReportId);
+      await deleteManualMetersPerCollection(resolvedReportId, archive);
     if (!deleteMetersResult.success) {
       return NextResponse.json(
         {
-          message: deleteMetersResult.error || 'Failed to delete manual meters',
+          message: deleteMetersResult.error || `Failed to ${archive ? 'archive' : 'delete'} manual meters`,
         },
         { status: 500 }
       );
     }
 
     // ============================================================================
-    // STEP 8: Delete associated collections
+    // STEP 8: Delete/Archive associated collections
     // ============================================================================
-    const deleteCollectionsResult = await Collections.deleteMany({
-      locationReportId: resolvedReportId,
-    });
-    if (deleteCollectionsResult.deletedCount === 0) {
+    let deleteCollectionsResult;
+    if (archive) {
+      deleteCollectionsResult = await Collections.updateMany(
+        { locationReportId: resolvedReportId },
+        { $set: { deletedAt: new Date() } }
+      );
+    } else {
+      deleteCollectionsResult = await Collections.deleteMany({
+        locationReportId: resolvedReportId,
+      });
+    }
+    let affectedCount = 0;
+    if (archive) {
+      affectedCount = (deleteCollectionsResult as { modifiedCount: number }).modifiedCount;
+    } else {
+      affectedCount = (deleteCollectionsResult as { deletedCount: number }).deletedCount;
+    }
+    if (affectedCount === 0) {
       console.warn(
-        `[DELETE] No collections deleted for report ${resolvedReportId}`
+        `[DELETE] No collections ${archive ? 'archived' : 'deleted'} for report ${resolvedReportId}`
       );
     }
 
     // ============================================================================
-    // STEP 9: Delete collection report
+    // STEP 9: Delete/Archive collection report
     // ============================================================================
-    const deletedReport = await CollectionReport.findOneAndDelete({
-      _id: existingReport._id,
-    });
+    let deletedReport;
+    if (archive) {
+      deletedReport = await CollectionReport.findOneAndUpdate(
+        { _id: existingReport._id },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
+      );
+    } else {
+      deletedReport = await CollectionReport.findOneAndDelete({
+        _id: existingReport._id,
+      });
+    }
     if (!deletedReport) {
       return NextResponse.json(
-        { message: 'Failed to delete collection report' },
+        { message: `Failed to ${archive ? 'archive' : 'delete'} collection report` },
         { status: 500 }
       );
     }
@@ -593,9 +652,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser) {
+      const changes = mapDeletedFieldsToChanges(existingReport || {});
       await logActivity({
-        action: 'DELETE',
-        details: `Deleted collection report for ${existingReport.locationName}`,
+        action: archive ? 'ARCHIVE' : 'DELETE',
+        details: `${archive ? 'Archived' : 'Deleted'} collection report for ${existingReport.locationName}`,
         ipAddress: getClientIP(request) || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
         userId: currentUser._id as string,
@@ -604,8 +664,35 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           resource: 'collection-report',
           resourceId: resolvedReportId,
           resourceName: existingReport.locationName,
+          changes,
+          previousData: {
+            ...existingReport,
+            collections: associatedCollections,
+          },
+          newData: null,
         },
       });
+
+      // Log each associated collection being deleted
+      for (const collection of associatedCollections) {
+        const collectionChanges = mapDeletedFieldsToChanges(collection || {});
+        await logActivity({
+          action: 'DELETE',
+          details: `Deleted collection for machine "${collection.machineCustomName || collection.machineName || collection.machineId || 'Machine'}" as part of collection report deletion`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            resource: 'collection',
+            resourceId: String(collection._id),
+            resourceName: collection.machineCustomName || collection.machineName || collection.machineId || 'Machine',
+            changes: collectionChanges,
+            previousData: collection,
+            newData: null,
+          },
+        });
+      }
     }
 
     // ============================================================================
@@ -625,6 +712,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       message: 'Collection report deleted successfully',
     });
   } catch (error: unknown) {
+    console.error(`[DELETE /api/collection-reports/[reportId]] Error:`, error);
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(

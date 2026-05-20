@@ -146,6 +146,8 @@ export async function GET(request: NextRequest): Promise<Response> {
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param moneyOutAndJackpotMultiplier {number} Optional. Money-out/jackpot reduction (reviewer role only).
  *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param reviewerMultiplierStartTime {string|Date} Optional. Start date/time from which reviewer multipliers apply.
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param profile          {object}   Optional. Nested profile fields: `firstName`, `lastName`,
  *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).
  * @param username         {string}   Optional. Login username; must be unique across all users.
@@ -259,6 +261,8 @@ export async function PUT(request: NextRequest): Promise<Response> {
  * @param moneyInMultiplier {number}   Money-in reduction (reviewer role only).
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param moneyOutAndJackpotMultiplier {number} Money-out/jackpot reduction (reviewer role only).
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param reviewerMultiplierStartTime {string|Date} Start date/time from which reviewer multipliers apply.
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param profile          {object}   Nested profile fields: `firstName`, `lastName`,
  *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).

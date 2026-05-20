@@ -17,12 +17,12 @@
 import {
   calculateChanges,
   logActivity,
+  mapDeletedFieldsToChanges,
 } from '@/app/api/lib/helpers/activityLogger';
 import {
   calculateSasMetrics,
   createCollectionWithCalculations,
   getSasTimePeriod,
-  updateRegularAndRamClearMeters,
 } from '@/app/api/lib/helpers/collectionReport/creation';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
@@ -630,11 +630,11 @@ export async function POST(req: NextRequest) {
     const currentUser = apiUser;
     if (currentUser && currentUser.emailAddress) {
       try {
-        // Calculate changes for granular logging
-        // For CREATE, we compare null with the created object to log all fields
         const changes = calculateChanges(
           {},
           created.toObject ? created.toObject() : created
+        ).filter(
+          c => !['_id', '__v', 'createdAt', 'updatedAt', 'collector', 'locationReportId', 'isCompleted'].includes(c.field)
         );
 
         await logActivity({
@@ -763,6 +763,18 @@ export async function PATCH(req: NextRequest) {
 
     const updateData = await req.json();
 
+    // Convert SAS times to Date objects if they are passed as strings
+    if (updateData.sasStartTime) {
+      updateData.sasStartTime = typeof updateData.sasStartTime === 'string'
+        ? new Date(updateData.sasStartTime)
+        : updateData.sasStartTime;
+    }
+    if (updateData.sasEndTime) {
+      updateData.sasEndTime = typeof updateData.sasEndTime === 'string'
+        ? new Date(updateData.sasEndTime)
+        : updateData.sasEndTime;
+    }
+
     // ============================================================================
     // STEP 3: Validate collection ID
     // ============================================================================
@@ -815,6 +827,31 @@ export async function PATCH(req: NextRequest) {
             originalCollection.collectionTime || originalCollection.timestamp
           ).getTime());
 
+    // CRITICAL FIX: When only SAS window times change (but meters/timestamp stay the same),
+    // we still need to recalculate SAS metrics for the new window.
+    // Compare incoming Date values against the nested sasMeters sub-document stored in DB.
+    const existingSasStartTime = originalCollection.sasMeters?.sasStartTime
+      ? new Date(originalCollection.sasMeters.sasStartTime as Date).getTime()
+      : null;
+    const existingSasEndTime = originalCollection.sasMeters?.sasEndTime
+      ? new Date(originalCollection.sasMeters.sasEndTime as Date).getTime()
+      : null;
+    const sasTimesChanged =
+      (updateData.sasStartTime !== undefined &&
+        new Date(updateData.sasStartTime as Date).getTime() !== existingSasStartTime) ||
+      (updateData.sasEndTime !== undefined &&
+        new Date(updateData.sasEndTime as Date).getTime() !== existingSasEndTime);
+
+    console.log('[Collections API PATCH] Change detection flags:', {
+      timestampChanged,
+      metersChanged,
+      sasTimesChanged,
+      updateDataSasStartTime: updateData.sasStartTime,
+      updateDataSasEndTime: updateData.sasEndTime,
+      existingSasStartTime: originalCollection.sasMeters?.sasStartTime,
+      existingSasEndTime: originalCollection.sasMeters?.sasEndTime,
+    });
+
     // ============================================================================
     // STEP 6: Resolve prevIn/prevOut and recalculate movement if meters changed
     // ============================================================================
@@ -864,18 +901,21 @@ export async function PATCH(req: NextRequest) {
 
           const sasIn = (sasM?.drop as number) ?? null;
           const sasOut = (sasM?.totalCancelledCredits as number) ?? null;
+          const legacyIn = (colM?.metersIn as number) ?? null;
+          const legacyOut = (colM?.metersOut as number) ?? null;
 
           if (!prevInProvided) {
+            // CRITICAL: Prioritize collectionMeters (manual baseline) over sasMeters
             updateData.prevIn =
-              sasIn !== null && sasIn > 0
-                ? sasIn
-                : ((colM?.metersIn as number) ?? 0);
+              legacyIn !== null && legacyIn > 0
+                ? legacyIn
+                : (sasIn ?? 0);
           }
           if (!prevOutProvided) {
             updateData.prevOut =
-              sasOut !== null && sasOut > 0
-                ? sasOut
-                : ((colM?.metersOut as number) ?? 0);
+              legacyOut !== null && legacyOut > 0
+                ? legacyOut
+                : (sasOut ?? 0);
           }
         }
       }
@@ -916,27 +956,46 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Recalculate SAS metrics if timestamp or meters changed
+    // STEP 7: Recalculate SAS metrics if timestamp, meters, or SAS window changed
     // ============================================================================
-    // CRITICAL FIX: When timestamp changes, recalculate SAS times and metrics
-    if (timestampChanged || metersChanged) {
+    // Trigger recalculation when:
+    //   - Main timestamp / collectionTime changed, OR
+    //   - Meter values changed (movement recalculation), OR
+    //   - SAS start/end times changed explicitly (pure window override)
+    if (timestampChanged || metersChanged || sasTimesChanged) {
       try {
+        console.log('[Collections API PATCH] Running Step 7 recalculation...');
         // Use the new timestamp if provided, otherwise use original
         const collectionTimestamp = updateData.timestamp
           ? new Date(updateData.timestamp)
           : originalCollection.timestamp;
 
-        // Get correct SAS time period based on previous collections
-        // CRITICAL: Only preserve manual overrides if they are provided in the current update (updateData).
-        // If the date is changing, we should recalculate the SAS period from scratch.
-        const customStartTime = updateData.sasStartTime ?? undefined;
-        const customEndTime = updateData.sasEndTime ?? collectionTimestamp;
+        // When only SAS times changed, the caller is explicitly overriding the window.
+        // Pass them directly so getSasTimePeriod treats them as a fully-custom pair
+        // (bypasses the auto-detect that would re-derive start from the previous collection).
+        const customStartTime = updateData.sasStartTime
+          ? new Date(updateData.sasStartTime as Date)
+          : undefined;
+        const customEndTime = updateData.sasEndTime
+          ? new Date(updateData.sasEndTime as Date)
+          : (collectionTimestamp as Date);
+
+        console.log('[Collections API PATCH] Inputs for getSasTimePeriod:', {
+          machineId: originalCollection.machineId,
+          customStartTime,
+          customEndTime,
+        });
 
         const { sasStartTime, sasEndTime } = await getSasTimePeriod(
           originalCollection.machineId as string,
           customStartTime,
-          customEndTime || collectionTimestamp
+          customEndTime || (collectionTimestamp as Date)
         );
+
+        console.log('[Collections API PATCH] Resolved SAS Time Period:', {
+          sasStartTime,
+          sasEndTime,
+        });
 
         // Recalculate SAS metrics with the correct time window
         const sasMetrics = await calculateSasMetrics(
@@ -945,9 +1004,17 @@ export async function PATCH(req: NextRequest) {
           sasEndTime
         );
 
+        console.log('[Collections API PATCH] Recalculated SAS metrics:', sasMetrics);
+
+        // Convert the mongoose document to a plain object first to safely extract and spread sasMeters
+        const originalCollectionObj = originalCollection && typeof originalCollection.toObject === 'function'
+          ? originalCollection.toObject()
+          : originalCollection;
+        const existingSasMetersObj = originalCollectionObj.sasMeters || {};
+
         // Update sasMeters in the update data
         updateData.sasMeters = {
-          ...originalCollection.sasMeters,
+          ...existingSasMetersObj,
           drop: sasMetrics.drop,
           totalCancelledCredits: sasMetrics.totalCancelledCredits,
           gross: sasMetrics.gross,
@@ -956,9 +1023,11 @@ export async function PATCH(req: NextRequest) {
           sasStartTime: sasMetrics.sasStartTime,
           sasEndTime: sasMetrics.sasEndTime,
           machine:
-            originalCollection.sasMeters?.machine ||
+            existingSasMetersObj.machine ||
             originalCollection.machineId,
         };
+
+        console.log('[Collections API PATCH] Resulting updateData.sasMeters to save:', updateData.sasMeters);
       } catch (sasError) {
         console.error(
           '[Collections API] Error recalculating SAS metrics:',
@@ -993,13 +1062,6 @@ export async function PATCH(req: NextRequest) {
     // detect a real change and use the explicit value rather than whatever
     // getSasTimePeriod/calculateSasMetrics may have rewritten in Step 7.
     const explicitSasEndTime: string | Date | undefined = updateData.sasEndTime;
-    const sasEndTimeChanged =
-      explicitSasEndTime !== undefined &&
-      new Date(explicitSasEndTime as string | Date).getTime() !==
-        new Date(
-          originalCollection.sasMeters?.sasEndTime ??
-            originalCollection.timestamp
-        ).getTime();
 
     // Remove fields that should not be updated manually or by system automatically during edit
     delete updateData.sasEndTime;
@@ -1007,34 +1069,210 @@ export async function PATCH(req: NextRequest) {
     delete updateData.collector;
 
     // ============================================================================
+    // STEP 7.8: Handle RAM clear check/uncheck
+    // ============================================================================
+    const unsetData: Record<string, number> = {};
+
+    if (originalCollection.ramClear === true && updateData.ramClear === false) {
+      console.log(`[Collections PATCH] RAM clear unchecked for collection ${id}. Deleting existing meters and creating new single regular meter.`);
+      const { Meters } = await import('@/app/api/lib/models/meters');
+      
+      // Delete existing meters
+      if (originalCollection.meterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
+      }
+      if (originalCollection.ramClearMeterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+      }
+
+      // Create new regular meter
+      const currentMeterId = await generateMongoId();
+      
+      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
+      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
+
+      const movementIn = newMetersIn - newPrevIn;
+      const movementOut = newMetersOut - newPrevOut;
+
+      const collectionTimestamp = updateData.timestamp
+        ? new Date(updateData.timestamp)
+        : new Date(originalCollection.timestamp);
+
+      const currentMeter = {
+        _id: currentMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: movementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: movementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp,
+        createdAt: new Date(),
+      };
+
+      await Meters.create(currentMeter);
+
+      updateData.meterId = currentMeterId;
+      unsetData.ramClearMeterId = 1;
+      unsetData.ramClearMetersIn = 1;
+      unsetData.ramClearMetersOut = 1;
+      
+      delete updateData.ramClearMeterId;
+      delete updateData.ramClearMetersIn;
+      delete updateData.ramClearMetersOut;
+    } else if ((originalCollection.ramClear === false || !originalCollection.ramClear) && updateData.ramClear === true) {
+      console.log(`[Collections PATCH] RAM clear checked for collection ${id}. Deleting existing meters and creating two new RAM clear meters.`);
+      const { Meters } = await import('@/app/api/lib/models/meters');
+      
+      // Delete existing meters
+      if (originalCollection.meterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
+      }
+      if (originalCollection.ramClearMeterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+      }
+
+      // Create new RAM clear meter (Meter 1) and current meter (Meter 2)
+      const ramClearMeterId = await generateMongoId();
+      const currentMeterId = await generateMongoId();
+
+      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
+      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
+      const newRamClearMetersIn = updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn ?? 0;
+      const newRamClearMetersOut = updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut ?? 0;
+
+      const ramClearMovementIn = newRamClearMetersIn - newPrevIn;
+      const ramClearMovementOut = newRamClearMetersOut - newPrevOut;
+
+      const postResetMovementIn = newMetersIn;
+      const postResetMovementOut = newMetersOut;
+
+      const collectionTimestamp = updateData.timestamp
+        ? new Date(updateData.timestamp)
+        : new Date(originalCollection.timestamp);
+
+      const baseReadAt = explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp;
+      const baseCreatedAt = new Date();
+
+      const currentMeterReadAt = new Date(baseReadAt.getTime() + 1000);
+      const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
+
+      const ramClearMeter = {
+        _id: ramClearMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: ramClearMovementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: ramClearMovementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newRamClearMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newRamClearMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        isRamClear: true,
+        readAt: baseReadAt,
+        createdAt: baseCreatedAt,
+      };
+
+      const currentMeter = {
+        _id: currentMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: postResetMovementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: postResetMovementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: currentMeterReadAt,
+        createdAt: currentMeterCreatedAt,
+      };
+
+      await Meters.create(ramClearMeter);
+      await Meters.create(currentMeter);
+
+      updateData.ramClearMeterId = ramClearMeterId;
+      updateData.meterId = currentMeterId;
+    }
+
+    // ============================================================================
     // STEP 8: Update collection document
     // ============================================================================
+    const updateQuery: Record<string, unknown> = { $set: updateData };
+    if (Object.keys(unsetData).length > 0) {
+      updateQuery.$unset = unsetData;
+    }
+
     // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
     const updated = await Collections.findOneAndUpdate(
       { _id: id },
-      { $set: updateData },
+      updateQuery,
       { new: true }
     );
 
     // ============================================================================
-    // STEP 8.5: Update meters' readAt if timestamp or SAS times changed
+    // STEP 8.5: Update meters' readAt and movement metrics
     // ============================================================================
-    if ((timestampChanged || sasEndTimeChanged) && updated) {
-      const newSasEndTime =
-        explicitSasEndTime !== undefined
-          ? new Date(explicitSasEndTime as Date)
-          : (updated.sasMeters?.sasEndTime ?? updated.timestamp ?? new Date());
-
-      const meterId = (updated as unknown as { meterId?: string }).meterId;
-      const ramClearMeterId = (
-        updated as unknown as { ramClearMeterId?: string }
-      ).ramClearMeterId;
-
-      await updateRegularAndRamClearMeters(
-        meterId,
-        ramClearMeterId,
-        newSasEndTime
+    if (updated) {
+      const { updateRegularAndRamClearMeters: updateMetersMovement } = await import(
+        '@/app/api/lib/helpers/collectionReport/reportCreation'
       );
+      await updateMetersMovement(updated);
     }
 
     // ============================================================================
@@ -1248,6 +1486,12 @@ export async function DELETE(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
+        const changes = mapDeletedFieldsToChanges(
+          collectionToDelete.toObject
+            ? collectionToDelete.toObject()
+            : collectionToDelete
+        );
+
         await logActivity({
           action: 'DELETE',
           details: `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
@@ -1259,11 +1503,14 @@ export async function DELETE(req: NextRequest) {
           metadata: {
             resource: 'collection',
             resourceId: id,
-            resourceName: `Machine ${collectionToDelete.machineId}`,
+            resourceName: `${collectionToDelete.machineCustomName || collectionToDelete.machineName || collectionToDelete.machineId} at ${collectionToDelete.location}`,
             userId: (currentUser._id ||
               currentUser.id ||
               currentUser.sub) as string,
             username: currentUser.emailAddress as string,
+            changes: changes,
+            previousData: collectionToDelete,
+            newData: null,
           },
         });
       } catch (logError) {

@@ -6,7 +6,7 @@
  * Features:
  * - Tab navigation for different data views
  * - Accounting details display
- * - Live metrics monitoring
+ * - Live meters monitoring
  * - Bill validator history
  * - Activity logs
  * - Collection history and settings

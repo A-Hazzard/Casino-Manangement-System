@@ -294,19 +294,21 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // Reviewer Multiplier Scaling
       // ============================================================================
-      const moneyOutScale = getMoneyOutAndJackpotScale(
-        userPayload as {
-          moneyOutAndJackpotMultiplier?: number | null;
-          roles?: string[];
+      populated.forEach(transaction => {
+        const transactionScale = getMoneyOutAndJackpotScale(
+          userPayload as {
+            moneyOutAndJackpotMultiplier?: number | null;
+            roles?: string[];
+            reviewerMultiplierStartTime?: Date | string | null;
+          },
+          (transaction as { timestamp?: Date | string | null }).timestamp ??
+            null
+        );
+
+        if (transactionScale !== 1 && typeof transaction.amount === 'number') {
+          transaction.amount *= transactionScale;
         }
-      );
-      if (moneyOutScale !== 1) {
-        populated.forEach(t => {
-          if (typeof t.amount === 'number') {
-            t.amount *= moneyOutScale;
-          }
-        });
-      }
+      });
 
       populated.forEach(t => {
         const expenseDetails = t.expenseDetails as

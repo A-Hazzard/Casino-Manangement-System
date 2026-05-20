@@ -37,7 +37,32 @@ export async function logActivity(params: {
     // Validate and extract user information
     // For auth failures (login attempts) and background operations, allow 'unknown' values
     const userId = params.userId || 'unknown';
-    const username = params.username || 'unknown';
+    let username = params.username || 'unknown';
+
+    if (userId && userId !== 'unknown' && userId.match(/^[0-9a-fA-F]{24}$/)) {
+      try {
+        const UserModel = (await import('../models/user')).default;
+        const dbUser = await UserModel.findOne({ _id: userId }).lean<{
+          username?: string;
+          emailAddress?: string;
+          profile?: { firstName?: string; lastName?: string };
+        }>();
+        if (dbUser) {
+          if (dbUser.profile?.firstName && dbUser.profile?.lastName) {
+            username = `${dbUser.profile.firstName} ${dbUser.profile.lastName}`;
+          } else if (dbUser.username) {
+            username = dbUser.username;
+          } else if (dbUser.emailAddress) {
+            username = dbUser.emailAddress;
+          }
+        }
+      } catch (err) {
+        console.error(
+          '[logActivity] Failed to fetch display name from DB:',
+          err
+        );
+      }
+    }
 
     // Log when user information is missing but don't throw error for background operations
     if (!params.userId || !params.username) {
@@ -61,6 +86,8 @@ export async function logActivity(params: {
       details: params.details,
       ipAddress: params.ipAddress || 'unknown',
       userAgent: params.userAgent || 'unknown',
+      previousData: params.metadata?.previousData,
+      newData: params.metadata?.newData,
       // Legacy fields for backward compatibility
       actor: {
         id: params.userId,
@@ -117,28 +144,79 @@ export function calculateChanges(
     console.error('[calculateChanges] oldObj and newObj are required objects');
     return [];
   }
-  const changes: ActivityLogChange[] = [];
 
-  // Only check fields that are present in newObj (the update payload)
-  for (const [key, newValue] of Object.entries(newObj)) {
-    const oldValue = oldObj[key];
+  // Skip internal/bookkeeping fields that should never appear as user-visible changes
+  const IGNORED_FIELDS = new Set(['updatedAt', '__v', '__t']);
 
-    // Deep comparison for objects and arrays
-    const hasChanged = !isEqual(oldValue, newValue);
-
-    if (hasChanged) {
-      changes.push({
-        field: key,
-        oldValue,
-        newValue,
-      });
-    }
+  // Resolve a dot-notation path (e.g. 'collectionMeters.metersIn') against a
+  // nested object. Returns undefined when the path does not exist.
+  function resolveDotPath(
+    obj: Record<string, unknown>,
+    dotPath: string
+  ): unknown {
+    return dotPath.split('.').reduce<unknown>((current, segment) => {
+      if (current == null || typeof current !== 'object') return undefined;
+      return (current as Record<string, unknown>)[segment];
+    }, obj);
   }
 
-  // NOTE: We don't check for "deleted fields" in update operations
-  // because the newObj only contains fields being updated, not a full document
+  function getFlatChanges(
+    old: Record<string, unknown>,
+    updated: Record<string, unknown>,
+    prefix = ''
+  ): ActivityLogChange[] {
+    const result: ActivityLogChange[] = [];
 
-  return changes;
+    const isPlainObject = (val: unknown): val is Record<string, unknown> =>
+      typeof val === 'object' &&
+      val !== null &&
+      !Array.isArray(val) &&
+      !(val instanceof Date) &&
+      Object.prototype.toString.call(val) === '[object Object]';
+
+    for (const [key, newValue] of Object.entries(updated)) {
+      // Skip bookkeeping fields — they change on every save and are not user-editable
+      if (!prefix && IGNORED_FIELDS.has(key)) continue;
+
+      const fieldPath = prefix ? `${prefix}.${key}` : key;
+
+      // When the key itself contains dots it is a MongoDB dot-notation path
+      // (e.g. 'collectionMeters.metersIn'). Resolve the path against the old
+      // document so we compare the right nested value instead of always getting
+      // undefined (which would mark every dot-notation key as changed).
+      const isDotNotationKey = !prefix && key.includes('.');
+      const oldValue = isDotNotationKey
+        ? resolveDotPath(old, key)
+        : old
+          ? old[key]
+          : undefined;
+
+      if (
+        !isDotNotationKey &&
+        isPlainObject(newValue) &&
+        isPlainObject(oldValue)
+      ) {
+        const nestedChanges = getFlatChanges(
+          oldValue as Record<string, unknown>,
+          newValue as Record<string, unknown>,
+          fieldPath
+        );
+        result.push(...nestedChanges);
+      } else {
+        if (!isEqual(oldValue, newValue)) {
+          result.push({
+            field: fieldPath,
+            oldValue,
+            newValue,
+          });
+        }
+      }
+    }
+
+    return result;
+  }
+
+  return getFlatChanges(oldObj, newObj);
 }
 
 /**
@@ -150,6 +228,33 @@ function isEqual(a: unknown, b: unknown): boolean {
 
   // One is null/undefined and the other isn't
   if (a == null || b == null) return false;
+
+  // Date comparison helper
+  const isDate = (val: unknown): val is Date =>
+    val instanceof Date ||
+    (typeof val === 'object' &&
+      val !== null &&
+      Object.prototype.toString.call(val) === '[object Date]');
+
+  // If either is a Date or a string that looks like a Date
+  const isDateLike = (val: unknown): boolean => {
+    if (isDate(val)) return true;
+    if (typeof val === 'string') {
+      const parsed = Date.parse(val);
+      return !isNaN(parsed) && val.includes('-');
+    }
+    return false;
+  };
+
+  if (isDateLike(a) || isDateLike(b)) {
+    try {
+      const t1 = new Date(a as string | number | Date).getTime();
+      const t2 = new Date(b as string | number | Date).getTime();
+      if (!isNaN(t1) && !isNaN(t2)) return t1 === t2;
+    } catch {
+      // Fallback
+    }
+  }
 
   // Different types
   if (typeof a !== typeof b) return false;
@@ -176,4 +281,73 @@ function isEqual(a: unknown, b: unknown): boolean {
   if (aKeys.length !== bKeys.length) return false;
 
   return aKeys.every(key => isEqual(aObj[key], bObj[key]));
+}
+
+/**
+ * Maps all properties of a deleted/archived document to an array of ActivityLogChange.
+ * All properties are listed in `oldValue`, and `newValue` is set to `null` to denote they no longer exist.
+ *
+ * @param {Record<string, unknown>} doc - The document object
+ * @param {string[]} [excludeFields] - Additional fields to exclude (e.g. passwords, salts)
+ * @returns {ActivityLogChange[]} Array of changes
+ */
+export function mapDeletedFieldsToChanges(
+  doc: Record<string, unknown>,
+  excludeFields: string[] = []
+): Array<{ field: string; oldValue: unknown; newValue: unknown }> {
+  if (!doc || typeof doc !== 'object') {
+    return [];
+  }
+
+  // Handle mongoose document to object conversion if needed
+  const hasToObject =
+    doc && typeof (doc as Record<string, unknown>).toObject === 'function';
+  const rawObj = hasToObject
+    ? (doc as unknown as { toObject: () => Record<string, unknown> }).toObject()
+    : doc;
+
+  const standardExclude = [
+    '_id',
+    '__v',
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+    'passwordHash',
+    'passwordSalt',
+    'totpSecret',
+    'otpSecret',
+    'pin',
+  ];
+  const allExclude = new Set([...standardExclude, ...excludeFields]);
+
+  const changes: Array<{
+    field: string;
+    oldValue: unknown;
+    newValue: unknown;
+  }> = [];
+
+  for (const [key, val] of Object.entries(rawObj)) {
+    if (allExclude.has(key)) {
+      continue;
+    }
+
+    let stringVal: unknown = val;
+    if (val instanceof Date) {
+      stringVal = val.toISOString();
+    } else if (Array.isArray(val)) {
+      stringVal = val.join(', ');
+    } else if (typeof val === 'object' && val !== null) {
+      stringVal = JSON.stringify(val);
+    } else if (val === null || val === undefined) {
+      stringVal = '';
+    }
+
+    changes.push({
+      field: key,
+      oldValue: stringVal,
+      newValue: null,
+    });
+  }
+
+  return changes;
 }

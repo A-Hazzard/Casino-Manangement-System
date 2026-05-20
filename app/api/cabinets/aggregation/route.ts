@@ -1515,14 +1515,22 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 10.5: Apply reviewer multiplier
       // ============================================================================
+      const scaleReferenceDate = customEndDateForGamingDay ?? new Date();
       const moneyInScale = getMoneyInScale(
-        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        userPayload as {
+          moneyInMultiplier?: number | null;
+          roles?: string[];
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       );
       const moneyOutScale = getMoneyOutAndJackpotScale(
         userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
-        }
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        scaleReferenceDate
       );
       if (moneyInScale !== 1 || moneyOutScale !== 1) {
         filteredMachines = filteredMachines.map(machineRecord => {
@@ -1577,6 +1585,33 @@ export async function GET(req: NextRequest) {
           if (aStarts && !bStarts) return -1;
           if (!aStarts && bStarts) return 1;
         }
+
+        // Prioritize online status
+        const aOnline = aRecord.online === true;
+        const bOnline = bRecord.online === true;
+
+        if (sortBy === 'offlineTime') {
+          if (aOnline && !bOnline) return -1;
+          if (!aOnline && bOnline) return 1;
+          if (aOnline && bOnline) return 0;
+          
+          const aTime = aRecord.lastActivity
+            ? new Date(aRecord.lastActivity as string | Date).getTime()
+            : 0;
+          const bTime = bRecord.lastActivity
+            ? new Date(bRecord.lastActivity as string | Date).getTime()
+            : 0;
+
+          if (aTime === 0 && bTime > 0) return 1;
+          if (aTime > 0 && bTime === 0) return -1;
+          if (aTime === 0 && bTime === 0) return 0;
+
+          return (aTime < bTime ? 1 : -1) * sortOrder;
+        }
+
+        // For all other sort options, prioritize online status
+        if (aOnline && !bOnline) return -1;
+        if (!aOnline && bOnline) return 1;
 
         // Secondary sort: user-selected sortBy field
         let valA = aRecord[sortBy];

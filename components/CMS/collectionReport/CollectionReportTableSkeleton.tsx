@@ -21,6 +21,8 @@ export default function CollectionReportTableSkeleton() {
             <th className="px-2 py-2">MACHINES</th>
             <th className="px-2 py-2">COLLECTED</th>
             <th className="px-2 py-2">UNCOLLECTED</th>
+            <th className="px-2 py-2">VARIATION</th>
+            <th className="px-2 py-2">BALANCE</th>
             <th className="px-2 py-2">LOCATION REVENUE</th>
             <th className="px-2 py-2">TIME</th>
             <th className="px-2 py-2">DETAILS</th>
@@ -50,6 +52,14 @@ export default function CollectionReportTableSkeleton() {
                 <div className="skeleton-bg h-4 w-20 rounded"></div>
               </td>
               {/* Uncollected */}
+              <td className="px-4 py-2">
+                <div className="skeleton-bg h-4 w-20 rounded"></div>
+              </td>
+              {/* Variation */}
+              <td className="px-4 py-2">
+                <div className="skeleton-bg h-4 w-20 rounded"></div>
+              </td>
+              {/* Balance */}
               <td className="px-4 py-2">
                 <div className="skeleton-bg h-4 w-20 rounded"></div>
               </td>

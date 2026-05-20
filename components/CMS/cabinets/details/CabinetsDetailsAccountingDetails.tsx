@@ -86,8 +86,8 @@ const CabinetsDetailsAccountingDetails = ({
   } = hook;
 
   const menuItems = [
-    'Metrics',
-    'Live Metrics',
+    'Movements',
+    'Live Meters',
     'Bill Validator',
     'Activity Log',
     'Collection History',
@@ -112,13 +112,13 @@ const CabinetsDetailsAccountingDetails = ({
               key={menuItem}
               className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors ${
                 activeMetricsTabContent ===
-                (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
+                (menuItem === 'Movements' ? 'Movement Metrics' : menuItem)
                   ? 'bg-accent text-buttonActive'
                   : 'bg-muted text-grayHighlight hover:bg-muted/80'
               }`}
               onClick={() =>
                 setActiveMetricsTabContent(
-                  menuItem === 'Metrics' ? 'Movement Metrics' : menuItem
+                  menuItem === 'Movements' ? 'Movement Metrics' : menuItem
                 )
               }
             >
@@ -143,13 +143,13 @@ const CabinetsDetailsAccountingDetails = ({
               whileHover={{ x: 5 }}
               className={`block w-full px-4 py-2.5 text-left text-sm ${
                 activeMetricsTabContent ===
-                (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
+                (menuItem === 'Movements' ? 'Movement Metrics' : menuItem)
                   ? 'bg-accent font-semibold text-buttonActive'
                   : 'text-grayHighlight hover:bg-muted'
               } ${idx === menuItems.length - 1 ? 'md:rounded-b-md' : 'border-b border-border md:border-b-0'}`}
               onClick={() =>
                 setActiveMetricsTabContent(
-                  menuItem === 'Metrics' ? 'Movement Metrics' : menuItem
+                  menuItem === 'Movements' ? 'Movement Metrics' : menuItem
                 )
               }
             >
@@ -170,7 +170,7 @@ const CabinetsDetailsAccountingDetails = ({
             >
               <h3 className="mb-4 hidden text-center font-medium md:block md:text-left">
                 {activeMetricsTabContent === 'Movement Metrics'
-                  ? 'Metrics'
+                  ? 'Movements'
                   : activeMetricsTabContent}
               </h3>
 
@@ -308,13 +308,13 @@ const CabinetsDetailsAccountingDetails = ({
                       </motion.div>
                     </motion.div>
                   )
-                ) : activeMetricsTabContent === 'Live Metrics' ? (
-                  /* Tab: Live Metrics */
+                ) : activeMetricsTabContent === 'Live Meters' ? (
+                  /* Tab: Live Meters */
                   loading ? (
                     <LiveMetricsSkeleton />
                   ) : (
                     <motion.div
-                      key="live-metrics"
+                      key="live-meters"
                       className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -339,10 +339,7 @@ const CabinetsDetailsAccountingDetails = ({
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
-                                cabinet?.coinIn ??
-                                  cabinet?.handle ??
-                                  cabinet?.sasMeters?.coinIn ??
-                                  0
+                                machine?.sasMeters?.coinIn ?? 0
                               )
                             )}
                           </p>
@@ -367,16 +364,14 @@ const CabinetsDetailsAccountingDetails = ({
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
-                                cabinet?.coinOut ??
-                                  cabinet?.sasMeters?.coinOut ??
-                                  0
+                                machine?.sasMeters?.coinOut ?? 0
                               )
                             )}
                           </p>
                         </div>
                       </motion.div>
 
-                      {/* Total Hand Paid Cancelled Credits */}
+                      {/* Drop */}
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
@@ -387,18 +382,39 @@ const CabinetsDetailsAccountingDetails = ({
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
                         <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Total Hand Paid Cancelled Credits
+                          Drop
+                        </h4>
+                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
+                        <div className="flex items-center justify-center">
+                          <p className="text-center text-base font-bold md:text-xl">
+                            {formatCurrency(
+                              Number(
+                                machine?.sasMeters?.drop ?? 0
+                              )
+                            )}
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Total Cancelled Credits */}
+                      <motion.div
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
+                        variants={itemVariants}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
+                        transition={{ type: 'spring', stiffness: 300 }}
+                      >
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Total Cancelled Credits
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters
-                                  ?.totalHandPaidCancelledCredits ??
-                                  cabinet?.meterData?.movement
-                                    ?.totalHandPaidCancelledCredits ??
-                                  0
+                                machine?.sasMeters?.totalCancelledCredits ?? 0
                               )
                             )}
                           </p>
@@ -423,10 +439,7 @@ const CabinetsDetailsAccountingDetails = ({
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
                               Number(
-                                cabinet?.sasMeters?.currentCredits ??
-                                  cabinet?.meterData?.movement
-                                    ?.currentCredits ??
-                                  0
+                                machine?.sasMeters?.currentCredits ?? 0
                               )
                             )}
                           </p>
@@ -449,9 +462,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {cabinet?.gamesPlayed ??
-                              cabinet?.sasMeters?.gamesPlayed ??
-                              0}
+                            {machine?.sasMeters?.gamesPlayed ?? 0}
                           </p>
                         </div>
                       </motion.div>
@@ -472,9 +483,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {cabinet?.gamesWon ??
-                              cabinet?.sasMeters?.gamesWon ??
-                              0}
+                            {machine?.sasMeters?.gamesWon ?? 0}
                           </p>
                         </div>
                       </motion.div>

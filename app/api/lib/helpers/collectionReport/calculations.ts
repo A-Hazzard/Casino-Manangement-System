@@ -12,6 +12,9 @@
  */
 
 import { Collections } from '@/app/api/lib/models/collections';
+import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type {
   CollectionDocument,
@@ -205,4 +208,137 @@ export async function calculateCollectionReportTotals(
     totalSasGross: effectiveTotalSasGross,
     totalJackpot, // Include raw jackpot total for reference
   };
+}
+
+// ============================================================================
+// Total Variation Calculation
+// ============================================================================
+
+/**
+ * Computes total variation from stored collections (movement.gross - adjustedSasGross)
+ * for a given collection report, respecting hasSmib filtering and includeJackpot.
+ */
+export async function computeTotalVariation(
+  locationReportId: string,
+  locationId?: string
+): Promise<number> {
+  const collections = await Collections.find(
+    { locationReportId },
+    { movement: 1, sasMeters: 1, machineId: 1 }
+  ).lean<Pick<CollectionDocument, 'movement' | 'sasMeters' | 'machineId'>[]>();
+
+  if (!collections.length) return 0;
+
+  // Fetch relayId per machine for SMIB filtering
+  const machineIds = collections
+    .map(c => c.machineId)
+    .filter((id): id is string => Boolean(id));
+
+  let smibMap = new Map<string, boolean>();
+  if (machineIds.length) {
+    const machines = await Machine.find(
+      { _id: { $in: machineIds } },
+      { relayId: 1 }
+    ).lean<{ _id: string; relayId?: string }[]>();
+    smibMap = new Map(
+      machines.map(m => [String(m._id), Boolean(m.relayId?.trim())])
+    );
+  }
+
+  // Check includeJackpot from licencee
+  let includeJackpot = false;
+  if (locationId) {
+    const location = await GamingLocations.findOne(
+      { _id: locationId },
+      { 'rel.licencee': 1 }
+    ).lean<{ rel?: { licencee?: string } } | null>();
+    if (location?.rel?.licencee) {
+      const { Licencee } = await import('@/app/api/lib/models/licencee');
+      const licencee = await Licencee.findOne(
+        { _id: location.rel.licencee },
+        { includeJackpot: 1 }
+      ).lean<{ includeJackpot?: boolean } | null>();
+      includeJackpot = Boolean(licencee?.includeJackpot);
+    }
+  }
+
+  // Batched SAS meter data query — same pattern as accountingDetails.ts
+  const meterQueries = collections
+    .filter(
+      collection =>
+        collection.machineId &&
+        collection.sasMeters?.sasStartTime &&
+        collection.sasMeters?.sasEndTime
+    )
+    .map(collection => ({
+      machineId: collection.machineId as string,
+      startTime: new Date(collection.sasMeters!.sasStartTime!),
+      endTime: new Date(collection.sasMeters!.sasEndTime!),
+    }));
+
+  const meterDataMap = new Map<string, { drop: number; cancelled: number; jackpot: number }>();
+  if (meterQueries.length > 0) {
+    const cursor = Meters.aggregate([
+      {
+        $match: {
+          $or: meterQueries.map(q => ({
+            machine: q.machineId,
+            readAt: { $gte: q.startTime, $lte: q.endTime },
+          })),
+        },
+      },
+      {
+        $group: {
+          _id: '$machine',
+          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          totalCancelled: {
+            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+          },
+          totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+        },
+      },
+    ]).cursor({ batchSize: 1000 });
+
+    for await (const doc of cursor) {
+      meterDataMap.set(doc._id, {
+        drop: doc.totalDrop,
+        cancelled: doc.totalCancelled,
+        jackpot: doc.totalJackpot,
+      });
+    }
+  }
+
+  // Sum per-machine variation — identical formula to accountingDetails.ts
+  return collections.reduce((sum, col) => {
+    const hasSmib = smibMap.get(String(col.machineId)) ?? false;
+    if (!hasSmib) return sum;
+
+    const meterGross = col.movement?.gross ?? 0;
+
+    // Recalculate SAS gross from batched meter data (same as accountingDetails.ts)
+    let sasGross = 0;
+    let machineJackpot = 0;
+    if (
+      col.machineId &&
+      col.sasMeters?.sasStartTime &&
+      col.sasMeters?.sasEndTime
+    ) {
+      const meterData = meterDataMap.get(col.machineId);
+      if (meterData) {
+        sasGross = meterData.drop - meterData.cancelled;
+        machineJackpot = meterData.jackpot;
+      }
+    }
+
+    const adjustedSasGross = includeJackpot
+      ? sasGross - machineJackpot
+      : sasGross;
+
+    const hasNoSasData =
+      !col.sasMeters?.sasStartTime ||
+      !col.sasMeters?.sasEndTime ||
+      !meterDataMap.has(String(col.machineId));
+
+    return sum + (meterGross - (hasNoSasData ? 0 : adjustedSasGross));
+  }, 0);
 }

@@ -62,6 +62,7 @@ import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
+const DEFAULT_REVIEWER_MULTIPLIER_START_DATE = '2026-04-01';
 
 // ============================================================================
 // Constants
@@ -89,6 +90,21 @@ const arraysEqual = (a: string[], b: string[]) => {
     }
   }
   return true;
+};
+
+const toDateInputValue = (
+  dateValue: Date | string | null | undefined
+): string => {
+  if (!dateValue) {
+    return DEFAULT_REVIEWER_MULTIPLIER_START_DATE;
+  }
+
+  const parsedDate = new Date(dateValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return DEFAULT_REVIEWER_MULTIPLIER_START_DATE;
+  }
+
+  return parsedDate.toISOString().split('T')[0];
 };
 
 type AdministrationUserModalProps = {
@@ -251,6 +267,8 @@ export default function AdministrationUserModal({
   const [moneyInMultiplier, setMoneyInMultiplier] = useState<string>('');
   const [moneyOutAndJackpotMultiplier, setMoneyOutAndJackpotMultiplier] =
     useState<string>('');
+  const [reviewerMultiplierStartTime, setReviewerMultiplierStartTime] =
+    useState<string>(DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -319,6 +337,9 @@ export default function AdministrationUserModal({
             Math.round((targetUser.moneyOutAndJackpotMultiplier || 0) * 100)
           )
         : ''
+    );
+    setReviewerMultiplierStartTime(
+      toDateInputValue(targetUser.reviewerMultiplierStartTime)
     );
     setIsEnabled(
       targetUser.isEnabled !== undefined ? targetUser.isEnabled : true
@@ -983,6 +1004,12 @@ export default function AdministrationUserModal({
 
     setRoles(newRoles);
 
+    if (!newRoles.includes('reviewer')) {
+      setMoneyInMultiplier('');
+      setMoneyOutAndJackpotMultiplier('');
+      setReviewerMultiplierStartTime(DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
+    }
+
     // Enforce single selection if vault-manager or cashier is selected
     if (checked && (role === 'vault-manager' || role === 'cashier')) {
       if (selectedLicenceeIds.length > 1) {
@@ -1645,6 +1672,9 @@ export default function AdministrationUserModal({
     const moneyOutMultiplierChanged =
       String(Math.round((user.moneyOutAndJackpotMultiplier || 0) * 100)) !==
       (moneyOutAndJackpotMultiplier || '0');
+    const reviewerMultiplierStartTimeChanged =
+      toDateInputValue(user.reviewerMultiplierStartTime) !==
+      (reviewerMultiplierStartTime || DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
 
     const updatedUser: Partial<User> & {
       password?: string;
@@ -1680,6 +1710,10 @@ export default function AdministrationUserModal({
       updatedUser.moneyOutAndJackpotMultiplier = moneyOutAndJackpotMultiplier
         ? parseFloat(moneyOutAndJackpotMultiplier) / 100
         : 0;
+    }
+    if (reviewerMultiplierStartTimeChanged && roles.includes('reviewer')) {
+      updatedUser.reviewerMultiplierStartTime =
+        reviewerMultiplierStartTime || DEFAULT_REVIEWER_MULTIPLIER_START_DATE;
     }
 
     if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
@@ -1856,13 +1890,23 @@ export default function AdministrationUserModal({
       });
     }
 
+    if (reviewerMultiplierStartTimeChanged) {
+      meaningfulChanges.push({
+        field: 'reviewerMultiplierStartTime',
+        oldValue: toDateInputValue(user.reviewerMultiplierStartTime),
+        newValue: reviewerMultiplierStartTime,
+        path: 'reviewerMultiplierStartTime',
+      });
+    }
+
     const hasAnyChanges =
       Object.keys(updatedUser).filter(key => key !== '_id').length > 0 ||
       meaningfulChanges.length > 0 ||
       locationIdsChanged ||
       licenceeIdsChanged ||
       moneyInMultiplierChanged ||
-      moneyOutMultiplierChanged;
+      moneyOutMultiplierChanged ||
+      reviewerMultiplierStartTimeChanged;
 
     if (!hasAnyChanges) {
       toast.info('No changes detected');
@@ -2530,6 +2574,25 @@ export default function AdministrationUserModal({
                               </span>
                             </p>
                           </div>
+                          {/* Multiplier Start Time */}
+                          <div className="relative min-w-[200px] max-w-xs flex-1">
+                            <Label className="text-xs font-semibold text-blue-700">
+                              Multiplier start time
+                            </Label>
+                            <Input
+                              type="date"
+                              value={reviewerMultiplierStartTime}
+                              onChange={event =>
+                                setReviewerMultiplierStartTime(
+                                  event.target.value
+                                )
+                              }
+                              className="mt-1 border-blue-200 bg-blue-50/30 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 rounded-md border border-blue-100 bg-blue-50 p-2 text-xs font-medium italic text-blue-600">
+                              ℹ️ Applies reviewer multipliers from this date onward.
+                            </p>
+                          </div>
                         </div>
                       ) : (
                         <div className="flex flex-wrap items-center gap-4">
@@ -2539,6 +2602,16 @@ export default function AdministrationUserModal({
                           <span className="rounded-md border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-bold text-orange-900">
                             Out/Jackpot: {moneyOutAndJackpotMultiplier}%
                             reduction
+                          </span>
+                          <span className="rounded-md border border-blue-100 bg-blue-50 px-3 py-1 text-sm font-bold text-blue-900">
+                            Start:{' '}
+                            {new Date(
+                              reviewerMultiplierStartTime
+                            ).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
                           </span>
                         </div>
                       )}

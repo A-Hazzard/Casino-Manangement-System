@@ -25,7 +25,11 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logActivity,
+  calculateChanges,
+  mapDeletedFieldsToChanges,
+} from '@/app/api/lib/helpers/activityLogger';
 import type { LocationDocument, MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -45,30 +49,12 @@ import {
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
-
-type MachineUpdateFields = {
-  serialNumber?: string;
-  game?: string;
-  manufacturer?: string;
-  manuf?: string;
-  assetStatus?: string;
-  machineStatus?: string;
-  cabinetType?: string;
-  gameConfig?: { accountingDenomination?: number };
-  collectionMultiplier?: string;
-  collectorDenomination?: number;
-  isSasMachine?: boolean;
-  relayId?: string;
-  smibBoard?: string;
-  smbId?: string;
-  updatedAt?: Date;
-  collectionMeters?: object;
-  collectionTime?: Date;
-  smibConfig?: object;
-  smibVersion?: string;
-  'custom.name'?: string;
-  [key: string]: string | number | boolean | Date | object | undefined;
-};
+import {
+  mapCabinetUpdateFields,
+  deduplicateCabinetChanges,
+} from '@/app/api/lib/helpers/cabinetUpdate';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { getUserFromServer } from '../../lib/helpers/users';
 
 /**
  * GET /api/cabinets/[cabinetId]
@@ -221,12 +207,17 @@ export async function GET(request: NextRequest) {
           endDate = range.rangeEnd;
         }
 
+        const matchQuery: Record<string, unknown> = {
+          machine: cabinetId,
+        };
+
+        if (startDate && endDate) {
+          matchQuery.readAt = { $gte: startDate, $lte: endDate };
+        }
+
         const aggregation = await Meters.aggregate([
           {
-            $match: {
-              machine: cabinetId,
-              readAt: { $gte: startDate, $lte: endDate },
-            },
+            $match: matchQuery,
           },
           {
             $group: {
@@ -251,13 +242,17 @@ export async function GET(request: NextRequest) {
             userPayload as {
               moneyInMultiplier?: number | null;
               roles?: string[];
-            }
+              reviewerMultiplierStartTime?: Date | string | null;
+            },
+            endDate
           );
           const moneyOutScale = getMoneyOutAndJackpotScale(
             userPayload as {
               moneyOutAndJackpotMultiplier?: number | null;
               roles?: string[];
-            }
+              reviewerMultiplierStartTime?: Date | string | null;
+            },
+            endDate
           );
 
           metrics.moneyIn = raw.moneyIn * moneyInScale;
@@ -411,44 +406,8 @@ export async function PUT(request: NextRequest) {
         JSON.stringify(data, null, 2)
       );
 
-      // Build update fields (standardized mapping)
-      const updateFields: Partial<MachineUpdateFields> = {
-        updatedAt: new Date(),
-      };
-      if (data.assetNumber) updateFields.serialNumber = data.assetNumber;
-      if (data.installedGame) updateFields.game = data.installedGame;
-      if (data.gameType) updateFields.gameType = data.gameType;
-      if (data.manufacturer) {
-        updateFields.manufacturer = data.manufacturer;
-        updateFields.manuf = data.manufacturer;
-      }
-      if (data.status) updateFields.assetStatus = data.status;
-      if (data.machineStatus) updateFields.machineStatus = data.machineStatus;
-      if (data.cabinetType) updateFields.cabinetType = data.cabinetType;
-      if (data.accountingDenomination)
-        updateFields['gameConfig.accountingDenomination'] = Number(
-          data.accountingDenomination
-        );
-
-      const mult = data.collectionMultiplier ?? data.collectorDenomination;
-      if (mult !== undefined) {
-        updateFields.collectionMultiplier = String(mult);
-        updateFields.collectorDenomination = Number(mult);
-      }
-
-      if (data.isCronosMachine !== undefined)
-        updateFields.isSasMachine = !data.isCronosMachine;
-
-      const smib = data.smbId ?? data.smibBoard ?? data.relayId;
-      if (smib !== undefined) {
-        updateFields.relayId = smib;
-        updateFields.smibBoard = smib;
-        updateFields.smbId = smib;
-      }
-      console.log(
-        `[PUT /api/cabinets/${cabinetId}] updateFields being sent to MongoDB:`,
-        JSON.stringify(updateFields, null, 2)
-      );
+      // Build update fields using shared helper
+      const updateFields = mapCabinetUpdateFields(data);
 
       console.log(
         `[PUT /api/cabinets/${cabinetId}] Original cabinet status fields:`,
@@ -494,6 +453,37 @@ export async function PUT(request: NextRequest) {
         if (gameUpdateResult.modifiedCount === 0) {
           console.warn(
             `[PUT /cabinets/${cabinetId}] No collections updated for machineName cascade`
+          );
+        }
+      }
+
+      const currentUser = await getUserFromServer();
+      if (currentUser && currentUser.emailAddress) {
+        try {
+          const changes = deduplicateCabinetChanges(
+            calculateChanges(
+              originalCabinet.toObject(),
+              updateFields as Record<string, unknown>
+            )
+          );
+          await logActivity({
+            action: 'UPDATE',
+            details: `Updated cabinet "${updatedMachine?.serialNumber || cabinetId}"`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
+            metadata: {
+              resource: 'cabinet',
+              resourceId: cabinetId,
+              resourceName: updatedMachine?.serialNumber || cabinetId,
+              changes,
+            },
+          });
+        } catch (logError) {
+          console.error(
+            '[PUT /cabinets/[cabinetId]] Failed to log activity:',
+            logError
           );
         }
       }
@@ -579,22 +569,50 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ success: true, data: restored });
       }
 
-      const updateFields: Partial<MachineUpdateFields> = {
-        updatedAt: new Date(),
-      };
-      if (data.collectionMeters)
-        updateFields.collectionMeters = data.collectionMeters;
-      if (data.collectionTime)
-        updateFields.collectionTime = data.collectionTime;
-      if (data.smibConfig) updateFields.smibConfig = data.smibConfig;
-      if (data.smibVersion) updateFields.smibVersion = data.smibVersion;
-      if (data.custom?.name) updateFields['custom.name'] = data.custom.name;
+      // Standard field update via PATCH
+      const originalCabinet = await Machine.findOne({ _id: cabinetId });
+      const updateFields = mapCabinetUpdateFields(data);
+      console.log(
+        `[PATCH /api/cabinets/${cabinetId}] Updating fields:`,
+        updateFields
+      );
 
       const patched = await Machine.findOneAndUpdate(
         { _id: cabinetId },
         { $set: updateFields },
         { new: true }
       );
+
+      if (originalCabinet && currentUser && currentUser.emailAddress) {
+        try {
+          const changes = deduplicateCabinetChanges(
+            calculateChanges(
+              originalCabinet.toObject(),
+              updateFields as Record<string, unknown>
+            )
+          );
+          await logActivity({
+            action: 'UPDATE',
+            details: `Updated cabinet "${patched?.serialNumber || cabinetId}"`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
+            metadata: {
+              resource: 'cabinet',
+              resourceId: cabinetId,
+              resourceName: patched?.serialNumber || cabinetId,
+              changes,
+            },
+          });
+        } catch (logError) {
+          console.error(
+            '[PATCH /cabinets/[cabinetId]] Failed to log activity:',
+            logError
+          );
+        }
+      }
+
       const duration = Date.now() - startTime;
       logRouteUpdate(
         functionName,
@@ -632,14 +650,32 @@ export async function DELETE(request: NextRequest) {
   const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
-  const hardDelete = request.nextUrl.searchParams.get('hardDelete') === 'true';
+  const searchParams = request.nextUrl.searchParams;
+  const hardDelete = searchParams.get('hardDelete') === 'true';
 
-  return withApiAuth(request, async ({ userRoles }) => {
+  return withApiAuth(request, async ({ user: currentUser, userRoles }) => {
     try {
       await connectDB();
       const canHardDelete = userRoles.some(r =>
-        ['developer', 'owner', 'admin'].includes(r.toLowerCase())
+        ['developer', 'owner', 'admin', 'location admin'].includes(
+          r.toLowerCase()
+        )
       );
+
+      const machineToDelete = await Machine.findOne({ _id: cabinetId });
+      if (!machineToDelete) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/cabinets/[cabinetId]',
+          `Not found: ${cabinetId}`,
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Cabinet not found' },
+          { status: 404 }
+        );
+      }
 
       if (hardDelete && canHardDelete) {
         const deleteResult = await Machine.deleteOne({ _id: cabinetId });
@@ -675,6 +711,31 @@ export async function DELETE(request: NextRequest) {
           );
         }
       }
+
+      if (currentUser && currentUser.emailAddress) {
+        const changes = mapDeletedFieldsToChanges(
+          machineToDelete.toObject
+            ? machineToDelete.toObject()
+            : machineToDelete
+        );
+        await logActivity({
+          action: hardDelete && canHardDelete ? 'DELETE' : 'ARCHIVE',
+          details: `${hardDelete && canHardDelete ? 'Permanently deleted' : 'Archived'} cabinet "${machineToDelete.serialNumber || machineToDelete.assetNumber || cabinetId}"`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id,
+          username: currentUser.emailAddress,
+          metadata: {
+            resource: 'cabinet',
+            resourceId: cabinetId,
+            resourceName:
+              machineToDelete.serialNumber || machineToDelete.assetNumber,
+            isHardDelete: hardDelete && canHardDelete,
+            changes,
+          },
+        });
+      }
+
       const duration = Date.now() - startTime;
       logRouteDelete(
         functionName,

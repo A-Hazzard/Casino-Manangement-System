@@ -330,7 +330,18 @@ export default function CollectionReportTable({
                     )}
                   </div>
                 </TableCell>
-                <TableCell centered={false}>{row?.location || '-'}</TableCell>
+                 <TableCell centered={false}>
+                   {row?.locationSlug ? (
+                     <Link
+                       href={`/locations/${row.locationSlug}`}
+                       className="text-buttonActive hover:underline"
+                     >
+                       {row?.location || '-'}
+                     </Link>
+                   ) : (
+                     row?.location || '-'
+                   )}
+                 </TableCell>
                 <TableCell centered={true}>
                   <span
                     className={getGrossColorClass(

@@ -340,9 +340,9 @@ The system exposes approximately **100+ API route handlers** organized by domain
 
 `GET cabinets/aggregation` · `GET/PATCH/DELETE cabinets/[cabinetId]` · `GET cabinets/by-id` · `GET cabinets/by-id/events` · `POST smib/meters` · `POST smib/restart` · `POST smib/ota-update` · `POST smib/nvs-action` · `GET metrics/meters`
 
-### Collections (`/api/collections/*`, `/api/collection-reports/*`, `/api/collection-report/*`)
+### Collections (`/api/collections/*`, `/api/collection-reports/*`)
 
-`GET/POST/PATCH/DELETE collections` · `GET collections/last-collection-time` · `GET collections/check-first-collection` · `GET/POST collectionReport` · `GET collectionReport/locations` · `GET/PATCH/DELETE collection-report/[reportId]` · `POST collection-reports/fix-report` · `GET collection-reports/check-all-issues` · `GET collection-reports`
+`GET/POST/PATCH/DELETE collections` · `GET collections/last-collection-time` · `GET collections/check-first-collection` · `GET/POST collectionReport` · `GET collectionReport/locations` · `GET/PATCH/DELETE collection-reports/[reportId]` · `POST collection-reports/fix-report` · `GET collection-reports/check-all-issues` · `GET collection-reports`
 
 ### Members & Sessions (`/api/members/*`, `/api/sessions/*`)
 

@@ -287,7 +287,7 @@ export default function InstallPage() {
             )}
 
             <p className="mt-2 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-              Evolution One Engineering • v5.0.1
+              Evolution One CMS • v2.0.0
             </p>
           </CardFooter>
         </Card>

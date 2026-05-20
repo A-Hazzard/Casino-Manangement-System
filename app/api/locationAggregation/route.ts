@@ -389,14 +389,22 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 10.5: Apply Reviewer Multiplier Scaling
     // ============================================================================
+    const scaleReferenceDate = customEndDate ?? new Date();
     const moneyInScale = getMoneyInScale(
-      currentUser as { moneyInMultiplier?: number | null; roles?: string[] }
+      currentUser as {
+        moneyInMultiplier?: number | null;
+        roles?: string[];
+        reviewerMultiplierStartTime?: Date | string | null;
+      },
+      scaleReferenceDate
     );
     const moneyOutScale = getMoneyOutAndJackpotScale(
       currentUser as {
         moneyOutAndJackpotMultiplier?: number | null;
         roles?: string[];
-      }
+        reviewerMultiplierStartTime?: Date | string | null;
+      },
+      scaleReferenceDate
     );
     if (moneyInScale !== 1 || moneyOutScale !== 1) {
       convertedRows = convertedRows.map(row => ({

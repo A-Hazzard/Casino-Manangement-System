@@ -18,6 +18,10 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { CollectionReportRow } from '@/lib/types/components';
 import { PipelineStage } from 'mongoose';
 
@@ -42,9 +46,15 @@ export async function getAllCollectionReportsWithMachineCounts(
   endDate?: Date,
   page = 1,
   limit = 50,
-  moneyInScale = 1,
-  moneyOutScale = 1,
-  locationIds?: string[]
+  reviewerScaleUser?: {
+    roles?: string[];
+    moneyInMultiplier?: number | null;
+    moneyOutAndJackpotMultiplier?: number | null;
+    reviewerMultiplierStartTime?: Date | string | null;
+  } | null,
+  locationIds?: string[],
+  search?: string,
+  searchType?: string
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
@@ -72,7 +82,20 @@ export async function getAllCollectionReportsWithMachineCounts(
   if (locationIds && locationIds.length > 0) {
     matchCriteria.location = { $in: locationIds };
   }
-
+  // Add search filter for fields available before the lookup stage
+  if (search && searchType) {
+    if (searchType === 'locationReportId') {
+      matchCriteria.locationReportId = { $regex: search, $options: 'i' };
+    } else if (searchType === 'collectorId') {
+      matchCriteria.collector = { $regex: search, $options: 'i' };
+    } else if (searchType === 'locationId') {
+      matchCriteria.location = { $regex: search, $options: 'i' };
+    } else if (searchType === 'location') {
+      // locationName is a required denormalized field — filter before lookup
+      matchCriteria.locationName = { $regex: search, $options: 'i' };
+    }
+    // 'collector' type is filtered post-lookup against collectorDetails fields below
+  }
   // Always use aggregation to include collector details lookup
   const aggregationPipeline: PipelineStage[] = [
     {
@@ -110,18 +133,34 @@ export async function getAllCollectionReportsWithMachineCounts(
         preserveNullAndEmptyArrays: true,
       },
     },
+    // Post-lookup filter for collector name (searches joined user fields)
+    ...(search && searchType === 'collector'
+      ? [
+        {
+          $match: {
+            $or: [
+              { 'collectorDetails.username': { $regex: search, $options: 'i' } },
+              { 'collectorDetails.profile.firstName': { $regex: search, $options: 'i' } },
+              { 'collectorDetails.profile.lastName': { $regex: search, $options: 'i' } },
+              { 'collectorDetails.emailAddress': { $regex: search, $options: 'i' } },
+            ],
+          },
+        } as PipelineStage,
+      ]
+      : []),
     // Apply licencee filter only if provided
     ...(licenceeId
       ? [
-          {
-            $match: {
-              $or: [
-                { 'locationDetails.rel.licencee': licenceeId },
-                { 'locationDetails.rel.licencee': licenceeId },
-              ],
-            },
+
+        {
+          $match: {
+            $or: [
+              { 'locationDetails.rel.licencee': licenceeId },
+              { 'locationDetails.rel.licencee': licenceeId },
+            ],
           },
-        ]
+        },
+      ]
       : []),
     { $sort: { timestamp: -1 } },
   ];
@@ -253,7 +292,7 @@ export async function getAllCollectionReportsWithMachineCounts(
     locationReportId?: string;
     locationName?: string;
     location?: string | { _id?: string; id?: string };
-    locationDetails?: { _id?: string; id?: string };
+    locationDetails?: { _id?: string; id?: string; slug?: string };
     amountCollected?: number;
     partnerProfit?: number;
     currentBalance?: number;
@@ -342,6 +381,23 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Apply reviewer scales to all financial output values before formatting.
     // Money in fields use moneyInScale, money out fields use moneyOutScale.
     // For non-reviewers scales === 1, so multiplication is a no-op.
+    const reportTimestampSource = doc.timestamp;
+    const scaleReferenceDate =
+      typeof reportTimestampSource === 'string' ||
+        reportTimestampSource instanceof Date
+        ? reportTimestampSource
+        : typeof reportTimestampSource === 'object' &&
+          reportTimestampSource !== null &&
+          '$date' in reportTimestampSource &&
+          typeof reportTimestampSource.$date === 'string'
+          ? reportTimestampSource.$date
+          : null;
+    const moneyInScale = reviewerScaleUser
+      ? getMoneyInScale(reviewerScaleUser, scaleReferenceDate)
+      : 1;
+    const moneyOutScale = reviewerScaleUser
+      ? getMoneyOutAndJackpotScale(reviewerScaleUser, scaleReferenceDate)
+      : 1;
     const displayVariation = calculatedVariation * moneyInScale;
     const scaledGross = displayGross * moneyInScale;
     const scaledCollected = calculatedCollected * moneyInScale;
@@ -356,10 +412,10 @@ export async function getAllCollectionReportsWithMachineCounts(
     const collectorUserId = (doc.collector as string) || '';
     const collectorDetails = doc.collectorDetails as
       | {
-          username?: string;
-          profile?: { firstName?: string; lastName?: string };
-          emailAddress?: string;
-        }
+        username?: string;
+        profile?: { firstName?: string; lastName?: string };
+        emailAddress?: string;
+      }
       | undefined;
 
     // Compute display name with priority: username → firstName → emailAddress → collectorName
@@ -394,6 +450,15 @@ export async function getAllCollectionReportsWithMachineCounts(
       collectorDisplayName = (doc.collectorName as string) || '';
     }
 
+    // Priority 5: Fallback to 'Deleted User' if user not found and no legacy name is set
+    if (!collectorDisplayName && collectorUserId) {
+      if (/^[0-9a-fA-F]{24}$/.test(collectorUserId) || collectorUserId.startsWith('user_') || collectorUserId.length > 15) {
+        collectorDisplayName = 'Deleted User';
+      } else {
+        collectorDisplayName = collectorUserId;
+      }
+    }
+
     // If we have displayName but no fullName set, use displayName as fullName
     if (!collectorFullName && collectorDisplayName) {
       collectorFullName = collectorDisplayName;
@@ -404,23 +469,25 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Prepare tooltip data: firstName, lastName, ID, email
     const collectorTooltipData = collectorDetails
       ? {
-          firstName: collectorDetails.profile?.firstName || undefined,
-          lastName: collectorDetails.profile?.lastName || undefined,
-          id: collectorUserId || undefined,
-          email: collectorDetails.emailAddress || undefined,
-        }
+        firstName: collectorDetails.profile?.firstName || undefined,
+        lastName: collectorDetails.profile?.lastName || undefined,
+        id: collectorUserId || undefined,
+        email: collectorDetails.emailAddress || undefined,
+      }
       : collectorUserId
         ? {
-            firstName: undefined,
-            lastName: undefined,
-            id: collectorUserId,
-            email: undefined,
-          }
+          firstName: undefined,
+          lastName: undefined,
+          id: collectorUserId,
+          email: undefined,
+        }
         : undefined;
 
     const result = {
       _id: doc._id || '',
       locationReportId,
+      locationId: doc.locationDetails?._id || (typeof doc.location === 'object' && doc.location !== null ? doc.location._id : ''),
+      locationSlug: doc.locationDetails?.slug || '',
       collector: collectorUserId, // User ID (primary field)
       collectorFullName: collectorDisplayName || undefined, // Display name (username → firstName → email → collectorName)
       collectorFullNameTooltip: collectorFullName || undefined, // Full name for tooltip (firstName + lastName when available)
@@ -444,8 +511,8 @@ export async function getAllCollectionReportsWithMachineCounts(
             typeof ts === 'string' || ts instanceof Date
               ? new Date(ts)
               : typeof ts === 'object' &&
-                  '$date' in ts &&
-                  typeof ts.$date === 'string'
+                '$date' in ts &&
+                typeof ts.$date === 'string'
                 ? new Date(ts.$date)
                 : null;
 

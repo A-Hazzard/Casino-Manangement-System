@@ -5,7 +5,7 @@ import { Countries } from '../models/countries';
 import { Licencee } from '../models/licencee';
 import type { CountryDocument, LicenceeDocument } from '@shared/types';
 import { generateUniqueLicenceKey } from '../utils/licenceKey';
-import { calculateChanges, logActivity } from './activityLogger';
+import { calculateChanges, logActivity, mapDeletedFieldsToChanges } from './activityLogger';
 import { getUserFromServer } from './users';
 
 /**
@@ -169,6 +169,22 @@ export async function createLicencee(
 
   if (currentUser && currentUser.emailAddress) {
     try {
+      const changes = Object.entries(licencee.toObject())
+        .filter(([key]) => !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key))
+        .map(([key, val]) => {
+          let stringVal = String(val);
+          if (val instanceof Date) {
+            stringVal = val.toISOString();
+          } else if (typeof val === 'object' && val !== null) {
+            stringVal = JSON.stringify(val);
+          }
+          return {
+            field: key,
+            oldValue: null,
+            newValue: stringVal,
+          };
+        });
+
       await logActivity({
         action: 'CREATE',
         details: `Created licencee "${name}"`,
@@ -183,6 +199,7 @@ export async function createLicencee(
           resource: 'licencee',
           resourceId: newId,
           resourceName: name,
+          changes,
         },
       });
     } catch (logError) {
@@ -423,44 +440,9 @@ export async function deleteLicencee(_id: string, request: NextRequest) {
 
   if (currentUser && currentUser.emailAddress) {
     try {
-      const deleteChanges = [
-        { field: 'name', oldValue: licenceeToDelete.name, newValue: null },
-        {
-          field: 'description',
-          oldValue: licenceeToDelete.description || '',
-          newValue: null,
-        },
-        {
-          field: 'country',
-          oldValue: licenceeToDelete.country,
-          newValue: null,
-        },
-        {
-          field: 'licenceKey',
-          oldValue: licenceeToDelete.licenceKey,
-          newValue: null,
-        },
-        {
-          field: 'startDate',
-          oldValue: licenceeToDelete.startDate,
-          newValue: null,
-        },
-        {
-          field: 'expiryDate',
-          oldValue: licenceeToDelete.expiryDate,
-          newValue: null,
-        },
-        {
-          field: 'isPaid',
-          oldValue:
-            licenceeToDelete.isPaid !== undefined
-              ? licenceeToDelete.isPaid
-              : licenceeToDelete.expiryDate
-                ? new Date(licenceeToDelete.expiryDate) > new Date()
-                : false,
-          newValue: null,
-        },
-      ];
+      const deleteChanges = mapDeletedFieldsToChanges(
+        licenceeToDelete.toObject ? licenceeToDelete.toObject() : licenceeToDelete
+      );
 
       await logActivity({
         action: 'DELETE',

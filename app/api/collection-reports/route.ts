@@ -26,17 +26,15 @@ import {
 } from '@/app/api/lib/helpers/collectionReport/reportCreation';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { Machine } from '@/app/api/lib/models/machines';
 import type { TimePeriod } from '@/app/api/lib/types';
+import type { GamingMachine } from '@/shared/types';
 import {
   logRouteFetch,
   logRouteCreate,
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
-import {
-  getMoneyInScale,
-  getMoneyOutAndJackpotScale,
-} from '@/app/api/lib/utils/reviewerScale';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
@@ -224,17 +222,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Reviewer scales — non-reviewers always get 1 (no transformation).
-    const moneyInScale = getMoneyInScale(
-      userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
-    );
-    const moneyOutScale = getMoneyOutAndJackpotScale(
-      userPayload as {
-        moneyOutAndJackpotMultiplier?: number | null;
-        roles?: string[];
-      }
-    );
-
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
     let userLicencees: string[] = [];
@@ -277,15 +264,25 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Fetch and filter collection reports
     // ============================================================================
+    const { searchParams: apiSearchParams } = new URL(req.url);
+    const search = apiSearchParams.get('search') || undefined;
+    const searchType = apiSearchParams.get('searchType') || undefined;
+
     const { reports, total } = await getAllCollectionReportsWithMachineCounts(
       licencee,
       startDate,
       endDate,
       page,
       limit,
-      moneyInScale,
-      moneyOutScale,
-      locationIds || (locationId ? [locationId] : undefined)
+      userPayload as {
+        roles?: string[];
+        moneyInMultiplier?: number | null;
+        moneyOutAndJackpotMultiplier?: number | null;
+        reviewerMultiplierStartTime?: Date | string | null;
+      },
+      locationIds || (locationId ? [locationId] : undefined),
+      search,
+      searchType
     );
 
     if (!reports || !Array.isArray(reports)) {
@@ -443,6 +440,25 @@ export async function POST(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
+        // Fetch machine names for readable log entries
+        const machineIds = (body.machines || []).map(m => String(m.machineId)).filter(Boolean);
+        const machineDocuments = machineIds.length > 0
+          ? await Machine.find({ _id: { $in: machineIds } }).lean<GamingMachine[]>()
+          : [];
+        const machineNameMap = new Map<string, GamingMachine>(
+          machineDocuments.map(m => [String(m._id), m])
+        );
+
+        const buildMachineName = (m: GamingMachine): string => {
+          const parts: string[] = [];
+          if (m.custom?.name) parts.push(m.custom.name);
+          const manufacturer = m.manuf || m.manufacturer;
+          if (manufacturer) parts.push(manufacturer);
+          return parts.length > 0 ? `${m.serialNumber} (${parts.join(', ')})` : m.serialNumber;
+        };
+
+        const collectorDisplay = body.collectorName || body.collector || 'Unknown';
+
         const createChanges = [
           {
             field: 'locationName',
@@ -452,7 +468,7 @@ export async function POST(req: NextRequest) {
           {
             field: 'collector',
             oldValue: null,
-            newValue: body.collector,
+            newValue: collectorDisplay,
           },
           {
             field: 'amountCollected',
@@ -478,23 +494,31 @@ export async function POST(req: NextRequest) {
           },
         ];
 
-        // Add granular machine data to changes for better traceability
         if (body.machines && Array.isArray(body.machines)) {
-          body.machines.forEach(
-            (machineItem: Record<string, unknown>, index: number) => {
-              const machineName =
-                machineItem.machineCustomName ||
-                machineItem.machineName ||
-                machineItem.serialNumber ||
-                `Machine ${index + 1}`;
-              createChanges.push({
-                field: `machine_${index}_details`,
-                oldValue: null,
-                newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevIn !== undefined ? ` (Prev: ${machineItem.prevIn} In, ${machineItem.prevOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
-              });
-            }
-          );
+          body.machines.forEach((machineItem, index) => {
+            const machineDoc = machineNameMap.get(String(machineItem.machineId));
+            const machineName = machineDoc
+              ? buildMachineName(machineDoc)
+              : `Machine ${index + 1}`;
+            createChanges.push({
+              field: `machine_${index}_details`,
+              oldValue: null,
+              newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevMetersIn !== undefined ? ` (Prev: ${machineItem.prevMetersIn} In, ${machineItem.prevMetersOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}`,
+            });
+          });
         }
+
+        // Enrich machines with resolved name fields for dialog display
+        const enrichedMachines = (body.machines || []).map(machineItem => {
+          const machineDoc = machineNameMap.get(String(machineItem.machineId));
+          return {
+            ...machineItem,
+            serialNumber: machineDoc?.serialNumber,
+            customName: machineDoc?.custom?.name,
+            manuf: machineDoc?.manuf || machineDoc?.manufacturer,
+            displayName: machineDoc ? buildMachineName(machineDoc) : undefined,
+          };
+        });
 
         const userId = (currentUser._id ||
           currentUser.id ||
@@ -505,11 +529,7 @@ export async function POST(req: NextRequest) {
 
         await logActivity({
           action: 'CREATE',
-          details: `Created collection report for ${body.locationName} by ${
-            body.collector || 'Unknown'
-          } (${body.machines?.length || 0} machines, $${
-            body.amountCollected
-          } collected)`,
+          details: `Created collection report for ${body.locationName} by ${collectorDisplay} (${body.machines?.length || 0} machines, $${body.amountCollected} collected)`,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           userId,
@@ -524,8 +544,15 @@ export async function POST(req: NextRequest) {
             resourceId: result.report
               ? String((result.report as { _id: unknown })._id)
               : sanitizedBody.locationReportId,
-            resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
+            resourceName: `${body.locationName} - ${collectorDisplay}`,
             changes: createChanges,
+            previousData: null,
+            newData: {
+              ...(result.report && (result.report as { toObject?: () => Record<string, unknown> }).toObject
+                ? (result.report as { toObject: () => Record<string, unknown> }).toObject()
+                : (result.report || {})),
+              machines: enrichedMachines,
+            },
           },
         });
       } catch (logError) {

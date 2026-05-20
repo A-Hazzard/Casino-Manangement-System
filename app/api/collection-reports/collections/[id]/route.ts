@@ -31,6 +31,7 @@ import type {
 import type { GamingMachine } from '@/shared/types';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { calculateMovement } from '@/lib/utils/movement';
+import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
 function toDate(val: Date | string | undefined): Date {
@@ -146,6 +147,197 @@ export async function PATCH(request: NextRequest) {
       _id: collectionId,
     }).lean<CollectionDocument | null>();
 
+    const originalCollection = originalCollectionForLog;
+    if (!originalCollection) {
+      return NextResponse.json(
+        { success: false, error: 'Collection not found' },
+        { status: 404 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3.8: Handle RAM clear check/uncheck
+    // ============================================================================
+    const unsetData: Record<string, number> = {};
+    const explicitSasEndTime = updateData.sasEndTime;
+
+    if (originalCollection.ramClear === true && updateData.ramClear === false) {
+      console.log(`[Collections PATCH ID] RAM clear unchecked for collection ${collectionId}. Deleting existing meters and creating new single regular meter.`);
+      const { Meters } = await import('@/app/api/lib/models/meters');
+      
+      // Delete existing meters
+      if (originalCollection.meterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
+      }
+      if (originalCollection.ramClearMeterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+      }
+
+      // Create new regular meter
+      const currentMeterId = await generateMongoId();
+      
+      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
+      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
+
+      const movementIn = newMetersIn - newPrevIn;
+      const movementOut = newMetersOut - newPrevOut;
+
+      const collectionTimestamp = updateData.timestamp
+        ? new Date(updateData.timestamp)
+        : new Date(originalCollection.timestamp);
+
+      const currentMeter = {
+        _id: currentMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: movementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: movementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp,
+        createdAt: new Date(),
+      };
+
+      await Meters.create(currentMeter);
+
+      updateData.meterId = currentMeterId;
+      unsetData.ramClearMeterId = 1;
+      unsetData.ramClearMetersIn = 1;
+      unsetData.ramClearMetersOut = 1;
+      
+      delete updateData.ramClearMeterId;
+      delete updateData.ramClearMetersIn;
+      delete updateData.ramClearMetersOut;
+    } else if ((originalCollection.ramClear === false || !originalCollection.ramClear) && updateData.ramClear === true) {
+      console.log(`[Collections PATCH ID] RAM clear checked for collection ${collectionId}. Deleting existing meters and creating two new RAM clear meters.`);
+      const { Meters } = await import('@/app/api/lib/models/meters');
+      
+      // Delete existing meters
+      if (originalCollection.meterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
+      }
+      if (originalCollection.ramClearMeterId) {
+        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+      }
+
+      // Create new RAM clear meter (Meter 1) and current meter (Meter 2)
+      const ramClearMeterId = await generateMongoId();
+      const currentMeterId = await generateMongoId();
+
+      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
+      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
+      const newRamClearMetersIn = updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn ?? 0;
+      const newRamClearMetersOut = updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut ?? 0;
+
+      const ramClearMovementIn = newRamClearMetersIn - newPrevIn;
+      const ramClearMovementOut = newRamClearMetersOut - newPrevOut;
+
+      const postResetMovementIn = newMetersIn;
+      const postResetMovementOut = newMetersOut;
+
+      const collectionTimestamp = updateData.timestamp
+        ? new Date(updateData.timestamp)
+        : new Date(originalCollection.timestamp);
+
+      const baseReadAt = explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp;
+      const baseCreatedAt = new Date();
+
+      const currentMeterReadAt = new Date(baseReadAt.getTime() + 1000);
+      const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
+
+      const ramClearMeter = {
+        _id: ramClearMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: ramClearMovementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: ramClearMovementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newRamClearMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newRamClearMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        isRamClear: true,
+        readAt: baseReadAt,
+        createdAt: baseCreatedAt,
+      };
+
+      const currentMeter = {
+        _id: currentMeterId,
+        machine: originalCollection.machineId,
+        location: originalCollection.location,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: postResetMovementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: postResetMovementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: newMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: newMetersIn,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: currentMeterReadAt,
+        createdAt: currentMeterCreatedAt,
+      };
+
+      await Meters.create(ramClearMeter);
+      await Meters.create(currentMeter);
+
+      updateData.ramClearMeterId = ramClearMeterId;
+      updateData.meterId = currentMeterId;
+    }
+
     // ============================================================================
     // STEP 4: Remove immutable _id field if present
     // ============================================================================
@@ -258,10 +450,17 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const updateQuery: Record<string, unknown> = {
+      $set: updatePayload,
+    };
+    if (Object.keys(unsetData).length > 0) {
+      updateQuery.$unset = unsetData;
+    }
+
     // First update: Apply basic fields and any explicit SAS times
     const updatedCollection = await Collections.findOneAndUpdate(
       { _id: collectionId },
-      { $set: updatePayload },
+      updateQuery,
       { new: true, runValidators: false }
     );
 
@@ -620,39 +819,129 @@ export async function PATCH(request: NextRequest) {
               newValue: unknown;
             }> = [];
 
-            if (updateData.metersIn !== undefined && preUpdateDoc) {
+            const isDifferent = (oldVal: unknown, newVal: unknown): boolean => {
+              if (oldVal === newVal) return false;
+              if (oldVal == null || newVal == null) {
+                return (oldVal == null) !== (newVal == null);
+              }
+              const isDate = (val: unknown): val is Date =>
+                val instanceof Date ||
+                (typeof val === 'object' &&
+                  val !== null &&
+                  Object.prototype.toString.call(val) === '[object Date]');
+
+              const isDateLike = (val: unknown): boolean => {
+                if (isDate(val)) return true;
+                if (typeof val === 'string') {
+                  const parsed = Date.parse(val);
+                  return !isNaN(parsed) && val.includes('-');
+                }
+                return false;
+              };
+
+              if (isDateLike(oldVal) || isDateLike(newVal)) {
+                try {
+                  const t1 = new Date(oldVal as string | number | Date).getTime();
+                  const t2 = new Date(newVal as string | number | Date).getTime();
+                  if (!isNaN(t1) && !isNaN(t2)) return t1 !== t2;
+                } catch {
+                  // Fallback
+                }
+              }
+              if (typeof oldVal === 'number' || typeof newVal === 'number') {
+                return Number(oldVal) !== Number(newVal);
+              }
+              if (typeof oldVal === 'boolean' || typeof newVal === 'boolean') {
+                return Boolean(oldVal) !== Boolean(newVal);
+              }
+              if (typeof oldVal === 'string' && typeof newVal === 'string') {
+                return oldVal.trim() !== newVal.trim();
+              }
+              return String(oldVal).trim() !== String(newVal).trim();
+            };
+
+            if (updateData.metersIn !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.metersIn, updateData.metersIn)) {
               updateChanges.push({
                 field: 'metersIn',
                 oldValue: preUpdateDoc.metersIn,
                 newValue: updateData.metersIn,
               });
             }
-            if (updateData.metersOut !== undefined && preUpdateDoc) {
+            if (updateData.metersOut !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.metersOut, updateData.metersOut)) {
               updateChanges.push({
                 field: 'metersOut',
                 oldValue: preUpdateDoc.metersOut,
                 newValue: updateData.metersOut,
               });
             }
-            if (updateData.notes !== undefined && preUpdateDoc) {
+            if (updateData.prevIn !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.prevIn, updateData.prevIn)) {
+              updateChanges.push({
+                field: 'prevIn',
+                oldValue: preUpdateDoc.prevIn,
+                newValue: updateData.prevIn,
+              });
+            }
+            if (updateData.prevOut !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.prevOut, updateData.prevOut)) {
+              updateChanges.push({
+                field: 'prevOut',
+                oldValue: preUpdateDoc.prevOut,
+                newValue: updateData.prevOut,
+              });
+            }
+            if (updateData.notes !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.notes, updateData.notes)) {
               updateChanges.push({
                 field: 'notes',
                 oldValue: preUpdateDoc.notes,
                 newValue: updateData.notes,
               });
             }
-            if (updateData.ramClear !== undefined && preUpdateDoc) {
+            if (updateData.ramClear !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.ramClear, updateData.ramClear)) {
               updateChanges.push({
                 field: 'ramClear',
                 oldValue: preUpdateDoc.ramClear,
                 newValue: updateData.ramClear,
               });
             }
-            if (updateData.timestamp !== undefined && preUpdateDoc) {
+            if (updateData.ramClearMetersIn !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.ramClearMetersIn, updateData.ramClearMetersIn)) {
+              updateChanges.push({
+                field: 'ramClearMetersIn',
+                oldValue: preUpdateDoc.ramClearMetersIn,
+                newValue: updateData.ramClearMetersIn,
+              });
+            }
+            if (updateData.ramClearMetersOut !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.ramClearMetersOut, updateData.ramClearMetersOut)) {
+              updateChanges.push({
+                field: 'ramClearMetersOut',
+                oldValue: preUpdateDoc.ramClearMetersOut,
+                newValue: updateData.ramClearMetersOut,
+              });
+            }
+            if (updateData.timestamp !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.timestamp, updateData.timestamp)) {
               updateChanges.push({
                 field: 'timestamp',
                 oldValue: preUpdateDoc.timestamp,
                 newValue: updateData.timestamp,
+              });
+            }
+            if (updateData.collectionTime !== undefined && preUpdateDoc && isDifferent(preUpdateDoc.collectionTime, updateData.collectionTime)) {
+              updateChanges.push({
+                field: 'collectionTime',
+                oldValue: preUpdateDoc.collectionTime,
+                newValue: updateData.collectionTime,
+              });
+            }
+            if (updateData.sasStartTime !== undefined && preUpdateDoc && isDifferent((preUpdateDoc.sasMeters as Record<string, unknown>)?.sasStartTime, updateData.sasStartTime)) {
+              updateChanges.push({
+                field: 'sasStartTime',
+                oldValue: (preUpdateDoc.sasMeters as Record<string, unknown>)?.sasStartTime,
+                newValue: updateData.sasStartTime,
+              });
+            }
+            if (updateData.sasEndTime !== undefined && preUpdateDoc && isDifferent((preUpdateDoc.sasMeters as Record<string, unknown>)?.sasEndTime, updateData.sasEndTime)) {
+              updateChanges.push({
+                field: 'sasEndTime',
+                oldValue: (preUpdateDoc.sasMeters as Record<string, unknown>)?.sasEndTime,
+                newValue: updateData.sasEndTime,
               });
             }
 

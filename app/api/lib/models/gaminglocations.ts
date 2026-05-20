@@ -76,6 +76,14 @@ const GamingLocationsSchema = new Schema(
     noSMIBLocation: Boolean,
     fullSMIBs: Boolean,
     semiSMIBs: Boolean,
+    googleMapsLink: {
+      type: String,
+      default: '',
+    },
+    googleMapsIframe: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

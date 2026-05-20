@@ -69,6 +69,7 @@ type MobileFormPanelProps = {
   baseBalanceCorrection: string;
   onBaseBalanceCorrectionChange: (value: string) => void;
   isManager?: boolean;
+  isLoadingTime?: boolean;
 };
 
 /**
@@ -117,6 +118,7 @@ export default function CollectionReportMobileFormPanel({
   onAddMachine,
   autoFillRamClearMeters,
   isManager = false,
+  isLoadingTime = false,
 }: MobileFormPanelProps) {
   return (
     <div
@@ -206,6 +208,7 @@ export default function CollectionReportMobileFormPanel({
                 onSasEndTimeChange={val =>
                   onFormDataChange('sasEndTime', val || null)
                 }
+                isLoadingTime={isLoadingTime}
               />
             )}
           </div>

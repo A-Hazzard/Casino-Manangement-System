@@ -69,8 +69,8 @@ export default function AdministrationNavigation({
   // ============================================================================
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
-      {/* Desktop - md: and above */}
-      <nav className="hidden space-x-2 px-4 md:flex lg:space-x-4">
+      {/* Navigation Tabs - Scrollable on all screen sizes */}
+      <nav className="no-scrollbar touch-pan-x flex items-center space-x-2 overflow-x-auto px-4 lg:space-x-4">
         {accessibleTabs.map(tab => {
           const isActive = activeSection === tab.id;
 
@@ -103,22 +103,6 @@ export default function AdministrationNavigation({
           );
         })}
       </nav>
-
-      {/* Mobile - below md: */}
-      <div className="px-4 py-2 md:hidden">
-        <select
-          value={activeSection}
-          onChange={e => onChange(e.target.value as AdministrationSection)}
-          className="navigation-button w-full cursor-pointer select-auto rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-          aria-label="Select administration section"
-        >
-          {accessibleTabs.map(t => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </div>
     </div>
   );
 }

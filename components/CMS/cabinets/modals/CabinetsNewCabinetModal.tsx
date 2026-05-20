@@ -21,7 +21,6 @@ import {
 import { createCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/cabinets';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
-import { useUserStore } from '@/lib/store/userStore';
 import { NewCabinetFormData } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { gsap } from 'gsap';
@@ -41,7 +40,6 @@ export default function CabinetsNewCabinetModal({
 }: CabinetsNewCabinetModalProps) {
   const { isCabinetModalOpen, locationId, closeCabinetModal } =
     useNewCabinetStore();
-  const { user } = useUserStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -54,77 +52,7 @@ export default function CabinetsNewCabinetModal({
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
-  // Helper function to get proper user display name for activity logging
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
 
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== '') {
-      return user.username;
-    }
-
-    // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== '') {
-      return user.emailAddress;
-    }
-
-    // Fallback
-    return 'Unknown User';
-  };
-
-  // Activity logging is now handled via API calls
-  const logActivity = async (
-    action: string,
-    resource: string,
-    resourceId: string,
-    resourceName: string,
-    details: string,
-    previousData?: Record<string, unknown> | null,
-    newData?: Record<string, unknown> | null
-  ) => {
-    try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: [], // Will be calculated by the API
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
-  };
 
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
@@ -175,6 +103,14 @@ export default function CabinetsNewCabinetModal({
     manufacturer: '',
     otherGameType: '',
     custom: { name: '' },
+    gameConfig: {
+      theoreticalRtp: 0,
+      maxBet: '0',
+      payTableId: '',
+      additionalId: '',
+      gameOptions: '',
+      progressiveGroup: '',
+    },
     collectionSettings: {
       multiplier: '1',
       lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -309,17 +245,6 @@ export default function CabinetsNewCabinetModal({
 
       const success = await createCabinet(submissionData);
       if (success) {
-        // Log the cabinet creation activity
-        await logActivity(
-          'create',
-          'machine',
-          formData.serialNumber || 'Unknown',
-          `${formData.game} - ${formData.serialNumber}`,
-          `Created new cabinet: ${formData.game} (${formData.serialNumber}) at location ${formData.gamingLocation}`,
-          null, // No previous data for creation
-          formData // New data
-        );
-
         toast.success('Cabinet created successfully!');
         handleClose();
         // Reset form after successful submission
@@ -350,6 +275,14 @@ export default function CabinetsNewCabinetModal({
       manufacturer: '',
       otherGameType: '',
       custom: { name: '' },
+      gameConfig: {
+        theoreticalRtp: 0,
+        maxBet: '0',
+        payTableId: '',
+        additionalId: '',
+        gameOptions: '',
+        progressiveGroup: '',
+      },
       collectionSettings: {
         multiplier: '1',
         lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -760,6 +693,8 @@ export default function CabinetsNewCabinetModal({
                   </div>
                 )}
               </div>
+
+              {/* Game Configuration Section Removed as per requirements */}
 
               {/* Location & Configuration Section */}
               <div className="space-y-4">

@@ -4,6 +4,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 // ============================================================================
 // Types
@@ -14,14 +15,24 @@ export type V2Session = {
   sessionStatus: 'in-progress' | 'submitted';
   locationId: string;
   locationName: string;
+  noSMIBLocation?: boolean;
   licencee: string;
   collector: string;
   collectorName: string;
+  collectorEmail: string;
+  collectorFirstName: string;
+  collectorLastName: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   machinesTotal: number;
   machinesCaptured: number;
   machinesConfirmed: number;
   machinesSkipped: number;
+  totalMachineGross: number;
+  totalSasGross: number;
+  totalGrossDifference: number;
   createdAt: string;
+  deletedAt?: string;
 };
 
 const ITEMS_PER_PAGE = 20;
@@ -38,9 +49,21 @@ export function useCollectionReportV2Data(
 
   const [sessions, setSessions] = useState<V2Session[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
-  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string | string[]>(
+    'all'
+  );
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<
+    'collector' | 'location' | 'sessionId' | 'locationId'
+  >('collector');
+  const [sortField, setSortField] = useState<string>('created');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showArchived, setShowArchived] = useState(false);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // ============================================================================
   // Fetch
@@ -70,8 +93,15 @@ export function useCollectionReportV2Data(
               : String(customDateRange.endDate)
           );
       }
+      if (debouncedSearchTerm) {
+        params.set('search', debouncedSearchTerm);
+        params.set('searchType', searchType);
+      }
       params.set('page', String(currentPage + 1));
       params.set('limit', String(ITEMS_PER_PAGE));
+      if (sortField) params.set('sortField', sortField);
+      if (sortDirection) params.set('sortDirection', sortDirection);
+      if (showArchived) params.set('includeDeleted', 'true');
 
       const res = await axios.get(
         `/api/collection-reports-v2/sessions?${params.toString()}`
@@ -85,7 +115,38 @@ export function useCollectionReportV2Data(
     } finally {
       setLoading(false);
     }
-  }, [selectedLicencee, activeMetricsFilter, customDateRange, currentPage]);
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    currentPage,
+    debouncedSearchTerm,
+    searchType,
+    sortField,
+    sortDirection,
+    showArchived,
+  ]);
+
+  const handleSort = useCallback(
+    (field: string) => {
+      setSortDirection(prevDir => {
+        if (sortField === field) {
+          return prevDir === 'asc' ? 'desc' : 'asc';
+        }
+        return 'desc';
+      });
+      setSortField(field);
+      setCurrentPage(0);
+    },
+    [sortField]
+  );
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setCurrentPage(0);
+    await fetchSessions();
+    setIsRefreshing(false);
+  }, [fetchSessions]);
 
   useEffect(() => {
     fetchSessions();
@@ -97,6 +158,12 @@ export function useCollectionReportV2Data(
 
   const filteredSessions = useMemo(() => {
     if (!selectedLocation || selectedLocation === 'all') return sessions;
+    if (Array.isArray(selectedLocation)) {
+      if (selectedLocation.length === 0) return sessions;
+      return sessions.filter(session =>
+        selectedLocation.includes(session.locationId)
+      );
+    }
     return sessions.filter(session => session.locationId === selectedLocation);
   }, [sessions, selectedLocation]);
 
@@ -108,13 +175,25 @@ export function useCollectionReportV2Data(
   return {
     sessions: filteredSessions,
     loading,
+    isRefreshing,
     locations,
     selectedLocation,
-    setSelectedLocation,
+    setSelectedLocation: setSelectedLocation as React.Dispatch<
+      React.SetStateAction<string | string[]>
+    >,
     currentPage,
     setCurrentPage,
     totalPages,
     totalSessions,
-    onRefresh: fetchSessions,
+    onRefresh,
+    searchTerm,
+    setSearchTerm,
+    searchType,
+    setSearchType,
+    sortField,
+    sortDirection,
+    handleSort,
+    showArchived,
+    setShowArchived,
   };
 }

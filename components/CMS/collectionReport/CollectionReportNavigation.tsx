@@ -41,7 +41,7 @@ export default function CollectionReportNavigation({
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop - md: and above */}
-      <nav className="hidden space-x-1 px-1 md:flex md:space-x-2 md:px-2 lg:space-x-8 lg:px-6">
+      <nav className="hidden overflow-x-auto px-1 md:flex md:space-x-2 md:px-2 lg:space-x-8 lg:px-6">
         {accessibleTabs.map(tab => {
           const isActive = activeView === tab.id;
           const isHighlighted = tab.highlight === true;
@@ -50,7 +50,7 @@ export default function CollectionReportNavigation({
             <motion.button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`navigation-button relative flex cursor-pointer items-center space-x-0.5 whitespace-nowrap border-b-2 px-0.5 py-1 text-xs font-medium transition-all duration-200 md:space-x-1 md:px-1 md:py-2 lg:space-x-2 lg:px-2 lg:py-4 xl:text-sm ${
+              className={`navigation-button relative flex shrink-0 cursor-pointer items-center space-x-0.5 whitespace-nowrap border-b-2 px-0.5 py-1 text-xs font-medium transition-all duration-200 md:space-x-1 md:px-1 md:py-2 lg:space-x-2 lg:px-2 lg:py-4 xl:text-sm ${
                 isActive && isHighlighted
                   ? 'border-amber-500 bg-amber-50 text-amber-700'
                   : isActive

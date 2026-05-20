@@ -1,6 +1,6 @@
 # Cabinets Page Implementation (`/cabinets`)
 
-**Author:** Evolution One Engineering  
+**Author:** Aaron Hazzard | Senior Full-Stack Software Engineer  
 **Last Updated:May 4, 2026  
 **Version:\*\* 5.0.0 (Unified API Architecture)
 

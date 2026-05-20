@@ -53,6 +53,7 @@ import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
+const DEFAULT_REVIEWER_MULTIPLIER_START_DATE = '2026-04-01';
 
 // ============================================================================
 // Constants
@@ -221,6 +222,8 @@ export default function AdministrationAddUserModal({
   const [moneyInMultiplier, setMoneyInMultiplier] = useState<string>('');
   const [moneyOutAndJackpotMultiplier, setMoneyOutAndJackpotMultiplier] =
     useState<string>('');
+  const [reviewerMultiplierStartTime, setReviewerMultiplierStartTime] =
+    useState<string>(DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -276,6 +279,7 @@ export default function AdministrationAddUserModal({
       setAllLocationsSelected(false);
       setMoneyInMultiplier('');
       setMoneyOutAndJackpotMultiplier('');
+      setReviewerMultiplierStartTime(DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
       setAccountErrors({});
       setAccountTouched({});
       setPasswordStrength({
@@ -747,6 +751,7 @@ export default function AdministrationAddUserModal({
     if (!newRoles.includes('reviewer')) {
       setMoneyInMultiplier('');
       setMoneyOutAndJackpotMultiplier('');
+      setReviewerMultiplierStartTime(DEFAULT_REVIEWER_MULTIPLIER_START_DATE);
     }
 
     // Enforce single selection if vault-manager or cashier is selected
@@ -1040,6 +1045,9 @@ export default function AdministrationAddUserModal({
         roles.includes('reviewer') && moneyOutAndJackpotMultiplier
           ? parseFloat(moneyOutAndJackpotMultiplier) / 100
           : 0,
+      reviewerMultiplierStartTime: roles.includes('reviewer')
+        ? reviewerMultiplierStartTime || DEFAULT_REVIEWER_MULTIPLIER_START_DATE
+        : null,
       allowedLocations: allLocationsSelected
         ? availableLocations.map(loc => loc._id)
         : selectedLocationIds,
@@ -1806,6 +1814,23 @@ export default function AdministrationAddUserModal({
                             <span className="font-bold text-orange-900">
                               {moneyOutAndJackpotMultiplier || 0}%
                             </span>
+                          </p>
+                        </div>
+                        {/* Multiplier Start Time */}
+                        <div className="relative min-w-[200px] max-w-xs flex-1">
+                          <Label className="text-xs font-semibold text-blue-700">
+                            Multiplier start time
+                          </Label>
+                          <Input
+                            type="date"
+                            value={reviewerMultiplierStartTime}
+                            onChange={event =>
+                              setReviewerMultiplierStartTime(event.target.value)
+                            }
+                            className="mt-1 border-blue-200 bg-blue-50/30 focus:ring-blue-500"
+                          />
+                          <p className="mt-1 rounded-md border border-blue-100 bg-blue-50 p-2 text-xs font-medium italic text-blue-600">
+                            ℹ️ Applies reviewer multipliers from this date onward.
                           </p>
                         </div>
                       </div>

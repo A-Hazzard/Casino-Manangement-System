@@ -2164,6 +2164,47 @@ export async function PATCH(req: NextRequest) {
 
 This fix ensures that editing collection reports maintains the same data integrity as creating them.
 
+### SAS Manual Time Window Override & Recalculation (Added May 19, 2026)
+
+#### The Problem: Manual Time Updates Stalling Metrics
+When operators manually adjusted SAS start or end times inside the V1 edit modal, the client would send `sasStartTime` and `sasEndTime` in the request body. However:
+1. **Recalculation Skipped**: The API's Step 7 recalculation block was only triggered if the main timestamp or the physical meters changed. A pure adjustment of SAS times did not trigger recalculation, leaving the financial metrics (`drop`, `gross`, `totalCancelledCredits`) calculated for the old range.
+2. **Auto-Detect Collision**: When step 7 did run, `getSasTimePeriod` would auto-detect the start time from the previous collection rather than respecting the operator's manual selection.
+3. **Mongoose Subdocument Spread Mutation**: Spreading a live Mongoose subdocument directly:
+   ```typescript
+   updateData.sasMeters = {
+     ...originalCollection.sasMeters,
+     // ...
+   }
+   ```
+   copied Mongoose's internal states, getters, and document properties (`_doc`, `$__`). This confused Mongoose during save operations, causing updates to not persist.
+
+#### The Fix:
+1. **Detection Flag**: Added `sasTimesChanged` in Step 5:
+   ```typescript
+   const existingSasStartTime = originalCollection.sasMeters?.sasStartTime
+     ? new Date(originalCollection.sasMeters.sasStartTime).getTime()
+     : null;
+   const existingSasEndTime = originalCollection.sasMeters?.sasEndTime
+     ? new Date(originalCollection.sasMeters.sasEndTime).getTime()
+     : null;
+
+   const sasTimesChanged =
+     (updateData.sasStartTime !== undefined &&
+       new Date(updateData.sasStartTime).getTime() !== existingSasStartTime) ||
+     (updateData.sasEndTime !== undefined &&
+       new Date(updateData.sasEndTime).getTime() !== existingSasEndTime);
+   ```
+2. **Recalculation Trigger**: Included `sasTimesChanged` in the Step 7 condition: `if (timestampChanged || metersChanged || sasTimesChanged)`.
+3. **Force Custom Windows**: When only SAS times are overridden, they are supplied directly as `customStartTime` / `customEndTime` to `getSasTimePeriod` so the system respects the manual range instead of auto-detecting the start time.
+4. **Mongoose Document to Plain Object**: Convert the mongoose document using `.toObject()` before spreading to strip the Mongoose helpers/internals:
+   ```typescript
+   const originalCollectionObj = originalCollection && typeof originalCollection.toObject === 'function'
+     ? originalCollection.toObject()
+     : originalCollection;
+   const existingSasMetersObj = originalCollectionObj.sasMeters || {};
+   ```
+
 ---
 
 ## `isEditing` Flag System - Unsaved Changes Protection

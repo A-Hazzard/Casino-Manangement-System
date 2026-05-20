@@ -1,16 +1,13 @@
-/**
- * Collection Report V2 — Session Report Machines Tab
- *
- * Searchable, sortable, paginated table of captured machines.
- * Desktop: sortable table with photo thumbnails.
- * Mobile: card layout with same data.
- */
-
 'use client';
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import StatusBadge from './CollectionReportV2StatusBadge';
+
+type ReportedMachineMovement = {
+  manualMetersIn?: number;
+  manualMetersOut?: number;
+  machineGross?: number;
+};
 
 type SessionMachine = {
   reportedMachineId: string;
@@ -22,35 +19,51 @@ type SessionMachine = {
   game?: string;
   status: 'pending' | 'captured' | 'confirmed' | 'skipped';
   sequenceOrder: number;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  // SAS lifetime meters read from the machine
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  sasGross?: number;
+  // Manual meters entered by the collector (metersMatch === false)
+  manualMetersIn?: number;
+  manualMetersOut?: number;
+  // Previous SAS meter readings (from last submitted session for this machine)
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
+  // Movement delta (manual meters - previous sas meters)
+  movement?: ReportedMachineMovement;
   sasStartTime?: string;
   sasEndTime?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   imageData?: string;
-  imageFileId?: string;
-  imageName?: string;
   metersMatch?: boolean;
+  machineGross?: number;
+  grossDifference?: number;
   createdAt?: string;
   updatedAt?: string;
 };
 
 type MachinesTabProps = {
   machines: SessionMachine[];
+  noSMIBLocation?: boolean;
 };
 
 type SortField =
   | 'machineName'
-  | 'serialNumber'
-  | 'systemMetersIn'
-  | 'systemMetersOut'
-  | 'metersMatch'
-  | 'status'
-  | 'capturedAt';
+  | 'lifetimeMachineIn'
+  | 'lifetimeMachineOut'
+  | 'lifetimeSasIn'
+  | 'lifetimeSasGross'
+  | 'movementMachineIn'
+  | 'movementMachineOut'
+  | 'movementMachineGross'
+  | 'variation';
 
 const ITEMS_PER_PAGE = 20;
 
 export default function CollectionReportV2SessionReportMachinesTab({
   machines,
+  noSMIBLocation,
 }: MachinesTabProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,10 +101,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
         ''
       ).toLowerCase();
       const serial = (machine.serialNumber || '').toLowerCase();
-      return (
-        name.includes(term) ||
-        serial.includes(term)
-      );
+      return name.includes(term) || serial.includes(term);
     });
   }, [machines, searchTerm]);
 
@@ -100,47 +110,56 @@ export default function CollectionReportV2SessionReportMachinesTab({
     list.sort((a, b) => {
       let cmp = 0;
 
+      // Lifetime machine values: prefer manual for noSMIB, sas for SMIB metersMatch
+      const lifetimeMachineInA = a.manualMetersIn ?? a.sasMetersIn ?? 0;
+      const lifetimeMachineInB = b.manualMetersIn ?? b.sasMetersIn ?? 0;
+      const lifetimeMachineOutA = a.manualMetersOut ?? a.sasMetersOut ?? 0;
+      const lifetimeMachineOutB = b.manualMetersOut ?? b.sasMetersOut ?? 0;
+
       switch (sortField) {
         case 'machineName': {
           const nameA = (
-            a.machineCustomName || a.machineName || ''
+            a.machineCustomName ||
+            a.machineName ||
+            ''
           ).toLowerCase();
           const nameB = (
-            b.machineCustomName || b.machineName || ''
+            b.machineCustomName ||
+            b.machineName ||
+            ''
           ).toLowerCase();
           cmp = nameA.localeCompare(nameB);
           break;
         }
-        case 'serialNumber':
-          cmp = (a.serialNumber || '').localeCompare(b.serialNumber || '');
+        case 'lifetimeMachineIn':
+          cmp = lifetimeMachineInA - lifetimeMachineInB;
           break;
-        case 'systemMetersIn':
-          cmp = a.systemMetersIn - b.systemMetersIn;
+        case 'lifetimeMachineOut':
+          cmp = lifetimeMachineOutA - lifetimeMachineOutB;
           break;
-        case 'systemMetersOut':
-          cmp = a.systemMetersOut - b.systemMetersOut;
+        case 'lifetimeSasIn':
+          cmp = (a.sasMetersIn ?? 0) - (b.sasMetersIn ?? 0);
           break;
-        case 'metersMatch': {
-          const aVal = a.metersMatch === true ? 1 : a.metersMatch === false ? 0 : -1;
-          const bVal = b.metersMatch === true ? 1 : b.metersMatch === false ? 0 : -1;
-          cmp = aVal - bVal;
+        case 'lifetimeSasGross':
+          cmp = (a.sasGross ?? 0) - (b.sasGross ?? 0);
           break;
-        }
-        case 'status': {
-          const order = { pending: 0, captured: 1, confirmed: 2, skipped: 3 };
-          cmp = (order[a.status] ?? 0) - (order[b.status] ?? 0);
+        case 'movementMachineIn':
+          cmp =
+            (a.movement?.manualMetersIn ?? 0) -
+            (b.movement?.manualMetersIn ?? 0);
           break;
-        }
-        case 'capturedAt': {
-          const aTime = new Date(
-            a.createdAt || a.updatedAt || 0
-          ).getTime();
-          const bTime = new Date(
-            b.createdAt || b.updatedAt || 0
-          ).getTime();
-          cmp = aTime - bTime;
+        case 'movementMachineOut':
+          cmp =
+            (a.movement?.manualMetersOut ?? 0) -
+            (b.movement?.manualMetersOut ?? 0);
           break;
-        }
+        case 'movementMachineGross':
+          cmp =
+            (a.movement?.machineGross ?? 0) - (b.movement?.machineGross ?? 0);
+          break;
+        case 'variation':
+          cmp = (a.grossDifference ?? 0) - (b.grossDifference ?? 0);
+          break;
       }
 
       return sortDirection === 'asc' ? cmp : -cmp;
@@ -158,7 +177,6 @@ export default function CollectionReportV2SessionReportMachinesTab({
     return sorted.slice(start, start + ITEMS_PER_PAGE);
   }, [sorted, currentPage]);
 
-  // Reset to page 1 when search changes
   useMemo(() => {
     if (currentPage > Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1) {
       setCurrentPage(1);
@@ -169,11 +187,16 @@ export default function CollectionReportV2SessionReportMachinesTab({
   // Helpers
   // ============================================================================
 
-  const formatNum = (value: number) => value.toLocaleString();
-  const formatTime = (dateStr?: string) => {
-    if (!dateStr) return '—';
+  const formatNum = (value: number | null) =>
+    value != null ? value.toLocaleString() : 'N/A';
+
+  const formatDateTime = (iso: string | undefined): string => {
+    if (!iso) return '—';
     try {
-      return new Date(dateStr).toLocaleTimeString('en-US', {
+      return new Date(iso).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
       });
@@ -182,40 +205,147 @@ export default function CollectionReportV2SessionReportMachinesTab({
     }
   };
 
-  const metersMatchLabel = (match?: boolean) => {
-    if (match === true) return { label: 'Yes', className: 'text-green-700 bg-green-50 border-green-200' };
-    if (match === false) return { label: 'No', className: 'text-amber-700 bg-amber-50 border-amber-200' };
-    return { label: '—', className: 'text-gray-400 bg-gray-50 border-gray-200' };
-  };
-
   // ============================================================================
-  // Photo Preview Modal
+  // Sort Icon
   // ============================================================================
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
+    if (sortField !== field) {
+      return <span className="ml-1 inline-block text-xs text-gray-300">⇅</span>;
+    }
     return (
-      <span className="ml-1 inline-block text-xs">
-        {sortDirection === 'asc' ? '\u25B2' : '\u25BC'}
+      <span className="ml-1 inline-block text-xs text-blue-500">
+        {sortDirection === 'asc' ? '▲' : '▼'}
       </span>
     );
   };
 
+  // ============================================================================
+  // Sortable Header
+  // ============================================================================
+
   const SortableHeader = ({
     label,
     field,
+    align = 'left',
   }: {
     label: string;
     field: SortField;
+    align?: 'left' | 'right';
   }) => (
     <th
       onClick={() => handleSort(field)}
-      className="cursor-pointer px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 transition-colors hover:text-blue-600"
+      className={`cursor-pointer border-r border-gray-100 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 transition-colors last:border-r-0 hover:text-blue-600 ${align === 'right' ? 'text-right' : 'text-left'}`}
     >
       {label}
       <SortIcon field={field} />
     </th>
   );
+
+  // ============================================================================
+  // Machine Subtext (serial · game)
+  // ============================================================================
+
+  const MachineSubtext = ({ machine }: { machine: SessionMachine }) => {
+    const parts = [machine.serialNumber, machine.game].filter(Boolean);
+    if (parts.length === 0) return null;
+    return <p className="text-xs text-gray-500">{parts.join(' · ')}</p>;
+  };
+
+  // ============================================================================
+  // Match Icon
+  // ============================================================================
+
+  const MatchIcon = ({ machine }: { machine: SessionMachine }) => {
+    if (machine.metersMatch === true) {
+      return (
+        <span
+          className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-[10px] text-white shadow-sm"
+          title="Meters match"
+        >
+          ✓
+        </span>
+      );
+    }
+    if (machine.metersMatch === false) {
+      return (
+        <span
+          className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] text-white shadow-sm"
+          title="Manual entry"
+        >
+          ✗
+        </span>
+      );
+    }
+    return (
+      <span
+        className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-gray-300 text-[10px] text-white shadow-sm"
+        title="Not captured"
+      >
+        —
+      </span>
+    );
+  };
+
+  // ============================================================================
+  // Photo Thumbnail
+  // ============================================================================
+
+  const PhotoThumbnail = ({
+    machine,
+    onPhotoClick,
+  }: {
+    machine: SessionMachine;
+    onPhotoClick: () => void;
+  }) => {
+    if (machine.imageData) {
+      return (
+        <button
+          type="button"
+          onClick={onPhotoClick}
+          className="block h-12 w-12 flex-shrink-0 overflow-hidden rounded border border-gray-200 transition-opacity hover:opacity-80"
+        >
+          <img
+            src={machine.imageData}
+            alt={machine.machineName}
+            className="h-full w-full object-cover"
+          />
+        </button>
+      );
+    }
+    return (
+      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-100 text-xs text-gray-400">
+        —
+      </div>
+    );
+  };
+
+  // ============================================================================
+  // SAS Times Cell (desktop)
+  // ============================================================================
+
+  const SasTimesCell = ({ machine }: { machine: SessionMachine }) => {
+    const startStr = formatDateTime(machine.sasStartTime);
+    const endStr = formatDateTime(machine.sasEndTime);
+    const hasBoth = startStr === '—' && endStr === '—';
+
+    if (hasBoth) {
+      return (
+        <td className="border-r border-gray-100 px-3 py-3 last:border-r-0">
+          <span className="text-xs text-gray-400">—</span>
+        </td>
+      );
+    }
+
+    return (
+      <td className="border-r border-gray-100 px-3 py-3 last:border-r-0">
+        <div className="space-y-1">
+          <p className="whitespace-nowrap text-xs text-gray-500">{startStr}</p>
+          <p className="whitespace-nowrap text-xs text-gray-500">{endStr}</p>
+        </div>
+      </td>
+    );
+  };
 
   // ============================================================================
   // Render
@@ -225,9 +355,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
     <div className="space-y-4">
       {/* Search bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-bold text-gray-900 lg:hidden">
-          Machines
-        </h2>
+        <h2 className="text-xl font-bold text-gray-900 lg:hidden">Machines</h2>
         <div className="relative max-w-sm flex-1">
           <input
             type="text"
@@ -255,60 +383,225 @@ export default function CollectionReportV2SessionReportMachinesTab({
 
       {sorted.length > 0 && (
         <>
-          {/* Desktop table */}
-          <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:block">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50/50">
+          {/* ================================================================
+              Desktop table
+          ================================================================ */}
+          <div className="hidden overflow-x-auto rounded-xl bg-white shadow-sm lg:block">
+            <table className="w-full border-collapse border border-gray-200 text-left text-sm">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="w-14 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {/* Col 1 — Photo */}
+                  <th className="w-20 border-b border-r border-gray-100 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 last:border-r-0">
                     Photo
                   </th>
+
+                  {/* Col 2 — Machine */}
                   <SortableHeader label="Machine" field="machineName" />
-                  <SortableHeader label="Serial" field="serialNumber" />
-                  <SortableHeader label="Sys In" field="systemMetersIn" />
-                  <SortableHeader label="Sys Out" field="systemMetersOut" />
-                  <SortableHeader label="Match" field="metersMatch" />
-                  <SortableHeader label="Status" field="status" />
-                  <SortableHeader label="Time" field="capturedAt" />
+
+                  {/* Col 3 — Lifetime Machine In */}
+                  <SortableHeader
+                    label="Lifetime Machine In"
+                    field="lifetimeMachineIn"
+                    align="right"
+                  />
+                  {/* Col 4 — Lifetime Machine Out */}
+                  <SortableHeader
+                    label="Lifetime Machine Out"
+                    field="lifetimeMachineOut"
+                    align="right"
+                  />
+                  {/* Col 5 — Movement Machine In */}
+                  <SortableHeader
+                    label="Movement Machine In"
+                    field="movementMachineIn"
+                    align="right"
+                  />
+                  {/* Col 6 — Movement Machine Out */}
+                  <SortableHeader
+                    label="Movement Machine Out"
+                    field="movementMachineOut"
+                    align="right"
+                  />
+                  {/* Col 7 — Movement Machine Gross */}
+                  <SortableHeader
+                    label="Movement Machine Gross"
+                    field="movementMachineGross"
+                    align="right"
+                  />
+                  {/* Cols 8-10 — SAS columns, merged for noSMIB */}
+                  <SortableHeader
+                    label="Lifetime SAS In"
+                    field="lifetimeSasIn"
+                    align="right"
+                  />
+                  <SortableHeader
+                    label="Lifetime SAS Gross"
+                    field="lifetimeSasGross"
+                    align="right"
+                  />
+                  <SortableHeader
+                    label="Variation"
+                    field="variation"
+                    align="right"
+                  />
+
+                  {/* Last col — SAS Times (always shown) */}
+                  <th className="border-b border-r border-gray-100 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 last:border-r-0">
+                    SAS Times
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {paginated.map(machine => {
-                  const match = metersMatchLabel(machine.metersMatch);
+                  // Lifetime machine values: manual meters are the primary source for
+                  // both noSMIB and SMIB-manual-entry. For SMIB metersMatch, sasMetersIn
+                  // equals the confirmed reading but manualMetersIn is also set to it.
+                  const lifetimeMachineIn =
+                    machine.manualMetersIn ?? machine.sasMetersIn ?? null;
+                  const lifetimeMachineOut =
+                    machine.manualMetersOut ?? machine.sasMetersOut ?? null;
+                  // SAS values are null for noSMIB — show N/A rather than 0
+                  const lifetimeSasIn = machine.sasMetersIn;
+                  const lifetimeSasGross = machine.sasGross ?? null;
+
                   return (
                     <tr
                       key={machine.reportedMachineId}
-                      className="transition-colors hover:bg-gray-50/80"
+                      className="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/80"
                     >
-                      {/* Photo thumbnail */}
-                      <td className="px-3 py-3">
-                        {machine.imageData ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPhotoPreviewUrl(machine.imageData || null);
-                              setPhotoPreviewName(
-                                machine.machineCustomName ||
-                                  machine.machineName
-                              );
-                            }}
-                            className="block h-12 w-12 flex-shrink-0 overflow-hidden rounded border border-gray-200 transition-opacity hover:opacity-80"
-                          >
-                            <img
-                              src={machine.imageData}
-                              alt={machine.machineName}
-                              className="h-full w-full object-cover"
-                            />
-                          </button>
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded border border-gray-200 bg-gray-100 text-xs text-gray-400">
-                            —
-                          </div>
-                        )}
+                      {/* Col 1 — Photo */}
+                      <td className="border-r border-gray-100 px-3 py-3 last:border-r-0">
+                        <PhotoThumbnail
+                          machine={machine}
+                          onPhotoClick={() => {
+                            setPhotoPreviewUrl(machine.imageData || null);
+                            setPhotoPreviewName(
+                              machine.machineCustomName || machine.machineName
+                            );
+                          }}
+                        />
                       </td>
 
-                      {/* Machine name */}
-                      <td className="px-3 py-3">
+                      {/* Col 2 — Machine name + subtext */}
+                      <td className="border-r border-gray-100 px-3 py-3 last:border-r-0">
+                        <div className="flex items-center gap-2">
+                          <MatchIcon machine={machine} />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(`/cabinets/${machine.machineId}`)
+                              }
+                              className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
+                            >
+                              {machine.machineCustomName || machine.machineName}
+                            </button>
+                            <MachineSubtext machine={machine} />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Col 3 — Lifetime Machine In */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-900 last:border-r-0">
+                        {formatNum(lifetimeMachineIn)}
+                      </td>
+
+                      {/* Col 4 — Lifetime Machine Out */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-900 last:border-r-0">
+                        {formatNum(lifetimeMachineOut)}
+                      </td>
+
+                      {/* Col 5 — Movement Machine In */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}
+                      </td>
+
+                      {/* Col 6 — Movement Machine Out */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
+                        {formatNum(machine.movement?.manualMetersOut ?? null)}
+                      </td>
+
+                      {/* Col 7 — Movement Machine Gross */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
+                        {formatNum(machine.movement?.machineGross ?? null)}
+                      </td>
+
+                      {/* Cols 8-10 — SAS: merged for noSMIB, separate for SMIB */}
+                      {noSMIBLocation ? (
+                        <td
+                          colSpan={3}
+                          className="border-r border-gray-100 px-3 py-3 text-center font-medium italic text-gray-400 last:border-r-0"
+                        >
+                          No SMIBs for this Location
+                        </td>
+                      ) : (
+                        <>
+                          {/* Col 8 — Lifetime SAS In */}
+                          <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-600 last:border-r-0">
+                            {formatNum(lifetimeSasIn)}
+                          </td>
+
+                          {/* Col 9 — Lifetime SAS Gross */}
+                          <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-600 last:border-r-0">
+                            {formatNum(lifetimeSasGross)}
+                          </td>
+
+                          {/* Col 10 — Variation */}
+                          <td
+                            className={`whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-semibold tabular-nums last:border-r-0 ${
+                              machine.grossDifference !== null &&
+                              machine.grossDifference !== undefined &&
+                              machine.grossDifference !== 0
+                                ? 'text-red-600'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {formatNum(machine.grossDifference ?? null)}
+                          </td>
+                        </>
+                      )}
+
+                      {/* Col 10 / 6 — SAS Times */}
+                      <SasTimesCell machine={machine} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ================================================================
+              Mobile cards
+          ================================================================ */}
+          <div className="space-y-3 lg:hidden">
+            {paginated.map(machine => {
+              const lifetimeMachineIn =
+                machine.manualMetersIn ?? machine.sasMetersIn ?? null;
+              const lifetimeMachineOut =
+                machine.manualMetersOut ?? machine.sasMetersOut ?? null;
+              const lifetimeSasGross = machine.sasGross ?? null;
+              const startStr = formatDateTime(machine.sasStartTime);
+              const endStr = formatDateTime(machine.sasEndTime);
+
+              return (
+                <div
+                  key={machine.reportedMachineId}
+                  className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                  {/* Card header — photo + match icon + name + subtext */}
+                  <div className="mb-3 flex items-start gap-3">
+                    <PhotoThumbnail
+                      machine={machine}
+                      onPhotoClick={() => {
+                        setPhotoPreviewUrl(machine.imageData || null);
+                        setPhotoPreviewName(
+                          machine.machineCustomName || machine.machineName
+                        );
+                      }}
+                    />
+                    <div className="flex min-w-0 flex-1 items-start gap-2">
+                      <MatchIcon machine={machine} />
+                      <div className="min-w-0">
                         <button
                           type="button"
                           onClick={() =>
@@ -318,139 +611,124 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         >
                           {machine.machineCustomName || machine.machineName}
                         </button>
-                      </td>
-
-                      {/* Serial */}
-                      <td className="px-3 py-3 text-gray-600">
-                        {machine.serialNumber || '—'}
-                      </td>
-
-                      {/* Sys In */}
-                      <td className="px-3 py-3 text-right font-medium text-gray-900 tabular-nums">
-                        {formatNum(machine.systemMetersIn)}
-                      </td>
-
-                      {/* Sys Out */}
-                      <td className="px-3 py-3 text-right font-medium text-gray-900 tabular-nums">
-                        {formatNum(machine.systemMetersOut)}
-                      </td>
-
-                      {/* Match */}
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${match.className}`}
-                        >
-                          {match.label}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-3 py-3">
-                        <StatusBadge status={machine.status} />
-                      </td>
-
-                      {/* Captured At */}
-                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-500">
-                        {formatTime(
-                          machine.createdAt || machine.updatedAt
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="space-y-3 lg:hidden">
-            {paginated.map(machine => {
-              const match = metersMatchLabel(machine.metersMatch);
-              return (
-                <div
-                  key={machine.reportedMachineId}
-                  className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  {/* Header row */}
-                  <div className="mb-3 flex items-start gap-3">
-                    {machine.imageData ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPhotoPreviewUrl(machine.imageData || null);
-                          setPhotoPreviewName(
-                            machine.machineCustomName || machine.machineName
-                          );
-                        }}
-                        className="h-12 w-12 flex-shrink-0 overflow-hidden rounded border border-gray-200"
-                      >
-                        <img
-                          src={machine.imageData}
-                          alt={machine.machineName}
-                          className="h-full w-full object-cover"
-                        />
-                      </button>
-                    ) : (
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-100 text-xs text-gray-400">
-                        —
+                        <MachineSubtext machine={machine} />
                       </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          router.push(`/cabinets/${machine.machineId}`)
-                        }
-                        className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
-                      >
-                        {machine.machineCustomName || machine.machineName}
-                      </button>
-                      {machine.serialNumber && (
-                        <p className="text-xs text-gray-500">
-                          {machine.serialNumber}
-                        </p>
-                      )}
                     </div>
-                    <StatusBadge status={machine.status} />
                   </div>
 
                   {/* Data grid */}
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    {/* Lifetime Machine In + Out */}
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Sys In
+                        Lifetime Machine In
                       </p>
-                      <p className="mt-0.5 font-medium text-gray-900 tabular-nums">
-                        {formatNum(machine.systemMetersIn)}
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-900">
+                        {formatNum(lifetimeMachineIn)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Sys Out
+                        Lifetime Machine Out
                       </p>
-                      <p className="mt-0.5 font-medium text-gray-900 tabular-nums">
-                        {formatNum(machine.systemMetersOut)}
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-900">
+                        {formatNum(lifetimeMachineOut)}
+                      </p>
+                    </div>
+
+                    {/* Movement Machine In + Out + Gross */}
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                        Movement Machine In
+                      </p>
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Match
+                        Movement Machine Out
                       </p>
-                      <span
-                        className={`mt-0.5 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${match.className}`}
-                      >
-                        {match.label}
-                      </span>
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
+                        {formatNum(machine.movement?.manualMetersOut ?? null)}
+                      </p>
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Captured
+                        Movement Machine Gross
                       </p>
-                      <p className="mt-0.5 font-medium text-gray-600">
-                        {formatTime(
-                          machine.createdAt || machine.updatedAt
-                        )}
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
+                        {formatNum(machine.movement?.machineGross ?? null)}
                       </p>
+                    </div>
+
+                    {/* SAS section — merged for noSMIB */}
+                    {noSMIBLocation ? (
+                      <div className="col-span-2">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                          SAS
+                        </p>
+                        <p className="mt-0.5 font-normal italic text-gray-400">
+                          No SMIBs for this Location
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            Lifetime SAS In
+                          </p>
+                          <p className="mt-0.5 font-medium tabular-nums text-gray-600">
+                            {formatNum(machine.sasMetersIn)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            Lifetime SAS Gross
+                          </p>
+                          <p className="mt-0.5 font-medium tabular-nums text-gray-600">
+                            {formatNum(lifetimeSasGross)}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            Variation
+                          </p>
+                          <p
+                            className={`mt-0.5 font-semibold tabular-nums ${
+                              machine.grossDifference !== null &&
+                              machine.grossDifference !== undefined &&
+                              machine.grossDifference !== 0
+                                ? 'text-red-600'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {formatNum(machine.grossDifference ?? null)}
+                          </p>
+                        </div>
+                      </>
+                    )}
+
+                    {/* SAS Times — col-span-2, border-top section */}
+                    <div className="col-span-2 border-t border-gray-100 pt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            Start Time
+                          </p>
+                          <p className="mt-0.5 whitespace-nowrap text-xs text-gray-500">
+                            {startStr}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            End Time
+                          </p>
+                          <p className="mt-0.5 whitespace-nowrap text-xs text-gray-500">
+                            {endStr}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -458,7 +736,9 @@ export default function CollectionReportV2SessionReportMachinesTab({
             })}
           </div>
 
-          {/* Pagination */}
+          {/* ================================================================
+              Pagination
+          ================================================================ */}
           <div className="flex items-center justify-center gap-2 py-4">
             <button
               type="button"
@@ -484,7 +764,10 @@ export default function CollectionReportV2SessionReportMachinesTab({
                 max={totalPages}
                 value={currentPage}
                 onChange={e => {
-                  const page = Math.max(1, Math.min(totalPages, Number(e.target.value) || 1));
+                  const page = Math.max(
+                    1,
+                    Math.min(totalPages, Number(e.target.value) || 1)
+                  );
                   setCurrentPage(page);
                 }}
                 className="w-12 rounded border border-gray-300 p-1 text-center text-sm focus:border-blue-500 focus:outline-none"
@@ -511,23 +794,35 @@ export default function CollectionReportV2SessionReportMachinesTab({
         </>
       )}
 
-      {/* Photo preview modal */}
+      {/* ================================================================
+          Photo preview modal
+      ================================================================ */}
       {photoPreviewUrl && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setPhotoPreviewUrl(null)}
         >
           <div
-            className="relative max-w-2xl"
+            className="relative inline-block"
             onClick={e => e.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setPhotoPreviewUrl(null)}
-              className="absolute -right-3 -top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100"
+              className="absolute -right-3 -top-3 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100"
             >
-              <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-4 w-4 text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
             <img

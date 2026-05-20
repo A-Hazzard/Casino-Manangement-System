@@ -47,10 +47,11 @@ type MachineDataEntryFormProps = {
   isProcessing?: boolean;
 
   // SAS times
-  sasStartTime?: Date | null;
+  sasStartTime?: Date | string | null;
   onSasStartTimeChange?: (date: Date | null) => void;
-  sasEndTime?: Date | null;
+  sasEndTime?: Date | string | null;
   onSasEndTimeChange?: (date: Date | null) => void;
+  isLoadingTime?: boolean;
 };
 
 /**
@@ -91,8 +92,23 @@ export default function CollectionReportFormMachineDataEntry({
   onSasEndTimeChange,
   onPrevInChange,
   onPrevOutChange,
+  isLoadingTime = false,
 }: MachineDataEntryFormProps) {
   const inputsEnabled = !disabled && !isProcessing;
+
+  const parsedSasStartTime =
+    sasStartTime instanceof Date
+      ? sasStartTime
+      : sasStartTime
+        ? new Date(sasStartTime)
+        : null;
+
+  const parsedSasEndTime =
+    sasEndTime instanceof Date
+      ? sasEndTime
+      : sasEndTime
+        ? new Date(sasEndTime)
+        : null;
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
@@ -116,11 +132,12 @@ export default function CollectionReportFormMachineDataEntry({
               Start Time
             </label>
             <CollectionReportFormTimeInput
-              date={sasStartTime ?? new Date()}
+              date={parsedSasStartTime ?? new Date()}
               onDateChange={date => onSasStartTimeChange?.(date || null)}
               disabled={isProcessing}
               showHelpText={false}
-              maxDate={sasEndTime ?? new Date()}
+              maxDate={parsedSasEndTime ?? new Date()}
+              isLoadingTime={isLoadingTime}
             />
           </div>
           <div>
@@ -128,11 +145,12 @@ export default function CollectionReportFormMachineDataEntry({
               End Time
             </label>
             <CollectionReportFormTimeInput
-              date={sasEndTime ?? new Date()}
+              date={parsedSasEndTime ?? new Date()}
               onDateChange={date => onSasEndTimeChange?.(date || null)}
               disabled={isProcessing}
               showHelpText={false}
-              minDate={sasStartTime ?? undefined}
+              minDate={parsedSasStartTime ?? undefined}
+              isLoadingTime={isLoadingTime}
             />
           </div>
         </div>

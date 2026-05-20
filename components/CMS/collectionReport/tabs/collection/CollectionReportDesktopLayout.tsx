@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import type { CollectionReportDesktopUIProps } from '@/lib/types/components';
 import CollectionReportFilters from './CollectionReportFilters';
 import CollectionReportTable from './CollectionReportTable';
+import Link from 'next/link';
 
 export default function CollectionReportDesktopLayout(
   props: CollectionReportDesktopUIProps
@@ -32,16 +33,24 @@ export default function CollectionReportDesktopLayout(
     }
     if (Array.isArray(props.selectedLocation)) {
       if (props.selectedLocation.length === 1) {
-        return (
-          props.locations.find(l => l._id === props.selectedLocation[0])
-            ?.name || 'Selected Location'
+        const loc = props.locations.find(l => l._id === props.selectedLocation[0]);
+        return loc?.slug ? (
+          <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+            {loc.name}
+          </Link>
+        ) : (
+          loc?.name || 'Selected Location'
         );
       }
       return `${props.selectedLocation.length} Locations`;
     }
-    return (
-      props.locations.find(l => l._id === props.selectedLocation)?.name ||
-      'Selected Location'
+    const loc = props.locations.find(l => l._id === props.selectedLocation);
+    return loc?.slug ? (
+      <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+        {loc.name}
+      </Link>
+    ) : (
+      loc?.name || 'Selected Location'
     );
   }, [props.selectedLocation, props.locations]);
 
@@ -69,6 +78,8 @@ export default function CollectionReportDesktopLayout(
         onLocationChange={props.onLocationChange}
         search={props.search}
         onSearchChange={props.onSearchChange}
+        searchType={props.searchType}
+        onSearchTypeChange={props.onSearchTypeChange}
         onSearchSubmit={props.onSearchSubmit}
         showUncollectedOnly={props.showUncollectedOnly}
         onShowUncollectedOnlyChange={props.onShowUncollectedOnlyChange}

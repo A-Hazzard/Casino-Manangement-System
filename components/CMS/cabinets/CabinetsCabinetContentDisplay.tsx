@@ -259,7 +259,7 @@ export const CabinetsCabinetContentDisplay = ({
   // Use a small delay for the "No Data" message to prevent flashing during fast transitions
   // Hooks must be called unconditionally before any early returns.
   const [showNoDataState, setShowNoDataState] = useState(false);
-  const shouldShowSkeleton = initialLoading || loading;
+  const shouldShowSkeleton = initialLoading || (loading && paginatedCabinets.length === 0);
 
   useEffect(() => {
     // If we're loading or have machines, don't show the "No Data" state

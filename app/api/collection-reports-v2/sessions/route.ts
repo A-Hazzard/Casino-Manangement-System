@@ -56,11 +56,44 @@ export async function GET(req: NextRequest) {
       (searchParams.get('timePeriod') as TimePeriod) || undefined;
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
+    const search = searchParams.get('search') || undefined;
+    const searchType = searchParams.get('searchType') || 'collector';
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
     const page = Math.max(0, parseInt(searchParams.get('page') || '1', 10) - 1);
     const limit = Math.min(
       100,
       parseInt(searchParams.get('limit') || '20', 10)
     );
+    const sortFieldParam = searchParams.get('sortField') || 'created';
+    const sortDirectionParam = searchParams.get('sortDirection') || 'desc';
+
+    let sortKey = 'createdAt';
+    switch (sortFieldParam) {
+      case 'location':
+        sortKey = 'locationName';
+        break;
+      case 'collector':
+        sortKey = 'collectorName';
+        break;
+      case 'matched':
+        sortKey = 'machinesConfirmed';
+        break;
+      case 'machineGross':
+        sortKey = 'totalMachineGross';
+        break;
+      case 'sasGross':
+        sortKey = 'totalSasGross';
+        break;
+      case 'variation':
+        sortKey = 'totalGrossDifference';
+        break;
+      case 'created':
+      default:
+        sortKey = 'createdAt';
+        break;
+    }
+
+    const sortDirectionValue = sortDirectionParam === 'asc' ? 1 : -1;
 
     // Date range
     const dateRange = calculateDateRangeForTimePeriod(
@@ -76,6 +109,27 @@ export async function GET(req: NextRequest) {
       (userPayloadRecord.assignedLicencees as string[]) || [];
     const userLocations =
       (userPayloadRecord.assignedLocations as string[]) || [];
+
+    // Guard: only privileged roles may query archived sessions.
+    // admin/developer/owner → unrestricted access.
+    // location admin → restricted to their assignedLocations (enforced below).
+    // All other roles (collector, technician, reviewer, …) are denied.
+    const canViewArchived =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('location admin');
+
+    if (includeDeleted && !canViewArchived) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Insufficient permissions to view archived sessions',
+        },
+        { status: 403 }
+      );
+    }
+
     const allowedLocationIds = await determineAllowedLocationIds(
       userRoles,
       userLicencees,
@@ -93,6 +147,55 @@ export async function GET(req: NextRequest) {
       if (dateRange.startDate) dateFilter.$gte = dateRange.startDate;
       if (dateRange.endDate) dateFilter.$lte = dateRange.endDate;
       matchStage.createdAt = dateFilter;
+    }
+    // Soft-delete / archived filter
+    if (includeDeleted) {
+      // Archived mode: only return soft-deleted sessions
+      matchStage.$and = [
+        { deletedAt: { $exists: true } },
+        { deletedAt: { $ne: null } },
+        ...(search
+          ? [
+              {
+                [(() => {
+                  switch (searchType) {
+                    case 'location':
+                      return 'locationName';
+                    case 'sessionId':
+                      return 'sessionId';
+                    case 'locationId':
+                      return 'locationId';
+                    default:
+                      return 'collectorName';
+                  }
+                })()]: { $regex: search, $options: 'i' },
+              },
+            ]
+          : []),
+      ];
+    } else if (search) {
+      // Normal mode with search
+      let searchKey = 'collectorName';
+      switch (searchType) {
+        case 'location':
+          searchKey = 'locationName';
+          break;
+        case 'sessionId':
+          searchKey = 'sessionId';
+          break;
+        case 'locationId':
+          searchKey = 'locationId';
+          break;
+        default:
+          searchKey = 'collectorName';
+      }
+      matchStage.$and = [
+        { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] },
+        { [searchKey]: { $regex: search, $options: 'i' } },
+      ];
+    } else {
+      // Normal mode: exclude archived (soft-deleted) sessions
+      matchStage.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
     }
 
     // Aggregate sessions
@@ -121,12 +224,124 @@ export async function GET(req: NextRequest) {
             machinesSkipped: {
               $sum: { $cond: [{ $eq: ['$status', 'skipped'] }, 1, 0] },
             },
+            totalMachineGross: {
+              $sum: {
+                $cond: [
+                  { $ifNull: ['$movement.machineGross', false] },
+                  '$movement.machineGross',
+                  {
+                    $subtract: [
+                      { $ifNull: ['$manualMetersIn', '$sasMetersIn'] },
+                      { $ifNull: ['$manualMetersOut', '$sasMetersOut'] },
+                    ],
+                  },
+                ],
+              },
+            },
+            totalSasGross: {
+              $sum: {
+                $cond: [
+                  { $ifNull: ['$sasGross', false] },
+                  '$sasGross',
+                  {
+                    $subtract: [
+                      { $ifNull: ['$sasMetersIn', 0] },
+                      { $ifNull: ['$sasMetersOut', 0] },
+                    ],
+                  },
+                ],
+              },
+            },
             createdAt: { $min: '$createdAt' },
+            deletedAt: { $first: '$deletedAt' },
           },
         },
-        { $sort: { createdAt: -1 } },
+        {
+          $addFields: {
+            totalGrossDifference: {
+              $subtract: ['$totalMachineGross', '$totalSasGross'],
+            },
+          },
+        },
+        { $sort: { [sortKey]: sortDirectionValue, _id: 1 } },
         { $skip: page * limit },
         { $limit: limit },
+        {
+          $lookup: {
+            from: 'users',
+            let: { collectorId: '$collector' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$_id', '$$collectorId'] } } },
+              {
+                $project: {
+                  _id: 0,
+                  firstName: { $ifNull: ['$profile.firstName', ''] },
+                  lastName: { $ifNull: ['$profile.lastName', ''] },
+                  emailAddress: { $ifNull: ['$emailAddress', ''] },
+                },
+              },
+            ],
+            as: 'collectorDetails',
+          },
+        },
+        {
+          $unwind: {
+            path: '$collectorDetails',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            collectorFirstName: '$collectorDetails.firstName',
+            collectorLastName: '$collectorDetails.lastName',
+            collectorEmail: '$collectorDetails.emailAddress',
+          },
+        },
+        { $project: { collectorDetails: 0 } },
+        {
+          $lookup: {
+            from: 'gaminglocations',
+            let: { locId: '$locationId' },
+            pipeline: [
+              { $match: { $expr: { $eq: ['$_id', '$$locId'] } } },
+              {
+                $project: {
+                  _id: 0,
+                  noSMIBLocation: { $ifNull: ['$noSMIBLocation', false] },
+                },
+              },
+            ],
+            as: 'locationDetails',
+          },
+        },
+        {
+          $unwind: {
+            path: '$locationDetails',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            noSMIBLocation: {
+              $ifNull: ['$locationDetails.noSMIBLocation', false],
+            },
+          },
+        },
+        { $project: { locationDetails: 0 } },
+        // For noSMIB locations every captured/confirmed machine is implicitly
+        // matched (no SMIB means there are no SAS meters to compare against).
+        // Override machinesConfirmed so the MATCHED column shows the correct count.
+        {
+          $addFields: {
+            machinesConfirmed: {
+              $cond: [
+                '$noSMIBLocation',
+                '$machinesCaptured',
+                '$machinesConfirmed',
+              ],
+            },
+          },
+        },
       ]),
       ReportedMachine.aggregate([
         { $match: matchStage },
@@ -208,6 +423,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const collectorUserId = String(userPayload._id);
+    const collectorName =
+      (userPayload as unknown as Record<string, string>).name ||
+      (userPayload as unknown as Record<string, string>).username ||
+      collectorUserId;
+
+    // Determine session timing
+    const sessionEndTime = new Date();
+    let sessionStartTime: Date | null = null;
+
+    // Look up the most recent submitted session for this location
+    const previousSession = await ReportedMachine.findOne({
+      locationId,
+      sessionStatus: 'submitted',
+      sessionEndTime: { $exists: true, $ne: null },
+      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    })
+      .sort({ sessionEndTime: -1 })
+      .select('sessionEndTime')
+      .lean();
+
+    if (previousSession?.sessionEndTime) {
+      sessionStartTime = new Date(previousSession.sessionEndTime);
+    }
+
     // Verify user can access this location
     const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
     const userRoles = (userPayloadRecord.roles as string[]) || [];
@@ -250,11 +490,6 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateMongoId();
 
-    const collectorName =
-      (userPayload as unknown as Record<string, string>).name ||
-      (userPayload as unknown as Record<string, string>).username ||
-      String(userPayload._id);
-
     // Map machines to V2 format
     const machineList = machines.map((machine, index) => {
       const sasIn =
@@ -278,38 +513,66 @@ export async function POST(req: NextRequest) {
         serialNumber: (machine.serialNumber as string | undefined) || '',
         manufacturer: (machine.manufacturer as string | undefined) || '',
         game: (machine.game as string | undefined) || '',
-        systemMetersIn: sasIn || fallbackIn,
-        systemMetersOut: sasOut || fallbackOut,
+        sasMetersIn: sasIn || fallbackIn,
+        sasMetersOut: sasOut || fallbackOut,
         collectionTime: (machine.collectionTime as Date | undefined) || null,
         sequenceOrder: index,
       };
     });
+
+    // Look up last V2 submission sasEndTime for these machines
+    const machineIdsList = machines.map(m => String(m._id));
+    const previousSubmissions = await ReportedMachine.aggregate([
+      {
+        $match: {
+          machineId: { $in: machineIdsList },
+          sessionStatus: 'submitted',
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+        },
+      },
+      { $sort: { sasEndTime: -1 } },
+      { $group: { _id: '$machineId', sasEndTime: { $first: '$sasEndTime' } } },
+    ]);
+
+    const lastCollectionMap = new Map(
+      previousSubmissions.map(s => [s._id as string, s.sasEndTime as Date])
+    );
 
     // Persist machines as ReportedMachine documents
     const collectorId = String(userPayload._id);
     const machineIds = await Promise.all(
       machineList.map(() => generateMongoId())
     );
-    const reportedMachines = machineList.map((machine, index) => ({
-      _id: machineIds[index],
-      sessionId,
-      sessionStatus: 'in-progress' as const,
-      locationId,
-      locationName,
-      licencee: licencee || '',
-      machineId: machine.machineId,
-      machineName: machine.machineName,
-      machineCustomName: machine.machineCustomName,
-      serialNumber: machine.serialNumber,
-      manufacturer: machine.manufacturer,
-      game: machine.game,
-      collector: collectorId,
-      collectorName,
-      systemMetersIn: machine.systemMetersIn,
-      systemMetersOut: machine.systemMetersOut,
-      sequenceOrder: machine.sequenceOrder,
-      status: 'pending' as const,
-    }));
+    const reportedMachines = machineList.map((machine, index) => {
+      const sasStartTime =
+        lastCollectionMap.get(machine.machineId) ??
+        machine.collectionTime ??
+        undefined;
+
+      return {
+        _id: machineIds[index],
+        sessionId,
+        sessionStatus: 'in-progress' as const,
+        locationId,
+        locationName,
+        licencee: licencee || '',
+        machineId: machine.machineId,
+        machineName: machine.machineName,
+        machineCustomName: machine.machineCustomName,
+        serialNumber: machine.serialNumber,
+        manufacturer: machine.manufacturer,
+        game: machine.game,
+        collector: collectorId,
+        collectorName,
+        sasMetersIn: machine.sasMetersIn,
+        sasMetersOut: machine.sasMetersOut,
+        sequenceOrder: machine.sequenceOrder,
+        sessionStartTime: sessionStartTime ?? undefined,
+        sessionEndTime,
+        sasStartTime,
+        status: 'pending' as const,
+      };
+    });
 
     const inserted = await ReportedMachine.insertMany(reportedMachines);
     const insertedIds = inserted.map(doc => doc._id);

@@ -69,6 +69,15 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
 
+  // Sync center with props when they change (e.g. from link extraction)
+  useEffect(() => {
+    const newCenter = { lat: initialLat, lng: initialLng };
+    setCenter(newCenter);
+    if (map) {
+      map.panTo(newCenter);
+    }
+  }, [initialLat, initialLng, map]);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);

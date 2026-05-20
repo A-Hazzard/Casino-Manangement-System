@@ -35,6 +35,7 @@ export type AddUserForm = {
   notes?: string;
   moneyInMultiplier?: number;
   moneyOutAndJackpotMultiplier?: number;
+  reviewerMultiplierStartTime?: string | Date | null;
 };
 
 export type AddLicenceeForm = {

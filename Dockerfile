@@ -31,6 +31,7 @@ ENV JWT_SECRET=${JWT_SECRET}
 RUN MONGODB_URI=${MONGODB_URI:-dummy_MONGODB_URI} \
     JWT_SECRET=${JWT_SECRET:-dummy_jwt_secret} \
     NODE_ENV=${NODE_ENV:-production} \
+    NODE_OPTIONS="--max-old-space-size=4096" \
     bun run build
 
 # Expose the production port

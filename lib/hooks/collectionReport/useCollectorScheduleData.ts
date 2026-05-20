@@ -189,5 +189,6 @@ export function useCollectorScheduleData(
     onDeleteClose: () => setDeletingSchedule(null),
     onDeleteConfirm: handleDeleteConfirm,
     deleting,
+    onRefresh: fetchSchedules,
   };
 }

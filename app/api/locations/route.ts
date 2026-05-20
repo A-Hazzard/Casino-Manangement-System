@@ -13,6 +13,7 @@
 import {
   calculateChanges,
   logActivity,
+  mapDeletedFieldsToChanges,
 } from '@/app/api/lib/helpers/activityLogger';
 import { getUserAccessibleLicenceesFromToken } from '@/app/api/lib/helpers/licenceeFilter';
 import { buildLocationQueryFilter } from '@/app/api/lib/helpers/locations';
@@ -242,6 +243,9 @@ export async function POST(request: NextRequest) {
         membershipEnabled,
         aceEnabled,
         locationMembershipSettings,
+        googleMapsLink,
+        googleMapsIframe,
+        previousCollectionTime,
       } = body;
 
       if (!name) {
@@ -290,9 +294,11 @@ export async function POST(request: NextRequest) {
         profitShare: profitShare || 50,
         gameDayOffset: gameDayOffset ?? 8,
         isLocalServer: isLocalServer || false,
+        previousCollectionTime: previousCollectionTime ? new Date(previousCollectionTime) : undefined,
         geoCoords: {
           latitude: geoCoords?.latitude || 0,
           longitude: geoCoords?.longitude || 0,
+          longtitude: geoCoords?.longitude || 0, // For legacy compatibility
         },
         billValidatorOptions: billValidatorOptions || {
           denom1: true,
@@ -323,6 +329,8 @@ export async function POST(request: NextRequest) {
           pointsMethodGameTypes: [],
           freePlayGameTypes: [],
         },
+        googleMapsLink: googleMapsLink || '',
+        googleMapsIframe: googleMapsIframe || '',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: new Date(-1),
@@ -334,6 +342,22 @@ export async function POST(request: NextRequest) {
       await newLocation.save();
 
       if (currentUser && currentUser.emailAddress) {
+        const changes = Object.entries(newLocation.toObject())
+          .filter(([key]) => !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key))
+          .map(([key, val]) => {
+            let stringVal = String(val);
+            if (val instanceof Date) {
+              stringVal = val.toISOString();
+            } else if (typeof val === 'object' && val !== null) {
+              stringVal = JSON.stringify(val);
+            }
+            return {
+              field: key,
+              oldValue: null,
+              newValue: stringVal,
+            };
+          });
+
         await logActivity({
           action: 'CREATE',
           details: `Created location "${name}"`,
@@ -345,6 +369,7 @@ export async function POST(request: NextRequest) {
             resource: 'location',
             resourceId: locationId,
             resourceName: name,
+            changes,
           },
         });
       }
@@ -424,6 +449,8 @@ export async function PUT(request: NextRequest) {
         membershipEnabled,
         aceEnabled,
         locationMembershipSettings,
+        googleMapsLink,
+        googleMapsIframe,
       } = body;
 
       if (!locationName) {
@@ -472,6 +499,7 @@ export async function PUT(request: NextRequest) {
         updateData.geoCoords = {
           latitude: geoCoords.latitude,
           longitude: geoCoords.longitude,
+          longtitude: geoCoords.longitude, // For legacy compatibility
         };
       }
       if (billValidatorOptions) {
@@ -484,6 +512,10 @@ export async function PUT(request: NextRequest) {
       if (aceEnabled !== undefined) updateData.aceEnabled = Boolean(aceEnabled);
       if (locationMembershipSettings)
         updateData.locationMembershipSettings = locationMembershipSettings;
+      if (googleMapsLink !== undefined)
+        updateData.googleMapsLink = googleMapsLink;
+      if (googleMapsIframe !== undefined)
+        updateData.googleMapsIframe = googleMapsIframe;
 
       try {
         await GamingLocations.collection.dropIndex('name_1');
@@ -556,7 +588,10 @@ export async function DELETE(request: NextRequest) {
   return withApiAuth(
     request,
     async ({ user: currentUser, userRoles, isAdminOrDev }) => {
-      if (!isAdminOrDev) {
+      const isLocAdmin = userRoles
+        .map(r => r.toLowerCase())
+        .some(r => r === 'location admin');
+      if (!isAdminOrDev && !isLocAdmin) {
         logRouteError(
           functionName,
           'DELETE',
@@ -602,13 +637,17 @@ export async function DELETE(request: NextRequest) {
         }
 
         const hardDelete = searchParams.get('hardDelete') === 'true';
-        const isDev = userRoles
+        const isDevOrAdminOrLocAdmin = userRoles
           .map(r => r.toLowerCase())
-          .some(r => r === 'developer' || r === 'owner');
+          .some(r =>
+            ['developer', 'owner', 'admin', 'location admin'].includes(r)
+          );
 
         const archiveTimestamp = new Date();
 
-        if (hardDelete && isDev) {
+        const associatedMachines = await Machine.find({ gamingLocation: id }).lean();
+
+        if (hardDelete && isDevOrAdminOrLocAdmin) {
           const deleteLocationResult = await GamingLocations.deleteOne({
             _id: id,
           });
@@ -665,9 +704,10 @@ export async function DELETE(request: NextRequest) {
         }
 
         if (currentUser && currentUser.emailAddress) {
+          const changes = mapDeletedFieldsToChanges(locationToDelete.toObject ? locationToDelete.toObject() : locationToDelete);
           await logActivity({
-            action: 'DELETE',
-            details: `Deleted location "${locationToDelete.name}"`,
+            action: hardDelete && isDevOrAdminOrLocAdmin ? 'DELETE' : 'ARCHIVE',
+            details: `${hardDelete && isDevOrAdminOrLocAdmin ? 'Permanently deleted' : 'Archived'} location "${locationToDelete.name}"`,
             ipAddress: getClientIP(request) || undefined,
             userAgent: request.headers.get('user-agent') || undefined,
             userId: currentUser._id,
@@ -676,8 +716,59 @@ export async function DELETE(request: NextRequest) {
               resource: 'location',
               resourceId: id,
               resourceName: locationToDelete.name,
+              isHardDelete: hardDelete && isDevOrAdminOrLocAdmin,
+              changes,
+              previousData: locationToDelete.toObject ? locationToDelete.toObject() : locationToDelete,
+              newData: null,
             },
           });
+
+          // Log each associated machine being deleted or archived
+          for (const m of associatedMachines) {
+            if (hardDelete && isDevOrAdminOrLocAdmin) {
+              const machineChanges = mapDeletedFieldsToChanges(m);
+              await logActivity({
+                action: 'DELETE',
+                details: `Permanently deleted machine "${m.custom?.name || m.serialNumber || m.machineId || m._id}" as part of location permanent deletion`,
+                ipAddress: getClientIP(request) || undefined,
+                userAgent: request.headers.get('user-agent') || undefined,
+                userId: currentUser._id,
+                username: currentUser.emailAddress,
+                metadata: {
+                  resource: 'machine',
+                  resourceId: m._id,
+                  resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+                  changes: machineChanges,
+                  previousData: m,
+                  newData: null,
+                },
+              });
+            } else {
+              const machineChanges = [
+                {
+                  field: 'deletedAt',
+                  oldValue: m.deletedAt ? m.deletedAt.toISOString() : null,
+                  newValue: archiveTimestamp.toISOString(),
+                },
+              ];
+              await logActivity({
+                action: 'ARCHIVE',
+                details: `Archived machine "${m.custom?.name || m.serialNumber || m.machineId || m._id}" as part of location archiving`,
+                ipAddress: getClientIP(request) || undefined,
+                userAgent: request.headers.get('user-agent') || undefined,
+                userId: currentUser._id,
+                username: currentUser.emailAddress,
+                metadata: {
+                  resource: 'machine',
+                  resourceId: m._id,
+                  resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+                  changes: machineChanges,
+                  previousData: m,
+                  newData: { ...m, deletedAt: archiveTimestamp },
+                },
+              });
+            }
+          }
         }
 
         const duration = Date.now() - startTime;
@@ -778,6 +869,7 @@ export async function PATCH(request: NextRequest) {
         );
       }
       // Restore all machines belonging to this location
+      const associatedMachines = await Machine.find({ gamingLocation: id }).lean();
       const restoreMachinesResult = await Machine.updateMany(
         { gamingLocation: id },
         { $unset: { deletedAt: 1 } }
@@ -800,8 +892,37 @@ export async function PATCH(request: NextRequest) {
             resource: 'location',
             resourceId: id,
             resourceName: location.name,
+            previousData: location.toObject ? location.toObject() : location,
+            newData: { ...location, deletedAt: undefined },
           },
         });
+
+        // Log each associated machine being restored
+        for (const m of associatedMachines) {
+          const machineChanges = [
+            {
+              field: 'deletedAt',
+              oldValue: m.deletedAt ? m.deletedAt.toISOString() : null,
+              newValue: null,
+            },
+          ];
+          await logActivity({
+            action: 'restore',
+            details: `Restored machine "${m.custom?.name || m.serialNumber || m.machineId || m._id}" as part of location restoration`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id,
+            username: currentUser.emailAddress,
+            metadata: {
+              resource: 'machine',
+              resourceId: m._id,
+              resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+              changes: machineChanges,
+              previousData: m,
+              newData: { ...m, deletedAt: undefined },
+            },
+          });
+        }
       }
 
       const duration = Date.now() - startTime;

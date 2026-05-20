@@ -3,7 +3,13 @@ import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['192.168.0.39'],
+  allowedDevOrigins: [
+    '192.168.0.39',
+    '192.168.7.8',
+    '192.168.207.23',
+    '192.168.0.211',
+    'localhost',
+  ],
   reactStrictMode: true,
   images: {
     loader: 'default',
@@ -127,11 +133,16 @@ const nextConfig: NextConfig = {
   // Turbopack configuration
   turbopack: {
     // @ts-ignore - root is needed to fix the workspace detection issue
-    root: '.',
+    root: process.cwd(),
   },
   devIndicators: {
     // @ts-ignore - Next.js 16+ specific
     appIsrStatus: false,
+  },
+  // Disable TS during build to save memory
+  // We handle this separately via 'bun run check'
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 

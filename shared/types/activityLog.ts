@@ -35,6 +35,7 @@ export type ActivityLog = {
   changes?: ActivityLogChange[];
   description?: string;
   ipAddress?: string;
+  metadata?: Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;
 };

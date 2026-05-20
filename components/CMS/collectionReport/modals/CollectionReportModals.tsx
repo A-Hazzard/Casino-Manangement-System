@@ -34,9 +34,10 @@
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import CollectionReportNewCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportNewCollectionModal';
 import CollectionReportMobileNewCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportMobileNewCollectionModal';
-import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
+import CollectionReportV1DeleteModal from '@/components/CMS/collectionReport/modals/CollectionReportV1DeleteModal';
 import ErrorBoundary from '@/components/shared/ui/errors/ErrorBoundary';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
+import type { CollectionReportRow } from '@/lib/types/components';
 
 type CollectionReportModalsProps = {
   showNewCollectionMobile: boolean;
@@ -45,13 +46,14 @@ type CollectionReportModalsProps = {
   showEditDesktop: boolean;
   editingReportId: string | null;
   showDeleteConfirm: boolean;
-  isDeleting?: boolean;
+  reportToDelete: string | null;
+  allReports: CollectionReportRow[];
   locationsWithMachines: CollectionReportLocationWithMachines[];
   onCloseNewMobile: () => void;
   onCloseNewDesktop: () => void;
   onCloseEdit: () => void;
   onCloseDelete: () => void;
-  onConfirmDelete: () => void;
+  onConfirmDelete: (archive?: boolean) => Promise<void>;
   onRefresh: () => void;
   onRefreshLocations: () => void;
 };
@@ -63,7 +65,8 @@ export default function CollectionReportModals({
   showEditDesktop,
   editingReportId,
   showDeleteConfirm,
-  isDeleting,
+  reportToDelete,
+  allReports,
   locationsWithMachines,
   onCloseNewMobile,
   onCloseNewDesktop,
@@ -78,6 +81,11 @@ export default function CollectionReportModals({
   const showNewCollection =
     !editingReportId && (showNewCollectionMobile || showNewCollectionDesktop);
   const showEdit = !!editingReportId;
+
+  const report = allReports.find(
+    r => r.locationReportId === reportToDelete || r._id === reportToDelete
+  );
+  const locationName = report ? report.location : 'Report';
 
   return (
     <>
@@ -113,15 +121,17 @@ export default function CollectionReportModals({
         </ErrorBoundary>
       )}
 
-      <ConfirmationDialog
+      <CollectionReportV1DeleteModal
         isOpen={showDeleteConfirm}
+        reportId={reportToDelete || ''}
+        locationName={locationName}
         onClose={onCloseDelete}
-        onConfirm={onConfirmDelete}
-        title="Confirm Delete"
-        message="Are you sure you want to delete this collection report? This will also delete all associated collections, remove them from machine history, and revert collection meters to their previous values. This action cannot be undone."
-        confirmText="Yes, Delete"
-        cancelText="Cancel"
-        isLoading={isDeleting}
+        onArchive={async () => {
+          await onConfirmDelete(true);
+        }}
+        onDelete={async () => {
+          await onConfirmDelete(false);
+        }}
       />
     </>
   );

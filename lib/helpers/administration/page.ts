@@ -88,6 +88,7 @@ const userManagement = {
       notes,
       moneyInMultiplier,
       moneyOutAndJackpotMultiplier,
+      reviewerMultiplierStartTime,
     } = addUserForm;
 
     if (!username || typeof username !== 'string') {
@@ -152,6 +153,7 @@ const userManagement = {
       assignedLocations?: string[];
       moneyInMultiplier?: number;
       moneyOutAndJackpotMultiplier?: number;
+      reviewerMultiplierStartTime?: Date | string | null;
     } = {
       username,
       emailAddress: email,
@@ -172,6 +174,9 @@ const userManagement = {
         moneyOutAndJackpotMultiplier !== null
       ) {
         payload.moneyOutAndJackpotMultiplier = moneyOutAndJackpotMultiplier;
+      }
+      if (reviewerMultiplierStartTime) {
+        payload.reviewerMultiplierStartTime = reviewerMultiplierStartTime;
       }
     }
 

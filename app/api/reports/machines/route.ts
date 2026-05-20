@@ -9,6 +9,9 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import {
+  shouldApplyReviewerMultipliers,
+} from '@/app/api/lib/utils/reviewerScale';
 import type { GamingLocationDocument } from '@shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import {
@@ -222,8 +225,17 @@ export async function GET(req: NextRequest) {
         const isReviewer =
           (userPayload as { roles?: string[] })?.roles?.includes('reviewer') ??
           false;
-        const reviewerMoneyInMult = isReviewer ? moneyInMult : null;
-        const reviewerMoneyOutMult = isReviewer ? moneyOutMult : null;
+        const shouldApplyReviewerScale = shouldApplyReviewerMultipliers(
+          userPayload as {
+            roles?: string[];
+            reviewerMultiplierStartTime?: Date | string | null;
+          },
+          endDate || startDate || null
+        );
+        const reviewerMoneyInMult =
+          isReviewer && shouldApplyReviewerScale ? moneyInMult : null;
+        const reviewerMoneyOutMult =
+          isReviewer && shouldApplyReviewerScale ? moneyOutMult : null;
         let result;
         switch (type) {
           case 'stats':

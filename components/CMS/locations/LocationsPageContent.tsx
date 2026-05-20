@@ -9,7 +9,6 @@
 
 import LocationsPageFilterSection from '@/components/CMS/locations/LocationsPageFilterSection';
 import LocationsPageHeaderSection from '@/components/CMS/locations/LocationsPageHeaderSection';
-import LocationsCabinetTableSkeleton from '@/components/CMS/locations/LocationsCabinetTableSkeleton';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
@@ -31,6 +30,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import LocationsLocationCard from './LocationsLocationCard';
 import LocationsLocationSkeleton from './LocationsLocationSkeleton';
+import LocationsArchivedLocationSkeleton from './LocationsArchivedLocationSkeleton';
 import LocationsLocationTable from './LocationsLocationTable';
 import LocationsDeleteLocationModal from './modals/LocationsDeleteLocationModal';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
@@ -89,9 +89,11 @@ export default function LocationsPageContent() {
     );
   }, [user]);
 
-  const isDeveloper = useMemo(() => {
+  const canPermanentlyDelete = useMemo(() => {
     const roles = user?.roles || [];
-    return roles.map((r: string) => r.toLowerCase()).includes('developer');
+    return ['developer', 'owner', 'admin', 'location admin'].some(r =>
+      roles.map((x: string) => x.toLowerCase()).includes(r)
+    );
   }, [user]);
 
   // ============================================================================
@@ -162,7 +164,6 @@ export default function LocationsPageContent() {
       >
         {/* Page Header: Title and primary actions */}
         <LocationsPageHeaderSection
-          loading={loading}
           refreshing={refreshing}
           canManage={canManageLocations}
           onRefresh={handleRefresh}
@@ -228,18 +229,33 @@ export default function LocationsPageContent() {
           {/* Show loading skeletons while data is being fetched */}
           {loading ? (
             <div>
-              <ClientOnly fallback={<LocationsCabinetTableSkeleton />}>
-                {/* Mobile skeletons */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-                  {[...Array(4)].map((_, i) => (
-                    <LocationsLocationSkeleton key={i} />
-                  ))}
-                </div>
-                {/* Desktop table skeleton */}
-                <div className="hidden lg:block">
-                  <LocationsCabinetTableSkeleton />
-                </div>
-              </ClientOnly>
+              {locationsPageData.selectedStatus === 'Archived' ? (
+                <ClientOnly fallback={<LocationsArchivedLocationSkeleton />}>
+                  {/* Mobile skeletons */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+                    {[...Array(4)].map((_, i) => (
+                      <LocationsArchivedLocationSkeleton key={i} />
+                    ))}
+                  </div>
+                  {/* Desktop table skeleton */}
+                  <div className="hidden lg:block">
+                    <LocationsArchivedLocationSkeleton />
+                  </div>
+                </ClientOnly>
+              ) : (
+                <ClientOnly fallback={<LocationsLocationSkeleton />}>
+                  {/* Mobile skeletons */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+                    {[...Array(4)].map((_, i) => (
+                      <LocationsLocationSkeleton key={i} />
+                    ))}
+                  </div>
+                  {/* Desktop table skeleton */}
+                  <div className="hidden lg:block">
+                    <LocationsLocationSkeleton />
+                  </div>
+                </ClientOnly>
+              )}
             </div>
           ) : /* Show empty state message if no locations match the filters */
           locationData.length === 0 ? (
@@ -249,10 +265,10 @@ export default function LocationsPageContent() {
           ) : (
             /* Main Content: Display data in appropriate format for viewport */
             <div>
-              {/* Mobile View: Cards display */}
+               {/* Mobile View: Cards display */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
                 {locationData.map(loc => (
-                  <LocationsLocationCard
+                   <LocationsLocationCard
                     key={String(loc._id || loc.location || Math.random())}
                     location={loc}
                     onLocationClick={handleLocationClick}
@@ -263,7 +279,7 @@ export default function LocationsPageContent() {
                       locationsPageData.selectedStatus === 'Archived'
                     }
                     canManageLocations={canManageLocations}
-                    isDeveloper={isDeveloper}
+                    canPermanentlyDelete={canPermanentlyDelete}
                   />
                 ))}
               </div>
@@ -275,7 +291,7 @@ export default function LocationsPageContent() {
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
                   canManageLocations={canManageLocations}
-                  isDeveloper={isDeveloper}
+                  canPermanentlyDelete={canPermanentlyDelete}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);

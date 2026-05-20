@@ -362,13 +362,20 @@ export async function GET(request: NextRequest) {
       }
 
       const moneyInScale = getMoneyInScale(
-        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        userPayload as {
+          moneyInMultiplier?: number | null;
+          roles?: string[];
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        gdr.rangeEnd
       );
       const moneyOutScale = getMoneyOutAndJackpotScale(
         userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
-        }
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        gdr.rangeEnd
       );
 
       const includeArchived = searchParams.get('includeArchived') === 'true';
@@ -392,11 +399,12 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Apply connectivity filtering if a specific status is requested
       if (onlineStatus !== 'all') {
         const threeMin = new Date(Date.now() - 3 * 60 * 1000);
         if (locationCheck.aceEnabled) {
           if (onlineStatus === 'online') {
-            // all active machines are online
+            // all active machines are online in ACE locations
           } else if (
             onlineStatus === 'offline' ||
             onlineStatus === 'never-online'
@@ -618,15 +626,31 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      if (searchTerm) {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        machinesWithMeters.sort((a, b) =>
-          a.serialNumber.toLowerCase().startsWith(lowerSearchTerm) &&
-          !b.serialNumber.toLowerCase().startsWith(lowerSearchTerm)
-            ? -1
-            : 0
-        );
-      }
+      // Final Sorting
+      // Priority: Search Relevance -> Online Status -> Gross Descending
+      machinesWithMeters.sort((a, b) => {
+        // 1. Search Relevance (if searching)
+        if (searchTerm) {
+          const lowerSearch = searchTerm.toLowerCase();
+          const aStarts = a.serialNumber.toLowerCase().startsWith(lowerSearch);
+          const bStarts = b.serialNumber.toLowerCase().startsWith(lowerSearch);
+
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+        }
+
+        // 2. Connectivity (Online first)
+        if (a.online && !b.online) return -1;
+        if (!a.online && b.online) return 1;
+
+        // 3. Gross (Descending)
+        const bGross = Number(b.gross) || 0;
+        const aGross = Number(a.gross) || 0;
+        if (bGross !== aGross) return bGross - aGross;
+
+        // 4. Fallback: Serial Number
+        return a.serialNumber.localeCompare(b.serialNumber);
+      });
 
       const total = machinesWithMeters.length;
       const paginated = limit

@@ -252,18 +252,34 @@ export async function GET(req: NextRequest) {
               case 'MissingCoordinates':
                 qualityFilters.push({
                   $or: [
-                    { geoCoords: { $exists: false } },
-                    { geoCoords: null },
-                    { 'geoCoords.latitude': { $exists: false } },
-                    { 'geoCoords.latitude': null },
-                    { 'geoCoords.latitude': 0 },
+                    { googleMapsIframe: { $exists: false } },
+                    { googleMapsIframe: null },
+                    { googleMapsIframe: '' },
+                    { googleMapsLink: { $exists: false } },
+                    { googleMapsLink: null },
+                    { googleMapsLink: '' },
                     {
-                      $or: [
+                      $and: [
                         {
-                          'geoCoords.longitude': { $exists: false, $eq: null },
+                          $or: [
+                            { 'geoCoords.latitude': { $exists: false } },
+                            { 'geoCoords.latitude': null },
+                            { 'geoCoords.latitude': 0 },
+                          ],
                         },
                         {
-                          'geoCoords.longtitude': { $exists: false, $eq: null },
+                          $or: [
+                            { 'geoCoords.longitude': { $exists: false } },
+                            { 'geoCoords.longitude': null },
+                            { 'geoCoords.longitude': 0 },
+                          ],
+                        },
+                        {
+                          $or: [
+                            { 'geoCoords.longtitude': { $exists: false } },
+                            { 'geoCoords.longtitude': null },
+                            { 'geoCoords.longtitude': 0 },
+                          ],
                         },
                       ],
                     },
@@ -273,23 +289,13 @@ export async function GET(req: NextRequest) {
               case 'HasCoordinates':
                 qualityFilters.push({
                   $and: [
-                    {
-                      'geoCoords.latitude': { $exists: true, $nin: [null, 0] },
-                    },
+                    { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
+                    { googleMapsLink: { $exists: true, $nin: [null, ''] } },
                     {
                       $or: [
-                        {
-                          'geoCoords.longitude': {
-                            $exists: true,
-                            $nin: [null, 0],
-                          },
-                        },
-                        {
-                          'geoCoords.longtitude': {
-                            $exists: true,
-                            $nin: [null, 0],
-                          },
-                        },
+                        { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                        { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                        { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
                       ],
                     },
                   ],
@@ -495,13 +501,20 @@ export async function GET(req: NextRequest) {
         );
 
         const moneyInScale = getMoneyInScale(
-          userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+          userPayload as {
+            moneyInMultiplier?: number | null;
+            roles?: string[];
+            reviewerMultiplierStartTime?: Date | string | null;
+          },
+          globalEnd
         );
         const moneyOutScale = getMoneyOutAndJackpotScale(
           userPayload as {
             moneyOutAndJackpotMultiplier?: number | null;
             roles?: string[];
-          }
+            reviewerMultiplierStartTime?: Date | string | null;
+          },
+          globalEnd
         );
 
         const locationResults: AggregatedLocation[] = locations.map(loc => {
@@ -563,6 +576,8 @@ export async function GET(req: NextRequest) {
               loc.membershipEnabled || loc.enableMembership
             ),
             memberCount: memberCountMap.get(locId) || 0,
+            googleMapsLink: loc.googleMapsLink || '',
+            googleMapsIframe: loc.googleMapsIframe || '',
             machines: machines.map(m => ({
               _id: String(m._id),
               assetNumber: m.assetNumber as string,
@@ -591,6 +606,17 @@ export async function GET(req: NextRequest) {
         }
 
         filteredResults.sort((a, b) => {
+          if (sortBy === 'default') {
+            const aOnline = a.onlineMachines > 0 || a.aceEnabled;
+            const bOnline = b.onlineMachines > 0 || b.aceEnabled;
+            if (aOnline && !bOnline) return -1;
+            if (!aOnline && bOnline) return 1;
+
+            const bGross = b.gross || 0;
+            const aGross = a.gross || 0;
+            return bGross - aGross;
+          }
+
           const valA = (a as unknown as Record<string, number>)[sortBy] ?? 0;
           const valB = (b as unknown as Record<string, number>)[sortBy] ?? 0;
           return sortOrder === 'asc'

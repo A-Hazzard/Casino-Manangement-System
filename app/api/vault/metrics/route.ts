@@ -137,13 +137,20 @@ export async function GET(request: NextRequest) {
       // Reviewer Multiplier Scaling
       // ============================================================================
       const moneyInScale = getMoneyInScale(
-        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        userPayload as {
+          moneyInMultiplier?: number | null;
+          roles?: string[];
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        rangeEnd
       );
       const moneyOutScale = getMoneyOutAndJackpotScale(
         userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
-        }
+          reviewerMultiplierStartTime?: Date | string | null;
+        },
+        rangeEnd
       );
       if (moneyInScale !== 1 || moneyOutScale !== 1) {
         metrics.totalCashIn *= moneyInScale;

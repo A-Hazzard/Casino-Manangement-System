@@ -454,6 +454,8 @@ export async function fetchCabinetsForLocation(
   onlineStatus?: string,
   includeArchived?: boolean,
   smibStatus?: string,
+  sortBy?: string,
+  sortOrder?: 'asc' | 'desc',
   signal?: AbortSignal
 ): Promise<{
   data: GamingMachine[];
@@ -515,6 +517,14 @@ export async function fetchCabinetsForLocation(
     // Add smibStatus parameter if provided
     if (smibStatus && smibStatus !== 'all') {
       params.smibStatus = smibStatus;
+    }
+
+    // Add sorting parameters
+    if (sortBy) {
+      params.sortBy = sortBy;
+    }
+    if (sortOrder) {
+      params.sortOrder = sortOrder;
     }
 
     // Handle custom date range

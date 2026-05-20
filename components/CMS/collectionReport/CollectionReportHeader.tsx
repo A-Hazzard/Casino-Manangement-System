@@ -39,7 +39,7 @@ export default function CollectionReportHeader({
   onCreateMobile,
 }: CollectionReportHeaderProps) {
   return (
-    <div className="mt-4 flex w-full max-w-full items-center justify-between">
+    <div className="flex w-full max-w-full items-center justify-between">
       <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">
         Collection Report
         <Image
@@ -47,7 +47,7 @@ export default function CollectionReportHeader({
           alt="Collection Report Icon"
           width={32}
           height={32}
-          className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
+          className="hidden h-5 w-5 flex-shrink-0 sm:inline sm:h-6 sm:w-6 md:h-8 md:w-8"
         />
       </h1>
 

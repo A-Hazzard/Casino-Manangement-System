@@ -295,6 +295,8 @@ export async function authenticateUser(
         moneyInMultiplier: userObject.moneyInMultiplier ?? null,
         moneyOutAndJackpotMultiplier:
           userObject.moneyOutAndJackpotMultiplier ?? null,
+        reviewerMultiplierStartTime:
+          userObject.reviewerMultiplierStartTime ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -383,6 +385,8 @@ export async function authenticateUser(
         moneyInMultiplier: userObject.moneyInMultiplier ?? null,
         moneyOutAndJackpotMultiplier:
           userObject.moneyOutAndJackpotMultiplier ?? null,
+        reviewerMultiplierStartTime:
+          userObject.reviewerMultiplierStartTime ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -480,6 +484,8 @@ export async function authenticateUser(
       moneyInMultiplier: userObject.moneyInMultiplier ?? null,
       moneyOutAndJackpotMultiplier:
         userObject.moneyOutAndJackpotMultiplier ?? null,
+      reviewerMultiplierStartTime:
+        userObject.reviewerMultiplierStartTime ?? null,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,

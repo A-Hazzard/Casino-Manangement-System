@@ -24,7 +24,7 @@ import {
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
-import { useUserStore } from '@/lib/store/userStore';
+
 import { useDebounce } from '@/lib/utils/hooks';
 import {
   containsEmailPattern,
@@ -55,7 +55,7 @@ export default function MembersNewMemberModal({
   onClose,
   onMemberCreated,
 }: MembersNewMemberModalProps) {
-  const { user } = useUserStore();
+
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -67,38 +67,6 @@ export default function MembersNewMemberModal({
     email: boolean;
   }>({ username: false, email: false });
 
-  // Helper function to get proper user display name for activity logging
-  const getUserDisplayName = () => {
-    if (!user) return 'Unknown User';
-
-    // Check if user has profile with firstName and lastName
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
-
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use username
-    if (user.username && user.username.trim() !== '') {
-      return user.username;
-    }
-
-    // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== '') {
-      return user.emailAddress;
-    }
-
-    // Fallback
-    return 'Unknown User';
-  };
 
   // Activity logging is now handled via API calls
   const logActivity = async (
@@ -110,33 +78,14 @@ export default function MembersNewMemberModal({
     previousData?: Record<string, unknown> | null,
     newData?: Record<string, unknown> | null
   ) => {
-    try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: [], // Will be calculated by the API
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
+    // No-op to rely on backend API route logging and prevent duplicates
+    void action;
+    void resource;
+    void resourceId;
+    void resourceName;
+    void details;
+    void previousData;
+    void newData;
   };
 
   const [formData, setFormData] = useState({

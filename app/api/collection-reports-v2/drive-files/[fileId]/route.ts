@@ -1,0 +1,36 @@
+import { getDriveFileMeta } from '@/lib/utils/drive';
+import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ fileId: string }> }
+) {
+  try {
+    const { fileId } = await params;
+    if (!fileId) {
+      return NextResponse.json(
+        { success: false, error: 'File ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const file = await getDriveFileMeta(fileId);
+
+    return new NextResponse(new Uint8Array(file.data), {
+      status: 200,
+      headers: {
+        'Content-Type': file.mimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      },
+    });
+  } catch (error) {
+    console.error('[drive-files/[fileId]] Error serving file:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to serve file from Google Drive' },
+      { status: 500 }
+    );
+  }
+}

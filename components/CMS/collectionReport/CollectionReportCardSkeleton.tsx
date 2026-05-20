@@ -74,6 +74,18 @@ export default function CollectionReportCardSkeleton({
                 <div className="skeleton-bg h-4 w-20 rounded"></div>
               </div>
 
+              {/* Variation */}
+              <div className="flex justify-between">
+                <div className="skeleton-bg h-4 w-16 rounded"></div>
+                <div className="skeleton-bg h-4 w-20 rounded"></div>
+              </div>
+
+              {/* Balance */}
+              <div className="flex justify-between">
+                <div className="skeleton-bg h-4 w-16 rounded"></div>
+                <div className="skeleton-bg h-4 w-20 rounded"></div>
+              </div>
+
               {/* Location Revenue */}
               <div className="flex justify-between">
                 <div className="skeleton-bg h-4 w-28 rounded"></div>

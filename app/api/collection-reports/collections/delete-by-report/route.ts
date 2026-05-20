@@ -22,6 +22,9 @@ import {
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
+import { logActivity, mapDeletedFieldsToChanges } from '@/app/api/lib/helpers/activityLogger';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -137,6 +140,10 @@ export async function DELETE(request: NextRequest) {
           );
         }
       });
+      // ============================================================================
+      // STEP 6.5: Fetch collection report before deleting
+      // ============================================================================
+      const existingReport = await CollectionReport.findOne({ locationReportId }).lean();
 
       await Promise.all(machineUpdatePromises);
 
@@ -151,6 +158,54 @@ export async function DELETE(request: NextRequest) {
       const reportDeleteResult = await CollectionReport.deleteOne({
         locationReportId,
       });
+
+      // ============================================================================
+      // STEP 8.5: Log Activity
+      // ============================================================================
+      const currentUser = await getUserFromServer();
+      if (currentUser && existingReport) {
+        const reportChanges = mapDeletedFieldsToChanges(existingReport);
+        await logActivity({
+          action: 'DELETE',
+          details: `Deleted collection report for ${existingReport.locationName} via delete-by-report`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            resource: 'collection-report',
+            resourceId: locationReportId,
+            resourceName: existingReport.locationName,
+            changes: reportChanges,
+            previousData: {
+              ...existingReport,
+              collections,
+            },
+            newData: null,
+          },
+        });
+
+        // Log each collection being deleted
+        for (const collection of collections) {
+          const collectionChanges = mapDeletedFieldsToChanges(collection || {});
+          await logActivity({
+            action: 'DELETE',
+            details: `Deleted collection for machine "${collection.machineCustomName || collection.machineName || collection.machineId || 'Machine'}" as part of delete-by-report cleanup`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id as string,
+            username: currentUser.emailAddress as string,
+            metadata: {
+              resource: 'collection',
+              resourceId: String(collection._id),
+              resourceName: collection.machineCustomName || collection.machineName || collection.machineId || 'Machine',
+              changes: collectionChanges,
+              previousData: collection,
+              newData: null,
+            },
+          });
+        }
+      }
 
       // ============================================================================
       // STEP 9: Verify deletion completed

@@ -125,9 +125,6 @@ export function getUserDisplayName(user: {
   return 'Unknown User';
 }
 
-/**
- * Log activity to the activity logs API
- */
 export async function logActivity(
   action: string,
   resource: string,
@@ -139,31 +136,14 @@ export async function logActivity(
   previousData?: Record<string, unknown> | null,
   newData?: Record<string, unknown> | null
 ): Promise<void> {
-  try {
-    const response = await fetch('/api/activity-logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action,
-        resource,
-        resourceId,
-        resourceName,
-        details,
-        userId: userId || 'unknown',
-        username,
-        userRole: 'user',
-        previousData: previousData || null,
-        newData: newData || null,
-        changes: [], // Will be calculated by the API
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to log activity:', response.statusText);
-    }
-  } catch (error) {
-    console.error('Error logging activity:', error);
-  }
+  // Silent no-op to prevent duplicate logs (logging is handled securely on the backend)
+  void action;
+  void resource;
+  void resourceId;
+  void resourceName;
+  void details;
+  void userId;
+  void username;
+  void previousData;
+  void newData;
 }

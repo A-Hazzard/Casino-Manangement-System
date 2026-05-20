@@ -9,6 +9,7 @@ import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { recalculateMachineCollections } from './recalculation';
+import { computeTotalVariation } from './calculations';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { GamingLocations } from '../../models/gaminglocations';
@@ -112,7 +113,9 @@ async function recalculateMultipleMachineCollections(
   }
   for (const machineId of machineIds) {
     try {
-      await recalculateMachineCollections(machineId);
+      // writeSasMeters=true: this is called from updateCollectionReport which
+      // runs after the report is already finalized (post-submit edit).
+      await recalculateMachineCollections(machineId, true);
     } catch (error) {
       console.error(
         `Failed to cascade recalculation for machine ${machineId}:`,
@@ -290,8 +293,8 @@ export async function revertMachineCollectionMeters(
       );
 
       if (!updateResult) {
-        errors.push(
-          `Failed to revert meters for machine ${collection.machineId}: machine not found`
+        console.warn(
+          `[revertMachineCollectionMeters] Machine ${collection.machineId} not found in database — skipping meter revert`
         );
         continue;
       }
@@ -386,11 +389,18 @@ export async function updateCollectionReport(
   const affectedMachineIds = await getAffectedMachineIds(reportId);
   await recalculateMultipleMachineCollections(affectedMachineIds);
 
-  // Per product rule: persisted totalVariation is always 0 on edit.
+  // Compute and store total variation from collections after recalculation
   try {
+    const totalVariationValue = await computeTotalVariation(
+      reportId,
+      updatedReport.location
+    );
     await CollectionReport.findOneAndUpdate(
       { locationReportId: reportId },
-      { $set: { totalVariation: 0 } }
+      { $set: { totalVariation: Number(totalVariationValue.toFixed(2)) } }
+    );
+    console.log(
+      `[updateCollectionReport] totalVariation stored: ${totalVariationValue}`
     );
   } catch (varErr) {
     console.warn(
@@ -415,7 +425,8 @@ export async function updateCollectionReport(
  * @returns {Promise<{success: boolean; error?: string}>} - Returns success or error message
  */
 export async function deleteManualMetersPerCollection(
-  locationReportId: CollectionReportDocument['locationReportId']
+  locationReportId: CollectionReportDocument['locationReportId'],
+  archive?: boolean
 ): Promise<{ success: boolean; error?: string }> {
   if (!locationReportId) {
     console.error(
@@ -435,32 +446,50 @@ export async function deleteManualMetersPerCollection(
     for (const collection of collections) {
       // Delete RAM clear meter if it exists (only for collections with RAM clear)
       if (collection.ramClearMeterId) {
-        const ramClearResult = await Meters.findOneAndDelete({
-          _id: collection.ramClearMeterId,
-        });
+        let ramClearResult;
+        if (archive) {
+          ramClearResult = await Meters.findOneAndUpdate(
+            { _id: collection.ramClearMeterId },
+            { $set: { deletedAt: new Date() } },
+            { new: true }
+          );
+        } else {
+          ramClearResult = await Meters.findOneAndDelete({
+            _id: collection.ramClearMeterId,
+          });
+        }
         if (ramClearResult) {
           console.log(
-            `[deleteManualMetersPerCollection] Deleted ramClear meter ${collection.ramClearMeterId}`
+            `[deleteManualMetersPerCollection] ${archive ? 'Archived' : 'Deleted'} ramClear meter ${collection.ramClearMeterId}`
           );
         } else {
           console.warn(
-            `[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted`
+            `[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted/archived`
           );
         }
       }
 
       // Delete regular meter (all collections should have this)
       if (collection.meterId) {
-        const meterResult = await Meters.findOneAndDelete({
-          _id: collection.meterId,
-        });
+        let meterResult;
+        if (archive) {
+          meterResult = await Meters.findOneAndUpdate(
+            { _id: collection.meterId },
+            { $set: { deletedAt: new Date() } },
+            { new: true }
+          );
+        } else {
+          meterResult = await Meters.findOneAndDelete({
+            _id: collection.meterId,
+          });
+        }
         if (meterResult) {
           console.log(
-            `[deleteManualMetersPerCollection] Deleted meter ${collection.meterId}`
+            `[deleteManualMetersPerCollection] ${archive ? 'Archived' : 'Deleted'} meter ${collection.meterId}`
           );
         } else {
           console.warn(
-            `[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted`
+            `[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted/archived`
           );
         }
       } else {

@@ -164,24 +164,28 @@ export default function EditCabinetLocationConfig({
         <label className="mb-2 block text-sm font-medium text-grayHighlight">
           Status
         </label>
-        <Select
-          value={formData.status as string}
-          onValueChange={value => {
-            console.log(
-              `[EditCabinetLocationConfig] Status changed to:`,
-              value
-            );
-            onFormDataChange({ status: value });
-          }}
-        >
-          <SelectTrigger className="border-border bg-container">
-            <SelectValue placeholder="Select Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="functional">Functional</SelectItem>
-            <SelectItem value="non_functional">Non Functional</SelectItem>
-          </SelectContent>
-        </Select>
+        {cabinetDataLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
+          <Select
+            value={formData.status as string}
+            onValueChange={value => {
+              console.log(
+                `[EditCabinetLocationConfig] Status changed to:`,
+                value
+              );
+              onFormDataChange({ status: value });
+            }}
+          >
+            <SelectTrigger className="border-border bg-container">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="functional">Functional</SelectItem>
+              <SelectItem value="non_functional">Non Functional</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Custom Name Field - Only show if no valid serial number */}

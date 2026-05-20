@@ -7,8 +7,8 @@ type MachineInfo = {
   machineCustomName: string;
   machineName: string;
   manufacturer: string;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
 };
 
 type CameraOverlayProps = {
@@ -128,10 +128,29 @@ export default function CameraOverlay({
     }
   };
 
-  const handleRetake = () => {
+  const handleRetake = async () => {
     setCapturedImage(null);
-    if (videoRef.current) {
-      videoRef.current.play();
+    setError(null);
+    
+    // Stop old tracks if any
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    // Restart camera
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: false,
+      });
+      streamRef.current = mediaStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error('[CameraOverlay] Retake error:', err);
+      setError('Failed to restart camera');
     }
   };
 
@@ -295,11 +314,11 @@ export default function CameraOverlay({
           </p>
           <p>
             <span className="text-white/60">Meters In: </span>
-            {machineInfo.systemMetersIn.toLocaleString()}
+            {machineInfo.sasMetersIn?.toLocaleString() ?? 'N/A'}
           </p>
           <p>
             <span className="text-white/60">Meters Out: </span>
-            {machineInfo.systemMetersOut.toLocaleString()}
+            {machineInfo.sasMetersOut?.toLocaleString() ?? 'N/A'}
           </p>
         </div>
       </div>

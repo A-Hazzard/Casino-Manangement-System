@@ -18,6 +18,7 @@ import {
 } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
@@ -162,6 +163,8 @@ export async function GET(req: NextRequest) {
       {
         $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
       },
+      // Exclude machines whose gaming location has been deleted or no longer exists
+      { $match: { locationDetails: { $ne: null } } },
     ];
 
     // Apply search filter (Location Name or ID AND Machine fields)
@@ -275,6 +278,62 @@ export async function GET(req: NextRequest) {
               $or: [
                 { 'locationDetails.membershipEnabled': true },
                 { 'locationDetails.enableMembership': true },
+              ],
+            });
+            break;
+          case 'MissingCoordinates':
+            filterConditions.push({
+              $and: [
+                {
+                  $or: [
+                    { 'locationDetails.googleMapsIframe': { $exists: false } },
+                    { 'locationDetails.googleMapsIframe': null },
+                    { 'locationDetails.googleMapsIframe': '' },
+                  ],
+                },
+                {
+                  $or: [
+                    { 'locationDetails.googleMapsLink': { $exists: false } },
+                    { 'locationDetails.googleMapsLink': null },
+                    { 'locationDetails.googleMapsLink': '' },
+                  ],
+                },
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { 'locationDetails.geoCoords.latitude': { $exists: false } },
+                        { 'locationDetails.geoCoords.latitude': null },
+                        { 'locationDetails.geoCoords.latitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'locationDetails.geoCoords.longitude': { $exists: false } },
+                        { 'locationDetails.geoCoords.longitude': null },
+                        { 'locationDetails.geoCoords.longitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'locationDetails.geoCoords.longtitude': { $exists: false } },
+                        { 'locationDetails.geoCoords.longtitude': null },
+                        { 'locationDetails.geoCoords.longtitude': 0 },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+            break;
+          case 'HasCoordinates':
+            filterConditions.push({
+              $or: [
+                { 'locationDetails.googleMapsIframe': { $exists: true, $nin: [null, ''] } },
+                { 'locationDetails.googleMapsLink': { $exists: true, $nin: [null, ''] } },
+                { 'locationDetails.geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                { 'locationDetails.geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                { 'locationDetails.geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
               ],
             });
             break;
@@ -538,9 +597,117 @@ export async function GET(req: NextRequest) {
       },
     ]).exec();
 
-    const totalLocations = locationStatusResult[0]?.totalLocations || 0;
+    // Query GamingLocations directly so totalLocations matches the dashboard count
+    // (machine aggregation only sees locations that have machines; this includes empty ones)
+    const locationCountFilter: Array<Record<string, unknown>> = [
+      {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      },
+    ];
+
+    if (search) {
+      locationCountFilter.push({ name: { $regex: search, $options: 'i' } });
+    }
+
+    if (effectiveLicencee) {
+      locationCountFilter.push({ 'rel.licencee': effectiveLicencee });
+    }
+
+    if (locationId) {
+      const specificIds = locationId.split(',').filter(id => id.trim() !== '');
+      if (specificIds.length > 0) {
+        locationCountFilter.push({ _id: { $in: specificIds } });
+      }
+    } else if (allowedLocationIds !== 'all' && Array.isArray(allowedLocationIds)) {
+      locationCountFilter.push({ _id: { $in: allowedLocationIds } });
+    }
+
+    if (machineTypeFilter) {
+      const typeFilters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      typeFilters.forEach(filter => {
+        switch (filter.trim()) {
+          case 'LocalServersOnly':
+            locationCountFilter.push({ isLocalServer: true });
+            break;
+          case 'SMIBLocationsOnly':
+            locationCountFilter.push({ noSMIBLocation: { $ne: true } });
+            break;
+          case 'NoSMIBLocation':
+            locationCountFilter.push({ noSMIBLocation: true });
+            break;
+          case 'MembershipOnly':
+            locationCountFilter.push({
+              $or: [{ membershipEnabled: true }, { enableMembership: true }],
+            });
+            break;
+          case 'MissingCoordinates':
+            locationCountFilter.push({
+              $and: [
+                {
+                  $or: [
+                    { googleMapsIframe: { $exists: false } },
+                    { googleMapsIframe: null },
+                    { googleMapsIframe: '' },
+                  ],
+                },
+                {
+                  $or: [
+                    { googleMapsLink: { $exists: false } },
+                    { googleMapsLink: null },
+                    { googleMapsLink: '' },
+                  ],
+                },
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { 'geoCoords.latitude': { $exists: false } },
+                        { 'geoCoords.latitude': null },
+                        { 'geoCoords.latitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'geoCoords.longitude': { $exists: false } },
+                        { 'geoCoords.longitude': null },
+                        { 'geoCoords.longitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'geoCoords.longtitude': { $exists: false } },
+                        { 'geoCoords.longtitude': null },
+                        { 'geoCoords.longtitude': 0 },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            });
+            break;
+          case 'HasCoordinates':
+            locationCountFilter.push({
+              $or: [
+                { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
+                { googleMapsLink: { $exists: true, $nin: [null, ''] } },
+                { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
+              ],
+            });
+            break;
+        }
+      });
+    }
+
+    const totalLocations = await GamingLocations.countDocuments({
+      $and: locationCountFilter,
+    });
     const onlineLocations = locationStatusResult[0]?.onlineLocations || 0;
-    const offlineLocations = totalLocations - onlineLocations;
+    const offlineLocations = Math.max(0, totalLocations - onlineLocations);
 
     // ============================================================================
     // STEP 6: Return machine status counts

@@ -403,6 +403,8 @@ export type GamingLocationDocument = {
   noSMIBLocation?: boolean;
   fullSMIBs?: boolean;
   semiSMIBs?: boolean;
+  googleMapsLink?: string;
+  googleMapsIframe?: string;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -552,7 +554,7 @@ export type MachineDocument = {
   };
   gameConfig?: {
     accountingDenomination?: number;
-    theoreticalRtp?: number;
+    theoreticalRtp?: number | string;
     maxBet?: string;
     payTableId?: string;
     additionalId?: string;
@@ -1138,6 +1140,7 @@ export type UserDocument = {
   assignedLicencees?: string[];
   moneyInMultiplier?: number;
   moneyOutAndJackpotMultiplier?: number;
+  reviewerMultiplierStartTime?: Date;
   totpSecret?: string;
   totpEnabled?: boolean;
   totpRecoveryToken?: string;

@@ -15,6 +15,7 @@
 
 import { Input } from '@/components/shared/ui/input';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 
 type EditCabinetCollectionSettingsProps = {
   formData: {
@@ -28,6 +29,7 @@ type EditCabinetCollectionSettingsProps = {
   };
   collectionTime: Date;
   collectionMultiplierError: string;
+  cabinetDataLoading?: boolean;
   onFormDataChange: (
     updates: Partial<EditCabinetCollectionSettingsProps['formData']>
   ) => void;
@@ -39,6 +41,7 @@ export default function EditCabinetCollectionSettings({
   formData,
   collectionTime,
   collectionMultiplierError,
+  cabinetDataLoading = false,
   onFormDataChange,
   onCollectionTimeChange,
   onCollectionMultiplierErrorChange,
@@ -53,85 +56,103 @@ export default function EditCabinetCollectionSettings({
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Collection Report Multiplier
           </label>
-          <Input
-            value={formData.collectionSettings?.multiplier || ''}
-            onChange={e => {
-              onCollectionMultiplierErrorChange('');
-              onFormDataChange({
-                collectionMultiplier: e.target.value,
-                collectionSettings: {
-                  ...formData.collectionSettings,
-                  multiplier: e.target.value,
-                },
-              });
-            }}
-            placeholder="Enter multiplier"
-            className={`border-border bg-container ${
-              collectionMultiplierError ? 'border-red-500' : ''
-            }`}
-          />
-          {collectionMultiplierError && (
-            <p className="mt-1 text-xs text-red-500">
-              {collectionMultiplierError}
-            </p>
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <>
+              <Input
+                value={formData.collectionSettings?.multiplier || ''}
+                onChange={e => {
+                  onCollectionMultiplierErrorChange('');
+                  onFormDataChange({
+                    collectionMultiplier: e.target.value,
+                    collectionSettings: {
+                      ...formData.collectionSettings,
+                      multiplier: e.target.value,
+                    },
+                  });
+                }}
+                placeholder="Enter multiplier"
+                className={`border-border bg-container ${
+                  collectionMultiplierError ? 'border-red-500' : ''
+                }`}
+              />
+              {collectionMultiplierError && (
+                <p className="mt-1 text-xs text-red-500">
+                  {collectionMultiplierError}
+                </p>
+              )}
+            </>
           )}
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Last Collection Time
           </label>
-          <ModernCalendar
-            date={{ from: collectionTime, to: collectionTime }}
-            onSelect={(range: { from?: Date; to?: Date } | undefined) => {
-              const date = range?.from;
-              if (!date) return;
-              onCollectionTimeChange(date);
-              onFormDataChange({
-                collectionSettings: {
-                  ...formData.collectionSettings,
-                  lastCollectionTime: date.toISOString(),
-                },
-              });
-            }}
-            enableTimeInputs={true}
-            mode="single"
-          />
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <ModernCalendar
+              date={{ from: collectionTime, to: collectionTime }}
+              onSelect={(range: { from?: Date; to?: Date } | undefined) => {
+                const date = range?.from;
+                if (!date) return;
+                onCollectionTimeChange(date);
+                onFormDataChange({
+                  collectionSettings: {
+                    ...formData.collectionSettings,
+                    lastCollectionTime: date.toISOString(),
+                  },
+                });
+              }}
+              enableTimeInputs={true}
+              mode="single"
+            />
+          )}
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Last Meters In
           </label>
-          <Input
-            value={formData.collectionSettings?.lastMetersIn || ''}
-            onChange={e =>
-              onFormDataChange({
-                collectionSettings: {
-                  ...formData.collectionSettings,
-                  lastMetersIn: e.target.value,
-                },
-              })
-            }
-            placeholder="Enter last meters in"
-            className="border-border bg-container"
-          />
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              value={formData.collectionSettings?.lastMetersIn || ''}
+              onChange={e =>
+                onFormDataChange({
+                  collectionSettings: {
+                    ...formData.collectionSettings,
+                    lastMetersIn: e.target.value,
+                  },
+                })
+              }
+              placeholder="Enter last meters in"
+              className="border-border bg-container"
+            />
+          )}
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
             Last Meters Out
           </label>
-          <Input
-            value={formData.collectionSettings?.lastMetersOut || ''}
-            onChange={e =>
-              onFormDataChange({
-                collectionSettings: {
-                  ...formData.collectionSettings,
-                  lastMetersOut: e.target.value,
-                },
-              })
-            }
-            placeholder="Enter last meters out"
-            className="border-border bg-container"
-          />
+          {cabinetDataLoading ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              value={formData.collectionSettings?.lastMetersOut || ''}
+              onChange={e =>
+                onFormDataChange({
+                  collectionSettings: {
+                    ...formData.collectionSettings,
+                    lastMetersOut: e.target.value,
+                  },
+                })
+              }
+              placeholder="Enter last meters out"
+              className="border-border bg-container"
+            />
+          )}
         </div>
       </div>
     </div>

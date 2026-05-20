@@ -64,7 +64,10 @@
       "Bash(node fix_ts6133_imports.js)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(mkdir -p \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\\\\api\\\\collection-reports-v2\\\\sessions\\\\[sessionId]\\\\submit\")"
+      "Bash(mkdir -p \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\\\\api\\\\collection-reports-v2\\\\sessions\\\\[sessionId]\\\\submit\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\pc\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-pc-Documents-Github-evolution-one-cms\\\\64012079-6bea-4a35-9f8d-2420a44fb205\\\\tasks\\\\bttdavnwa.output\" -Wait)",
+      "Bash(Select-String -Pattern \"error|warning|✓|✗|passed|failed|Done|Errors|Warnings\" -SimpleMatch)",
+      "Bash(del \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\docs\\\\collection-report.md\")"
     ]
   }
 }

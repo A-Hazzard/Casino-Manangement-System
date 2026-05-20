@@ -727,6 +727,10 @@ export function useMobileCollectionModal({
     setModalState(prev => ({ ...prev, isProcessing: true }));
 
     try {
+      // Determine the time to use for timestamp, collectionTime, and sasEndTime
+      const timeForMobile =
+        modalState.formData.sasEndTime || modalState.formData.collectionTime;
+
       // Prepare collection payload
       const collectionPayload = {
         machineId: String(selectedMachineData._id),
@@ -740,23 +744,21 @@ export function useMobileCollectionModal({
         ramClearMetersOut: modalState.formData.ramClearMetersOut
           ? Number(modalState.formData.ramClearMetersOut)
           : undefined,
-        ...(modalState.formData.showAdvancedSas &&
-        modalState.formData.sasStartTime
+        ...(modalState.formData.sasStartTime
           ? { sasStartTime: modalState.formData.sasStartTime }
           : {}),
-        ...(modalState.formData.showAdvancedSas &&
-        modalState.formData.sasEndTime
-          ? {
-              sasEndTime: modalState.formData.sasEndTime,
-              timestamp: modalState.formData.sasEndTime.toISOString(),
-              collectionTime: modalState.formData.sasEndTime.toISOString(),
-            }
-          : {
-              // Simple mode: sasEndTime = collectionTime (always saved, never undefined)
-              sasEndTime: modalState.formData.collectionTime,
-              timestamp: modalState.formData.collectionTime.toISOString(),
-              collectionTime: modalState.formData.collectionTime.toISOString(),
-            }),
+        sasEndTime:
+          timeForMobile instanceof Date
+            ? timeForMobile
+            : new Date(timeForMobile),
+        timestamp: (timeForMobile instanceof Date
+          ? timeForMobile
+          : new Date(timeForMobile)
+        ).toISOString(),
+        collectionTime: (timeForMobile instanceof Date
+          ? timeForMobile
+          : new Date(timeForMobile)
+        ).toISOString(),
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),
         prevIn: validationPrevIn,
@@ -810,14 +812,19 @@ export function useMobileCollectionModal({
 
         // Correctly handle navigation state
         const newStack = [...prev.navigationStack];
-        newStack.pop(); // Pop the 'form' panel
+        if (newStack[newStack.length - 1] === 'form') {
+          newStack.pop(); // Pop the 'form' panel
+        }
+
+        const topPanel = newStack.length > 0 ? newStack[newStack.length - 1] : null;
 
         return {
           ...prev,
           collectedMachines: newCollectedMachines,
           lockedLocationId: newLockedLocationId, // Lock on first machine
           isFormVisible: false,
-          isMachineListVisible: false, // The home screen will show because stack is empty
+          isMachineListVisible: topPanel === 'machine-list' || topPanel === null,
+          isCollectedListVisible: topPanel === 'list',
           navigationStack: newStack,
           selectedMachine: null,
           selectedMachineData: null,

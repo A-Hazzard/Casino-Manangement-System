@@ -19,4 +19,6 @@ export {
   getNext30DaysDate,
   formatDateString,
   formatValue,
+  safeFormatDate,
 } from './formatting';
+

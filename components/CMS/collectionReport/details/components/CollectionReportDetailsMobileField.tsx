@@ -7,11 +7,11 @@
 
 'use client';
 
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 
 type CollectionReportDetailsMobileFieldProps = {
   label: string;
-  value: string | number;
+  value: string | number | ReactNode;
   isCurrency?: boolean;
   isBold?: boolean;
   className?: string;

@@ -140,6 +140,7 @@ export default function CollectionReportNewCollectionModal({
     locations,
     isLoadingLocations,
     isLoadingMachines,
+    isLoadingTime,
     selectedLocationId,
     selectedLocationName,
     machinesOfSelectedLocation,
@@ -263,7 +264,7 @@ export default function CollectionReportNewCollectionModal({
         }}
       >
         <DialogContent
-          className="flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl"
+          className="flex h-auto max-h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-auto md:w-full md:max-w-6xl lg:max-w-7xl"
           onPointerDownOutside={e => e.preventDefault()}
           onEscapeKeyDown={e => e.preventDefault()}
         >
@@ -324,6 +325,7 @@ export default function CollectionReportNewCollectionModal({
                         : null
                     }
                     machineForDataEntry={machineForDataEntry || null}
+                    isLoadingTime={isLoadingTime}
                     sasStartTime={sasStartTime}
                     sasEndTime={sasEndTime}
                     currentMetersIn={currentMetersIn}

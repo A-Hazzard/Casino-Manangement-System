@@ -143,14 +143,19 @@ export default function MembersListTab({
 
         if (result.success && result.data) {
           const newMembers = result.data.members || [];
-          // Merge new members into allMembers, avoiding duplicates
-          setAllMembers(prev => {
-            const existingIds = new Set(prev.map(m => m._id));
-            const uniqueNewMembers = newMembers.filter(
-              (m: Member) => !existingIds.has(m._id)
-            );
-            return [...prev, ...uniqueNewMembers];
-          });
+          // If this is page 1, replace the list (new search or refresh);
+          // otherwise merge for pagination
+          if (batch === 1) {
+            setAllMembers(newMembers);
+          } else {
+            setAllMembers(prev => {
+              const existingIds = new Set(prev.map(m => m._id));
+              const uniqueNewMembers = newMembers.filter(
+                (m: Member) => !existingIds.has(m._id)
+              );
+              return [...prev, ...uniqueNewMembers];
+            });
+          }
           if (result.data.pagination) {
             // Store total members if available
             setSummaryStats(prev =>
@@ -352,12 +357,14 @@ export default function MembersListTab({
         const phoneNumber = (member.phoneNumber || '').toLowerCase();
         const locationName = (member.locationName || '').toLowerCase();
         const memberId = String(member._id || '').toLowerCase();
+        const username = (member.username || '').toLowerCase();
 
         return (
           fullName.includes(lowerSearchValue) ||
           phoneNumber.includes(lowerSearchValue) ||
           locationName.includes(lowerSearchValue) ||
-          memberId.includes(lowerSearchValue)
+          memberId.includes(lowerSearchValue) ||
+          username.includes(lowerSearchValue)
         );
       });
     }

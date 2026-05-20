@@ -15,7 +15,7 @@
 import mongoose from 'mongoose';
 
 const MONGODB_URI =
-  'mongodb://sunny1:87ydaiuhdsia2e@147.182.133.136:27017/sas-tunapuna?authSource=admin';
+  'mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-prod?authSource=admin';
 
 interface ICollectionDoc {
   _id: unknown;

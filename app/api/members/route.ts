@@ -1,4 +1,4 @@
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
   applyCurrencyConversionToMetrics,
   shouldApplyCurrencyConversion,
@@ -52,15 +52,27 @@ export async function GET(request: NextRequest) {
       const displayCurrency = searchParams.get('currency') || 'USD';
       const licencee = searchParams.get('licencee') || null;
 
-      const query: Record<string, unknown> = {};
+      const query: Record<string, unknown> = {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $exists: false } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
 
       if (search) {
-        query.$or = [
-          { 'profile.firstName': { $regex: search, $options: 'i' } },
-          { 'profile.lastName': { $regex: search, $options: 'i' } },
-          { username: { $regex: search, $options: 'i' } },
-          { _id: { $regex: search, $options: 'i' } },
+        query.$and = [
+          { $or: query.$or as unknown[] },
+          {
+            $or: [
+              { 'profile.firstName': { $regex: search, $options: 'i' } },
+              { 'profile.lastName': { $regex: search, $options: 'i' } },
+              { username: { $regex: search, $options: 'i' } },
+              { _id: { $regex: search, $options: 'i' } },
+            ],
+          },
         ];
+        delete query.$or;
       }
 
       if (startDate || endDate) {
@@ -355,18 +367,31 @@ export async function POST(request: NextRequest) {
       logRouteCreate(functionName, 'POST', '/api/members', 1, user, duration);
 
       if (currentUser?._id) {
-        await logActivity({
-          action: 'CREATE',
-          details: `Created new member "${trimmedFirstName} ${trimmedLastName}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: (currentUser.username as string) || 'unknown',
-          metadata: {
-            resourceId: newMember._id,
-            resourceName: `${trimmedFirstName} ${trimmedLastName}`,
-          },
-        });
+        try {
+          const changes = calculateChanges(
+            {},
+            newMember.toObject ? newMember.toObject() : newMember
+          );
+
+          await logActivity({
+            action: 'CREATE',
+            details: `Created new member "${trimmedFirstName} ${trimmedLastName}"`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id as string,
+            username: (currentUser.username as string) || (currentUser.emailAddress as string) || 'unknown',
+            metadata: {
+              resource: 'member',
+              resourceId: newMember._id,
+              resourceName: `${trimmedFirstName} ${trimmedLastName}`,
+              changes,
+              previousData: null,
+              newData: newMember.toObject ? newMember.toObject() : newMember,
+            },
+          });
+        } catch (logError) {
+          console.error('Failed to log activity:', logError);
+        }
       }
 
       return NextResponse.json(newMember, { status: 201 });

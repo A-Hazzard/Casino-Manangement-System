@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import type { GamingMachine } from '@/shared/types';
 
 type CollectionSnapshot = {
   _id: mongoose.Types.ObjectId | string;
@@ -43,11 +45,36 @@ function getObjectIdTime(collection: CollectionSnapshot): number {
  * @param {string | null} [machineId] - The machine to update history for.
  * @param {string} [anchorCollectionId] - Unused (kept for compatibility with callers).
  */
-export async function recalculateMachineCollections(machineId?: string | null) {
+/**
+ * Recalculates the collectionMetersHistory for a machine from all its collections.
+ *
+ * @param machineId      - The machine to recalculate.
+ * @param writeSasMeters - When true, also updates sasMeters.drop and
+ *                         sasMeters.totalCancelledCredits for noSMIB locations.
+ *                         Must only be true when called from a finalising path
+ *                         (submit / post-submit edit) — never during mid-wizard
+ *                         per-machine saves where the report is still open.
+ */
+export async function recalculateMachineCollections(
+  machineId?: string | null,
+  writeSasMeters = false
+) {
   if (!machineId) {
     console.error('[recalculateMachineCollections] machineId is required');
     return;
   }
+
+  const machine = await Machine.findOne({
+    _id: machineId,
+  }).lean<GamingMachine>();
+  if (!machine) {
+    return;
+  }
+
+  const gamingLocation = await GamingLocations.findOne({
+    _id: machine.gamingLocation,
+  }).lean<{ noSMIBLocation?: boolean }>();
+  const isNoSasLocation = gamingLocation?.noSMIBLocation === true;
 
   const collections = await Collections.find({
     machineId,
@@ -100,17 +127,27 @@ export async function recalculateMachineCollections(machineId?: string | null) {
   const finalMetersIn = lastCol ? Number(lastCol.metersIn ?? 0) : 0;
   const finalMetersOut = lastCol ? Number(lastCol.metersOut ?? 0) : 0;
 
+  // Prepare update operations
+  const machineSetUpdate: Record<string, unknown> = {
+    'collectionMeters.metersIn': finalMetersIn,
+    'collectionMeters.metersOut': finalMetersOut,
+    collectionMetersHistory: historyEntries,
+    updatedAt: new Date(),
+  };
+
+  // For noSMIB locations, mirror the final values into sasMeters so dashboard
+  // queries stay in sync — but ONLY when called from a finalising path.
+  // During mid-wizard per-machine saves the report is still open, so sasMeters
+  // must not be touched until the collector presses Submit.
+  if (isNoSasLocation && writeSasMeters) {
+    machineSetUpdate['sasMeters.drop'] = finalMetersIn;
+    machineSetUpdate['sasMeters.totalCancelledCredits'] = finalMetersOut;
+  }
+
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   await Machine.findOneAndUpdate(
     { _id: machineId },
-    {
-      $set: {
-        'collectionMeters.metersIn': finalMetersIn,
-        'collectionMeters.metersOut': finalMetersOut,
-        collectionMetersHistory: historyEntries,
-        updatedAt: new Date(),
-      },
-    },
+    { $set: machineSetUpdate },
     { new: true }
   );
 }

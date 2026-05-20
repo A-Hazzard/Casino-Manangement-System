@@ -49,7 +49,9 @@ export async function saveUserHelper({
     (updated as { moneyInMultiplier?: number }).moneyInMultiplier !==
       undefined ||
     (updated as { moneyOutAndJackpotMultiplier?: number })
-      .moneyOutAndJackpotMultiplier !== undefined;
+      .moneyOutAndJackpotMultiplier !== undefined ||
+    (updated as { reviewerMultiplierStartTime?: string | Date | null })
+      .reviewerMultiplierStartTime !== undefined;
 
   if (!hasUpdates) {
     toast.error('No changes detected. Please update at least one field.');
@@ -133,6 +135,18 @@ export async function saveUserHelper({
     ).moneyOutAndJackpotMultiplier;
   }
 
+  if (
+    (
+      updated as { reviewerMultiplierStartTime?: string | Date | null }
+    ).reviewerMultiplierStartTime !== undefined
+  ) {
+    originalData.reviewerMultiplierStartTime =
+      selectedUser.reviewerMultiplierStartTime || null;
+    formDataComparison.reviewerMultiplierStartTime = (
+      updated as { reviewerMultiplierStartTime: string | Date | null }
+    ).reviewerMultiplierStartTime;
+  }
+
   // Detect changes
   const changes = detectChanges(originalData, formDataComparison);
   const meaningfulChanges = filterMeaningfulChanges(changes);
@@ -201,6 +215,16 @@ export async function saveUserHelper({
     updatePayload.moneyOutAndJackpotMultiplier = (
       updated as { moneyOutAndJackpotMultiplier: number }
     ).moneyOutAndJackpotMultiplier;
+  }
+
+  if (
+    (
+      updated as { reviewerMultiplierStartTime?: string | Date | null }
+    ).reviewerMultiplierStartTime !== undefined
+  ) {
+    updatePayload.reviewerMultiplierStartTime = (
+      updated as { reviewerMultiplierStartTime: string | Date | null }
+    ).reviewerMultiplierStartTime;
   }
 
   if (permissionFieldsChanged) {

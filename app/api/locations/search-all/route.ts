@@ -233,18 +233,48 @@ export async function GET(request: NextRequest) {
             break;
 
           // --- Quality Category ---
+          // A location HAS coordinates if ANY of: googleMapsIframe, googleMapsLink, or valid geoCoords is present.
+          // It is MISSING coordinates only when ALL are absent.
           case 'MissingCoordinates':
             qualityFilters.push({
-              $or: [
-                { geoCoords: { $exists: false } },
-                { geoCoords: null },
-                { 'geoCoords.latitude': { $exists: false } },
-                { 'geoCoords.latitude': null },
-                { 'geoCoords.latitude': 0 },
+              $and: [
                 {
                   $or: [
-                    { 'geoCoords.longitude': { $exists: false, $eq: null } },
-                    { 'geoCoords.longtitude': { $exists: false, $eq: null } },
+                    { googleMapsIframe: { $exists: false } },
+                    { googleMapsIframe: null },
+                    { googleMapsIframe: '' },
+                  ],
+                },
+                {
+                  $or: [
+                    { googleMapsLink: { $exists: false } },
+                    { googleMapsLink: null },
+                    { googleMapsLink: '' },
+                  ],
+                },
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { 'geoCoords.latitude': { $exists: false } },
+                        { 'geoCoords.latitude': null },
+                        { 'geoCoords.latitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'geoCoords.longitude': { $exists: false } },
+                        { 'geoCoords.longitude': null },
+                        { 'geoCoords.longitude': 0 },
+                      ],
+                    },
+                    {
+                      $or: [
+                        { 'geoCoords.longtitude': { $exists: false } },
+                        { 'geoCoords.longtitude': null },
+                        { 'geoCoords.longtitude': 0 },
+                      ],
+                    },
                   ],
                 },
               ],
@@ -252,24 +282,12 @@ export async function GET(request: NextRequest) {
             break;
           case 'HasCoordinates':
             qualityFilters.push({
-              $and: [
+              $or: [
+                { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
+                { googleMapsLink: { $exists: true, $nin: [null, ''] } },
                 { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
-                {
-                  $or: [
-                    {
-                      'geoCoords.longitude': {
-                        $exists: true,
-                        $nin: [null, 0],
-                      },
-                    },
-                    {
-                      'geoCoords.longtitude': {
-                        $exists: true,
-                        $nin: [null, 0],
-                      },
-                    },
-                  ],
-                },
+                { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
               ],
             });
             break;
@@ -551,13 +569,20 @@ export async function GET(request: NextRequest) {
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
     const moneyInScale = getMoneyInScale(
-      userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+      userPayload as {
+        moneyInMultiplier?: number | null;
+        roles?: string[];
+        reviewerMultiplierStartTime?: Date | string | null;
+      },
+      globalEnd
     );
     const moneyOutScale = getMoneyOutAndJackpotScale(
       userPayload as {
         moneyOutAndJackpotMultiplier?: number | null;
         roles?: string[];
-      }
+        reviewerMultiplierStartTime?: Date | string | null;
+      },
+      globalEnd
     );
 
     // If syncAll requested, sync SMIB status first
@@ -644,20 +669,23 @@ export async function GET(request: NextRequest) {
         latestActivity: location.machineStats?.[0]?.latestActivity
           ? new Date(location.machineStats[0].latestActivity).getTime()
           : 0,
+        googleMapsLink: location.googleMapsLink || '',
+        googleMapsIframe: location.googleMapsIframe || '',
       };
     });
 
-    // Apply online status filter to results
+    // Apply online status filter to results if a specific status is selected
     let finalFilteredLocations = locations;
     if (onlineStatus !== 'all') {
       finalFilteredLocations = locations.filter(loc => {
-        const isOnline = loc.onlineMachines > 0;
+        const isOnline = loc.onlineMachines > 0 || loc.aceEnabled;
 
         if (onlineStatus === 'online') {
           return isOnline;
         }
 
         if (onlineStatus.startsWith('offline')) {
+          // Offline means either 0 online machines or last activity was long ago
           return !isOnline && loc.totalMachines > 0;
         }
 
@@ -806,12 +834,18 @@ export async function GET(request: NextRequest) {
       aceEnabled: loc.aceEnabled,
       isNeverOnline: loc.isNeverOnline,
       latestActivity: loc.latestActivity,
+      googleMapsLink: loc.googleMapsLink,
+      googleMapsIframe: loc.googleMapsIframe,
     }));
 
-    // Apply relevance sorting if searching
-    if (search) {
-      const searchLower = search.toLowerCase();
-      finalResponse.sort((a, b) => {
+    // ============================================================================
+    // STEP 9: Final Sorting
+    // Priority: Search Relevance (if searching) -> Online Status -> Most Gross
+    // ============================================================================
+    finalResponse.sort((a, b) => {
+      // 1. Search Relevance (Prefix match ranks highest)
+      if (search) {
+        const searchLower = search.toLowerCase();
         const aName = a.locationName.toLowerCase();
         const bName = b.locationName.toLowerCase();
         const aStarts = aName.startsWith(searchLower);
@@ -819,11 +853,22 @@ export async function GET(request: NextRequest) {
 
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
+      }
 
-        // If both start with it or both don't, sort alphabetically
-        return aName.localeCompare(bName);
-      });
-    }
+      // 2. Connectivity (Online first)
+      const aOnline = a.onlineMachines > 0 || a.aceEnabled;
+      const bOnline = b.onlineMachines > 0 || b.aceEnabled;
+      if (aOnline && !bOnline) return -1;
+      if (!aOnline && bOnline) return 1;
+
+      // 3. Gross (Descending)
+      const bGross = b.gross || 0;
+      const aGross = a.gross || 0;
+      if (bGross !== aGross) return bGross - aGross;
+
+      // 4. Alphabetical fallback
+      return a.locationName.localeCompare(b.locationName);
+    });
 
     const duration = Date.now() - startTime;
     logRouteFetch(

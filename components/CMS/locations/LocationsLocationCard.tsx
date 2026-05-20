@@ -43,7 +43,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
+import { IMAGES } from '@/lib/constants';
 import { format, formatDistanceToNow } from 'date-fns';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -55,9 +57,9 @@ export default function LocationsLocationCard({
   onDelete,
   onRestore,
   canManageLocations = true,
-  isDeveloper = false,
   selectedFilters = [],
   showArchived = false,
+  canPermanentlyDelete = false,
 }: {
   location: LocationCardData['location'];
   onLocationClick: LocationCardData['onLocationClick'];
@@ -65,9 +67,9 @@ export default function LocationsLocationCard({
   onDelete?: (location: LocationCardData['location']) => void;
   onRestore?: (location: LocationCardData['location']) => void;
   canManageLocations?: boolean;
-  isDeveloper?: boolean;
   selectedFilters?: Array<string | null | ''>;
   showArchived?: boolean;
+  canPermanentlyDelete?: boolean;
 }) {
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,32 @@ export default function LocationsLocationCard({
           <span className="break-words">
             {(location as Record<string, unknown>).locationName as string}
           </span>
+          {location.googleMapsLink && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a
+                    href={location.googleMapsLink as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="inline-flex transition-transform hover:scale-110"
+                  >
+                    <Image
+                      src={IMAGES.locationIcon}
+                      alt="Location Icon"
+                      width={20}
+                      height={20}
+                      className="h-4 w-4 flex-shrink-0"
+                    />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Navigate to location on Google Maps
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <TooltipProvider delayDuration={200}>
             {/* Full SMIB Icon */}
             {Boolean((location as { fullSMIBs?: boolean }).fullSMIBs) && (
@@ -364,7 +392,7 @@ export default function LocationsLocationCard({
                 <span>Restore</span>
               </Button>
             )}
-            {isDeveloper && (
+            {canPermanentlyDelete && (
               <Button
                 onClick={() => onDelete?.(location)}
                 variant="outline"

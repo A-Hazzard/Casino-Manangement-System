@@ -159,31 +159,44 @@ export const useCabinetSorting = ({
             : secondLastActivity &&
               new Date(secondLastActivity).getTime() > threeMinutesAgo;
 
+        // Prioritize online machines: Online machines come BEFORE offline machines
+        if (firstIsOnline && !secondIsOnline) return -1;
+        if (!firstIsOnline && secondIsOnline) return 1;
+
         // If both online or both offline, compare by offline time
         if (firstIsOnline && secondIsOnline) {
           return 0; // Both online, maintain order
         }
-        if (!firstIsOnline && !secondIsOnline) {
-          // Both offline, compare by time offline (older lastActivity = longer offline)
-          const firstTime = firstLastActivity
-            ? new Date(firstLastActivity).getTime()
-            : 0;
-          const secondTime = secondLastActivity
-            ? new Date(secondLastActivity).getTime()
-            : 0;
+        
+        // Both offline, compare by time offline (older lastActivity = longer offline)
+        const firstTime = firstLastActivity
+          ? new Date(firstLastActivity).getTime()
+          : 0;
+        const secondTime = secondLastActivity
+          ? new Date(secondLastActivity).getTime()
+          : 0;
 
-          // Always push "Never Online" (0) to the bottom
-          if (firstTime === 0 && secondTime > 0) return 1;
-          if (firstTime > 0 && secondTime === 0) return -1;
-          if (firstTime === 0 && secondTime === 0) return 0;
+        // Always push "Never Online" (0) to the bottom
+        if (firstTime === 0 && secondTime > 0) return 1;
+        if (firstTime > 0 && secondTime === 0) return -1;
+        if (firstTime === 0 && secondTime === 0) return 0;
 
-          // Lower timestamp = longer offline time
-          // For 'desc' (Longest First): we want lower timestamps first, so reverse the comparison
-          return (firstTime < secondTime ? 1 : -1) * orderMultiplier;
-        }
-        // One online, one offline - offline machines come first when sorting by offline time
-        return firstIsOnline ? 1 : -1;
+        // Lower timestamp = longer offline time
+        // For 'desc' (Longest First): we want lower timestamps first, so reverse the comparison
+        return (firstTime < secondTime ? 1 : -1) * orderMultiplier;
       }
+
+      // For all other sort options, still prioritize online status if available
+      const now = Date.now();
+      const threeMinutesAgo = now - 3 * 60 * 1000;
+      const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
+      const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
+      
+      const firstIsOnline = firstCabinet.online !== undefined ? firstCabinet.online : (firstLastActivity && new Date(firstLastActivity).getTime() > threeMinutesAgo);
+      const secondIsOnline = secondCabinet.online !== undefined ? secondCabinet.online : (secondLastActivity && new Date(secondLastActivity).getTime() > threeMinutesAgo);
+
+      if (firstIsOnline && !secondIsOnline) return -1;
+      if (!firstIsOnline && secondIsOnline) return 1;
 
       // Standard sorting for other options
       const firstValue = firstCabinet[sortOption] || 0;

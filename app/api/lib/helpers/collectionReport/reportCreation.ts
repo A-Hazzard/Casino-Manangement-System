@@ -17,10 +17,14 @@
 
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Machine } from '@/app/api/lib/models/machines';
+import UserModel from '@/app/api/lib/models/user';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import mongoose from 'mongoose';
-import { calculateCollectionReportTotals } from './calculations';
+import {
+  calculateCollectionReportTotals,
+  computeTotalVariation,
+} from './calculations';
 import { generateMongoId } from '../../../../../lib/utils/id';
 import { Meters } from '../../models/meters';
 import type { MetersData, GamingMachine } from '../../../../../shared/types';
@@ -266,6 +270,14 @@ async function updateMachineCollectionData(
 
   if (!currentMachine) return;
 
+  // Fetch location to check for noSMIBLocation flag
+  const gamingLocation = currentMachine.gamingLocation
+    ? await GamingLocations.findOne({
+        _id: currentMachine.gamingLocation,
+      }).lean<{ noSMIBLocation?: boolean }>()
+    : null;
+  const isNoSasLocation = gamingLocation?.noSMIBLocation === true;
+
   const currentCollectionMeters = currentMachine.collectionMeters;
   const currentMachineCollectionTime = currentMachine.collectionTime;
 
@@ -329,6 +341,13 @@ async function updateMachineCollectionData(
     updatedAt: new Date(),
   };
 
+  // CRITICAL: Only update sasMeters directly if it's a "No SAS" location
+  // For SAS locations, these fields must only be updated by the live SMIB relay
+  if (isNoSasLocation) {
+    machineSetUpdate['sasMeters.drop'] = metersIn;
+    machineSetUpdate['sasMeters.totalCancelledCredits'] = metersOut;
+  }
+
   const machineUpdateOps: Record<string, unknown> = {
     $set: machineSetUpdate,
   };
@@ -381,28 +400,6 @@ async function updateMachineCollectionData(
       );
     })
   );
-
-  // Update gaming location's previousCollectionTime (if needed)
-  const gamingLocationId = currentMachine.gamingLocation;
-  if (gamingLocationId) {
-    updatePromises.push(
-      GamingLocations.findOneAndUpdate(
-        { _id: gamingLocationId },
-        {
-          $set: {
-            previousCollectionTime: collectionTime,
-            updatedAt: new Date(),
-          },
-        },
-        { new: true }
-      ).catch(err => {
-        console.error(
-          '[updateMachineCollectionData] Error:',
-          err instanceof Error ? err.message : 'Unknown error'
-        );
-      })
-    );
-  }
 
   // Execute all updates in parallel
   await Promise.all(updatePromises);
@@ -785,8 +782,8 @@ export async function updateRegularAndRamClearMeters(
         );
       }
 
-      const regularPrevIn = collectionDocument.prevIn || 0;
-      const regularPrevOut = collectionDocument.prevOut || 0;
+      const regularPrevIn = collectionDocument.ramClear ? 0 : (collectionDocument.prevIn || 0);
+      const regularPrevOut = collectionDocument.ramClear ? 0 : (collectionDocument.prevOut || 0);
       const movementData = {
         'movement.drop': collectionDocument.metersIn - regularPrevIn,
         'movement.totalCancelledCredits':
@@ -952,9 +949,23 @@ export async function createCollectionReport(
     );
     console.log('✅ [createCollectionReport] Totals calculated:', calculated);
 
+    // Look up collector details if body.collector (User ID) is provided
+    let resolvedCollectorName = body.collectorName;
+    if (!resolvedCollectorName && body.collector) {
+      try {
+        const userDoc = await UserModel.findOne({ _id: body.collector }).lean<{ username?: string }>();
+        if (userDoc?.username) {
+          resolvedCollectorName = userDoc.username;
+        }
+      } catch (error) {
+        console.error('Failed to look up collector user:', error);
+      }
+    }
+
     // Convert timestamp fields
     const doc = {
       ...body,
+      collectorName: resolvedCollectorName,
       ...calculated,
       _id: body.locationReportId,
       timestamp: new Date(body.timestamp),
@@ -1053,16 +1064,22 @@ export async function createCollectionReport(
       }
     }
 
-    // Per product rule: persisted totalVariation is always 0.
+    // Compute and store total variation from collections
     try {
+      const totalVariationValue = await computeTotalVariation(
+        body.locationReportId,
+        body.location
+      );
       await CollectionReport.findOneAndUpdate(
         { locationReportId: body.locationReportId },
-        { $set: { totalVariation: 0 } }
+        { $set: { totalVariation: Number(totalVariationValue.toFixed(2)) } }
       );
-      console.log('✅ [createCollectionReport] totalVariation stored: 0');
+      console.log(
+        `✅ [createCollectionReport] totalVariation stored: ${totalVariationValue}`
+      );
     } catch (varErr) {
       console.error(
-        '[createCollectionReport] Error:',
+        '[createCollectionReport] totalVariation update failed (non-fatal):',
         varErr instanceof Error ? varErr.message : 'Unknown error'
       );
     }
@@ -1096,6 +1113,36 @@ export async function createCollectionReport(
       console.log(
         '[createCollectionReport] Skipping manual meter creation — location is not a SMIB location'
       );
+
+    // ============================================================================
+    // Update the GamingLocation's previousCollectionTime with the most recent sasEndTime
+    // ============================================================================
+    if (body.collectionIds && body.collectionIds.length > 0) {
+      try {
+        const collections = await Collections.find({ _id: { $in: body.collectionIds } }).lean<{ sasMeters?: { sasEndTime?: Date } }[]>();
+        let maxSasEndTime: Date | undefined;
+        for (const col of collections) {
+          if (col.sasMeters?.sasEndTime) {
+            const colSasTime = new Date(col.sasMeters.sasEndTime);
+            if (!maxSasEndTime || colSasTime > maxSasEndTime) {
+              maxSasEndTime = colSasTime;
+            }
+          }
+        }
+        if (maxSasEndTime) {
+          await GamingLocations.findOneAndUpdate(
+            { _id: body.location },
+            { $set: { previousCollectionTime: maxSasEndTime } }
+          );
+          console.log(`✅ [createCollectionReport] Updated GamingLocation previousCollectionTime to ${maxSasEndTime}`);
+        }
+      } catch (locationUpdateErr) {
+        console.error(
+          '[createCollectionReport] Failed to update GamingLocation previousCollectionTime:',
+          locationUpdateErr instanceof Error ? locationUpdateErr.message : 'Unknown error'
+        );
+      }
+    }
 
     const duration = Date.now() - startTime;
     console.log(

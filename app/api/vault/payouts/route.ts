@@ -133,19 +133,22 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // Reviewer Multiplier Scaling
       // ============================================================================
-      const moneyOutScale = getMoneyOutAndJackpotScale(
-        userPayload as {
-          moneyOutAndJackpotMultiplier?: number | null;
-          roles?: string[];
+      payouts.forEach(
+        (payoutItem: { amount: number; timestamp?: Date | string | null }) => {
+          const payoutScale = getMoneyOutAndJackpotScale(
+            userPayload as {
+              moneyOutAndJackpotMultiplier?: number | null;
+              roles?: string[];
+              reviewerMultiplierStartTime?: Date | string | null;
+            },
+            payoutItem.timestamp ?? null
+          );
+
+          if (payoutScale !== 1 && typeof payoutItem.amount === 'number') {
+            payoutItem.amount *= payoutScale;
+          }
         }
       );
-      if (moneyOutScale !== 1) {
-        payouts.forEach((payoutItem: { amount: number }) => {
-          if (typeof payoutItem.amount === 'number') {
-            payoutItem.amount *= moneyOutScale;
-          }
-        });
-      }
 
       const duration = Date.now() - startTime;
       logRouteFetch(

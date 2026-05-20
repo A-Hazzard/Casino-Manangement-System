@@ -22,7 +22,7 @@ import {
   CardTitle,
 } from '@/components/shared/ui/card';
 import { useMembersActionsStore } from '@/lib/store/memberActionsStore';
-import { useUserStore } from '@/lib/store/userStore';
+
 import { gsap } from 'gsap';
 import { Save, X, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -42,40 +42,6 @@ type MembersEditMemberModalProps = {
   onMemberUpdated: () => void;
 };
 
-/**
- * Helper function to get proper user display name for activity logging
- */
-function getUserDisplayName(
-  user: {
-    profile?: { firstName?: string; lastName?: string };
-    username?: string;
-    emailAddress?: string;
-  } | null
-): string {
-  if (!user) return 'Unknown User';
-
-  if (user.profile?.firstName && user.profile?.lastName) {
-    return `${user.profile.firstName} ${user.profile.lastName}`;
-  }
-
-  if (user.profile?.firstName && !user.profile?.lastName) {
-    return user.profile.firstName;
-  }
-
-  if (!user.profile?.firstName && user.profile?.lastName) {
-    return user.profile.lastName;
-  }
-
-  if (user.username && user.username.trim() !== '') {
-    return user.username;
-  }
-
-  if (user.emailAddress && user.emailAddress.trim() !== '') {
-    return user.emailAddress;
-  }
-
-  return 'Unknown User';
-}
 
 /**
  * Members Edit Member Modal Component
@@ -89,11 +55,11 @@ export default function MembersEditMemberModal({
   // ============================================================================
   const { isEditModalOpen, selectedMember, closeEditModal } =
     useMembersActionsStore();
-  const { user } = useUserStore();
+
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
-  // Activity logging function
+  // Activity logging function (No-op to rely on backend API route logging and prevent duplicates)
   const logActivity = async (
     action: string,
     resource: string,
@@ -104,33 +70,15 @@ export default function MembersEditMemberModal({
     newData?: Record<string, unknown> | null,
     changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>
   ) => {
-    try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action,
-          resource,
-          resourceId,
-          resourceName,
-          details,
-          userId: user?._id || 'unknown',
-          username: getUserDisplayName(user),
-          userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: changes || [],
-        }),
-      });
-
-      if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error logging activity:', error);
-    }
+    // No-op to rely on backend API route logging and prevent duplicates
+    void action;
+    void resource;
+    void resourceId;
+    void resourceName;
+    void details;
+    void previousData;
+    void newData;
+    void changes;
   };
 
   // Form state management

@@ -165,7 +165,7 @@ function DesktopEditWrapper({
         );
         if (isNoSmib) return;
 
-        const machinesForCheck = desktopHook.collectedMachineEntries.map(
+          const machinesForCheck = desktopHook.collectedMachineEntries.map(
           entry => ({
             machineId: entry.machineId,
             machineName:
@@ -479,8 +479,8 @@ function MobileEditWrapper({
         entry.machineId,
       metersIn: entry.metersIn || 0,
       metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasStartTime ?? undefined,
-      sasEndTime: entry.sasEndTime ?? undefined,
+      sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+      sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
       prevMetersIn: entry.prevIn || 0,
       prevMetersOut: entry.prevOut || 0,
     }));
@@ -514,8 +514,8 @@ function MobileEditWrapper({
             entry.machineId,
           metersIn: entry.metersIn || 0,
           metersOut: entry.metersOut || 0,
-          sasStartTime: entry.sasStartTime ?? undefined,
-          sasEndTime: entry.sasEndTime ?? undefined,
+          sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+          sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
           prevMetersIn: entry.prevIn || 0,
           prevMetersOut: entry.prevOut || 0,
         }));
@@ -725,7 +725,7 @@ export default function CollectionReportEditCollectionModal({
         className={
           isMobile
             ? 'm-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl'
-            : 'flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl'
+            : 'flex h-auto max-h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-auto md:w-full md:max-w-6xl lg:max-w-7xl'
         }
         showCloseButton={!isMobile}
         isMobileFullScreen={isMobile}

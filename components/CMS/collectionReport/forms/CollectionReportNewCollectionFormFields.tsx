@@ -108,6 +108,7 @@ type NewCollectionFormFieldsProps = {
   onPrevInChange: (val: string) => void;
   onPrevOutChange: (val: string) => void;
   onViewMachine: () => void;
+  isLoadingTime?: boolean;
 };
 
 export default function CollectionReportNewCollectionFormFields({
@@ -147,6 +148,7 @@ export default function CollectionReportNewCollectionFormFields({
   onPrevInChange,
   onPrevOutChange,
   onViewMachine,
+  isLoadingTime = false,
 }: NewCollectionFormFieldsProps) {
   return (
     <>
@@ -191,44 +193,52 @@ export default function CollectionReportNewCollectionFormFields({
             <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
               Start Time:
             </label>
-            <ModernCalendar
-              date={
-                sasStartTime
-                  ? {
-                      from: sasStartTime,
-                      to: sasStartTime,
-                    }
-                  : undefined
-              }
-              onSelect={range => {
-                onSasStartTimeChange(range?.from || null);
-              }}
-              enableTimeInputs={true}
-              mode="single"
-              maxDate={sasEndTime || new Date()}
-            />
+            {isLoadingTime ? (
+              <div className="h-10 w-full animate-pulse rounded-md border border-gray-200 bg-gray-200/50" />
+            ) : (
+              <ModernCalendar
+                date={
+                  sasStartTime
+                    ? {
+                        from: sasStartTime,
+                        to: sasStartTime,
+                      }
+                    : undefined
+                }
+                onSelect={range => {
+                  onSasStartTimeChange(range?.from || null);
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                maxDate={sasEndTime || new Date()}
+              />
+            )}
           </div>
           <div>
             <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
               End Time:
             </label>
-            <ModernCalendar
-              date={
-                sasEndTime
-                  ? {
-                      from: sasEndTime,
-                      to: sasEndTime,
-                    }
-                  : undefined
-              }
-              onSelect={range => {
-                onSasEndTimeChange(range?.from || null);
-              }}
-              enableTimeInputs={true}
-              mode="single"
-              maxDate={new Date()}
-              minDate={sasStartTime || undefined}
-            />
+            {isLoadingTime ? (
+              <div className="h-10 w-full animate-pulse rounded-md border border-gray-200 bg-gray-200/50" />
+            ) : (
+              <ModernCalendar
+                date={
+                  sasEndTime
+                    ? {
+                        from: sasEndTime,
+                        to: sasEndTime,
+                      }
+                    : undefined
+                }
+                onSelect={range => {
+                  onSasEndTimeChange(range?.from || null);
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                maxDate={new Date()}
+                minDate={sasStartTime || undefined}
+              />
+            )}
           </div>
         </div>
         <p className="mt-3 text-xs italic leading-relaxed text-blue-600">

@@ -219,5 +219,6 @@ export function useManagerScheduleData(
     onDeleteClose: () => setDeletingRow(null),
     onDeleteConfirm: handleDeleteConfirm,
     deleting,
+    onRefresh: fetchSchedules,
   };
 }

@@ -1,4 +1,4 @@
-import { Schema, model, models } from 'mongoose';
+import { Schema, model, models, Query, Aggregate } from 'mongoose';
 
 const MetersSchema = new Schema(
   {
@@ -39,6 +39,7 @@ const MetersSchema = new Schema(
     isRamClear: { type: Boolean },
     readAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
+    deletedAt: { type: Date },
   },
   { timestamps: true, versionKey: false }
 );
@@ -48,5 +49,51 @@ MetersSchema.index({ machine: 1, readAt: 1 });
 MetersSchema.index({ readAt: 1 });
 MetersSchema.index({ location: 1, machine: 1 });
 MetersSchema.index({ locationSession: 1, readAt: 1 });
+
+MetersSchema.pre('find', function (this: Query<unknown, unknown>, next: () => void) {
+  this.where({
+    $or: [
+      { deletedAt: null },
+      { deletedAt: { $exists: false } },
+      { deletedAt: { $lt: new Date('2026-01-01') } },
+    ],
+  });
+  next();
+});
+
+MetersSchema.pre('findOne', function (this: Query<unknown, unknown>, next: () => void) {
+  this.where({
+    $or: [
+      { deletedAt: null },
+      { deletedAt: { $exists: false } },
+      { deletedAt: { $lt: new Date('2026-01-01') } },
+    ],
+  });
+  next();
+});
+
+MetersSchema.pre('countDocuments', function (this: Query<unknown, unknown>, next: () => void) {
+  this.where({
+    $or: [
+      { deletedAt: null },
+      { deletedAt: { $exists: false } },
+      { deletedAt: { $lt: new Date('2026-01-01') } },
+    ],
+  });
+  next();
+});
+
+MetersSchema.pre('aggregate', function (this: Aggregate<unknown>, next: () => void) {
+  this.pipeline().unshift({
+    $match: {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $exists: false } },
+        { deletedAt: { $lt: new Date('2026-01-01') } },
+      ],
+    },
+  });
+  next();
+});
 
 export const Meters = models['meters'] || model('meters', MetersSchema);

@@ -1,5 +1,5 @@
 /**
- * POST /api/collection-report/check-variations
+ * POST /api/collection-reports/check-variations
  *
  * Compares meter gross against SAS gross for a set of machines to detect discrepancies
  * before a collection report is submitted. Developer/admin only maintenance route.
@@ -185,8 +185,8 @@ export async function POST(request: NextRequest) {
       .filter(machine => machine.sasStartTime && machine.sasEndTime)
       .map(machine => ({
         machineId: machine.machineId,
-        startTime: machine.sasStartTime!,
-        endTime: machine.sasEndTime!,
+        startTime: new Date(machine.sasStartTime!),
+        endTime: new Date(machine.sasEndTime!),
       }));
 
     const allMeterData: Array<{

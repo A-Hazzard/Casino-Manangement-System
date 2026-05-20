@@ -18,13 +18,13 @@ export type CollectionReportMachineEntry = {
 
 export type CollectionSasMeters = {
   machine: string;
-  drop: number;
-  totalCancelledCredits: number;
-  gross: number;
-  gamesPlayed: number;
-  jackpot: number;
-  sasStartTime: Date | undefined;
-  sasEndTime: Date | undefined;
+  drop: number | null;
+  totalCancelledCredits: number | null;
+  gross: number | null;
+  gamesPlayed: number | null;
+  jackpot: number | null;
+  sasStartTime?: Date;
+  sasEndTime?: Date;
 };
 
 export type CollectionMovement = {

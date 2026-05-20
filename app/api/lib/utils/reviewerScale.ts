@@ -14,12 +14,64 @@
 type UserForScale = {
   moneyInMultiplier?: number | null;
   moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
   roles?: string[] | unknown[];
 };
 
 // ============================================================================
 // Scale factors for dual multiplier system
 // ============================================================================
+
+export const DEFAULT_REVIEWER_MULTIPLIER_START_DATE = '2026-04-01';
+
+const DEFAULT_REVIEWER_MULTIPLIER_START_TIMESTAMP = new Date(
+  `${DEFAULT_REVIEWER_MULTIPLIER_START_DATE}T00:00:00.000Z`
+).getTime();
+
+function parseTimestamp(
+  value: Date | string | null | undefined
+): number | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const dateTimestamp = value.getTime();
+    return Number.isNaN(dateTimestamp) ? null : dateTimestamp;
+  }
+
+  if (typeof value === 'string') {
+    const parsedTimestamp = new Date(value).getTime();
+    return Number.isNaN(parsedTimestamp) ? null : parsedTimestamp;
+  }
+
+  return null;
+}
+
+function resolveReferenceTimestamp(referenceDate?: Date | string | null): number {
+  const parsedReferenceTimestamp = parseTimestamp(referenceDate);
+  return parsedReferenceTimestamp ?? Date.now();
+}
+
+export function shouldApplyReviewerMultipliers(
+  user: UserForScale,
+  referenceDate?: Date | string | null
+): boolean {
+  if (!user || typeof user !== 'object') {
+    return false;
+  }
+
+  const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
+  if (!isReviewer) {
+    return false;
+  }
+
+  const configuredStartTimestamp =
+    parseTimestamp(user.reviewerMultiplierStartTime) ??
+    DEFAULT_REVIEWER_MULTIPLIER_START_TIMESTAMP;
+  const dataTimestamp = resolveReferenceTimestamp(referenceDate);
+  return dataTimestamp >= configuredStartTimestamp;
+}
 
 /**
  * Computes the money-in view scale factor for the given user.
@@ -32,15 +84,19 @@ type UserForScale = {
  * getMoneyInScale({ roles: ['admin'],    moneyInMultiplier: 0.3 }) // → 1
  * getMoneyInScale({ roles: ['reviewer'], moneyInMultiplier: 0   }) // → 1
  */
-export function getMoneyInScale(user: UserForScale): number {
+export function getMoneyInScale(
+  user: UserForScale,
+  referenceDate?: Date | string | null
+): number {
   if (!user || typeof user !== 'object') {
     console.error('[getMoneyInScale] user is required and must be an object');
     return 1;
   }
 
   const multiplier = user.moneyInMultiplier ?? 0;
-  const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
-  return isReviewer && multiplier ? 1 - multiplier : 1;
+  return shouldApplyReviewerMultipliers(user, referenceDate) && multiplier
+    ? 1 - multiplier
+    : 1;
 }
 
 /**
@@ -54,7 +110,10 @@ export function getMoneyInScale(user: UserForScale): number {
  * getMoneyOutAndJackpotScale({ roles: ['admin'],    moneyOutAndJackpotMultiplier: 0.5 }) // → 1
  * getMoneyOutAndJackpotScale({ roles: ['reviewer'], moneyOutAndJackpotMultiplier: 0   }) // → 1
  */
-export function getMoneyOutAndJackpotScale(user: UserForScale): number {
+export function getMoneyOutAndJackpotScale(
+  user: UserForScale,
+  referenceDate?: Date | string | null
+): number {
   if (!user || typeof user !== 'object') {
     console.error(
       '[getMoneyOutAndJackpotScale] user is required and must be an object'
@@ -63,8 +122,9 @@ export function getMoneyOutAndJackpotScale(user: UserForScale): number {
   }
 
   const multiplier = user.moneyOutAndJackpotMultiplier ?? 0;
-  const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
-  return isReviewer && multiplier ? 1 - multiplier : 1;
+  return shouldApplyReviewerMultipliers(user, referenceDate) && multiplier
+    ? 1 - multiplier
+    : 1;
 }
 
 /**
@@ -72,8 +132,11 @@ export function getMoneyOutAndJackpotScale(user: UserForScale): number {
  *
  * Kept for backward compatibility. Defaults to money-in scale behavior.
  */
-export function getReviewerScale(user: UserForScale): number {
-  return getMoneyInScale(user);
+export function getReviewerScale(
+  user: UserForScale,
+  referenceDate?: Date | string | null
+): number {
+  return getMoneyInScale(user, referenceDate);
 }
 
 // ============================================================================

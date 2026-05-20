@@ -35,6 +35,7 @@ export type UserDocument = Document & {
   assignedLicencees?: string[];
   moneyInMultiplier?: number | null;
   moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -115,6 +116,7 @@ export type UserAuthPayload = {
   invalidProfileReasons?: ProfileValidationReasons;
   moneyInMultiplier?: number | null;
   moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
 };
 
 export type AuthResult = {

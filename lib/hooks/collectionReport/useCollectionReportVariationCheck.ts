@@ -5,7 +5,7 @@
  * Manages loading, error, and minimized states for variation checking.
  *
  * Features:
- * - Calls /api/collection-report/check-variations endpoint
+ * - Calls /api/collection-reports/check-variations endpoint
  * - Automatically re-checks when machines data changes (with debounce)
  * - Manages UI states (checking, complete, error, minimized)
  * - Provides methods to toggle minimize state and reset

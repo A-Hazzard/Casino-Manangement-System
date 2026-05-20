@@ -33,7 +33,8 @@ import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/use
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import { formatCurrency } from '@/lib/utils/currency';
-import { ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -54,6 +55,21 @@ export default function CollectionReportDetailsPageContent() {
     CollectionReportLocationWithMachines[]
   >([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Collection Report', url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard');
+      }
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === 'AbortError';
+      if (!isAbort) toast.error('Could not share link');
+    }
+  };
 
   // ============================================================================
   // Table Interaction & Edit Handlers
@@ -190,6 +206,16 @@ export default function CollectionReportDetailsPageContent() {
               <Button
                 variant="outline"
                 className="flex items-center gap-2"
+                onClick={handleShare}
+                title="Share this report"
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
                 onClick={handleRefresh}
                 disabled={loading}
                 title="Refresh Report Data"
@@ -231,6 +257,16 @@ export default function CollectionReportDetailsPageContent() {
               variant="outline"
               size="sm"
               className="h-9 w-9 p-0"
+              onClick={handleShare}
+              title="Share this report"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 p-0"
               onClick={handleRefresh}
               disabled={loading}
               title="Refresh Report Data"
@@ -267,9 +303,13 @@ export default function CollectionReportDetailsPageContent() {
               <h1 className="mb-2 text-2xl font-bold text-gray-800 lg:text-4xl">
                 {reportData.locationName}
               </h1>
-              <p className="mb-4 text-sm text-gray-600 lg:text-base">
+              <p className="mb-2 text-sm text-gray-600 lg:text-base">
                 {/* TODO Change to Compound field later to a more understandable report ID rather than using _id*/}
                 Report ID: {reportData.reportId}
+              </p>
+              <p className="mb-4 text-sm font-medium text-gray-600 lg:text-base">
+                Collector:{' '}
+                {reportData.collectorName || reportData.collector || '—'}
               </p>
               <p className={`text-lg font-semibold`}>
                 Collection Report Machine Total Gross:{' '}

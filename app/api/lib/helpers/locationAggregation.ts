@@ -160,15 +160,35 @@ export const getLocationsWithMetrics = async (
         case 'MissingCoordinates':
           qualityFilters.push({
             $or: [
-              { geoCoords: { $exists: false } },
-              { geoCoords: null },
-              { 'geoCoords.latitude': { $exists: false } },
-              { 'geoCoords.latitude': null },
-              { 'geoCoords.latitude': 0 },
+              { googleMapsIframe: { $exists: false } },
+              { googleMapsIframe: null },
+              { googleMapsIframe: '' },
+              { googleMapsLink: { $exists: false } },
+              { googleMapsLink: null },
+              { googleMapsLink: '' },
               {
                 $and: [
-                  { 'geoCoords.longitude': { $exists: false, $eq: null } },
-                  { 'geoCoords.longtitude': { $exists: false, $eq: null } },
+                  {
+                    $or: [
+                      { 'geoCoords.latitude': { $exists: false } },
+                      { 'geoCoords.latitude': null },
+                      { 'geoCoords.latitude': 0 },
+                    ],
+                  },
+                  {
+                    $or: [
+                      { 'geoCoords.longitude': { $exists: false } },
+                      { 'geoCoords.longitude': null },
+                      { 'geoCoords.longitude': 0 },
+                    ],
+                  },
+                  {
+                    $or: [
+                      { 'geoCoords.longtitude': { $exists: false } },
+                      { 'geoCoords.longtitude': null },
+                      { 'geoCoords.longtitude': 0 },
+                    ],
+                  },
                 ],
               },
             ],
@@ -177,13 +197,13 @@ export const getLocationsWithMetrics = async (
         case 'HasCoordinates':
           qualityFilters.push({
             $and: [
-              { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+              { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
+              { googleMapsLink: { $exists: true, $nin: [null, ''] } },
               {
                 $or: [
+                  { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
                   { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
-                  {
-                    'geoCoords.longtitude': { $exists: true, $nin: [null, 0] },
-                  },
+                  { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
                 ],
               },
             ],

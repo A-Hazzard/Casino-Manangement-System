@@ -9,17 +9,34 @@
 
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import CameraOverlay from './CameraOverlay';
 import CollectionReportV2SessionDetailSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionDetailSkeleton';
 import CollectionReportV2SessionReport from './CollectionReportV2SessionReport';
 import StatusBadge from './CollectionReportV2StatusBadge';
+import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
+import { useUserStore } from '@/lib/store/userStore';
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type WizardMode = 'capture' | 'review';
+
+type ReportedMachineMovement = {
+  sasMetersIn?: number;
+  sasMetersOut?: number;
+  sasGross?: number;
+  manualMetersIn?: number;
+  manualMetersOut?: number;
+  machineGross?: number;
+};
 
 type SessionMachine = {
   reportedMachineId: string;
@@ -31,14 +48,26 @@ type SessionMachine = {
   game?: string;
   status: 'pending' | 'captured' | 'confirmed' | 'skipped';
   sequenceOrder: number;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  manualMetersIn?: number;
+  manualMetersOut?: number;
+  prevsasMetersIn?: number;
+  prevsasMetersOut?: number;
+  prevManualMetersIn?: number;
+  prevManualMetersOut?: number;
+  movement?: ReportedMachineMovement;
   sasStartTime?: string;
   sasEndTime?: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   imageData?: string;
-  imageFileId?: string;
-  imageName?: string;
   metersMatch?: boolean;
+  // These are movement-based (movement.machineGross / movement.sasGross)
+  machineGross?: number;
+  sasGross?: number;
+  grossDifference?: number;
+  lastCollectionTime?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -48,9 +77,12 @@ type SessionDetail = {
   sessionStatus: 'in-progress' | 'submitted';
   locationId: string;
   locationName: string;
+  noSMIBLocation?: boolean;
   licencee: string;
   collector: string;
   collectorName: string;
+  sessionStartTime?: string;
+  sessionEndTime?: string;
   machinesTotal: number;
   machinesCaptured: number;
   machinesConfirmed: number;
@@ -70,10 +102,29 @@ type CaptureState = {
 // Component
 // ============================================================================
 
-export default function CollectionReportV2SessionDetail() {
+type SessionDetailProps = {
+  /** When provided (modal mode), overrides the URL param. */
+  sessionId?: string;
+  /** Called instead of navigating away — used when embedded in a modal. */
+  onClose?: () => void;
+};
+
+export default function CollectionReportV2SessionDetail({
+  sessionId: sessionIdProp,
+  onClose,
+}: SessionDetailProps = {}) {
   const params = useParams();
   const router = useRouter();
-  const sessionId = params?.sessionId as string;
+  const sessionId = sessionIdProp ?? (params?.sessionId as string);
+
+  // Navigate back to the V2 tab — calls onClose in modal mode, navigates otherwise.
+  const handleBackToReports = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      router.push('/collection-report?section=collection-v2');
+    }
+  };
 
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +137,33 @@ export default function CollectionReportV2SessionDetail() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [checkingCollection, setCheckingCollection] = useState(false);
+  const [machineLastCollectionInput, setMachineLastCollectionInput] =
+    useState('');
+
+  // Custom SAS period — for past reports where the user wants to override the
+  // auto-detected last-collection date and specify an explicit start + end.
+  const [useCustomPeriod, setUseCustomPeriod] = useState(false);
+  const [customSasStart, setCustomSasStart] = useState('');
+  const [customSasEnd, setCustomSasEnd] = useState('');
+  const [fetchingCustomMeters, setFetchingCustomMeters] = useState(false);
+  const [sasStartOpen, setSasStartOpen] = useState(false);
+  const [sasEndOpen, setSasEndOpen] = useState(false);
+  const originalMetersRef = useRef<{
+    in: number | null;
+    out: number | null;
+  } | null>(null);
+
+  const autoEdited = useRef(false);
+
+  const { user } = useUserStore();
+  const userRoles = (user?.roles as string[]) || [];
+  const isDeveloper = userRoles.includes('developer');
+  const isAdmin = userRoles.includes('admin');
+
+  // Images are now persisted to MongoDB (as tempImageData) on each save,
+  // then uploaded to Google Drive on submit. No client-side cache needed.
 
   // Current capture state for the active machine
   const [captureState, setCaptureState] = useState<CaptureState>({
@@ -111,7 +189,8 @@ export default function CollectionReportV2SessionDetail() {
         if (res.data?.success) {
           setSession(res.data.data);
         } else {
-          if (!background) setError(res.data?.error || 'Failed to load session');
+          if (!background)
+            setError(res.data?.error || 'Failed to load session');
         }
       } catch (_id) {
         if (!background) setError('Failed to load session details');
@@ -126,26 +205,183 @@ export default function CollectionReportV2SessionDetail() {
     fetchSession();
   }, [fetchSession]);
 
+  // Auto-enter edit mode when a submitted session is opened via pencil
+  useEffect(() => {
+    if (session?.sessionStatus === 'submitted' && !autoEdited.current) {
+      autoEdited.current = true;
+      handleEnterEditMode();
+    }
+  }, [session?.sessionStatus]);
+
   // Reset capture state when current index changes
   const currentMachine = session?.machines[currentIndex];
 
-  // Pre-fill capture state from existing data
-  useEffect(() => {
-    if (currentMachine) {
-      setCaptureState({
-        imageData: currentMachine.imageData ?? null,
-        metersMatch: currentMachine.metersMatch ?? null,
+  const getInitialCaptureStateForMachine = useCallback(
+    (
+      machine: SessionMachine | undefined | null,
+      isNoSMIB: boolean
+    ): CaptureState => {
+      if (!machine) {
+        return {
+          imageData: null,
+          metersMatch: isNoSMIB ? true : null,
+          manualMetersIn: '',
+          manualMetersOut: '',
+        };
+      }
+      return {
+        imageData: machine.imageData ?? null,
+        metersMatch: isNoSMIB ? true : (machine.metersMatch ?? null),
         manualMetersIn:
-          currentMachine.metersMatch === false
-            ? String(currentMachine.systemMetersIn)
+          isNoSMIB || machine.metersMatch === false
+            ? String(machine.manualMetersIn ?? machine.sasMetersIn ?? '')
             : '',
         manualMetersOut:
-          currentMachine.metersMatch === false
-            ? String(currentMachine.systemMetersOut)
+          isNoSMIB || machine.metersMatch === false
+            ? String(machine.manualMetersOut ?? machine.sasMetersOut ?? '')
             : '',
-      });
+      };
+    },
+    []
+  );
+
+  // Pre-fill capture state from existing data (server returns Drive URL or tempImageData).
+  useEffect(() => {
+    if (currentMachine && session) {
+      setCaptureState(
+        getInitialCaptureStateForMachine(
+          currentMachine,
+          session.noSMIBLocation === true
+        )
+      );
     }
+  }, [
+    currentIndex,
+    currentMachine?.reportedMachineId,
+    session,
+    getInitialCaptureStateForMachine,
+  ]);
+
+  // Check last collection time when machine changes
+  useEffect(() => {
+    if (!currentMachine) return;
+    // Reset custom period toggle for each new machine
+    setUseCustomPeriod(false);
+
+    // Cache original auto-detected meters
+    originalMetersRef.current = {
+      in: currentMachine.sasMetersIn,
+      out: currentMachine.sasMetersOut,
+    };
+
+    // Pre-populate custom period pickers from the machine's saved SAS times.
+    // This way when the user clicks "Override period" / "Set full period", the
+    // pickers already show the currently-saved dates so they only need to change
+    // what they want — in particular, the end date can be adjusted without
+    // having to re-enter the start from scratch.
+    setCustomSasStart(
+      currentMachine.sasStartTime
+        ? new Date(currentMachine.sasStartTime).toISOString()
+        : currentMachine.lastCollectionTime
+          ? new Date(currentMachine.lastCollectionTime).toISOString()
+          : ''
+    );
+    setCustomSasEnd(
+      currentMachine.sasEndTime
+        ? new Date(currentMachine.sasEndTime).toISOString()
+        : ''
+    );
+
+    setCheckingCollection(true);
+    setMachineLastCollectionInput(
+      currentMachine.sasStartTime
+        ? new Date(currentMachine.sasStartTime).toISOString()
+        : currentMachine.lastCollectionTime
+          ? new Date(currentMachine.lastCollectionTime).toISOString()
+          : ''
+    );
+    // Brief delay to show skeleton
+    const timer = setTimeout(() => setCheckingCollection(false), 400);
+    return () => clearTimeout(timer);
   }, [currentIndex, currentMachine?.reportedMachineId]);
+
+  // ============================================================================
+  // Custom Period System Meters Handling
+  // ============================================================================
+
+  const handleApplyCustomPeriod = async () => {
+    if (!currentMachine || !customSasStart || !customSasEnd) {
+      toast.error('Please select both start and end date/time');
+      return;
+    }
+    setFetchingCustomMeters(true);
+    try {
+      const res = await axios.get('/api/collection-reports-v2/custom-meters', {
+        params: {
+          machineId: currentMachine.machineId,
+          startDate: customSasStart,
+          endDate: customSasEnd,
+        },
+      });
+
+      if (res.data?.success && session) {
+        const { sasMetersIn, sasMetersOut } = res.data.data;
+        const updatedMachines = [...session.machines];
+        updatedMachines[currentIndex] = {
+          ...updatedMachines[currentIndex],
+          sasMetersIn,
+          sasMetersOut,
+        };
+        setSession({
+          ...session,
+          machines: updatedMachines,
+        });
+
+        // Update manual meters if they don't match
+        if (captureState.metersMatch === false) {
+          setCaptureState(prev => ({
+            ...prev,
+            manualMetersIn: String(sasMetersIn),
+            manualMetersOut: String(sasMetersOut),
+          }));
+        }
+
+        toast.success('Custom period system meters applied successfully!');
+      } else {
+        toast.error(res.data?.error || 'Failed to fetch custom period meters');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to apply custom period meters');
+    } finally {
+      setFetchingCustomMeters(false);
+    }
+  };
+
+  const handleUseAutoDetected = () => {
+    if (originalMetersRef.current && session) {
+      const updatedMachines = [...session.machines];
+      updatedMachines[currentIndex] = {
+        ...updatedMachines[currentIndex],
+        sasMetersIn: originalMetersRef.current.in,
+        sasMetersOut: originalMetersRef.current.out,
+      };
+      setSession({
+        ...session,
+        machines: updatedMachines,
+      });
+
+      // Update manual meters if they don't match
+      if (captureState.metersMatch === false) {
+        setCaptureState(prev => ({
+          ...prev,
+          manualMetersIn: String(originalMetersRef.current!.in),
+          manualMetersOut: String(originalMetersRef.current!.out),
+        }));
+      }
+    }
+    setUseCustomPeriod(false);
+  };
 
   // ============================================================================
   // Image Handling (camera overlay)
@@ -156,6 +392,34 @@ export default function CollectionReportV2SessionDetail() {
     setShowCamera(false);
   };
 
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (!file) continue;
+
+        const reader = new FileReader();
+        reader.onload = event => {
+          const base64 = event.target?.result as string;
+          setCaptureState(prev => ({ ...prev, imageData: base64 }));
+          toast.success('Image pasted successfully');
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'capture' || showCamera) return;
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [mode, showCamera, handlePaste]);
+
   // ============================================================================
   // Back Navigation
   // ============================================================================
@@ -165,18 +429,12 @@ export default function CollectionReportV2SessionDetail() {
     const prevIndex = currentIndex - 1;
     const prevMachine = session.machines[prevIndex];
     if (!prevMachine) return;
-    setCaptureState({
-      imageData: prevMachine.imageData ?? null,
-      metersMatch: prevMachine.metersMatch ?? null,
-      manualMetersIn:
-        prevMachine.metersMatch === false
-          ? String(prevMachine.systemMetersIn)
-          : '',
-      manualMetersOut:
-        prevMachine.metersMatch === false
-          ? String(prevMachine.systemMetersOut)
-          : '',
-    });
+    setCaptureState(
+      getInitialCaptureStateForMachine(
+        prevMachine,
+        session.noSMIBLocation === true
+      )
+    );
     setCurrentIndex(prevIndex);
   };
 
@@ -187,23 +445,19 @@ export default function CollectionReportV2SessionDetail() {
   const handleNext = () => {
     if (!session) return;
     const machines = session.machines;
-    const nextIndex = findNextPending(currentIndex + 1);
-    if (nextIndex !== -1) {
+    const nextIndex = editMode
+      ? currentIndex + 1
+      : findNextPending(currentIndex + 1);
+    if (nextIndex !== -1 && nextIndex < machines.length) {
       const nextMachine = machines[nextIndex];
-      setCaptureState({
-        imageData: nextMachine.imageData ?? null,
-        metersMatch: nextMachine.metersMatch ?? null,
-        manualMetersIn:
-          nextMachine.metersMatch === false
-            ? String(nextMachine.systemMetersIn)
-            : '',
-        manualMetersOut:
-          nextMachine.metersMatch === false
-            ? String(nextMachine.systemMetersOut)
-            : '',
-      });
+      setCaptureState(
+        getInitialCaptureStateForMachine(
+          nextMachine,
+          session.noSMIBLocation === true
+        )
+      );
       setCurrentIndex(nextIndex);
-    } else {
+    } else if (!editMode) {
       setMode('review');
     }
   };
@@ -218,24 +472,101 @@ export default function CollectionReportV2SessionDetail() {
     setSaveError(null);
 
     try {
-      const isMatch = captureState.metersMatch;
-      const status = isMatch === false ? 'captured' : 'confirmed';
+      const isNoSMIB = session?.noSMIBLocation === true;
+      const isMatch = isNoSMIB ? true : captureState.metersMatch;
+      const status = isMatch !== null ? 'confirmed' : 'captured';
+
+      // Validate meter values are present
+      if (
+        isNoSMIB &&
+        (captureState.manualMetersIn === '' ||
+          captureState.manualMetersOut === '')
+      ) {
+        setSaveError('Please enter both Meters In and Meters Out values.');
+        setSaving(false);
+        return;
+      }
+
+      if (
+        !isNoSMIB &&
+        isMatch === false &&
+        (captureState.manualMetersIn === '' ||
+          captureState.manualMetersOut === '')
+      ) {
+        setSaveError('Please enter both Meters In and Meters Out values.');
+        setSaving(false);
+        return;
+      }
+
+      // Determine if user cleared an existing image
+      const imageWasCleared =
+        !captureState.imageData && currentMachine.imageData;
 
       const payload: Record<string, unknown> = {
         metersMatch: isMatch,
         status,
-        imageData: captureState.imageData || undefined,
-        imageCapturedAt: captureState.imageData
-          ? new Date().toISOString()
-          : undefined,
+        sasMetersIn: currentMachine.sasMetersIn,
+        sasMetersOut: currentMachine.sasMetersOut,
       };
 
-      if (isMatch === false) {
-        payload.systemMetersIn =
-          Number(captureState.manualMetersIn) || currentMachine.systemMetersIn;
-        payload.systemMetersOut =
-          Number(captureState.manualMetersOut) ||
-          currentMachine.systemMetersOut;
+      // Include image data in the payload — the backend stores it as tempImageData
+      // until the session is submitted, at which point it's uploaded to Google Drive.
+      if (captureState.imageData?.startsWith('data:image/')) {
+        payload.imageData = captureState.imageData;
+      }
+
+      // If user cleared an existing Drive image, signal backend to remove it
+      if (imageWasCleared && currentMachine.imageData?.startsWith('/api/')) {
+        payload.removeImage = true;
+      }
+
+      if (isNoSMIB) {
+        // No-SMIB: manual values go in manualMetersIn/Out only.
+        // sasMetersIn/Out must be null — there is no SMIB relay, and storing
+        // the manual values there causes them to leak into SAS columns if the
+        // location is later switched to SMIB.
+        payload.manualMetersIn = Number(captureState.manualMetersIn);
+        payload.manualMetersOut = Number(captureState.manualMetersOut);
+        payload.sasMetersIn = null;
+        payload.sasMetersOut = null;
+      } else if (isMatch === true) {
+        payload.manualMetersIn = currentMachine.sasMetersIn;
+        payload.manualMetersOut = currentMachine.sasMetersOut;
+      } else if (isMatch === false) {
+        payload.manualMetersIn =
+          captureState.manualMetersIn !== ''
+            ? Number(captureState.manualMetersIn)
+            : currentMachine.sasMetersIn;
+        payload.manualMetersOut =
+          captureState.manualMetersOut !== ''
+            ? Number(captureState.manualMetersOut)
+            : currentMachine.sasMetersOut;
+      }
+
+      // SAS period: custom override takes precedence over stored values.
+      // For custom period: use the exact start and end the user specified.
+      // For default: preserve the machine's stored sasEndTime when editing
+      // (so re-saving doesn't overwrite a previously-set end time with "now").
+      // Only fall back to now when no end time has been stored yet.
+      if (useCustomPeriod) {
+        if (customSasStart) {
+          payload.sasStartTime = new Date(customSasStart).toISOString();
+        }
+        if (customSasEnd) {
+          payload.sasEndTime = new Date(customSasEnd).toISOString();
+        }
+      } else {
+        if (machineLastCollectionInput) {
+          payload.sasStartTime = new Date(
+            machineLastCollectionInput
+          ).toISOString();
+        }
+        // Use the machine's already-stored sasEndTime when editing so we don't
+        // overwrite it with the current moment on every Save & Next.
+        // For a brand-new capture (no stored sasEndTime) fall back to now.
+        payload.sasEndTime = currentMachine.sasEndTime
+          ? new Date(currentMachine.sasEndTime).toISOString()
+          : new Date().toISOString();
       }
 
       if (currentMachine.reportedMachineId) {
@@ -256,12 +587,35 @@ export default function CollectionReportV2SessionDetail() {
         payload.sequenceOrder = currentMachine.sequenceOrder;
         payload.collector = session?.collector || '';
         payload.collectorName = session?.collectorName || '';
-        payload.systemMetersIn = currentMachine.systemMetersIn;
-        payload.systemMetersOut = currentMachine.systemMetersOut;
 
         await axios.post('/api/collection-reports-v2/machines', payload);
       }
 
+      // In edit mode: advance by index or exit edit on last
+      if (editMode) {
+        console.log('[EditMode] Saved machine', currentMachine.machineName, {
+          machineId: currentMachine.machineId,
+          status,
+          metersMatch: isMatch,
+        });
+
+        const nextIndex = currentIndex + 1;
+        const machines = session?.machines ?? [];
+        if (nextIndex < machines.length) {
+          // Refetch session so the next machine has fresh server data
+          await fetchSession(true);
+          setCurrentIndex(nextIndex);
+        } else {
+          // Last machine saved — go to review for submit
+          console.log('[EditMode] All machines saved, going to review');
+          await fetchSession(true);
+          setMode('review');
+        }
+        setSaveError(null);
+        return;
+      }
+
+      // Normal mode: advance to next pending or go to review
       const res = await axios.get(
         `/api/collection-reports-v2/sessions/${sessionId}`
       );
@@ -271,15 +625,9 @@ export default function CollectionReportV2SessionDetail() {
       }
       setSaveError(null);
 
-      // Advance to next pending machine or go to review.
-      // Use newSession directly (not React state closure) to avoid stale data.
       const machines = newSession?.machines ?? session?.machines ?? [];
       const nextIndex = (() => {
-        for (
-          let index = currentIndex + 1;
-          index < machines.length;
-          index++
-        ) {
+        for (let index = currentIndex + 1; index < machines.length; index++) {
           if (
             machines[index].status === 'pending' ||
             machines[index].status === 'captured'
@@ -290,14 +638,13 @@ export default function CollectionReportV2SessionDetail() {
         return -1;
       })();
 
-      // Explicitly reset capture state using the next machine's data
       const nextMachine = nextIndex !== -1 ? machines[nextIndex] : null;
-      setCaptureState({
-        imageData: nextMachine?.imageData ?? null,
-        metersMatch: nextMachine?.metersMatch ?? null,
-        manualMetersIn: '',
-        manualMetersOut: '',
-      });
+      setCaptureState(
+        getInitialCaptureStateForMachine(
+          nextMachine,
+          session?.noSMIBLocation === true
+        )
+      );
 
       if (nextIndex !== -1) {
         setCurrentIndex(nextIndex);
@@ -305,8 +652,13 @@ export default function CollectionReportV2SessionDetail() {
         setMode('review');
       }
     } catch (err) {
-      console.error('[SaveAndNext] Error:', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[SaveAndNext] Error:', message);
       setSaveError('Failed to save. Please try again.');
+      toast.error('Failed to save machine', {
+        description: message,
+        duration: 5000,
+      });
     } finally {
       setSaving(false);
     }
@@ -337,8 +689,8 @@ export default function CollectionReportV2SessionDetail() {
           sequenceOrder: currentMachine.sequenceOrder,
           collector: session?.collector || '',
           collectorName: session?.collectorName || '',
-          systemMetersIn: currentMachine.systemMetersIn,
-          systemMetersOut: currentMachine.systemMetersOut,
+          sasMetersIn: currentMachine.sasMetersIn,
+          sasMetersOut: currentMachine.sasMetersOut,
           status: 'skipped',
         });
       }
@@ -356,11 +708,7 @@ export default function CollectionReportV2SessionDetail() {
       // Use newSession directly to avoid stale closure on session.
       const machines = newSession?.machines ?? session?.machines ?? [];
       const nextIndex = (() => {
-        for (
-          let index = currentIndex + 1;
-          index < machines.length;
-          index++
-        ) {
+        for (let index = currentIndex + 1; index < machines.length; index++) {
           if (
             machines[index].status === 'pending' ||
             machines[index].status === 'captured'
@@ -373,12 +721,12 @@ export default function CollectionReportV2SessionDetail() {
 
       // Explicitly reset capture state using the next machine's data
       const nextMachine = nextIndex !== -1 ? machines[nextIndex] : null;
-      setCaptureState({
-        imageData: nextMachine?.imageData ?? null,
-        metersMatch: nextMachine?.metersMatch ?? null,
-        manualMetersIn: '',
-        manualMetersOut: '',
-      });
+      setCaptureState(
+        getInitialCaptureStateForMachine(
+          nextMachine,
+          session?.noSMIBLocation === true
+        )
+      );
 
       if (nextIndex !== -1) {
         setCurrentIndex(nextIndex);
@@ -397,10 +745,22 @@ export default function CollectionReportV2SessionDetail() {
     if (!sessionId) return;
     setSubmitting(true);
     try {
+      // Images are already stored as tempImageData in MongoDB from each save.
+      // The submit endpoint automatically discovers and uploads them to Drive.
+      const payload: Record<string, unknown> = {};
+      if (session?.sessionStartTime) {
+        payload.sessionStartTime = session.sessionStartTime;
+      }
+
       await axios.patch(
-        `/api/collection-reports-v2/sessions/${sessionId}/submit`
+        `/api/collection-reports-v2/sessions/${sessionId}/submit`,
+        payload
       );
-      await fetchSession();
+      setEditMode(false);
+      // Close the modal / navigate back to the list — submit is the end of the flow.
+      // Don't refetch here: the session-status change to 'submitted' would trigger
+      // the auto-enter-edit-mode effect and bounce the user back to machine 1.
+      handleBackToReports();
     } catch (err) {
       console.error('Failed to submit session:', err);
     } finally {
@@ -412,10 +772,8 @@ export default function CollectionReportV2SessionDetail() {
     if (!sessionId) return;
     setDeleting(true);
     try {
-      await axios.delete(
-        `/api/collection-reports-v2/sessions/${sessionId}`
-      );
-      router.push('/collection-report');
+      await axios.delete(`/api/collection-reports-v2/sessions/${sessionId}`);
+      handleBackToReports();
     } catch (err) {
       console.error('Failed to delete session:', err);
     } finally {
@@ -455,18 +813,47 @@ export default function CollectionReportV2SessionDetail() {
         <p className="mb-4 text-red-600">{error || 'Session not found'}</p>
         <button
           type="button"
-          onClick={() => router.push('/collection-report')}
+          onClick={() => handleBackToReports()}
           className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
-          Back to Reports
+          Close
         </button>
       </div>
     );
   }
 
-  if (session.sessionStatus === 'submitted') {
+  // ============================================================================
+  // Edit Mode Handlers
+  // ============================================================================
+
+  const handleEnterEditMode = () => {
+    setEditMode(true);
+    setMode('capture');
+    setCurrentIndex(0);
+    const firstMachine = session?.machines[0];
+    if (firstMachine) {
+      setCaptureState(
+        getInitialCaptureStateForMachine(
+          firstMachine,
+          session?.noSMIBLocation === true
+        )
+      );
+    }
+  };
+
+  const handleExitEdit = async () => {
+    await fetchSession(true);
+    setEditMode(false);
+  };
+
+  if (session.sessionStatus === 'submitted' && !editMode) {
     return (
-      <CollectionReportV2SessionReport session={session} router={router} />
+      <CollectionReportV2SessionReport
+        session={session}
+        router={router}
+        onBack={handleBackToReports}
+        onEdit={isDeveloper || isAdmin ? handleEnterEditMode : undefined}
+      />
     );
   }
 
@@ -475,15 +862,13 @@ export default function CollectionReportV2SessionDetail() {
       <ReviewView
         session={session}
         submitting={submitting}
+        onBackToReports={handleBackToReports}
         onBack={() => {
-          const nextIndex = findNextPending(0);
-          if (nextIndex !== -1) {
-            setCurrentIndex(nextIndex);
-            setMode('capture');
-          }
+          setCurrentIndex(0);
+          setMode('capture');
         }}
-        onSubmit={handleSubmit}
-        onEditMachine={(index) => {
+        onSubmit={() => handleSubmit()}
+        onEditMachine={index => {
           setCurrentIndex(index);
           setMode('capture');
         }}
@@ -502,8 +887,9 @@ export default function CollectionReportV2SessionDetail() {
       <ReviewView
         session={session}
         submitting={submitting}
-        onSubmit={handleSubmit}
-        onEditMachine={(index) => {
+        onBackToReports={handleBackToReports}
+        onSubmit={() => handleSubmit()}
+        onEditMachine={index => {
           setCurrentIndex(index);
           setMode('capture');
         }}
@@ -516,7 +902,9 @@ export default function CollectionReportV2SessionDetail() {
   const doneCount = session.machines.filter(
     m => m.status === 'confirmed' || m.status === 'skipped'
   ).length;
-  const isLast = findNextPending(currentIndex + 1) === -1;
+  const isLast = editMode
+    ? currentIndex >= session.machines.length - 1
+    : findNextPending(currentIndex + 1) === -1;
   const isDone =
     currentMachine.status === 'confirmed' ||
     currentMachine.status === 'skipped';
@@ -529,7 +917,7 @@ export default function CollectionReportV2SessionDetail() {
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
-              onClick={() => router.push('/collection-report')}
+              onClick={() => handleBackToReports()}
               className="flex items-center text-sm text-gray-500 hover:text-gray-700"
             >
               <svg
@@ -545,24 +933,77 @@ export default function CollectionReportV2SessionDetail() {
                   d="M15 19l-7-7 7-7"
                 />
               </svg>
-              Back to Reports
+              Close
             </button>
-            <button
-              type="button"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-sm text-red-400 hover:text-red-600"
-            >
-              Delete session
-            </button>
+            {editMode ? (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetchSession(true);
+                    setMode('review');
+                  }}
+                  className="text-sm text-green-600 hover:text-green-700"
+                >
+                  Skip to Review
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExitEdit}
+                  className="text-sm text-blue-500 hover:text-blue-700"
+                >
+                  Exit Edit
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-sm text-red-400 hover:text-red-600"
+              >
+                Delete session
+              </button>
+            )}
           </div>
 
           {/* Progress Bar */}
           <div className="rounded-lg bg-white p-4 shadow-sm">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-700">
-                {session.locationName}
-              </span>
-              <span className="flex items-center gap-1 text-gray-500">
+            <div className="mb-3 flex items-start justify-between gap-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-medium text-gray-700">
+                  {session.locationName}
+                </p>
+                {session.sessionStartTime && (
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    Start:{' '}
+                    {new Date(session.sessionStartTime).toLocaleString(
+                      'en-US',
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      }
+                    )}
+                    {session.sessionEndTime && (
+                      <>
+                        {' '}
+                        · End:{' '}
+                        {new Date(session.sessionEndTime).toLocaleString(
+                          'en-US',
+                          {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          }
+                        )}
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+              <span className="flex shrink-0 items-center gap-1 text-gray-500">
                 <input
                   type="number"
                   min={1}
@@ -570,11 +1011,7 @@ export default function CollectionReportV2SessionDetail() {
                   value={currentIndex + 1}
                   onChange={e => {
                     const value = parseInt(e.target.value, 10);
-                    if (
-                      value >= 1 &&
-                      value <= totalCount &&
-                      session
-                    ) {
+                    if (value >= 1 && value <= totalCount && session) {
                       const target = session.machines[value - 1];
                       if (target) {
                         setCaptureState({
@@ -582,20 +1019,20 @@ export default function CollectionReportV2SessionDetail() {
                           metersMatch: target.metersMatch ?? null,
                           manualMetersIn:
                             target.metersMatch === false
-                              ? String(target.systemMetersIn)
+                              ? String(target.sasMetersIn)
                               : '',
                           manualMetersOut:
                             target.metersMatch === false
-                              ? String(target.systemMetersOut)
+                              ? String(target.sasMetersOut)
                               : '',
                         });
                         setCurrentIndex(value - 1);
                       }
                     }
                   }}
-                  className="w-14 rounded border border-gray-300 px-2 py-0.5 text-center text-sm"
+                  className="w-12 rounded border border-gray-300 px-2 py-0.5 text-center text-sm"
                 />
-                <span>/ {totalCount} machines</span>
+                <span>/ {totalCount}</span>
               </span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
@@ -636,26 +1073,307 @@ export default function CollectionReportV2SessionDetail() {
             </div>
           </div>
 
-          {/* System Meters */}
+          {/* ── Collection Period (SAS Times) ─────────────────────────────────────
+               Shown for ALL locations (including noSMIB).
+               noSMIB: audit-only — times are saved but never affect meter
+               calculations. SMIB: times are also used to fetch delta meters.
+          ──────────────────────────────────────────────────────────────────── */}
           <div className="mb-6">
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
-              System Meters (from SMIB)
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
-                <div className="text-xs text-gray-500">Meters In</div>
-                <div className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  {currentMachine.systemMetersIn.toLocaleString()}
-                </div>
+            {checkingCollection ? (
+              <div className="animate-pulse rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="mb-2 h-3 w-32 rounded bg-gray-200" />
+                <div className="h-8 w-48 rounded bg-gray-200" />
               </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
-                <div className="text-xs text-gray-500">Meters Out</div>
-                <div className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  {currentMachine.systemMetersOut.toLocaleString()}
+            ) : useCustomPeriod ? (
+              /* Custom period — two date pickers */
+              <div className="space-y-2">
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-blue-800">
+                      Custom collection period
+                    </p>
+                    {session?.noSMIBLocation && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600">
+                        Audit only
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* Start picker */}
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-blue-700">
+                        Start
+                      </p>
+                      <Popover
+                        open={sasStartOpen}
+                        onOpenChange={setSasStartOpen}
+                      >
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
+                          >
+                            {customSasStart
+                              ? new Date(customSasStart).toLocaleString(
+                                  'en-US',
+                                  {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  }
+                                )
+                              : 'Select start date & time'}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="mui-calendar-popover w-auto p-0"
+                          align="start"
+                          collisionPadding={8}
+                        >
+                          <MuiDateCalendar
+                            mode="single"
+                            showTime={true}
+                            buttonLabel="Apply"
+                            onSelect={range => {
+                              if (range?.from) {
+                                setCustomSasStart(range.from.toISOString());
+                                setSasStartOpen(false);
+                              }
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    {/* End picker */}
+                    <div>
+                      <p className="mb-1 text-xs font-medium text-blue-700">
+                        End
+                      </p>
+                      <Popover open={sasEndOpen} onOpenChange={setSasEndOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
+                          >
+                            {customSasEnd
+                              ? new Date(customSasEnd).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })
+                              : 'Select end date & time'}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="mui-calendar-popover w-auto p-0"
+                          align="start"
+                          collisionPadding={8}
+                        >
+                          <MuiDateCalendar
+                            mode="single"
+                            showTime={true}
+                            buttonLabel="Apply"
+                            onSelect={range => {
+                              if (range?.from) {
+                                setCustomSasEnd(range.from.toISOString());
+                                setSasEndOpen(false);
+                              }
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  {/* Apply Period Meters button — SMIB locations only */}
+                  {!session?.noSMIBLocation && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleApplyCustomPeriod}
+                        disabled={
+                          fetchingCustomMeters ||
+                          !customSasStart ||
+                          !customSasEnd
+                        }
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {fetchingCustomMeters
+                          ? 'Applying...'
+                          : 'Apply Period Meters'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={
+                    session?.noSMIBLocation
+                      ? () => setUseCustomPeriod(false)
+                      : handleUseAutoDetected
+                  }
+                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                >
+                  Use default times
+                </button>
+              </div>
+            ) : currentMachine.sasStartTime ||
+              currentMachine.lastCollectionTime ? (
+              /* Saved start time (edit) or auto-detected hint (new capture) */
+              <div className="space-y-2">
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-green-700">
+                        {currentMachine.sasStartTime
+                          ? 'Period start'
+                          : 'Period start · last collected'}
+                      </p>
+                      <p className="text-sm font-semibold text-green-800">
+                        {new Date(
+                          currentMachine.sasStartTime ??
+                            currentMachine.lastCollectionTime!
+                        ).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-medium text-green-700">
+                        {currentMachine.sasEndTime
+                          ? 'Period end'
+                          : 'Period end · now'}
+                      </p>
+                      <p className="text-sm font-semibold text-green-800">
+                        {new Date(
+                          currentMachine.sasEndTime ?? new Date()
+                        ).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  {session?.noSMIBLocation && (
+                    <p className="mt-2 text-xs italic text-green-600">
+                      For auditing purposes only
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseCustomPeriod(true)}
+                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                >
+                  Set custom start and end time
+                </button>
+              </div>
+            ) : (
+              /* No previous collection — machine.collectionTime is the start */
+              <div className="space-y-2">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-800">
+                    No previous collection found for this machine
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    {session?.noSMIBLocation
+                      ? 'Set the collection start time for auditing purposes.'
+                      : 'When was the last time this machine was collected?'}
+                  </p>
+                  <div className="mt-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full rounded-lg border border-amber-300 bg-white px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          {machineLastCollectionInput
+                            ? new Date(
+                                machineLastCollectionInput
+                              ).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              }) +
+                              ' ' +
+                              new Date(
+                                machineLastCollectionInput
+                              ).toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })
+                            : 'Select date & time'}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="mui-calendar-popover w-auto p-0"
+                        align="start"
+                        collisionPadding={8}
+                      >
+                        <MuiDateCalendar
+                          mode="single"
+                          showTime={true}
+                          buttonLabel="Set"
+                          onSelect={range => {
+                            if (range?.from) {
+                              setMachineLastCollectionInput(
+                                range.from.toISOString()
+                              );
+                            }
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {session?.noSMIBLocation && (
+                    <p className="mt-2 text-xs italic text-amber-600">
+                      For auditing purposes only
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUseCustomPeriod(true)}
+                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                >
+                  Set custom start and end time
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* System Meters */}
+          {!session?.noSMIBLocation && (
+            <div className="mb-6">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                System Meters (from SMIB)
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Meters In</div>
+                  <div className="text-xl font-bold text-gray-900 sm:text-2xl">
+                    {currentMachine.sasMetersIn?.toLocaleString() ?? 'N/A'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Meters Out</div>
+                  <div className="text-xl font-bold text-gray-900 sm:text-2xl">
+                    {currentMachine.sasMetersOut?.toLocaleString() ?? 'N/A'}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Photo Capture */}
           <div className="mb-6">
@@ -714,68 +1432,81 @@ export default function CollectionReportV2SessionDetail() {
                   Tap to take a photo
                 </span>
                 <span className="mt-1 text-sm text-gray-400">
-                  Camera will open automatically
+                  or press{' '}
+                  <span className="rounded bg-gray-200 px-1 font-mono text-xs">
+                    Ctrl+V
+                  </span>{' '}
+                  to paste
                 </span>
               </button>
             )}
           </div>
 
           {/* Meters Match */}
-          <div className="mb-6">
-            <label className="mb-3 block text-sm font-medium text-gray-700">
-              Do the physical meters match the system values?
-            </label>
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setCaptureState(prev => ({
-                    ...prev,
-                    metersMatch: true,
-                    manualMetersIn: '',
-                    manualMetersOut: '',
-                  }))
-                }
-                className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  captureState.metersMatch === true
-                    ? 'border-green-500 bg-green-50 text-green-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm sm:text-base">✓ Yes, they match</div>
-                <div className="mt-0.5 text-xs opacity-75">
-                  Use system values as-is
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setCaptureState(prev => ({ ...prev, metersMatch: false }))
-                }
-                className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  captureState.metersMatch === false
-                    ? 'border-amber-500 bg-amber-50 text-amber-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm sm:text-base">✗ No, enter manually</div>
-                <div className="mt-0.5 text-xs opacity-75">
-                  Type the actual meter values
-                </div>
-              </button>
+          {!session?.noSMIBLocation && (
+            <div className="mb-6">
+              <label className="mb-3 block text-sm font-medium text-gray-700">
+                Do the physical meters match the system values?
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCaptureState(prev => ({
+                      ...prev,
+                      metersMatch: true,
+                      manualMetersIn: '',
+                      manualMetersOut: '',
+                    }))
+                  }
+                  className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                    captureState.metersMatch === true
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm sm:text-base">✓ Yes, they match</div>
+                  <div className="mt-0.5 text-xs opacity-75">
+                    Use system values as-is
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCaptureState(prev => ({ ...prev, metersMatch: false }))
+                  }
+                  className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-colors ${
+                    captureState.metersMatch === false
+                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm sm:text-base">
+                    ✗ No, enter manually
+                  </div>
+                  <div className="mt-0.5 text-xs opacity-75">
+                    Type the actual meter values
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Manual Entry */}
-          {captureState.metersMatch === false && (
+          {(session?.noSMIBLocation === true ||
+            captureState.metersMatch === false) && (
             <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
               <label className="mb-3 block text-sm font-medium text-amber-800">
-                Enter actual meter values from the machine
+                {session?.noSMIBLocation === true
+                  ? 'Enter meter values from the machine'
+                  : 'Enter actual meter values from the machine'}
               </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div>
                   <label className="block text-xs text-amber-700">
-                    Actual Meters In
+                    {session?.noSMIBLocation === true
+                      ? 'Meters In'
+                      : 'Actual Meters In'}
                   </label>
                   <input
                     type="number"
@@ -786,13 +1517,19 @@ export default function CollectionReportV2SessionDetail() {
                         manualMetersIn: e.target.value,
                       }))
                     }
-                    placeholder={String(currentMachine.systemMetersIn)}
+                    placeholder={
+                      session?.noSMIBLocation === true
+                        ? '0'
+                        : String(currentMachine.sasMetersIn)
+                    }
                     className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-4 py-3 text-sm focus:border-amber-500 focus:outline-none sm:py-2.5"
                   />
                 </div>
                 <div>
                   <label className="block text-xs text-amber-700">
-                    Actual Meters Out
+                    {session?.noSMIBLocation === true
+                      ? 'Meters Out'
+                      : 'Actual Meters Out'}
                   </label>
                   <input
                     type="number"
@@ -803,7 +1540,11 @@ export default function CollectionReportV2SessionDetail() {
                         manualMetersOut: e.target.value,
                       }))
                     }
-                    placeholder={String(currentMachine.systemMetersOut)}
+                    placeholder={
+                      session?.noSMIBLocation === true
+                        ? '0'
+                        : String(currentMachine.sasMetersOut)
+                    }
                     className="mt-1 w-full rounded-lg border border-amber-300 bg-white px-4 py-3 text-sm focus:border-amber-500 focus:outline-none sm:py-2.5"
                   />
                 </div>
@@ -855,16 +1596,50 @@ export default function CollectionReportV2SessionDetail() {
                   Back
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => router.push('/collection-report')}
-                className="text-center text-sm text-gray-400 hover:text-gray-600 sm:text-left"
-              >
-                Cancel
-              </button>
+              {!editMode && (
+                <button
+                  type="button"
+                  onClick={() => handleBackToReports()}
+                  className="text-center text-sm text-gray-400 hover:text-gray-600 sm:text-left"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
             <div className="flex gap-2 sm:gap-3">
-              {isDone ? (
+              {editMode ? (
+                <>
+                  {currentIndex < session.machines.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={saving}
+                      className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
+                    >
+                      Next
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSaveAndNext}
+                    disabled={
+                      saving ||
+                      captureState.metersMatch === null ||
+                      (useCustomPeriod
+                        ? !customSasStart || !customSasEnd
+                        : !currentMachine.lastCollectionTime &&
+                          !machineLastCollectionInput)
+                    }
+                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:flex-none sm:px-6"
+                  >
+                    {saving
+                      ? 'Saving...'
+                      : isLast
+                        ? 'Save & Review'
+                        : 'Save & Next'}
+                  </button>
+                </>
+              ) : isDone ? (
                 <button
                   type="button"
                   onClick={handleNext}
@@ -879,23 +1654,36 @@ export default function CollectionReportV2SessionDetail() {
                     <button
                       type="button"
                       onClick={handleSkip}
-                      disabled={saving}
+                      disabled={
+                        saving ||
+                        !!captureState.imageData ||
+                        captureState.metersMatch !== null
+                      }
                       className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
+                      title={
+                        captureState.imageData ||
+                        captureState.metersMatch !== null
+                          ? 'Remove captured data to skip this machine'
+                          : undefined
+                      }
                     >
-                      Skip
+                      Skip Machine
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={handleSaveAndNext}
-                    disabled={saving || captureState.metersMatch === null}
+                    disabled={
+                      saving ||
+                      captureState.metersMatch === null ||
+                      (useCustomPeriod
+                        ? !customSasStart || !customSasEnd
+                        : !currentMachine.lastCollectionTime &&
+                          !machineLastCollectionInput)
+                    }
                     className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:flex-none sm:px-6"
                   >
-                    {saving
-                      ? 'Saving...'
-                      : isLast
-                        ? 'Review'
-                        : 'Save & Next'}
+                    {saving ? 'Saving...' : isLast ? 'Review' : 'Save & Next'}
                   </button>
                 </>
               )}
@@ -910,8 +1698,8 @@ export default function CollectionReportV2SessionDetail() {
             machineCustomName: currentMachine.machineCustomName,
             machineName: currentMachine.machineName,
             manufacturer: currentMachine.manufacturer,
-            systemMetersIn: currentMachine.systemMetersIn,
-            systemMetersOut: currentMachine.systemMetersOut,
+            sasMetersIn: currentMachine.sasMetersIn ?? 0,
+            sasMetersOut: currentMachine.sasMetersOut ?? 0,
           }}
           onCapture={handleCameraCapture}
           onCancel={() => setShowCamera(false)}
@@ -926,8 +1714,8 @@ export default function CollectionReportV2SessionDetail() {
               Delete Session
             </h3>
             <p className="mb-6 text-sm text-gray-600">
-              Are you sure? This will permanently remove all captured data
-              for this session.
+              Are you sure? This will permanently remove all captured data for
+              this session.
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -961,6 +1749,7 @@ export default function CollectionReportV2SessionDetail() {
 function ReviewView({
   session,
   submitting,
+  onBackToReports,
   onBack,
   onSubmit,
   onEditMachine,
@@ -968,6 +1757,7 @@ function ReviewView({
 }: {
   session: SessionDetail;
   submitting: boolean;
+  onBackToReports?: () => void;
   onBack?: () => void;
   onSubmit: () => void;
   onEditMachine?: (index: number) => void;
@@ -983,7 +1773,11 @@ function ReviewView({
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         <button
           type="button"
-          onClick={() => router.push('/collection-report')}
+          onClick={() =>
+            onBackToReports
+              ? onBackToReports()
+              : router.push('/collection-report?section=collection-v2')
+          }
           className="mb-4 flex items-center text-sm text-gray-500 hover:text-gray-700"
         >
           <svg
@@ -999,38 +1793,38 @@ function ReviewView({
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Reports
+          Close
         </button>
 
         <div className="mb-6 rounded-lg bg-white p-4 shadow-md sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
-                  Review Session
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {session.locationName} · {session.machinesTotal} machines
-                </p>
-              </div>
-              <div className="flex gap-2 sm:gap-3">
-                {onBack && (
-                  <button
-                    type="button"
-                    onClick={onBack}
-                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none sm:px-4"
-                  >
-                    Back
-                  </button>
-                )}
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+                Review Session
+              </h1>
+              <p className="text-sm text-gray-500">
+                {session.locationName} · {session.machinesTotal} machines
+              </p>
+            </div>
+            <div className="flex gap-2 sm:gap-3">
+              {onBack && (
                 <button
                   type="button"
-                  onClick={onSubmit}
-                  disabled={submitting || (!anyCaptured && !allSkipped)}
-                  className="flex-1 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:flex-none sm:px-6"
+                  onClick={onBack}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none sm:px-4"
                 >
-                  {submitting ? 'Submitting...' : 'Submit'}
+                  Back
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                onClick={() => onSubmit()}
+                disabled={submitting || (!anyCaptured && !allSkipped)}
+                className="flex-1 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:flex-none sm:px-6"
+              >
+                {submitting ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1046,25 +1840,70 @@ function ReviewView({
                   isDone ? 'border-green-200' : 'border-amber-200'
                 }`}
               >
-                <div className="flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                    {machine.imageData ? (
-                      <img
-                        src={machine.imageData}
-                        alt={machine.machineName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-gray-400">
-                        No photo
+                <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                  {/* Top row on mobile: thumbnail + name + status; row on desktop */}
+                  <div className="flex items-start gap-3 sm:contents">
+                    {/* Thumbnail — imageData comes from server (Drive URL or tempImageData) */}
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 sm:h-20 sm:w-20">
+                      {machine.imageData ? (
+                        <img
+                          src={machine.imageData}
+                          alt={machine.machineName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-center text-[10px] text-gray-400">
+                          No photo
+                        </div>
+                      )}
+                    </div>
+
+                    {/* On mobile only — name + status sit next to thumbnail */}
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:hidden">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-gray-900">
+                          {machine.machineCustomName || machine.machineName}
+                        </h3>
+                        <p className="truncate text-xs text-gray-500">
+                          {machine.serialNumber && `${machine.serialNumber}`}
+                          {machine.serialNumber &&
+                            machine.manufacturer &&
+                            ' · '}
+                          {machine.manufacturer}
+                        </p>
                       </div>
-                    )}
+                      <div className="flex shrink-0 items-center gap-1">
+                        <StatusBadge status={machine.status} />
+                        {onEditMachine && (
+                          <button
+                            type="button"
+                            onClick={() => onEditMachine(index)}
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            title="Edit this machine"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Info */}
+                  {/* Info column */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between">
+                    {/* Desktop only — name + status row (hidden on mobile, shown above) */}
+                    <div className="hidden items-start justify-between sm:flex">
                       <div>
                         <h3 className="font-semibold text-gray-900">
                           {machine.machineCustomName || machine.machineName}
@@ -1101,30 +1940,106 @@ function ReviewView({
                       </div>
                     </div>
 
-                    <div className="mt-2 grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <span className="text-gray-400">Sys In:</span>{' '}
-                        <span className="font-medium text-gray-700">
-                          {machine.systemMetersIn.toLocaleString()}
+                    {/* Stats — label : value rows on mobile, 2-col grid on desktop */}
+                    <div className="flex flex-col gap-1.5 text-xs sm:mt-2 sm:grid sm:grid-cols-2 sm:gap-3">
+                      <div className="flex items-baseline justify-between sm:block">
+                        <span className="text-gray-400">
+                          {session?.noSMIBLocation ? 'Machine In' : 'Sys In'}
+                        </span>
+                        <span className="font-medium text-gray-700 sm:ml-1">
+                          {machine.sasMetersIn?.toLocaleString() ?? 'N/A'}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-gray-400">Sys Out:</span>{' '}
-                        <span className="font-medium text-gray-700">
-                          {machine.systemMetersOut.toLocaleString()}
+                      <div className="flex items-baseline justify-between sm:block">
+                        <span className="text-gray-400">
+                          {session?.noSMIBLocation ? 'Machine Out' : 'Sys Out'}
+                        </span>
+                        <span className="font-medium text-gray-700 sm:ml-1">
+                          {machine.sasMetersOut?.toLocaleString() ?? 'N/A'}
                         </span>
                       </div>
-                      {machine.metersMatch !== undefined && (
-                        <div className="col-span-2">
-                          <span className="text-gray-400">Meters match:</span>{' '}
-                          <span
-                            className={
-                              machine.metersMatch
-                                ? 'text-green-600'
-                                : 'text-amber-600'
-                            }
-                          >
-                            {machine.metersMatch ? 'Yes' : 'No (manual entry)'}
+                      {machine.machineGross !== undefined && (
+                        <div className="flex items-baseline justify-between sm:block">
+                          <span className="text-gray-400">Machine Gross</span>
+                          <span className="font-medium text-gray-700 sm:ml-1">
+                            {machine.machineGross?.toLocaleString() ?? 'N/A'}
+                          </span>
+                        </div>
+                      )}
+                      {!session?.noSMIBLocation &&
+                        machine.sasGross !== undefined && (
+                          <div className="flex items-baseline justify-between sm:block">
+                            <span className="text-gray-400">SAS Gross</span>
+                            <span className="font-medium text-gray-700 sm:ml-1">
+                              {machine.sasGross?.toLocaleString() ?? 'N/A'}
+                            </span>
+                          </div>
+                        )}
+                      {!session?.noSMIBLocation &&
+                        machine.grossDifference !== undefined &&
+                        machine.grossDifference !== 0 && (
+                          <div className="flex items-baseline justify-between sm:col-span-2 sm:block">
+                            <span className="text-gray-400">Difference</span>
+                            <span className="font-medium text-red-600 sm:ml-1">
+                              {machine.grossDifference?.toLocaleString() ??
+                                'N/A'}
+                            </span>
+                          </div>
+                        )}
+                      {!session?.noSMIBLocation &&
+                        machine.metersMatch !== undefined && (
+                          <div className="flex items-baseline justify-between gap-2 sm:col-span-2 sm:block">
+                            <span className="shrink-0 text-gray-400">
+                              Meters match
+                            </span>
+                            <span
+                              className={`text-right sm:ml-1 sm:text-left ${
+                                machine.metersMatch
+                                  ? 'text-green-600'
+                                  : 'text-amber-600'
+                              }`}
+                            >
+                              {machine.metersMatch
+                                ? 'Yes'
+                                : 'No (manual entry)'}
+                            </span>
+                          </div>
+                        )}
+                      {machine.sasStartTime && (
+                        <div className="flex items-baseline justify-between gap-2 sm:col-span-2 sm:block">
+                          <span className="shrink-0 text-gray-400">
+                            SAS Start
+                          </span>
+                          <span className="text-right font-medium text-gray-700 sm:ml-1 sm:text-left">
+                            {new Date(machine.sasStartTime).toLocaleString(
+                              'en-US',
+                              {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              }
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {machine.sasEndTime && (
+                        <div className="flex items-baseline justify-between gap-2 sm:col-span-2 sm:block">
+                          <span className="shrink-0 text-gray-400">
+                            SAS End
+                          </span>
+                          <span className="text-right font-medium text-gray-700 sm:ml-1 sm:text-left">
+                            {new Date(machine.sasEndTime).toLocaleString(
+                              'en-US',
+                              {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              }
+                            )}
                           </span>
                         </div>
                       )}
@@ -1138,24 +2053,33 @@ function ReviewView({
 
         {/* Summary */}
         <div className="mt-6 rounded-lg bg-white p-4 shadow-md">
-          <div className="text-center text-sm text-gray-600 sm:text-left">
-            <strong className="text-gray-900">
-              {session.machinesConfirmed}
-            </strong>{' '}
-            confirmed ·{' '}
-            <strong className="text-gray-900">{session.machinesSkipped}</strong>{' '}
-            skipped ·{' '}
-            <strong className="text-gray-900">
-              {session.machinesTotal -
-                session.machinesCaptured -
-                session.machinesSkipped}
-            </strong>{' '}
-            pending ·{' '}
-            <strong className="text-gray-900">
-              {session.machinesCaptured -
-                session.machinesConfirmed}
-            </strong>{' '}
-            captured
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 sm:flex sm:flex-wrap sm:gap-x-3 sm:text-sm">
+            <div className="flex items-center gap-1">
+              <strong className="text-gray-900">
+                {session.machinesConfirmed}
+              </strong>
+              <span>confirmed</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <strong className="text-gray-900">
+                {session.machinesSkipped}
+              </strong>
+              <span>skipped</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <strong className="text-gray-900">
+                {session.machinesTotal -
+                  session.machinesCaptured -
+                  session.machinesSkipped}
+              </strong>
+              <span>pending</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <strong className="text-gray-900">
+                {session.machinesCaptured - session.machinesConfirmed}
+              </strong>
+              <span>captured</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1166,5 +2090,3 @@ function ReviewView({
 // ============================================================================
 // Submitted View
 // ============================================================================
-
-

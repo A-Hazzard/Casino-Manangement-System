@@ -36,6 +36,7 @@ export type User = {
   sessionVersion?: number;
   moneyInMultiplier?: number | null;
   moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
 };
 
 export type SortKey = keyof User | null;

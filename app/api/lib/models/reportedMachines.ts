@@ -7,6 +7,22 @@ export type ReportedMachineStatus =
   | 'skipped';
 export type SessionStatus = 'in-progress' | 'submitted';
 
+/**
+ * Movement deltas for manual meters only.
+ *
+ * SAS/system values are stored at the top level of ReportedMachineDocument
+ * (sasMetersIn, sasMetersOut, sasGross) — NOT inside movement.
+ *
+ * movement.manualMetersIn  = currentManualIn  - prevSasMetersIn
+ * movement.manualMetersOut = currentManualOut - prevSasMetersOut
+ * movement.machineGross    = movement.manualMetersIn - movement.manualMetersOut
+ */
+export type ReportedMachineMovement = {
+  manualMetersIn?: number;
+  manualMetersOut?: number;
+  machineGross?: number;
+};
+
 export type ReportedMachineDocument = {
   _id: string;
   sessionId: string;
@@ -22,18 +38,33 @@ export type ReportedMachineDocument = {
   game?: string;
   collector: string;
   collectorName: string;
-  systemMetersIn: number;
-  systemMetersOut: number;
+  // SAS/system lifetime meter readings captured from the machine
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  // SAS gross — computed via time-range Meters aggregation (metersMatch true)
+  // or simply sasMetersIn - sasMetersOut (metersMatch false)
+  sasGross?: number | null;
+  // Manual meter readings entered by the collector (only when metersMatch === false)
+  manualMetersIn?: number | null;
+  manualMetersOut?: number | null;
+  // Previous SAS meter readings (from the last submitted session or Machine.collectionMeters)
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
+  // Calculated movement deltas (current - previous), manual meters only
+  movement?: ReportedMachineMovement;
+  sessionStartTime?: Date;
+  sessionEndTime?: Date;
   sasStartTime?: Date;
   sasEndTime?: Date;
-  imageFileId?: string;
-  imageName?: string;
-  imageSize?: number;
-  imageData?: string;
+  driveFileId?: string | null;
+  driveFolderId?: string | null;
   imageCapturedAt?: Date;
+  tempImageData?: string;
   metersMatch?: boolean;
+  deletedAt?: Date | null;
   sequenceOrder: number;
   status: ReportedMachineStatus;
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -58,22 +89,40 @@ const reportedMachineSchema = new Schema<ReportedMachineDocument>(
     game: { type: String },
     collector: { type: String, required: true },
     collectorName: { type: String },
-    systemMetersIn: { type: Number, default: 0 },
-    systemMetersOut: { type: Number, default: 0 },
+    sasMetersIn: { type: Number, default: null },
+    sasMetersOut: { type: Number, default: null },
+    sasGross: { type: Number, default: null },
+    manualMetersIn: { type: Number },
+    manualMetersOut: { type: Number },
+    prevSasMetersIn: { type: Number },
+    prevSasMetersOut: { type: Number },
+    movement: {
+      type: new Schema(
+        {
+          manualMetersIn: { type: Number },
+          manualMetersOut: { type: Number },
+          machineGross: { type: Number },
+        },
+        { _id: false }
+      ),
+    },
+    sessionStartTime: { type: Date },
+    sessionEndTime: { type: Date },
     sasStartTime: { type: Date },
     sasEndTime: { type: Date },
-    imageFileId: { type: String },
-    imageName: { type: String },
-    imageSize: { type: Number },
-    imageData: { type: String },
+    driveFileId: { type: String },
+    driveFolderId: { type: String },
     imageCapturedAt: { type: Date },
+    tempImageData: { type: String },
     metersMatch: { type: Boolean },
+    deletedAt: { type: Date, default: null },
     sequenceOrder: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ['pending', 'captured', 'confirmed', 'skipped'],
       default: 'pending',
     },
+    notes: { type: String },
   },
   { timestamps: true }
 );

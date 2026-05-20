@@ -13,6 +13,7 @@
 import {
   calculateChanges,
   logActivity,
+  mapDeletedFieldsToChanges,
 } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -25,6 +26,7 @@ import {
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
+import { getClientIP } from '@/lib/utils/ipAddress';
 
 /**
  * GET /api/members/[id]
@@ -552,6 +554,38 @@ export async function DELETE(request: NextRequest) {
     // STEP 6: Save member
     // ============================================================================
     await member.save();
+
+    // ============================================================================
+    // STEP 6.5: Log activity verbose
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const changes = mapDeletedFieldsToChanges(
+          member.toObject ? member.toObject() : member
+        );
+
+        await logActivity({
+          action: 'DELETE',
+          details: `Deleted member "${member.username || memberId}"`,
+          ipAddress: getClientIP(request) || undefined,
+          userId: (currentUser._id ||
+            currentUser.id ||
+            currentUser.sub) as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            resource: 'member',
+            resourceId: memberId,
+            resourceName: member.username || memberId,
+            changes,
+            previousData: member.toObject ? member.toObject() : member,
+            newData: null,
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+    }
 
     // ============================================================================
     // STEP 7: Return success response

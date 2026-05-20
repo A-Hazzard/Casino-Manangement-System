@@ -23,6 +23,7 @@ import type { JwtPayload } from '@/shared/types/auth';
 type UserWithMultiplier = JwtPayload & {
   moneyInMultiplier?: number | null;
   moneyOutAndJackpotMultiplier?: number | null;
+  reviewerMultiplierStartTime?: Date | string | null;
 };
 
 /**
@@ -222,9 +223,42 @@ export async function getCollectionReportById(
   }).lean<CollectionReportDocument>();
   if (!report) return null;
 
+  // Resolve collector name
+  let collectorName = report.collectorName || '';
+  if (report.collector) {
+    try {
+      const UserModel = (await import('@/app/api/lib/models/user')).default;
+      const collectorUser = await UserModel.findOne({ _id: report.collector }).lean<{
+        username?: string;
+        profile?: { firstName?: string; lastName?: string };
+        emailAddress?: string;
+      } | null>();
+      if (collectorUser) {
+        if (collectorUser.username) {
+          collectorName = collectorUser.username;
+        } else if (collectorUser.profile?.firstName) {
+          collectorName = collectorUser.profile.firstName;
+        } else if (collectorUser.emailAddress) {
+          collectorName = collectorUser.emailAddress;
+        }
+      } else {
+        if (/^[0-9a-fA-F]{24}$/.test(report.collector) || report.collector.startsWith('user_') || report.collector.length > 15) {
+          collectorName = 'Deleted User';
+        } else {
+          collectorName = report.collector;
+        }
+      }
+    } catch (err) {
+      console.warn('[getCollectionReportById] Failed to look up collector user:', err);
+    }
+  }
+
   // Get multipliers from user for reviewer calculations
-  const moneyInScale = getMoneyInScale(currentUser);
-  const moneyOutScale = getMoneyOutAndJackpotScale(currentUser);
+  const moneyInScale = getMoneyInScale(currentUser, report.timestamp);
+  const moneyOutScale = getMoneyOutAndJackpotScale(
+    currentUser,
+    report.timestamp
+  );
 
   // Fetch actual collections for this report with machine details resolved
   const collections = await Collections.aggregate([
@@ -372,8 +406,8 @@ export async function getCollectionReportById(
     )
     .map(collection => ({
       machineId: collection.machineId as string,
-      startTime: collection.sasMeters!.sasStartTime!,
-      endTime: collection.sasMeters!.sasEndTime!,
+      startTime: new Date(collection.sasMeters!.sasStartTime!),
+      endTime: new Date(collection.sasMeters!.sasEndTime!),
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
@@ -470,13 +504,15 @@ export async function getCollectionReportById(
 
   // Fetch licencee's includeJackpot flag BEFORE calculating total variation
   let includeJackpot = false;
+  let isNoSMIBLocation = false;
   try {
     if (report.location) {
       const location = await GamingLocations.findOne(
         { _id: report.location },
-        { 'rel.licencee': 1 }
-      ).lean<{ rel?: { licencee?: string } } | null>();
+        { 'rel.licencee': 1, noSMIBLocation: 1 }
+      ).lean<{ rel?: { licencee?: string }; noSMIBLocation?: boolean } | null>();
 
+      isNoSMIBLocation = location?.noSMIBLocation === true;
       const licenceeId = location?.rel?.licencee;
 
       if (licenceeId) {
@@ -495,9 +531,8 @@ export async function getCollectionReportById(
     );
   }
 
-  // Calculate total SAS gross and jackpot from meter data map
+  // Calculate total SAS gross from meter data map (for display purposes only)
   let totalSasGross = 0;
-  let totalJackpots = 0;
   for (const collection of collections) {
     if (
       collection.machineId &&
@@ -507,23 +542,9 @@ export async function getCollectionReportById(
       const meterData = meterDataMap.get(collection.machineId);
       if (meterData) {
         totalSasGross += meterData.drop - meterData.cancelled;
-        totalJackpots += meterData.jackpot;
-      } else {
-        // fallback to snapshot values if no raw meter data found
-        totalJackpots += collection.sasMeters?.jackpot || 0;
       }
-    } else {
-      totalJackpots += collection.sasMeters?.jackpot || 0;
     }
   }
-
-  // totalSasGross is (Drop - NetCancelled), which is the HIGH GROSS.
-  // If includeJackpot is true, we want LOW GROSS, so we subtract totalJackpots.
-  // If includeJackpot is false, we keep it as HIGH GROSS.
-  const adjustedTotalSasGross = includeJackpot
-    ? totalSasGross - totalJackpots
-    : totalSasGross;
-  const totalVariation = totalMetersGross - adjustedTotalSasGross;
 
   // Get total number of machines for this location
   let totalMachinesForLocation = collections.length; // Default fallback
@@ -555,13 +576,48 @@ export async function getCollectionReportById(
   const scaledGross = totalMetersGross * moneyInScale;
   const scaledJackpot = totalJackpot * moneyOutScale;
 
+  // Compute location total variation by summing per-machine variations.
+  // This must use the same logic as the machine metrics loop below (hasSmib, hasNoSasData, includeJackpot).
+  let computedTotalVariation = 0;
+  for (const collection of collections) {
+    const machineHasSmib = hasRelayMap.get(String(collection.machineId)) ?? false;
+    if (!machineHasSmib) continue;
+
+    const machineMeterGross = collection.movement?.gross ?? 0;
+    let machineSasGross = 0;
+    let machineJackpot = 0;
+
+    if (
+      collection.machineId &&
+      collection.sasMeters?.sasStartTime &&
+      collection.sasMeters?.sasEndTime
+    ) {
+      const meterData = meterDataMap.get(collection.machineId);
+      if (meterData) {
+        machineSasGross = meterData.drop - meterData.cancelled;
+        machineJackpot = meterData.jackpot;
+      }
+    }
+
+    const machineAdjustedSasGross = includeJackpot
+      ? machineSasGross - machineJackpot
+      : machineSasGross;
+
+    const machineHasNoSasData =
+      !collection.sasMeters?.sasStartTime ||
+      !collection.sasMeters?.sasEndTime ||
+      !meterDataMap.has(String(collection.machineId));
+
+    computedTotalVariation += machineMeterGross - (machineHasNoSasData ? 0 : machineAdjustedSasGross);
+  }
+
   const locationMetrics = {
     droppedCancelled: `${formatSmartDecimal(totalDrop * moneyInScale)} / ${formatSmartDecimal(totalCancelled * moneyOutScale)}`,
     metersGross: scaledGross,
     jackpot: scaledJackpot,
     netGross: scaledGross - scaledJackpot,
-    variation: totalVariation * moneyInScale,
-    sasGross: totalSasGross * moneyInScale,
+    variation: isNoSMIBLocation ? 'No SMIB for this Machine' : computedTotalVariation * moneyInScale,
+    sasGross: isNoSMIBLocation ? 'No SMIB for this Machine' : totalSasGross * moneyInScale,
     locationRevenue: (report.partnerProfit || 0) * moneyInScale,
     amountUncollected: (report.amountUncollected || 0) * moneyInScale,
     amountToCollect: (report.amountToCollect || 0) * moneyInScale,
@@ -617,6 +673,8 @@ export async function getCollectionReportById(
       : '-',
     includeJackpot: includeJackpot,
     useNetGross: includeJackpot,
+    collector: report.collector,
+    collectorName: collectorName,
     machineMetrics: collections.map((collection, idx: number) => {
       // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
       // Get raw values with fallbacks handling older collection documents
@@ -658,7 +716,7 @@ export async function getCollectionReportById(
       const cancelled =
         collection.movement?.totalCancelledCredits ??
         (collection.metersOut || 0) - (collection.prevOut || 0);
-      const meterGross = collection.movement?.gross || 0;
+      const meterGross = collection.movement?.gross ?? 0;
 
       // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
       let sasGross = 0;
@@ -723,12 +781,14 @@ export async function getCollectionReportById(
         metersGross: scaled.meterGross,
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
-        sasGross: !hasSmib
+        sasGross: (isNoSMIBLocation || !hasSmib)
           ? 'No SMIB for this Machine'
           : hasNoSasData
             ? 'No SAS Data'
             : formatSmartDecimal(scaled.sasGross),
-        variation: hasSmib ? formatSmartDecimal(scaled.variation) : '0',
+        variation: (isNoSMIBLocation || !hasSmib)
+          ? 'No SMIB for this Machine'
+          : formatSmartDecimal(scaled.variation),
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,

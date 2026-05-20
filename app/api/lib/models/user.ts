@@ -107,6 +107,10 @@ const UserSchema = new Schema(
     assignedLicencees: [{ type: String }],
     moneyInMultiplier: { type: Number, default: null },
     moneyOutAndJackpotMultiplier: { type: Number, default: null },
+    reviewerMultiplierStartTime: {
+      type: Date,
+      default: new Date('2026-04-01T00:00:00.000Z'),
+    },
     profile: {
       firstName: {
         type: String,

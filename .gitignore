@@ -52,3 +52,7 @@ oldSystem/
 # Claude Code worktrees
 .claude/worktrees/
 certificates
+
+# Google service account keys (secrets — NEVER commit)
+*-service-account*.json
+*google-cloud*.json

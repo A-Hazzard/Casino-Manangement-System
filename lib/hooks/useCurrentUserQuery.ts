@@ -46,6 +46,7 @@ type CurrentUserResponse = {
     tempPasswordChanged?: boolean;
     moneyInMultiplier?: number | null;
     moneyOutAndJackpotMultiplier?: number | null;
+    reviewerMultiplierStartTime?: string | null;
   };
 };
 
@@ -120,6 +121,7 @@ export function useCurrentUserQuery() {
         tempPasswordChanged: dbUser.tempPasswordChanged,
         moneyInMultiplier: dbUser.moneyInMultiplier,
         moneyOutAndJackpotMultiplier: dbUser.moneyOutAndJackpotMultiplier,
+        reviewerMultiplierStartTime: dbUser.reviewerMultiplierStartTime,
       };
 
       // Only update store if data has changed

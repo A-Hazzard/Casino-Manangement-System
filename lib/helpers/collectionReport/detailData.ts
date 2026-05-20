@@ -10,7 +10,7 @@ export async function checkSasTimeIssues(
 ): Promise<CollectionIssueDetails> {
   try {
     const response = await axios.get(
-      `/api/collection-report/${reportId}/check-sas-times`
+      `/api/collection-reports/${reportId}/check-sas-times`
     );
     return response.data;
   } catch (error) {

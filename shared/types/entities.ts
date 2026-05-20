@@ -31,6 +31,8 @@ export type Location = {
   semiSMIBs?: boolean;
   membershipEnabled?: boolean;
   locationMembershipSettings?: LocationMembershipSettings;
+  googleMapsLink?: string;
+  googleMapsIframe?: string;
 };
 
 export type Address = {
@@ -101,6 +103,8 @@ export type AggregatedLocation = {
     lastActivity?: Date | null;
   }>;
   deletedAt?: string | Date | null;
+  googleMapsLink?: string;
+  googleMapsIframe?: string;
 };
 
 export type LocationMetrics = {
@@ -124,6 +128,8 @@ export type UpdateLocationData = {
   membershipEnabled?: boolean;
   aceEnabled?: boolean;
   locationMembershipSettings?: Record<string, unknown>;
+  googleMapsLink?: string;
+  googleMapsIframe?: string;
   updatedAt?: Date;
   [key: string]: unknown;
 };
@@ -207,7 +213,7 @@ export type GamingMachine = {
 
   gameConfig?: {
     accountingDenomination?: number;
-    theoreticalRtp?: number;
+    theoreticalRtp?: number | string;
     maxBet?: string;
     payTableId?: string;
     additionalId?: string;
@@ -588,6 +594,14 @@ export type NewCabinetFormData = {
   manufacturer: string;
   otherGameType?: string;
   custom: { name: string };
+  gameConfig?: {
+    theoreticalRtp?: string | number;
+    maxBet?: string;
+    payTableId?: string;
+    additionalId?: string;
+    gameOptions?: string;
+    progressiveGroup?: string;
+  };
   collectionSettings: {
     multiplier: string;
     lastCollectionTime: string;

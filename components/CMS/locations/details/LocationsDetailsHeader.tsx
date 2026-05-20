@@ -103,6 +103,26 @@ export default function LocationsDetailsHeader({
                   This location&apos;s coordinates have not been set
                 </div>
               </div>
+            ) : locationData?.googleMapsLink ? (
+              <div className="group relative inline-flex flex-shrink-0">
+                <a
+                  href={locationData.googleMapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-transform hover:scale-110"
+                >
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-4 w-4 flex-shrink-0"
+                  />
+                </a>
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  Navigate to location on Google Maps
+                </div>
+              </div>
             ) : (
               <Image
                 src={IMAGES.locationIcon}
@@ -173,6 +193,26 @@ export default function LocationsDetailsHeader({
                 <MapPinOff className="h-6 w-6 flex-shrink-0 text-red-600 sm:h-8 sm:w-8" />
                 <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                   This location&apos;s coordinates have not been set
+                </div>
+              </div>
+            ) : locationData?.googleMapsLink ? (
+              <div className="group relative inline-flex flex-shrink-0">
+                <a
+                  href={locationData.googleMapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-transform hover:scale-110"
+                >
+                  <Image
+                    src={IMAGES.locationIcon}
+                    alt="Location Icon"
+                    width={32}
+                    height={32}
+                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
+                  />
+                </a>
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                  Navigate to location on Google Maps
                 </div>
               </div>
             ) : (
