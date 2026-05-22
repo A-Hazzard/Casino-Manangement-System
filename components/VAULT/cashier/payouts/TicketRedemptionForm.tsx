@@ -1,3 +1,14 @@
+/**
+ * Ticket Redemption Form Component
+ *
+ * Form for processing slot ticket redemptions. Requires TOTP authentication
+ * before submission. Validates issue date, amount, and cashier balance.
+ * Shows shortfall warning and float request option if amount exceeds balance.
+ *
+ * @module components/VAULT/cashier/payouts/TicketRedemptionForm
+ */
+'use client';
+
 import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { DatePicker } from '@/components/shared/ui/date-picker';
@@ -28,6 +39,9 @@ export default function TicketRedemptionForm({
   loading = false,
   maxDate,
 }: TicketRedemptionFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
   const [ticketNumber, setTicketNumber] = useState('');
@@ -50,6 +64,9 @@ export default function TicketRedemptionForm({
     printedAt: Date;
   } | null>(null);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -79,6 +96,9 @@ export default function TicketRedemptionForm({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit} className="space-y-5">

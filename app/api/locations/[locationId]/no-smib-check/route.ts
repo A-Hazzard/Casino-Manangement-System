@@ -28,6 +28,9 @@ export async function GET(
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database and parse params
+    // ============================================================================
     await connectDB();
     const { locationId } = await params;
 

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP1: Parse route parameters and request body
+    // STEP 1: Parse route parameters and request body
     // ============================================================================
     const { pathname } = request.nextUrl;
     const cabinetId = pathname.split('/')[3];
@@ -243,15 +243,13 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 2: Connect to database
+    // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 3: Find cabinet by ID
+    // STEP 2: Find cabinet
     // ============================================================================
-
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
       logRouteError(
@@ -268,7 +266,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Return SMIB configuration and version
+    // STEP 3: Return SMIB configuration and version
     // ============================================================================
     const relayId = cabinet.relayId || cabinet.smibBoard || '';
 

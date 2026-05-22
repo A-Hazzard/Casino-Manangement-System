@@ -7,6 +7,9 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  * Matches the exact structure of LocationsLocationCard (mobile) and LocationsLocationTable (desktop)
  */
 export default function LocationsLocationSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Desktop skeleton (table) - matches LocationsLocationTable */}

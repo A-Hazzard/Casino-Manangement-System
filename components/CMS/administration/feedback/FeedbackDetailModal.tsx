@@ -59,12 +59,18 @@ export default function FeedbackDetailModal({
   isUpdating,
   isDeleting,
 }: FeedbackDetailModalProps) {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState<string>('');
   const [editArchived, setEditArchived] = useState<boolean>(false);
   const [editNotes, setEditNotes] = useState<string>('');
   const [localIsUpdating, setLocalIsUpdating] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (selectedFeedback) {
       setEditStatus(selectedFeedback.status);
@@ -74,6 +80,9 @@ export default function FeedbackDetailModal({
     }
   }, [selectedFeedback, isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdateFeedback = async () => {
     if (!selectedFeedback) return;
 
@@ -144,6 +153,9 @@ export default function FeedbackDetailModal({
     }
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!selectedFeedback) return null;
 
   const header =
@@ -160,6 +172,9 @@ export default function FeedbackDetailModal({
       .filter(Boolean)
       .join(' ') || null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent

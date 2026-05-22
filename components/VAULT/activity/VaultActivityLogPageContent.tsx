@@ -65,8 +65,12 @@ type Cashier = {
 };
 
 export default function VaultActivityLogPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
+  const { isStaleShift, vaultBalance } = useVaultShift();
 
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
@@ -92,6 +96,9 @@ export default function VaultActivityLogPageContent() {
 
   const locationId = user?.assignedLocations?.[0];
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchCashiers = async () => {
     if (!locationId) return;
 
@@ -174,7 +181,7 @@ export default function VaultActivityLogPageContent() {
   }, [currentPage]);
 
   // ============================================================================
-  // Helpers
+  // Computed
   // ============================================================================
   const getActivityDescription = (activity: ActivityLog) => {
     const typeMap: Record<string, string> = {
@@ -381,8 +388,6 @@ export default function VaultActivityLogPageContent() {
   // ============================================================================
   // Render
   // ============================================================================
-
-  const { isStaleShift, vaultBalance } = useVaultShift();
 
   return (
     <PageLayout

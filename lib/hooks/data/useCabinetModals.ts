@@ -14,11 +14,19 @@ type UseCabinetModalsReturn = {
 };
 
 export function useCabinetModals(): UseCabinetModalsReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Modal state management
   const [isNewMovementRequestModalOpen, setIsNewMovementRequestModalOpen] =
     useState(false);
   const [isUploadSmibDataModalOpen, setIsUploadSmibDataModalOpen] =
     useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Modal handlers
   const openNewMovementRequestModal = useCallback(() => {

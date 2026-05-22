@@ -25,10 +25,16 @@ export default function UnifiedSearchBar<T extends string = string>({
   searchOptions,
   isSearching = false,
 }: UnifiedSearchBarProps<T>) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const containerRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isSearching && containerRef.current) {
       gsap.fromTo(
@@ -43,6 +49,9 @@ export default function UnifiedSearchBar<T extends string = string>({
     }
   }, [isSearching]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onSearchSubmit?.();
@@ -54,8 +63,14 @@ export default function UnifiedSearchBar<T extends string = string>({
     inputRef.current?.focus();
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const defaultPlaceholder = `Search ${searchType}...`;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={containerRef}

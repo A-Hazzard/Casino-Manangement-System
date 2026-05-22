@@ -14,7 +14,6 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Machine } from '@/app/api/lib/models/machines';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import {
@@ -48,7 +47,7 @@ export async function DELETE(request: NextRequest) {
 
     try {
       // ============================================================================
-      // STEP1: Parse request body
+      // STEP 1: Parse request body
       // ============================================================================
       const { locationReportId } = await request.json();
 
@@ -91,61 +90,17 @@ export async function DELETE(request: NextRequest) {
       ];
 
       // ============================================================================
-      // STEP 6: Revert machine collectionMeters and remove history entries
+      // STEP 6: Delete associated manual meters
       // ============================================================================
-      // CRITICAL: Revert meters BEFORE deleting collections, preserve prevIn/prevOut
-      // if no other collection exists for the machine
-      const machineUpdatePromises = collections.map(async collection => {
-        try {
-          if (collection.machineId) {
-            // Find if there's another collection for this machine (excluding the one being deleted)
-            const otherCollection = await Collections.findOne({
-              machineId: collection.machineId,
-              locationReportId: { $ne: locationReportId },
-              isCompleted: true,
-            }).sort({ collectionTime: -1, timestamp: -1 });
+      const { deleteManualMetersPerCollection } = await import(
+        '@/app/api/lib/helpers/collectionReport/operations'
+      );
+      await deleteManualMetersPerCollection(locationReportId, false);
 
-            // Determine revert values: use other collection's meters, or fall back to prevIn/prevOut
-            const revertMetersIn =
-              otherCollection?.metersIn ?? collection.prevIn ?? 0;
-            const revertMetersOut =
-              otherCollection?.metersOut ?? collection.prevOut ?? 0;
-
-            // Revert machine collectionMeters to the determined values
-            // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-            const machineRevertResult = await Machine.findOneAndUpdate(
-              { _id: collection.machineId },
-              {
-                $set: {
-                  'collectionMeters.metersIn': revertMetersIn,
-                  'collectionMeters.metersOut': revertMetersOut,
-                  updatedAt: new Date(),
-                },
-                $pull: {
-                  collectionMetersHistory: { locationReportId },
-                },
-              },
-              { new: true }
-            );
-            if (!machineRevertResult) {
-              console.warn(
-                `[delete-by-report] Machine ${collection.machineId} not found for meter revert`
-              );
-            }
-          }
-        } catch (error) {
-          console.error(
-            `Failed to revert machine ${collection.machineId}:`,
-            error
-          );
-        }
-      });
       // ============================================================================
       // STEP 6.5: Fetch collection report before deleting
       // ============================================================================
       const existingReport = await CollectionReport.findOne({ locationReportId }).lean();
-
-      await Promise.all(machineUpdatePromises);
 
       // ============================================================================
       // STEP 7: Delete all collections
@@ -158,6 +113,106 @@ export async function DELETE(request: NextRequest) {
       const reportDeleteResult = await CollectionReport.deleteOne({
         locationReportId,
       });
+
+      // ============================================================================
+      // STEP 8.7: Propagate deletion forward and recalculate machines
+      // ============================================================================
+      const { updateRegularAndRamClearMeters } = await import(
+        '@/app/api/lib/helpers/collectionReport/reportCreation'
+      );
+      const { recalculateMachineCollections } = await import(
+        '@/app/api/lib/helpers/collectionReport/recalculation'
+      );
+
+      for (const col of collections) {
+        if (!col.machineId) continue;
+
+        try {
+          // Find the next active collection (not deleted/archived)
+          const nextReport = await Collections.findOne({
+            machineId: col.machineId,
+            location: col.location,
+            timestamp: { $gt: col.timestamp || col.collectionTime || new Date() },
+            deletedAt: { $exists: false },
+          })
+            .sort({ timestamp: 1 })
+            .lean<CollectionDocument>();
+
+          if (nextReport) {
+            console.log(
+              `[delete-by-report] Propagating deletion for machine ${col.machineId}: setting successor ${nextReport._id} prevMeters to deleted report's prevMetersIn=${col.prevIn}, prevMetersOut=${col.prevOut}`
+            );
+
+            const newPrevIn = col.prevIn || 0;
+            const newPrevOut = col.prevOut || 0;
+            const currentMetersIn = nextReport.metersIn ?? 0;
+            const currentMetersOut = nextReport.metersOut ?? 0;
+            const ramClear = !!nextReport.ramClear;
+            const ramClearMetersIn = nextReport.ramClearMetersIn;
+            const ramClearMetersOut = nextReport.ramClearMetersOut;
+
+            let movementIn = 0;
+            let movementOut = 0;
+
+            if (ramClear) {
+              if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+                movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
+                movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
+              } else {
+                movementIn = currentMetersIn;
+                movementOut = currentMetersOut;
+              }
+            } else {
+              movementIn = currentMetersIn - newPrevIn;
+              movementOut = currentMetersOut - newPrevOut;
+            }
+
+            const movement = {
+              metersIn: Number(movementIn.toFixed(2)),
+              metersOut: Number(movementOut.toFixed(2)),
+              gross: Number((movementIn - movementOut).toFixed(2)),
+            };
+
+            const collectionUpdate: Record<string, unknown> = {
+              prevIn: newPrevIn,
+              prevOut: newPrevOut,
+              movement,
+              softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+              softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+            };
+
+            if (nextReport.sasMeters) {
+              const sasMetersData = {
+                ...nextReport.sasMeters,
+                drop: movement.metersIn,
+                totalCancelledCredits: movement.metersOut,
+                gross: movement.gross,
+              };
+              collectionUpdate.sasMeters = sasMetersData;
+            }
+
+            await Collections.updateOne(
+              { _id: nextReport._id },
+              { $set: collectionUpdate }
+            );
+
+            const updatedNextReport = {
+              ...nextReport,
+              ...collectionUpdate,
+            };
+
+            await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+          }
+
+          // Re-sync machine's current meters and history from database
+          await recalculateMachineCollections(String(col.machineId), true);
+        } catch (machineError) {
+          console.error(
+            `[delete-by-report] Failed to propagate deletion/recalculate machine ${col.machineId}:`,
+            machineError
+          );
+        }
+      }
 
       // ============================================================================
       // STEP 8.5: Log Activity

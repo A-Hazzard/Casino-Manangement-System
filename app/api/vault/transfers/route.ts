@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate permissions
+      // ============================================================================
       const vaultManagerId = userPayload._id as string;
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
@@ -55,6 +58,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const body: CreateInterLocationTransferRequest = await request.json();
       const { fromLocationId, toLocationId, amount, denominations, notes } =
         body;
@@ -90,6 +96,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate location access
+      // ============================================================================
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
         undefined,
@@ -119,6 +128,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 4: Create transfer and save
+      // ============================================================================
       const transferId = await generateMongoId();
       const transfer = new InterLocationTransferModel({
         _id: transferId,
@@ -145,6 +157,9 @@ export async function POST(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 5: Return response
+      // ============================================================================
       return NextResponse.json({ success: true, transfer });
     } catch (error: unknown) {
       const errorMessage =
@@ -183,6 +198,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       if (!locationId) {
@@ -199,6 +217,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Validate location access
+      // ============================================================================
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
         undefined,
@@ -223,6 +244,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Fetch transfers
+      // ============================================================================
       const page = parseInt(searchParams.get('page') || '1');
       const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
       const skip = (page - 1) * limit;
@@ -249,6 +273,9 @@ export async function GET(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 4: Return response
+      // ============================================================================
       return NextResponse.json({
         success: true,
         transfers,

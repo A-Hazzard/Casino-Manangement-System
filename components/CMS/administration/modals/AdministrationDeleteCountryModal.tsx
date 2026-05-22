@@ -27,9 +27,16 @@ export default function AdministrationDeleteCountryModal({
   onConfirm,
   country,
 }: AdministrationDeleteCountryModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
@@ -47,6 +54,9 @@ export default function AdministrationDeleteCountryModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleDelete = async () => {
     if (!country?._id) return;
 
@@ -73,8 +83,14 @@ export default function AdministrationDeleteCountryModal({
     }
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open || !country) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-[100000]">
       <div

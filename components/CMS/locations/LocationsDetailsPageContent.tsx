@@ -16,7 +16,6 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
@@ -35,7 +34,6 @@ import {
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
-import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
 
 import LocationsDetailsMembersSection from '@/components/CMS/locations/sections/LocationsDetailsMembersSection';
@@ -59,7 +57,7 @@ import type { GamingMachine as Cabinet } from '@/shared/types/entities';
  */
 export default function LocationsDetailsPageContent() {
   // ============================================================================
-  // Hooks & Context
+  // State & Hooks
   // ============================================================================
   const params = useParams();
   const router = useRouter();
@@ -76,30 +74,14 @@ export default function LocationsDetailsPageContent() {
 
   const user = useUserStore((state: UserStore) => state.user);
 
-  // ============================================================================
-  // State Management
-  // ============================================================================
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
-
-  // ============================================================================
-  // Computed Values - Permissions
-  // ============================================================================
-  const userRoles = (user?.roles || []) as UserRole[];
-  const isAdminUser = hasAdminAccess(userRoles);
-  const canManageMachines = canEditMachines(userRoles);
-  const canEditLocation = canManageLocations(userRoles);
-  const canViewArchived = canViewArchivedMachines(userRoles);
-  const canPermanentlyDelete = isAdminUser || userRoles.includes('developer');
 
   // View Toggle State - checks URL param first, defaults to machines
   const [activeView, setActiveView] = useState<'machines' | 'members'>(
     tabParam === 'members' ? 'members' : 'machines'
   );
 
-  // ============================================================================
-  // Custom Hooks
-  // ============================================================================
   const cabinetsData = useLocationCabinetsData({
     locationId,
     selectedLicencee,
@@ -107,7 +89,7 @@ export default function LocationsDetailsPageContent() {
     customDateRange,
     dateFilterInitialized,
     filtersInitialized,
-    isAdminUser,
+    isAdminUser: hasAdminAccess((user?.roles || []) as UserRole[]),
     setDateFilterInitialized,
     setFiltersInitialized,
   });
@@ -143,30 +125,31 @@ export default function LocationsDetailsPageContent() {
     true
   );
 
-  // ============================================================================
-  // Refs
-  // ============================================================================
   const membersRefreshHandlerRef = useRef<(() => void) | undefined>(undefined);
 
-  // Refresh machine stats when date filters change
-  useEffect(() => {
-    if (
-      activeView === 'machines' &&
-      activeMetricsFilter &&
-      dateFilterInitialized
-    ) {
-      refreshMachineStats();
-    }
-  }, [
-    activeMetricsFilter,
-    customDateRange,
-    activeView,
-    dateFilterInitialized,
-    refreshMachineStats,
-  ]);
+  const { openCabinetModal } = useNewCabinetStore();
+  const { openEditModal } = useLocationsActionsStore();
 
   // ============================================================================
-  // Effects - Initialization & Sync
+  // Computed
+  // ============================================================================
+  const userRoles = (user?.roles || []) as UserRole[];
+  const isAdminUser = hasAdminAccess(userRoles);
+  const canManageMachines = canEditMachines(userRoles);
+  const canEditLocation = canManageLocations(userRoles);
+  const canViewArchived = canViewArchivedMachines(userRoles);
+  const canPermanentlyDelete = isAdminUser || userRoles.includes('developer');
+
+  // Determine if Members tab should be shown
+  // Show if feature enabled AND (has members OR stats are still loading)
+  const showMembersTab = !!(
+    cabinetsData.locationMembershipEnabled &&
+    (membershipStatsLoading ||
+      (membershipStats && membershipStats.membershipCount > 0))
+  );
+
+  // ============================================================================
+  // Effects
   // ============================================================================
 
   // Sync state with URL parameter
@@ -205,7 +188,7 @@ export default function LocationsDetailsPageContent() {
   }, [activeMetricsFilter]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   const handleFilterChange = (status: string) => {
     cabinetsData.setSelectedStatus(status);
@@ -257,8 +240,22 @@ export default function LocationsDetailsPageContent() {
     chartDataHook,
   ]);
 
-  const { openCabinetModal } = useNewCabinetStore();
-  const { openEditModal } = useLocationsActionsStore();
+  // Refresh machine stats when date filters change
+  useEffect(() => {
+    if (
+      activeView === 'machines' &&
+      activeMetricsFilter &&
+      dateFilterInitialized
+    ) {
+      refreshMachineStats();
+    }
+  }, [
+    activeMetricsFilter,
+    customDateRange,
+    activeView,
+    dateFilterInitialized,
+    refreshMachineStats,
+  ]);
 
   /**
    * Restores a soft-deleted cabinet by clearing its deletedAt field.
@@ -342,37 +339,6 @@ export default function LocationsDetailsPageContent() {
       );
     }
   };
-
-  // ============================================================================
-  // Early Returns
-  // ============================================================================
-  // Show "No Licencee Assigned" message for non-admin users without licencees
-  const showNoLicenceeMessage = shouldShowNoLicenceeMessage(user);
-  if (showNoLicenceeMessage) {
-    return (
-      <PageLayout
-        headerProps={{
-          selectedLicencee,
-          setSelectedLicencee,
-          disabled: false,
-        }}
-        hideOptions={true}
-        hideLicenceeFilter={true}
-        mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
-        showToaster={false}
-      >
-        <NoLicenceeAssigned />
-      </PageLayout>
-    );
-  }
-
-  // Determine if Members tab should be shown
-  // Show if feature enabled AND (has members OR stats are still loading)
-  const showMembersTab = !!(
-    cabinetsData.locationMembershipEnabled &&
-    (membershipStatsLoading ||
-      (membershipStats && membershipStats.membershipCount > 0))
-  );
 
   // ============================================================================
   // Render

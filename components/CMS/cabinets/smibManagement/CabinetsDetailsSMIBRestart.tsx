@@ -40,11 +40,17 @@ export function CabinetsDetailsSMIBRestart({
   isOnline,
   onRefreshData,
 }: CabinetsDetailsSMIBRestartProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdown, setCountdown] = useState(15);
   const { isRestarting, restartSmib } = useSmibRestart();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Countdown effect
   useEffect(() => {
     if (!showCountdown) return undefined;
@@ -68,6 +74,9 @@ export function CabinetsDetailsSMIBRestart({
     return undefined;
   }, [showCountdown, countdown, onRefreshData]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRestart = async () => {
     if (!relayId) return;
 
@@ -79,6 +88,9 @@ export function CabinetsDetailsSMIBRestart({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Card className="relative w-full min-w-0 max-w-full overflow-x-hidden">

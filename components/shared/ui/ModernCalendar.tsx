@@ -74,6 +74,9 @@ const formatTimeDisplay = (hours: number, minutes: number): string => {
  * to prevent prop syncing from overriding user typing.
  */
 const TimeInput = ({ hours, minutes, onChange }: TimeInputProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Convert 24-hour to 12-hour format for display
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
@@ -88,6 +91,9 @@ const TimeInput = ({ hours, minutes, onChange }: TimeInputProps) => {
   const [isHourFocused, setIsHourFocused] = useState(false);
   const [isMinuteFocused, setIsMinuteFocused] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Synchronize local state ONLY when NOT focused
   useEffect(() => {
     if (!isHourFocused) {
@@ -101,6 +107,9 @@ const TimeInput = ({ hours, minutes, onChange }: TimeInputProps) => {
     }
   }, [minutes, isMinuteFocused]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleHoursChange = (e: ChangeEvent<HTMLInputElement>) => {
     // Only allow digits 0-9
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
@@ -171,6 +180,9 @@ const TimeInput = ({ hours, minutes, onChange }: TimeInputProps) => {
     onChange(newHours24, minutes);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -234,6 +246,9 @@ export function ModernCalendar({
   minDate,
   gameDayOffset = 8,
 }: ModernCalendarProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [startDate, setStartDate] = useState<Date | null>(date?.from || null);
   const [endDate, setEndDate] = useState<Date | null>(date?.to || null);
   const [isOpen, setIsOpen] = useState(false);
@@ -286,6 +301,9 @@ export function ModernCalendar({
     return null;
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen) {
       setStartDate(date?.from || null);
@@ -315,6 +333,9 @@ export function ModernCalendar({
     }
   }, [date, isOpen, enableTimeInputs, mode]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const presets = [
     {
       label: 'Today',
@@ -365,6 +386,9 @@ export function ModernCalendar({
       ? presets.filter(p => ['Today', 'Yesterday'].includes(p.label))
       : presets;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   /**
    * Handles the Apply button click.
    * Combines selected dates with optional times and calls onSelect callback.
@@ -542,6 +566,9 @@ export function ModernCalendar({
     );
   }, [date, mode, enableTimeInputs]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={cn('grid w-full gap-2', className)}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>

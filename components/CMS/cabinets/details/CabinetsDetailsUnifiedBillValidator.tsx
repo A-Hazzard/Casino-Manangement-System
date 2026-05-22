@@ -60,6 +60,9 @@ const CabinetsDetailsUnifiedBillValidator = ({
   onTimePeriodChange,
   gameDayOffset = 0,
 }: CabinetsDetailsUnifiedBillValidatorProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   const { getBillValidatorState, setBillValidatorDateRange } =
@@ -107,6 +110,9 @@ const CabinetsDetailsUnifiedBillValidator = ({
     { time: 'Custom', value: 'Custom' as TimePeriod },
   ];
 
+  // ============================================================================
+  // Helpers & Handlers
+  // ============================================================================
   const fetchBillValidatorData = useCallback(async () => {
     if (!machineId) return;
 
@@ -196,7 +202,14 @@ const CabinetsDetailsUnifiedBillValidator = ({
 
   const handleRefresh = () => fetchBillValidatorData();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isInitialLoad = loading && !data;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (isInitialLoad) return <BillValidatorSkeleton />;
 
   return (

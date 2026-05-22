@@ -20,12 +20,18 @@ export default function CabinetsRestoreModal({
 }: {
   onCabinetRestored?: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isRestoreModalOpen, closeRestoreModal, selectedCabinet } =
     useCabinetsActionsStore();
   const [loading, setLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isRestoreModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -42,6 +48,9 @@ export default function CabinetsRestoreModal({
     }
   }, [isRestoreModalOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRestore = async () => {
     if (!selectedCabinet) return;
 
@@ -68,10 +77,16 @@ export default function CabinetsRestoreModal({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   if (!isRestoreModalOpen || !selectedCabinet) return null;
 
   const cabinetName = selectedCabinet.assetNumber || selectedCabinet._id;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={backdropRef}

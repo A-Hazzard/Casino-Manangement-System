@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVaultAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
@@ -48,6 +51,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse request body
+      // ============================================================================
       const {
         requestId,
         status,
@@ -69,6 +75,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate request existence and status
+      // ============================================================================
       const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
       if (!floatRequest) {
         logRouteError(
@@ -104,6 +113,9 @@ export async function POST(request: NextRequest) {
       floatRequest.status = status;
       floatRequest.updatedAt = now;
 
+      // ============================================================================
+      // STEP 4: Handle denied status
+      // ============================================================================
       if (status === 'denied') {
         if (floatRequest.cashierShiftId) {
           const shift = await CashierShiftModel.findOne({
@@ -152,6 +164,9 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // ============================================================================
+      // STEP 5: Validate vault shift
+      // ============================================================================
       if (status === 'approved' || status === 'edited') {
         const vaultShift = await VaultShiftModel.findOne({
           _id: floatRequest.vaultShiftId,
@@ -173,6 +188,9 @@ export async function POST(request: NextRequest) {
         let finalAmount = floatRequest.requestedAmount;
         let finalDenoms = floatRequest.requestedDenominations;
 
+        // ============================================================================
+        // STEP 6: Process approved or edited status
+        // ============================================================================
         if (status === 'edited') {
           if (approvedAmount === undefined || !approvedDenominations) {
             logRouteError(
@@ -249,6 +267,9 @@ export async function POST(request: NextRequest) {
 
         await floatRequest.save();
 
+        // ============================================================================
+        // STEP 7: Handle decrease float type
+        // ============================================================================
         if (floatRequest.type === 'decrease') {
           const { finalizeFloatRequest } =
             await import('@/app/api/lib/helpers/vault/finalizeFloat');
@@ -285,6 +306,9 @@ export async function POST(request: NextRequest) {
         });
         await floatRequest.save();
 
+        // ============================================================================
+        // STEP 8: Log activity and return response
+        // ============================================================================
         try {
           const VaultNotificationModel = (
             await import('@/app/api/lib/models/vaultNotification')

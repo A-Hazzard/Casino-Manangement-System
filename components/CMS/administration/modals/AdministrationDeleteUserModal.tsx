@@ -33,10 +33,16 @@ export default function AdministrationDeleteUserModal({
   onClose,
   onDelete,
 }: AdministrationDeleteUserModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -54,8 +60,14 @@ export default function AdministrationDeleteUserModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open || !user) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-[100000]">
       <div

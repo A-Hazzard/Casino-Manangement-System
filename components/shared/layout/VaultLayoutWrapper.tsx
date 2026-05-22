@@ -45,16 +45,13 @@ export default function VaultLayoutWrapper({
   children,
 }: VaultLayoutWrapperProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, hasActiveVaultShift } = useUserStore();
 
   // ============================================================================
-  // Computed Values - Navigation Selection
+  // Handlers
   // ============================================================================
-  /**
-   * Filter navigation items based on shift status
-   */
   /**
    * Filter navigation items based on shift status
    */
@@ -63,6 +60,9 @@ export default function VaultLayoutWrapper({
     return config;
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Select navigation config based on user's roles
   const navConfig = useMemo(() => {
     let config;
@@ -79,6 +79,9 @@ export default function VaultLayoutWrapper({
     return filterNavItems(config);
   }, [user?.roles, hasActiveVaultShift]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     // React Query provider for data fetching and caching
     <QueryProvider>

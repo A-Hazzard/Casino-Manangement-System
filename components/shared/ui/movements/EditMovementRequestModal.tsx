@@ -44,6 +44,9 @@ export default function EditMovementRequestModal({
 }: {
   onSaved: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isEditModalOpen, selectedMovementRequest, closeEditModal } =
     useMovementRequestActionsStore();
   const { user: currentUser } = useUserStore();
@@ -78,6 +81,9 @@ export default function EditMovementRequestModal({
   const [selectedCabinets, setSelectedCabinets] = useState<Cabinet[]>([]);
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Load initial data when modal opens
   useEffect(() => {
     if (isEditModalOpen && selectedMovementRequest) {
@@ -163,6 +169,9 @@ export default function EditMovementRequestModal({
 
   if (!isEditModalOpen || !formData) return null;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const validate = () => {
     const errs: { [key: string]: string } = {};
     if (!formData.movementType)
@@ -215,6 +224,9 @@ export default function EditMovementRequestModal({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Derive SearchableSelect options
   const locationOptions = locations
     .filter(loc => {
@@ -321,6 +333,11 @@ export default function EditMovementRequestModal({
 
   const canUpdateStatus =
     canModifyRecord || isRecipient || isAuthorizedDestinationUser;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  if (!isEditModalOpen || !formData) return null;
 
   return (
     <Dialog open={isEditModalOpen} onOpenChange={closeEditModal}>

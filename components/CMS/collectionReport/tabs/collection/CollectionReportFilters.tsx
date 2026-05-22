@@ -70,10 +70,17 @@ export default function CollectionReportFilters({
   console.warn(`  - locations count: ${locations.length}`);
   console.warn(`  - search: "${search}"`);
   console.warn(`  - showUncollectedOnly: ${showUncollectedOnly}`);
+
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const filterRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Search animation
   useEffect(() => {
     if (isSearching && filterRef.current) {
@@ -119,7 +126,9 @@ export default function CollectionReportFilters({
     }
   }, [showUncollectedOnly]);
 
-
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={filterRef}

@@ -48,6 +48,9 @@ export default function BlindCloseModal({
   onSubmit,
   loading = false,
 }: BlindCloseModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
 
@@ -62,6 +65,9 @@ export default function BlindCloseModal({
   );
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open) {
       setDenominations(
@@ -74,11 +80,17 @@ export default function BlindCloseModal({
     }
   }, [open, denomsList]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
     0
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
@@ -112,6 +124,9 @@ export default function BlindCloseModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>

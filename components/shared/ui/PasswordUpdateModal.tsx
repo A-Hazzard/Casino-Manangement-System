@@ -149,7 +149,9 @@ export default function PasswordUpdateModal({
   onLogout,
   initialPhone = '',
 }: PasswordUpdateModalProps) {
-  // === State ===
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -161,12 +163,15 @@ export default function PasswordUpdateModal({
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // === Debouncing ===
+
   const debouncedPhone = useDebounce(phone, 2000);
   const debouncedNewPassword = useDebounce(newPassword, 2000);
   const debouncedConfirmPassword = useDebounce(confirmPassword, 2000);
 
-  // === Effects ===
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Initialize phone when modal opens or initialPhone changes
   useEffect(() => {
     if (open) {
@@ -174,7 +179,9 @@ export default function PasswordUpdateModal({
     }
   }, [open, initialPhone]);
 
-  // === Computed ===
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const passwordStrength = newPassword
     ? validatePasswordStrength(newPassword)
     : null;
@@ -250,7 +257,9 @@ export default function PasswordUpdateModal({
     }
   }, [debouncedConfirmPassword, newPassword]);
 
-  // === Handlers ===
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const reset = () => {
     setCurrentPassword('');
     setNewPassword('');

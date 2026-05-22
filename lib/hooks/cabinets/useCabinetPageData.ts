@@ -103,7 +103,7 @@ export function useCabinetPageData() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const canAccessSmibConfig = useMemo(() => {
     return (

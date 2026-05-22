@@ -61,6 +61,10 @@ export function useMembersSummaryData({
   page = 1,
   limit = 10,
 }: UseMembersSummaryDataProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [isLoading, setIsLoading] = useState(false);
   const [summaryData, setSummaryData] = useState<MembersSummaryData | null>(
     null
@@ -68,6 +72,10 @@ export function useMembersSummaryData({
   const [demographicsData, setDemographicsData] =
     useState<DemographicsData | null>(null);
   const [activityTrends, setActivityTrends] = useState<ActivityTrend[]>([]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchSummaryData = useCallback(async () => {
     setIsLoading(true);
@@ -179,6 +187,10 @@ export function useMembersSummaryData({
       setIsLoading(false);
     }
   }, [selectedLicencee, search, locationFilter, page, limit]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     fetchSummaryData();

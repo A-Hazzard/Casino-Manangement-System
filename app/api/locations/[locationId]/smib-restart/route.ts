@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const relayIds = body.relayIds as string[];
 
     // ============================================================================
-    // STEP 2: Validate relayIds
+    // STEP 1: Validate relayIds
     // ============================================================================
     if (!relayIds || relayIds.length === 0) {
       logRouteError(
@@ -67,17 +67,17 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Connect to database
+    // STEP 2: Connect to database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 4: Remove duplicate relayIds
+    // STEP 3: Remove duplicate relayIds
     // ============================================================================
     const uniqueRelayIds = Array.from(new Set(relayIds));
 
     // ============================================================================
-    // STEP 5: Process restart commands in batches
+    // STEP 4: Process restart commands in batches
     // ============================================================================
 
     const results = {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Log activity
+    // STEP 5: Log activity
     // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Return results
+    // STEP 6: Return results
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteCreate(

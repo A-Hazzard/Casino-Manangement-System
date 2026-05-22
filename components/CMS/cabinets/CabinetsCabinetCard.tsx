@@ -45,6 +45,9 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
   const prevPropsRef = useRef<CabinetCardProps | null>(null);
   const router = useRouter();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // GSAP animation for card updates
   useEffect(() => {
     if (
@@ -71,6 +74,9 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
     }
   }, [props]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleViewClick = () => {
     const currentPath = window.location.pathname;
 
@@ -94,6 +100,9 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
     }
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   // Archived machines have a deletedAt date of Jan 1st 2025 or later
   const isArchived =
     Boolean(props.deletedAt) &&
@@ -113,6 +122,9 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
       : 'Never');
   const smbId = props.smbId || '';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={cardRef}

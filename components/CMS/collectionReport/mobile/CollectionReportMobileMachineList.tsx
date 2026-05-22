@@ -51,6 +51,9 @@ export default function CollectionReportMobileMachineList({
   onMachineSelect,
   onBack,
 }: MobileMachineListProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b p-4">

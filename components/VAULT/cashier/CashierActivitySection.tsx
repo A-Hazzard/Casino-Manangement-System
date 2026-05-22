@@ -1,3 +1,11 @@
+/**
+ * Cashier Activity Section Component
+ *
+ * Displays recent cashier shift and float activity with an animated welcome
+ * slider for new users. Polls for updates every 30 seconds when active.
+ *
+ * @module components/VAULT/cashier/CashierActivitySection
+ */
 'use client';
 
 import { Badge } from '@/components/shared/ui/badge';
@@ -29,10 +37,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function CashierActivitySection() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { activities, loading, refreshing, refresh } = useCashierActivity();
   const { formatAmount } = useCurrencyFormat();
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const slides = [
     {
       title: 'Welcome to Your Cash Desk!',
@@ -61,6 +75,10 @@ export default function CashierActivitySection() {
   const prevSlide = () =>
     setCurrentSlide(prev => (prev - 1 + slides.length) % slides.length);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Initial refresh
   useEffect(() => {
     refresh(false);
@@ -76,6 +94,9 @@ export default function CashierActivitySection() {
     return () => clearInterval(interval);
   }, [refresh, activities.length]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleCancel = useCallback(
     async (requestId: string) => {
       try {
@@ -99,6 +120,11 @@ export default function CashierActivitySection() {
     [refresh]
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show skeleton during initial load
   if (loading && activities.length === 0) {
     // ... skeleton code ...
     return (

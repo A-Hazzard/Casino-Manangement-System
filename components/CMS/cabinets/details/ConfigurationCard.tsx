@@ -30,6 +30,9 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
   inputType = 'currency',
   onSave,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState<string>(
     displayValue || field
@@ -52,6 +55,9 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!isEditing) {
       if (inputType === 'date' && field) {
@@ -71,6 +77,9 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
     }
   }, [machine, isEditing, field, displayValue, inputType]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -85,6 +94,9 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const currentValue =
     inputType === 'date' && dateRange.from
       ? dateRange.from.toLocaleString()
@@ -94,6 +106,9 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
           ? `${inputValue}%`
           : inputValue;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-72 max-w-full flex-col overflow-hidden rounded-lg shadow">
       <div className={`flex items-center justify-center ${bgColor} p-3`}>

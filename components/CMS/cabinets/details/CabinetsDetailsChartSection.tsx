@@ -39,6 +39,9 @@ export default function CabinetsDetailsChartSection({
   showGranularitySelector = true,
   availableGranularityOptions = [],
 }: CabinetsDetailsChartSectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <motion.div
       className="mt-4 w-full"

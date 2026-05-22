@@ -103,6 +103,9 @@ function DesktopEditWrapper({
     onClose();
   }, [forceCloseRef, onClose]);
 
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const desktopHook = useEditCollectionModal({
     show,
     reportId,
@@ -122,6 +125,9 @@ function DesktopEditWrapper({
   const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
     useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Clear shared collection-modal store whenever this edit modal closes,
   // so opening the create/new collection modal afterwards starts with a clean slate.
   useEffect(() => {
@@ -198,6 +204,9 @@ function DesktopEditWrapper({
     desktopHook.selectedLocationId,
   ]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleDesktopSubmit = async () => {
     if (desktopHook.editingEntryId) {
       toast.warning('Save or cancel your current machine edit first.');
@@ -241,6 +250,9 @@ function DesktopEditWrapper({
     variation.checkVariations(locationId, machinesForCheck);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Desktop Header */}
@@ -399,6 +411,9 @@ function MobileEditWrapper({
     onClose();
   }, [forceCloseRef, onClose]);
 
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const mobileHook = useMobileEditCollectionModal({
     show,
     reportId,
@@ -411,6 +426,9 @@ function MobileEditWrapper({
   const editMobileIds = mobileHook.availableMachines.map(m => String(m._id));
   const editMachineStatusMap = useMachineOnlineStatus(editMobileIds);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Sync mobile hook's hasUnsavedEdits up to parent via ref
   useEffect(() => {
     unsavedEditsRef &&
@@ -446,6 +464,9 @@ function MobileEditWrapper({
     }
   }, [show, variation]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleMobileSubmit = async () => {
     if (mobileHook.modalState.editingEntryId) {
       toast.warning('Save or cancel your current machine edit first.');
@@ -534,6 +555,9 @@ function MobileEditWrapper({
     mobileHook.selectedLocationId,
   ]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Mobile Header */}
@@ -673,6 +697,9 @@ export default function CollectionReportEditCollectionModal({
   locations = [],
   onRefresh,
 }: CollectionReportEditCollectionModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { gameDayOffset } = useDashBoardStore();
 
@@ -686,11 +713,17 @@ export default function CollectionReportEditCollectionModal({
     isMachineEditingRef.current = editing;
   }, []);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update parent about unsaved changes state (for potential external tracking)
   useEffect(() => {
     // Parent can read this ref if needed
   }, [hasUnsavedEditsRef.current]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleCloseAttempt = useCallback(() => {
     // Check if we're forcing close (after successful save)
     if (forceCloseRef.current) {
@@ -712,6 +745,9 @@ export default function CollectionReportEditCollectionModal({
     onClose();
   }, [onClose]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!show) return null;
 
   return (

@@ -174,9 +174,16 @@ export default function LocationsDetailsCabinetsSection({
   setShowArchived,
   canViewArchived,
 }: LocationsDetailsCabinetsSectionProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 20;
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   const showLocationSelect = locations.length > 1;
   const locationSelectOptions = locations.map(loc => ({
@@ -184,6 +191,9 @@ export default function LocationsDetailsCabinetsSection({
     name: loc.name,
   }));
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   /**
    * Animates table rows and cards when cabinets data changes.
    * Uses GSAP for smooth animations on data load/filter changes.
@@ -243,6 +253,9 @@ export default function LocationsDetailsCabinetsSection({
     cabinetsLoading,
   ]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   /**
    * Handles search input changes and provides visual feedback.
    * Prevents updates while data is loading or refreshing.
@@ -266,6 +279,9 @@ export default function LocationsDetailsCabinetsSection({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Show error message if user is unauthorized or location not found
   if (error === 'UNAUTHORIZED' || error === 'Location not found') {
     // Show unauthorized error if user doesn't have access

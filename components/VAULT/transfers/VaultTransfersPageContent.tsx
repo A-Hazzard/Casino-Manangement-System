@@ -53,7 +53,7 @@ import VaultTransfersTable from './tables/VaultTransfersTable';
 
 export default function VaultTransfersPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, hasActiveVaultShift } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
@@ -103,12 +103,15 @@ export default function VaultTransfersPageContent() {
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchData();
   }, [user?.assignedLocations, user?.username, currentPage]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Filter transfers with pending status
@@ -151,7 +154,7 @@ export default function VaultTransfersPageContent() {
   }, [sortedTransfers]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   /**
    * Handle new transfer button click
@@ -242,7 +245,10 @@ export default function VaultTransfersPageContent() {
     }
   };
 
-  // Show skeleton while loading
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: Show skeleton while loading
   if (loading && transfers.length === 0) {
     return (
       <PageLayout>
@@ -251,9 +257,6 @@ export default function VaultTransfersPageContent() {
     );
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <PageLayout onRefresh={fetchData} refreshing={loading}>
       <div className="space-y-6">

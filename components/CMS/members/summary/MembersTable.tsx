@@ -52,13 +52,22 @@ export default function MembersTable({
   onViewMember,
   forcedLocationId,
 }: MembersTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const tableRef = useRef<HTMLTableElement>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   if (loading) {
     return <MembersTableSkeleton forcedLocationId={forcedLocationId} />;
   }
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const getSortIcon = (key: string) => {
     if (sortBy !== key) return null;
     return (
@@ -68,6 +77,9 @@ export default function MembersTable({
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div>
       {/* Mobile View: Cards */}

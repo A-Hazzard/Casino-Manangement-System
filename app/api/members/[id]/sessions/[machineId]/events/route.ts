@@ -47,6 +47,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { pathname, searchParams } = request.nextUrl;
     const parts = pathname.split('/');
     const machineId = parts[parts.length - 2];
@@ -58,6 +61,9 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
     // ============================================================================

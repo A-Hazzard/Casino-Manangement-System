@@ -195,12 +195,18 @@ export default function ReportsLocationsMapImplementation({
   compact = false,
   financialDataLoading = false,
 }: MapImplementationProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [mapInstanceReady, setMapInstanceReady] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<LocationData[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Initialize Leaflet icons
   useEffect(() => {
     L.Icon.Default.mergeOptions({
@@ -212,6 +218,9 @@ export default function ReportsLocationsMapImplementation({
     L.Marker.prototype.options.icon = new L.Icon.Default();
   }, []);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter valid locations with coordinates
   const validLocations = locations.filter(location => {
     if (!location.coordinates) return false;
@@ -249,6 +258,9 @@ export default function ReportsLocationsMapImplementation({
     );
   });
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (!query.trim()) {
@@ -281,11 +293,17 @@ export default function ReportsLocationsMapImplementation({
     setMapInstanceReady(true);
   }, []);
 
+  // ============================================================================
+  // Computed (Map Properties)
+  // ============================================================================
   const mapCenter =
     validLocations.length > 0 && validLocations[0].coordinates
       ? validLocations[0].coordinates
       : center;
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const renderMarker = (location: LocationData, key: string) => {
     if (!location.coordinates) return null;
     const [lat, lon] = location.coordinates;
@@ -301,6 +319,9 @@ export default function ReportsLocationsMapImplementation({
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (compact) {
     return (
       <TooltipProvider>

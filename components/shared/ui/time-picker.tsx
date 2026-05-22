@@ -31,6 +31,25 @@ export type TimePickerProps = {
   placeholder?: string;
 };
 
+// Parse time string (HH:MM 24-hour format) to display format
+const parseTime = (timeStr: string | undefined) => {
+  if (!timeStr) return { hours: '12', minutes: '00', period: 'AM' };
+
+  const [hoursStr, minutesStr] = timeStr.split(':');
+  const hours24 = parseInt(hoursStr);
+
+  return {
+    hours:
+      hours24 === 0
+        ? '12'
+        : hours24 > 12
+          ? String(hours24 - 12)
+          : String(hours24),
+    minutes: minutesStr || '00',
+    period: hours24 >= 12 ? 'PM' : 'AM',
+  };
+};
+
 /**
  * Time Picker Component
  * Allows selection of time only (no date) in 12-hour format with AM/PM.
@@ -42,32 +61,22 @@ export function TimePicker({
   disabled,
   placeholder = 'Select time',
 }: TimePickerProps) {
-  // Parse time string (HH:MM 24-hour format) to display format
-  const parseTime = (timeStr: string | undefined) => {
-    if (!timeStr) return { hours: '12', minutes: '00', period: 'AM' };
-
-    const [hoursStr, minutesStr] = timeStr.split(':');
-    const hours24 = parseInt(hoursStr);
-
-    return {
-      hours:
-        hours24 === 0
-          ? '12'
-          : hours24 > 12
-            ? String(hours24 - 12)
-            : String(hours24),
-      minutes: minutesStr || '00',
-      period: hours24 >= 12 ? 'PM' : 'AM',
-    };
-  };
-
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [timeState, setTimeState] = useState(() => parseTime(time));
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update display when prop changes
   useEffect(() => {
     setTimeState(parseTime(time));
   }, [time]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Convert display format to 24-hour HH:MM format
   const updateTime = (newTimeState: typeof timeState) => {
     setTimeState(newTimeState);
@@ -80,6 +89,9 @@ export function TimePicker({
     setTime(timeStr);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Format display string
   const formattedTime = useMemo(() => {
     if (!time) return placeholder;
@@ -87,6 +99,9 @@ export function TimePicker({
     return `${hours}:${minutes} ${period}`;
   }, [time, timeState, placeholder]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Popover>
       <PopoverTrigger asChild>

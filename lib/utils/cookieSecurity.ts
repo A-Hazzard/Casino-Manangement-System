@@ -1,3 +1,8 @@
+/**
+ * @module lib/utils/cookieSecurity
+ * Cookie security helpers that determine the secure flag and build auth cookie options for the Evolution One CMS.
+ */
+
 type RequestLike = {
   url: string;
   headers: { get: (key: string) => string | null };

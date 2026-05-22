@@ -68,6 +68,9 @@ export default function VaultOverviewShiftReviewPanel({
   loading = false,
   readOnly = false,
 }: VaultOverviewShiftReviewPanelProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
@@ -96,6 +99,14 @@ export default function VaultOverviewShiftReviewPanel({
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
 
+  // Carousel Ref & State
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Helper to format time only (Trinidad time, UTC-4)
   const formatTimeOnly = (dateStr: string | Date) => {
     return safeFormatDate(dateStr, {
@@ -124,10 +135,14 @@ export default function VaultOverviewShiftReviewPanel({
     return matchesSearch && matchesVariance;
   });
 
-  // Carousel State
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(true);
+  const shiftTotal = Object.entries(shiftDenominations).reduce(
+    (sum, [denom, qty]) => sum + Number(denom) * qty,
+    0
+  );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   const checkScroll = () => {
     if (!scrollContainerRef.current) return;
@@ -157,11 +172,9 @@ export default function VaultOverviewShiftReviewPanel({
     });
   };
 
-  const shiftTotal = Object.entries(shiftDenominations).reduce(
-    (sum, [denom, qty]) => sum + Number(denom) * qty,
-    0
-  );
-
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const startResolve = (shift: UnbalancedShiftInfo) => {
     setResolvingId(shift.shiftId);
     setIsRejecting(false);
@@ -276,6 +289,9 @@ export default function VaultOverviewShiftReviewPanel({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (pendingShifts.length === 0) {
     return (
       <Card className="rounded-lg bg-container shadow-md">

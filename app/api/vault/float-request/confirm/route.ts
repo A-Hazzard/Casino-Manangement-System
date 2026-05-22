@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
       const { requestId, notes } = await request.json();
       if (!requestId) {
         logRouteError(
@@ -39,6 +42,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Validate float request
+      // ============================================================================
       const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
       if (!floatRequest) {
         logRouteError(
@@ -54,6 +60,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Authorize confirmation
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isVM = normalizedRoles.some(r =>
         ['admin', 'developer', 'owner', 'manager', 'vault-manager'].includes(r)
@@ -95,6 +104,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Confirm request and finalize
+      // ============================================================================
       const { finalizeFloatRequest } =
         await import('@/app/api/lib/helpers/vault/finalizeFloat');
       const result = await finalizeFloatRequest(
@@ -104,6 +116,9 @@ export async function POST(request: NextRequest) {
         notes || ''
       );
 
+      // ============================================================================
+      // STEP 5: Return result
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteUpdate(
         functionName,

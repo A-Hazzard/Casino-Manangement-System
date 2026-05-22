@@ -59,6 +59,9 @@ export default function VaultOverviewCloseShiftModal({
   loading = false,
   locationId,
 }: VaultOverviewCloseShiftModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [denominations, setDenominations] = useState<Denomination[]>([]);
@@ -70,7 +73,12 @@ export default function VaultOverviewCloseShiftModal({
     () => getDenominationValues(selectedLicencee),
     [selectedLicencee]
   );
+  
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open) {
       setDenominations(
@@ -83,6 +91,9 @@ export default function VaultOverviewCloseShiftModal({
     }
   }, [open, denomsList]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = useMemo(() => {
     return denominations.reduce(
       (sum, d) => sum + d.denomination * d.quantity,
@@ -96,8 +107,10 @@ export default function VaultOverviewCloseShiftModal({
     [denomsList, touchedDenominations]
   );
   const isValid = totalAmount > 0 || isAllTouched;
-  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async () => {
     if (!isValid) return;
     setShowAuthenticator(true);
@@ -116,6 +129,9 @@ export default function VaultOverviewCloseShiftModal({
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={open} onOpenChange={val => !val && onClose()}>

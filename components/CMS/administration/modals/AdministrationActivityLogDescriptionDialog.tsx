@@ -508,9 +508,15 @@ function AdministrationActivityLogDescriptionDialog({
   log,
   searchMode,
 }: AdministrationActivityLogDescriptionDialogProps) {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [resolvedChanges, setResolvedChanges] = useState<ResolvedChange[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!isOpen || !log?.changes?.length) {
       setResolvedChanges([]);
@@ -543,6 +549,9 @@ function AdministrationActivityLogDescriptionDialog({
     };
   }, [isOpen, log]);
 
+  // ============================================================================
+  // Computed Values & Guards
+  // ============================================================================
   if (!log) return null;
 
   const action = (log.action || 'unknown').toLowerCase();
@@ -566,6 +575,9 @@ function AdministrationActivityLogDescriptionDialog({
   const generalChanges = resolvedChanges.filter(c => !c.field.match(/^machine_\d+_details$/));
   const machineChanges = resolvedChanges.filter(c => c.field.match(/^machine_\d+_details$/));
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       {/* Mobile: full-height sheet. Desktop: auto-height modal capped at 85vh */}

@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         (searchParams.get('currency') as CurrencyCode) || 'USD';
 
       // ============================================================================
-      // STEP1: Fetch and Validate Machine
+      // STEP 1: Fetch and Validate Machine
       // ============================================================================
       const machine = await Machine.findOne({
         _id: cabinetId,
@@ -386,6 +386,9 @@ export async function PUT(request: NextRequest) {
     try {
       await connectDB();
       const data = await request.json();
+      // ============================================================================
+      // STEP 1: Validate and fetch original
+      // ============================================================================
       const originalCabinet = await Machine.findOne({ _id: cabinetId });
       if (!originalCabinet) {
         logRouteError(
@@ -529,6 +532,9 @@ export async function PATCH(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser }) => {
     try {
       await connectDB();
+      // ============================================================================
+      // STEP 1: Process PATCH
+      // ============================================================================
       const data = await request.json();
 
       if (data.action === 'restore') {
@@ -656,6 +662,9 @@ export async function DELETE(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, userRoles }) => {
     try {
       await connectDB();
+      // ============================================================================
+      // STEP 1: Process DELETE
+      // ============================================================================
       const canHardDelete = userRoles.some(r =>
         ['developer', 'owner', 'admin', 'location admin'].includes(
           r.toLowerCase()

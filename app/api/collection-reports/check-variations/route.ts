@@ -108,8 +108,14 @@ export async function POST(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to the database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Parse request body and validate required fields
+    // ============================================================================
     const body = (await request.json()) as CheckVariationsRequest;
     const {
       locationId,
@@ -132,7 +138,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch licencee's includeJackpot flag if not provided
+    // ============================================================================
+    // STEP 3: Fetch licencee's includeJackpot flag if not provided
+    // ============================================================================
     let includeJackpot = userProvidedIncludeJackpot ?? false;
     try {
       const location = await GamingLocations.findOne(
@@ -157,7 +165,9 @@ export async function POST(request: NextRequest) {
       // Continue with default value
     }
 
-    // Fetch machine details (name, game, relayId) for display
+    // ============================================================================
+    // STEP 4: Fetch machine details for display
+    // ============================================================================
     const machineIds = machines.map(
       machine => machine.machineId as unknown as MongooseId
     );
@@ -178,7 +188,9 @@ export async function POST(request: NextRequest) {
       machineDetails.map(machineDetail => [machineDetail._id, machineDetail])
     );
 
-    // Fetch SAS meter data for machines with SAS time ranges
+    // ============================================================================
+    // STEP 5: Fetch SAS meter data for machines with SAS time ranges
+    // ============================================================================
     const { Meters } = await import('@/app/api/lib/models/meters');
 
     const meterQueries = machines
@@ -235,7 +247,9 @@ export async function POST(request: NextRequest) {
       ])
     );
 
-    // Calculate variations for each machine
+    // ============================================================================
+    // STEP 6: Calculate variations for each machine
+    // ============================================================================
     const machineVariations: MachineVariationData[] = [];
     let totalVariation = 0;
 
@@ -323,6 +337,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ============================================================================
+    // STEP 7: Return variation data and total variance
+    // ============================================================================
     const hasVariations = machineVariations.some(
       m =>
         typeof m.variation === 'number' &&

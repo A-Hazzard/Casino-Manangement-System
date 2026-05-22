@@ -92,7 +92,9 @@ export async function GET(request: NextRequest) {
         (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
         [];
 
-      // Build the query filter using all permission and licencee context
+      // ============================================================================
+      // STEP 1: Build the query filter using all permission and licencee context
+      // ============================================================================
       const queryFilter = await buildLocationQueryFilter({
         licencee: licencee || null,
         forceAll,
@@ -116,7 +118,9 @@ export async function GET(request: NextRequest) {
         .sort({ name: 1 })
         .lean<LocationDocument[]>();
 
-      // Normal rich response
+      // ============================================================================
+      // STEP 2: Normal rich response
+      // ============================================================================
       const allLicenceeIds = Array.from(
         new Set(
           locations

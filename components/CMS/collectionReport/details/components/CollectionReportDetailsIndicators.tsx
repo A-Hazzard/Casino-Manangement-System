@@ -24,6 +24,9 @@ import Image from 'next/image';
 import { FC } from 'react';
 
 export const CollectionReportDetailsRamClearIndicator: FC = () => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <TooltipProvider>
       <Tooltip>
@@ -41,6 +44,9 @@ export const CollectionReportDetailsRamClearIndicator: FC = () => {
 };
 
 export const CollectionReportDetailsJackpotIndicator: FC = () => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <TooltipProvider>
       <Tooltip>
@@ -70,6 +76,9 @@ type CollectionReportDetailsNoteIndicatorProps = {
 export const CollectionReportDetailsNoteIndicator: FC<
   CollectionReportDetailsNoteIndicatorProps
 > = ({ note }) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Popover>
       <TooltipProvider>

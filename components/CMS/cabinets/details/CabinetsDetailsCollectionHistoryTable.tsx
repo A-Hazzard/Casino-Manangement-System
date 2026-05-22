@@ -148,6 +148,9 @@ export function CabinetsDetailsCollectionHistoryTable({
   customRange,
   onRefresh,
 }: CabinetsDetailsCollectionHistoryTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const user = useUserStore(state => state.user);
   const isDeveloper = (user?.roles || []).includes('developer');
@@ -174,6 +177,17 @@ export function CabinetsDetailsCollectionHistoryTable({
     prevOut: 0,
   });
 
+  // Local state for custom date range picker
+  const [localDateRange, setLocalDateDateRange] = useState<
+    DateRange | undefined
+  >({
+    from: customRange?.from,
+    to: customRange?.to,
+  });
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle delete action
   const handleDeleteConfirm = async () => {
     if (!entryToDelete || !entryToDelete.machineId) return;
@@ -237,6 +251,9 @@ export function CabinetsDetailsCollectionHistoryTable({
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Pre-fill edit form when entryToEdit changes
   useEffect(() => {
     if (entryToEdit) {
@@ -248,14 +265,6 @@ export function CabinetsDetailsCollectionHistoryTable({
       });
     }
   }, [entryToEdit]);
-
-  // Local state for custom date range picker
-  const [localDateRange, setLocalDateDateRange] = useState<
-    DateRange | undefined
-  >({
-    from: customRange?.from,
-    to: customRange?.to,
-  });
 
   // Sync with defaultTimeFilter when it changes globally
   useEffect(() => {
@@ -274,6 +283,9 @@ export function CabinetsDetailsCollectionHistoryTable({
     }
   }, [customRange]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredAndSortedData = useMemo(() => {
     let filtered = [...data];
 
@@ -395,6 +407,9 @@ export function CabinetsDetailsCollectionHistoryTable({
     [filteredAndSortedData, page]
   );
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       if (sortDirection === 'desc') {
@@ -423,6 +438,9 @@ export function CabinetsDetailsCollectionHistoryTable({
     setPage(1);
   }, [timeFilter]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!data || data.length === 0) {
     return (
       <div className="py-8 text-center">

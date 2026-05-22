@@ -58,12 +58,21 @@ export default function VaultFloatTransactionsTable({
   showActions = false,
   disabled = false,
 }: VaultFloatTransactionsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const formatDate = (dateString: string | Date) => {
     return safeFormatDate(dateString);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (transactions.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center text-gray-400 shadow-md">

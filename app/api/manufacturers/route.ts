@@ -27,6 +27,9 @@ export async function GET(req: NextRequest) {
 
   return withApiAuth(req, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Fetch and aggregate manufacturers
+      // ============================================================================
       const manufacturers = await Machine.aggregate([
         { $project: { manufacturer: 1, manuf: 1 } },
         {
@@ -44,6 +47,9 @@ export async function GET(req: NextRequest) {
         },
       ]);
 
+      // ============================================================================
+      // STEP 2: Filter and sort manufacturers
+      // ============================================================================
       const uniqueManufacturers = manufacturers[0]?.allManufacturers || [];
       const filteredManufacturers = uniqueManufacturers.filter(
         (m: unknown) =>
@@ -51,6 +57,9 @@ export async function GET(req: NextRequest) {
       );
       const sortedManufacturers = filteredManufacturers.sort();
 
+      // ============================================================================
+      // STEP 3: Return success response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,

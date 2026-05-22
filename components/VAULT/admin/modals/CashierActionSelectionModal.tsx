@@ -42,6 +42,11 @@ export default function CashierActionSelectionModal({
   onSelectActivityLog,
   onSelectShiftHistory,
 }: CashierActionSelectionModalProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: cashier must be present
   if (!cashier) return null;
 
   const cashierName = cashier.profile

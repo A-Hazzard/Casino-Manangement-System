@@ -26,6 +26,9 @@ export default function LocationsPageHeaderSection({
   onRefresh,
   onNew,
 }: LocationsPageHeaderSectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-4 flex w-full max-w-full items-center justify-between">
       {/* Title */}

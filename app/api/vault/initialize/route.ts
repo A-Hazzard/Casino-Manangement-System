@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate permissions
+      // ============================================================================
       const hasVaultAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -50,6 +53,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate input
+      // ============================================================================
       const body = await request.json();
       const { locationId, notes } = body;
       let { openingBalance, denominations } = body;
@@ -67,6 +73,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Determine opening balance and denominations
+      // ============================================================================
       if (openingBalance === undefined || !denominations?.length) {
         const lastClosed = await VaultShiftModel.findOne({
           locationId,
@@ -78,6 +87,9 @@ export async function POST(request: NextRequest) {
         denominations = lastClosed?.closingDenominations ?? [];
       }
 
+      // ============================================================================
+      // STEP 4: Validate denominations
+      // ============================================================================
       if (denominations.length > 0) {
         const validation = validateDenominations(denominations);
         if (!validation.valid) {
@@ -115,6 +127,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 5: Check for active vault shift
+      // ============================================================================
       if (await VaultShiftModel.findOne({ locationId, status: 'active' })) {
         logRouteError(
           functionName,
@@ -129,6 +144,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 6: Initialize vault shift and transaction
+      // ============================================================================
       const vaultShiftId = await generateMongoId();
       const now = new Date();
       const vaultShift = await VaultShiftModel.create({
@@ -165,6 +183,9 @@ export async function POST(request: NextRequest) {
         createdAt: now,
       });
 
+      // ============================================================================
+      // STEP 7: Log activity and return
+      // ============================================================================
       await logActivity({
         userId: userPayload._id,
         username: userPayload.username || userPayload.emailAddress,

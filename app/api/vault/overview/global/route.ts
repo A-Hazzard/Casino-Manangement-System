@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   return withApiAuth(request, async ({ isAdminOrDev }) => {
+    // ============================================================================
+    // STEP 1: Check permissions
+    // ============================================================================
     if (!isAdminOrDev) {
       logRouteError(
         functionName,
@@ -65,6 +68,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+      // ============================================================================
+      // STEP 2: Parse query params
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const licenceeId =
         searchParams.get('licenceeId') || searchParams.get('licencee');
@@ -79,6 +85,9 @@ export async function GET(request: NextRequest) {
           { 'rel.licencee': licenceeId },
         ];
 
+      // ============================================================================
+      // STEP 3: Fetch locations
+      // ============================================================================
       const locations = await GamingLocations.find(locationQuery, {
         _id: 1,
         name: 1,
@@ -113,6 +122,9 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // ============================================================================
+      // STEP 4: Fetch shifts and float requests
+      // ============================================================================
       const [
         VaultShiftModel,
         CashierShiftModel,
@@ -160,6 +172,9 @@ export async function GET(request: NextRequest) {
         VaultTransactionOverview[],
       ];
 
+      // ============================================================================
+      // STEP 5: Process active vault shifts
+      // ============================================================================
       let totalBalance = 0;
       const aggregatedDenominations: Record<number, number> = {};
       activeVaultShifts.forEach(s => {
@@ -185,6 +200,9 @@ export async function GET(request: NextRequest) {
         endDateParam ? new Date(endDateParam) : undefined
       );
 
+      // ============================================================================
+      // STEP 6: Process transactions
+      // ============================================================================
       let totalIn = 0,
         totalOut = 0,
         totalDiscrepancies = 0,
@@ -216,6 +234,9 @@ export async function GET(request: NextRequest) {
           0
         );
 
+      // ============================================================================
+      // STEP 7: Process machine meters and discrepancies
+      // ============================================================================
       const machineMeters = await Meters.aggregate([
         {
           $match: {
@@ -237,6 +258,9 @@ export async function GET(request: NextRequest) {
         totalDiscrepancies += Math.abs(s.discrepancy || 0);
       });
 
+      // ============================================================================
+      // STEP 8: Fetch user details
+      // ============================================================================
       const userIds = new Set<string>();
       recentTransactions.forEach(tx => {
         if (tx.performedBy) userIds.add(tx.performedBy);
@@ -260,6 +284,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 9: Format and return data
+      // ============================================================================
       const formatTx = (
         tx: VaultTransactionOverview
       ): EnrichedVaultTransactionOverview => {

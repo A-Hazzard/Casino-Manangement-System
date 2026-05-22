@@ -85,7 +85,7 @@ export function SessionsEventsPageContent({
   machineId,
 }: SessionsEventsPageContentProps) {
   // ============================================================================
-  // Hooks & Context
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const makeRequest = useAbortableRequest();
@@ -96,9 +96,7 @@ export function SessionsEventsPageContent({
     setSelectedLicencee,
   } = useDashBoardStore();
 
-  // ============================================================================
   // State Management
-  // ============================================================================
   const [session, setSession] = useState<SessionDetails | null>(null);
   const [events, setEvents] = useState<MachineEvent[]>([]);
   const [pagination, setPagination] = useState<{
@@ -114,7 +112,7 @@ export function SessionsEventsPageContent({
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(true);
 
   // ============================================================================
-  // Data Fetching
+  // Handlers
   // ============================================================================
 
   const fetchData = useCallback(
@@ -168,10 +166,16 @@ export function SessionsEventsPageContent({
     [sessionId, machineId, makeRequest, activeMetricsFilter, customDateRange]
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchData(1);
   }, [fetchData]);
 
+  // ============================================================================
+  // Handlers (continued)
+  // ============================================================================
   const handleRefresh = () => {
     fetchData(pagination?.currentPage || 1, true);
   };
@@ -193,7 +197,7 @@ export function SessionsEventsPageContent({
   };
 
   // ============================================================================
-  // Render Functions
+  // Render
   // ============================================================================
 
   /**

@@ -115,7 +115,7 @@ export function useCollectionReportPageData() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // ==========================================================================
-  // Computed Values - Filters
+  // Computed
   // ==========================================================================
   const filters = useCollectionReportFilters({
     allReports,
@@ -130,7 +130,7 @@ export function useCollectionReportPageData() {
   }, [filters.filteredReports]);
 
   // ==========================================================================
-  // Computed Values - Pagination
+  // Computed
   // ==========================================================================
 
   /**
@@ -200,7 +200,7 @@ export function useCollectionReportPageData() {
   ]);
 
   // ==========================================================================
-  // Computed Values - Permissions
+  // Computed
   // ==========================================================================
 
   /**
@@ -263,7 +263,7 @@ export function useCollectionReportPageData() {
   }, [allReports, user]);
 
   // ==========================================================================
-  // Event Handlers - Tab Navigation
+  // Handlers
   // ==========================================================================
 
   /**
@@ -279,7 +279,7 @@ export function useCollectionReportPageData() {
   );
 
   // ==========================================================================
-  // Event Handlers - Data Fetching
+  // Handlers
   // ==========================================================================
 
   /**
@@ -387,7 +387,7 @@ export function useCollectionReportPageData() {
   }, [fetchReports]);
 
   // ==========================================================================
-  // Event Handlers - CRUD Operations
+  // Handlers
   // ==========================================================================
 
   /**
@@ -452,7 +452,7 @@ export function useCollectionReportPageData() {
   };
 
   // ==========================================================================
-  // Event Handlers - Search
+  // Handlers
   // ==========================================================================
 
   /**

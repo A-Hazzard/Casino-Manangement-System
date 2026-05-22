@@ -33,8 +33,14 @@ export async function POST(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     const db = await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -43,6 +49,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse form data and validate
+    // ============================================================================
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
     const sessionId = formData.get('sessionId') as string | null;
@@ -76,6 +85,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Upload file to GridFS
+    // ============================================================================
     const buffer = Buffer.from(await file.arrayBuffer());
     const bucket = new GridFSBucket(db, { bucketName: BUCKET_NAME });
 
@@ -110,6 +122,9 @@ export async function POST(req: NextRequest) {
       duration
     );
 
+    // ============================================================================
+    // STEP 5: Return success response
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: {

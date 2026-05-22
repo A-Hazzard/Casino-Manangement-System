@@ -57,6 +57,9 @@ export default function VaultOverviewCloseDayModals({
   onConfirm,
   onRefresh,
 }: VaultOverviewCloseDayModalsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [forceCloseCashier, setForceCloseCashier] =
     useState<ForceEndShiftCashier | null>(null);
@@ -64,6 +67,9 @@ export default function VaultOverviewCloseDayModals({
     null
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <VaultOverviewSoftCountModal

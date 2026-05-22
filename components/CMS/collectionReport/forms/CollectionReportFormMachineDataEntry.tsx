@@ -94,6 +94,9 @@ export default function CollectionReportFormMachineDataEntry({
   onPrevOutChange,
   isLoadingTime = false,
 }: MachineDataEntryFormProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const inputsEnabled = !disabled && !isProcessing;
 
   const parsedSasStartTime =
@@ -110,6 +113,9 @@ export default function CollectionReportFormMachineDataEntry({
         ? new Date(sasEndTime)
         : null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
       {/* Machine Info Display */}

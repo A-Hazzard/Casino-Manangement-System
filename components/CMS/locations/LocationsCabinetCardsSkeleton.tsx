@@ -11,9 +11,13 @@ interface LocationsCabinetCardsSkeletonProps {
  */
 const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
   includeJackpot = false,
-}) => (
-  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-    {[...Array(10)].map((_, i) => (
+}) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      {[...Array(10)].map((_, i) => (
       <div
         key={i}
         className="relative mx-auto w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
@@ -70,8 +74,9 @@ const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
           <Skeleton className="h-8 w-16 rounded" />
         </div>
       </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 export default LocationsCabinetCardsSkeleton;

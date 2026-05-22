@@ -59,6 +59,9 @@ export function CabinetsDetailsSMIBMeterData({
   isOnline,
   smibConfig,
 }: CabinetsDetailsSMIBMeterDataProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isRequestingMeters, requestMeters } = useSmibMeters();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -84,6 +87,9 @@ export function CabinetsDetailsSMIBMeterData({
   const requestTimeoutRef = useRef<number | null>(null);
   const sseRef = useRef<EventSource | null>(null);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRequestMeters = async () => {
     if (!relayId) {
       return;
@@ -276,6 +282,9 @@ export function CabinetsDetailsSMIBMeterData({
   const handleSSEMessageRef = useRef(handleSSEMessage);
   const subscribeToMessagesRef = useRef(smibConfig?.subscribeToMessages);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Keep refs up to date
   useEffect(() => {
     handleSSEMessageRef.current = handleSSEMessage;
@@ -399,6 +408,9 @@ export function CabinetsDetailsSMIBMeterData({
     };
   }, [relayId, smibConfig?.subscribeToMessages]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Card className="w-full min-w-0 max-w-full overflow-x-hidden">

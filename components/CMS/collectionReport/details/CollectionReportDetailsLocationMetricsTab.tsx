@@ -29,7 +29,7 @@ const CollectionReportDetailsLocationMetricsTab: FC<
   CollectionReportDetailsLocationMetricsTabProps
 > = ({ reportData }) => {
   // ============================================================================
-  // Metric Data Configuration
+  // Computed
   // ============================================================================
   const { locationMetrics } = reportData;
 
@@ -109,6 +109,9 @@ const CollectionReportDetailsLocationMetricsTab: FC<
     },
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       <h2 className="my-4 text-center text-xl font-bold lg:hidden">

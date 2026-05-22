@@ -56,7 +56,6 @@ export async function GET() {
     for (const collection of collections) {
       const collectionName = collection.collectionName;
 
-      // Group all rename operations we might need
       const renames: Array<{
         filter: Record<string, unknown>;
         rename: Record<string, string>;

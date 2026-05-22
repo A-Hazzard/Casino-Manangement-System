@@ -6,10 +6,14 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useEffect, useState } from 'react';
 
 export default function LocationsNotFound() {
-  // Add client-side initialization
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isMounted, setIsMounted] = useState(false);
 
-  // Set mounted state on client-side only
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -36,6 +40,9 @@ export default function LocationsNotFound() {
 
 // Client component with store access
 function LocationsNotFoundContent() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   return (

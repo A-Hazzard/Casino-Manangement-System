@@ -27,6 +27,9 @@ type Props = {
  * Set to "false" to put the page under maintenance.
  */
 export default function MaintenanceWrapper({ pageKey, children }: Props) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isPageAvailable(pageKey)) {
     return <MaintenancePage />;
   }

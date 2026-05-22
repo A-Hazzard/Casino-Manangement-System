@@ -24,11 +24,14 @@ export default function CollectionReportV2WizardModal({
   sessionId,
   onClose,
 }: Props) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const backdropRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
-  // Animation on open
+  // Effects
   // ============================================================================
 
   useEffect(() => {
@@ -46,10 +49,13 @@ export default function CollectionReportV2WizardModal({
     }
   }, [isOpen]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isOpen || !sessionId) return null;
 
   return (
-    <div className="fixed inset-0 z-[100000] flex flex-col">
+    <div className="fixed inset-0 z-[100000] flex flex-col md:items-center md:justify-center md:p-4">
       {/* Backdrop */}
       <div
         ref={backdropRef}
@@ -60,11 +66,11 @@ export default function CollectionReportV2WizardModal({
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative z-10 mx-auto flex h-full w-full max-w-3xl flex-col overflow-hidden rounded-none bg-gray-50 shadow-2xl md:my-4 md:rounded-xl"
+        className="relative z-10 flex h-full w-full flex-col overflow-hidden rounded-none bg-gray-50 shadow-2xl md:h-auto md:max-h-[90vh] md:w-full md:max-w-3xl md:rounded-xl"
         style={{ opacity: 0 }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto md:flex-none">
           <CollectionReportV2SessionDetail
             sessionId={sessionId}
             onClose={onClose}

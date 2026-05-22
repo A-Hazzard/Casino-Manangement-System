@@ -23,6 +23,9 @@ const MembersHandlersContext = createContext<
 >(undefined);
 
 export function MembersHandlersProvider({ children }: { children: ReactNode }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [refreshHandler, setRefreshHandler] = useState<
     (() => void) | undefined
   >(undefined);
@@ -31,6 +34,9 @@ export function MembersHandlersProvider({ children }: { children: ReactNode }) {
   >(undefined);
   const [refreshing, setRefreshing] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const setOnRefresh = useCallback((handler: (() => void) | undefined) => {
     setRefreshHandler(() => handler);
   }, []);
@@ -39,6 +45,9 @@ export function MembersHandlersProvider({ children }: { children: ReactNode }) {
     setNewMemberHandler(() => handler);
   }, []);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Memoize context value to prevent unnecessary re-renders
   const contextValue = useMemo(
     () => ({
@@ -52,6 +61,9 @@ export function MembersHandlersProvider({ children }: { children: ReactNode }) {
     [refreshing, refreshHandler, newMemberHandler, setOnRefresh, setOnNewMember]
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <MembersHandlersContext.Provider value={contextValue}>
       {children}

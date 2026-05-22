@@ -53,7 +53,8 @@ import VaultTransactionsTable from './tables/VaultTransactionsTable';
 
 export default function VaultTransactionsPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee, setLicenceeId: setSelectedLicencee } =
@@ -117,6 +118,9 @@ export default function VaultTransactionsPageContent() {
     ]
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(0);
@@ -138,7 +142,7 @@ export default function VaultTransactionsPageContent() {
   }, [fetchData, transactions.length]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Filter and sort transactions based on search term, type, status filters, and sort options
@@ -238,6 +242,9 @@ export default function VaultTransactionsPageContent() {
     return <Badge>{badgeConfig.label}</Badge>;
   };
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   /**
    * Handle table column sort
    */
@@ -250,7 +257,10 @@ export default function VaultTransactionsPageContent() {
     }
   };
 
-  // Show skeleton while loading
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: Show skeleton while loading first page
   if (loading && transactions.length === 0) {
     return (
       <PageLayout>
@@ -259,9 +269,6 @@ export default function VaultTransactionsPageContent() {
     );
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <PageLayout
       onRefresh={() => fetchData(true)}

@@ -34,8 +34,14 @@ export default function VaultCashierFloatsTable({
   floats,
   onSort,
 }: VaultCashierFloatsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (floats.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center shadow-md">

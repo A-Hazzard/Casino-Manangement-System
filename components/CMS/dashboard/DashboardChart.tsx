@@ -27,6 +27,9 @@ export default function Chart({
   activeMetricsFilter,
   granularity,
 }: ChartProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // State for selected metrics (all selected by default)
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(() => {
     return ['Money In', 'Money Out', 'Jackpot', 'Gross'];
@@ -38,6 +41,9 @@ export default function Chart({
     return <DashboardChartSkeleton />;
   }
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Check if chartData is valid and has data
   const hasValidData =
     chartData && Array.isArray(chartData) && chartData.length > 0;
@@ -481,6 +487,9 @@ export default function Chart({
     { label: 'Gross', color: '#f97316' },
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full max-w-full rounded-lg bg-container p-4 shadow-md">
       {/* Metric selection checkboxes */}

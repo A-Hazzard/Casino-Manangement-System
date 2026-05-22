@@ -52,6 +52,9 @@ type FeedbackFormProps = {
 };
 
 export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const isLoggedIn = !!user;
   const [email, setEmail] = useState('');
@@ -64,6 +67,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previousLengthRef = useRef(0);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Set email from logged-in user when form opens
   useEffect(() => {
     if (isOpen && isLoggedIn && user?.emailAddress) {
@@ -73,6 +79,17 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   }, [isOpen, isLoggedIn, user?.emailAddress]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setProfanityError('');
+      setHasProfanity(false);
+      previousLengthRef.current = 0;
+    }
+  }, [isOpen]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Combine profane-words library with custom bad words list
   const badWordsSet = useMemo(() => {
     const allWords = new Set<string>();
@@ -81,6 +98,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     return allWords;
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const checkProfanity = (
     text: string
   ): { hasProfanity: boolean; badWord?: string } => {
@@ -261,14 +281,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      setProfanityError('');
-      setHasProfanity(false);
-      previousLengthRef.current = 0;
-    }
-  }, [isOpen]);
-
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent

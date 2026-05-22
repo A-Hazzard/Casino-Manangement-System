@@ -50,7 +50,14 @@ export default function MembersPlayerTotalsCard({
   showTotals,
   handleToggleTotals,
 }: MembersPlayerTotalsCardProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalWonLoss = (member.sessions || []).reduce(
     (acc, s) => acc + (s.won || 0) - (s.bet || 0),
     0
@@ -65,6 +72,9 @@ export default function MembersPlayerTotalsCard({
   );
   const wonLossColor = totalWonLoss >= 0 ? 'text-green-600' : 'text-red-600';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mb-6 rounded-lg bg-white p-4 shadow-md sm:p-6">
       <div

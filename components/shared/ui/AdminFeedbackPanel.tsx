@@ -99,6 +99,9 @@ export default function AdminFeedbackPanel({
   onClose,
   onCountChange,
 }: AdminFeedbackPanelProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [view, setView] = useState<View>('list');
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,6 +111,9 @@ export default function AdminFeedbackPanel({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isFeedbackFormOpen, setIsFeedbackFormOpen] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchFeedback = useCallback(async () => {
     setLoading(true);
     try {
@@ -121,6 +127,9 @@ export default function AdminFeedbackPanel({
     }
   }, []);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen) {
       setView('list');
@@ -175,11 +184,17 @@ export default function AdminFeedbackPanel({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const pendingCount = feedbackList.length;
   const displayName = selected
     ? [selected.firstName, selected.lastName].filter(Boolean).join(' ') || null
     : null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>

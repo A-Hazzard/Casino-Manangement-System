@@ -29,6 +29,9 @@ export function VariationsListDisplay({
   onMachineClick,
   isCompact = false,
 }: VariationsListDisplayProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter to only machines with actual variations (not "No SAS Data")
   const variationMachines = machines.filter(
     m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
@@ -71,6 +74,25 @@ export function VariationsListDisplay({
     return 'text-gray-600';
   };
 
+  const totalMeterGross = variationMachines.reduce(
+    (sum, machineItem) => sum + (Number(machineItem.meterGross) || 0),
+    0
+  );
+  const totalSasGross = variationMachines.reduce(
+    (sum, machineItem) => sum + (Number(machineItem.sasGross) || 0),
+    0
+  );
+  const totalVariation = variationMachines.reduce((sum, machineItem) => {
+    const variationValue =
+      typeof machineItem.variation === 'number'
+        ? machineItem.variation
+        : Number(machineItem.variation) || 0;
+    return sum + variationValue;
+  }, 0);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Mobile view - stacked cards (always visible on small screens, hidden on desktop if not compact)
   const renderCards = () => (
     <div className={`space-y-4 ${isCompact ? '' : 'md:hidden'}`}>
@@ -143,23 +165,6 @@ export function VariationsListDisplay({
       ))}
     </div>
   );
-
-  // Desktop/Full table view (always hidden on mobile)
-  const totalMeterGross = variationMachines.reduce(
-    (sum, machineItem) => sum + (Number(machineItem.meterGross) || 0),
-    0
-  );
-  const totalSasGross = variationMachines.reduce(
-    (sum, machineItem) => sum + (Number(machineItem.sasGross) || 0),
-    0
-  );
-  const totalVariation = variationMachines.reduce((sum, machineItem) => {
-    const variationValue =
-      typeof machineItem.variation === 'number'
-        ? machineItem.variation
-        : Number(machineItem.variation) || 0;
-    return sum + variationValue;
-  }, 0);
 
   return (
     <div className="w-full">

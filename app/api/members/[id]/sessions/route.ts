@@ -77,10 +77,16 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse route parameters
+    // ============================================================================
     const { pathname } = request.nextUrl;
     const parts = pathname.split('/');
     const id = parts[parts.length - 2]; // Extract [id] from /api/members/[id]/sessions
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
     // ============================================================================

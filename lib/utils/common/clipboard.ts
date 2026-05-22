@@ -1,3 +1,8 @@
+/**
+ * @module lib/utils/common/clipboard
+ * Clipboard copy utilities with toast feedback and fallback support for the Evolution One CMS.
+ */
+
 import { toast } from 'sonner';
 
 /**

@@ -75,18 +75,24 @@ export async function POST(request: Request) {
   const originalUri = process.env.MONGODB_URI || '';
 
   try {
+    // ============================================================================
     // STEP 0: Clean up any existing connection to avoid Mongoose conflict
+    // ============================================================================
     log('🧹 Cleaning up existing connections...');
     await disconnectDB();
     await mongoose.disconnect();
 
+    // ============================================================================
     // STEP 1: Connect to Source
+    // ============================================================================
     log(`🔗 Connecting to source: ${SOURCE_URI}`);
     process.env.MONGODB_URI = SOURCE_URI;
     await connectDB();
     log('✅ Connected to source database.');
 
-    // STEP 2: Prep Export
+    // ============================================================================
+    // STEP 2: Prep Export Parameters
+    // ============================================================================
     const body: {
       licenceeName?: string;
       migrateMeters?: boolean;
@@ -101,7 +107,9 @@ export async function POST(request: Request) {
     await fs.mkdir(EXPORT_DIR, { recursive: true });
     log(`📁 Exporting JSON files to: ${EXPORT_DIR}`);
 
-    // 1. Export Licencees
+    // ============================================================================
+    // STEP 3: Export Licencees
+    // ============================================================================
     log('🏢 Fetching licencees...');
     const licencees = await Licencee.find({}).lean<LeanLicencee[]>();
     if (licencees.length > 0) {
@@ -124,7 +132,9 @@ export async function POST(request: Request) {
     }
     log(`📍 Targeting licencee: ${licenceeName} (${targetLicenceeId})`);
 
-    // 2. Export Countries
+    // ============================================================================
+    // STEP 4: Export Countries
+    // ============================================================================
     log('🌍 Fetching countries...');
     const countries = await Countries.find({}).lean<CountryDocument[]>();
     if (countries.length > 0) {
@@ -135,7 +145,9 @@ export async function POST(request: Request) {
       log(`   ✅ ${countries.length} Countries exported.`);
     }
 
-    // 3. Export Locations
+    // ============================================================================
+    // STEP 5: Export Locations
+    // ============================================================================
     log('📍 Fetching locations...');
     const locations = await GamingLocations.find({}).lean<LeanLocation[]>();
     const locationOffsets = new Map<string, number>();
@@ -162,7 +174,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Export Machines
+    // ============================================================================
+    // STEP 6: Export Machines
+    // ============================================================================
     log(`🎰 Fetching machines for ${licenceeName}...`);
     const machines = await Machine.find({
       gamingLocation: { $in: targetLocationIds },
@@ -176,7 +190,9 @@ export async function POST(request: Request) {
       log(`   ✅ ${machines.length} Machines exported.`);
     }
 
-    // 5. Export Meters
+    // ============================================================================
+    // STEP 7: Export Meters
+    // ============================================================================
     let totalMetersExported = 0;
     const allMeters: unknown[] = [];
 
@@ -227,7 +243,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Export Users
+    // ============================================================================
+    // STEP 8: Export Users
+    // ============================================================================
     log('👥 Fetching users...');
     const users = await UserModel.find({}).lean<LeanUserDocument[]>();
     if (users.length > 0) {
@@ -238,7 +256,9 @@ export async function POST(request: Request) {
       log(`   ✅ ${users.length} Users exported.`);
     }
 
-    // 7. Export Vault Data
+    // ============================================================================
+    // STEP 9: Export Vault Data
+    // ============================================================================
     log('🔐 Fetching vault data...');
     const vaultShifts = await VaultShiftModel.find({
       locationId: { $in: targetLocationIds },
@@ -262,6 +282,9 @@ export async function POST(request: Request) {
       log(`   ✅ ${vaultTransactions.length} Vault transactions exported.`);
     }
 
+    // ============================================================================
+    // STEP 10: Return Success Response
+    // ============================================================================
     log('🏁 Data export completed successfully.');
 
     return NextResponse.json({

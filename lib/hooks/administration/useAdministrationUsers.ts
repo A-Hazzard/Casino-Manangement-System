@@ -38,7 +38,7 @@ export function useAdministrationUsers({
   const { user } = useUserStore();
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allLoadedUsers, setAllLoadedUsers] = useState<User[]>([]);
@@ -73,7 +73,7 @@ export function useAdministrationUsers({
   const lastFilterKeyRef = useRef<string>('');
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
@@ -548,7 +548,7 @@ export function useAdministrationUsers({
   ]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   const handleEditUser = useCallback(async (user: User) => {
     setIsUserModalOpen(true);

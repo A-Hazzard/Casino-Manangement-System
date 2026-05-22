@@ -1,3 +1,7 @@
+/**
+ * UnauthorizedError Component
+ * Displays when a user lacks access to a resource, with auto-redirect countdown.
+ */
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -15,10 +19,6 @@ type UnauthorizedErrorProps = {
   customBackHref?: string;
 };
 
-/**
- * Unauthorized Error Component
- * Displays when a user doesn't have access to a specific resource
- */
 export default function UnauthorizedError({
   title = 'Access Denied',
   message,
@@ -27,9 +27,58 @@ export default function UnauthorizedError({
   customBackText,
   customBackHref,
 }: UnauthorizedErrorProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
+  const getRedirectPath = useCallback(() => {
+    if (customBackHref) return customBackHref;
+    if (resourceType === 'cabinet' || resourceType === 'machine')
+      return '/cabinets';
+    if (resourceType === 'location') return '/locations';
+    if (resourceType === 'report') return '/collection-report';
+    return '/';
+  }, [customBackHref, resourceType]);
+
+  const handleGoBack = useCallback(() => {
+    if (onGoBack) {
+      onGoBack();
+    } else {
+      router.push(getRedirectPath());
+    }
+  }, [onGoBack, router, getRedirectPath]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  // Auto-redirect countdown
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0 && !isRedirecting) {
+      setIsRedirecting(true);
+      setTimeout(() => {
+        handleGoBack();
+      }, 500);
+    }
+    return undefined;
+  }, [countdown, isRedirecting, handleGoBack]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   const getDefaultMessage = () => {
     if (message) return message;
@@ -60,38 +109,9 @@ export default function UnauthorizedError({
             : 'resource';
   };
 
-  const getRedirectPath = useCallback(() => {
-    if (customBackHref) return customBackHref;
-    if (resourceType === 'cabinet' || resourceType === 'machine')
-      return '/cabinets';
-    if (resourceType === 'location') return '/locations';
-    if (resourceType === 'report') return '/collection-report';
-    return '/';
-  }, [customBackHref, resourceType]);
-
-  const handleGoBack = useCallback(() => {
-    if (onGoBack) {
-      onGoBack();
-    } else {
-      router.push(getRedirectPath());
-    }
-  }, [onGoBack, router, getRedirectPath]);
-
-  // Auto-redirect countdown
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0 && !isRedirecting) {
-      setIsRedirecting(true);
-      setTimeout(() => {
-        handleGoBack();
-      }, 500);
-    }
-    return undefined;
-  }, [countdown, isRedirecting, handleGoBack]);
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-white p-6">

@@ -94,6 +94,9 @@ export const CabinetsCabinetContentDisplay = ({
   includeJackpot = true,
   showArchived = false,
 }: CabinetsCabinetContentDisplayProps) => {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
   const {
@@ -108,6 +111,9 @@ export const CabinetsCabinetContentDisplay = ({
       ? selectedLicencee
       : 'any licencee';
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   /**
    * Determines if the user can edit machines.
    * Technicians can edit but not delete, collectors cannot edit or delete.
@@ -171,6 +177,9 @@ export const CabinetsCabinetContentDisplay = ({
 
   const [licenceeNames, setLicenceeNames] = useState<string[]>([]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   /**
    * Fetches licencee names for better empty state messaging
    */
@@ -221,6 +230,9 @@ export const CabinetsCabinetContentDisplay = ({
     }
   }, [paginatedCabinets, loading, initialLoading]);
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div className="flex flex-col items-center justify-center rounded-lg bg-white p-8 shadow-md">
       <div className="mb-2 text-lg text-gray-500">No Data Available</div>
@@ -228,6 +240,9 @@ export const CabinetsCabinetContentDisplay = ({
     </div>
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleEdit = (machineProps: Machine) => {
     const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
@@ -276,6 +291,9 @@ export const CabinetsCabinetContentDisplay = ({
     return () => clearTimeout(timer);
   }, [shouldShowSkeleton, filteredCabinets.length]);
 
+  // ============================================================================
+  // Render & Guard
+  // ============================================================================
   if (error) {
     return (
       <NetworkError

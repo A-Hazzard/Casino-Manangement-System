@@ -43,9 +43,15 @@ const AUTH_PATHS = [
 ];
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const pathname = usePathname();
   const { user } = useUserStore();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isAuthPage = AUTH_PATHS.includes(pathname);
 
   // Get CMS navigation config with grouping for high-priority CMS roles
@@ -53,6 +59,9 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     return getCmsNavigationConfig(user?.roles as string[]);
   }, [user?.roles]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // If it's an auth or setup page, render without the CMS layout wrapper
   if (isAuthPage) {
     return (

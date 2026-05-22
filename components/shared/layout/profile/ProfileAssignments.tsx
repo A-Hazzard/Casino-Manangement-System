@@ -80,6 +80,9 @@ export default function ProfileAssignments({
   availableLocations,
   missingLocationNames,
 }: ProfileAssignmentsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const roles = [
     'developer',
     'admin',
@@ -90,6 +93,9 @@ export default function ProfileAssignments({
     'reviewer',
   ];
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const displayRows = useMemo(() => {
     // If "All Locations" (the master global flag) is checked or if 'all' is in selectedLocationIds
     const isActuallyAllSelected =
@@ -203,6 +209,9 @@ export default function ProfileAssignments({
     ['admin', 'developer'].includes(role?.toLowerCase())
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card>
       <CardHeader>

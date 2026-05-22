@@ -59,9 +59,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const logUser = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Auth + role check
+    // ============================================================================
+    // STEP 2: Authenticate user & role check
+    // ============================================================================
     const user = await getUserFromServer();
     const userRoles = (user?.roles as string[]) || [];
     if (!user || !userRoles.some((r: string) => MANAGE_ROLES.includes(r))) {
@@ -76,6 +81,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request body
+    // ============================================================================
     const { schedulerId } = await context.params;
     const body = await request.json();
     const { startTime, endTime, status } = body as {
@@ -84,7 +92,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       status?: string;
     };
 
-    // Build update — only include provided fields
+    // ============================================================================
+    // STEP 4: Build update data
+    // ============================================================================
     const updateData: Record<string, unknown> = {};
     if (startTime) updateData.startTime = new Date(startTime);
     if (endTime) updateData.endTime = new Date(endTime);
@@ -106,7 +116,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       `[Scheduler PATCH] Request — schedulerId: ${schedulerId}, fields: ${Object.keys(updateData).join(', ')}`
     );
 
-    // Pre-fetch for before-state
+    // ============================================================================
+    // STEP 5: Fetch existing scheduler
+    // ============================================================================
     const existingScheduler = await Scheduler.findOne({
       _id: schedulerId,
       deletedAt: { $exists: false },
@@ -123,6 +135,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // ============================================================================
+    // STEP 6: Update scheduler
+    // ============================================================================
     const updated = await Scheduler.findOneAndUpdate(
       { _id: schedulerId, deletedAt: { $exists: false } },
       { $set: updateData },
@@ -141,6 +156,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     console.log(`[Scheduler PATCH] Updated scheduler ${schedulerId}`);
     logActivity({
       action: 'update',
@@ -166,6 +184,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       console.error('[Scheduler PATCH] Activity log failed:', err)
     );
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
     const duration = Date.now() - timerStart;
     logRouteUpdate(
       functionName,
@@ -223,8 +244,14 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   const logUser = extractUserFromRequest(_request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user & role check
+    // ============================================================================
     // Auth + role check
     const user = await getUserFromServer();
     const userRoles = (user?.roles as string[]) || [];
@@ -240,10 +267,16 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request
+    // ============================================================================
     const { schedulerId } = await context.params;
 
     console.log(`[Scheduler DELETE] Request — schedulerId: ${schedulerId}`);
 
+    // ============================================================================
+    // STEP 4: Soft delete scheduler
+    // ============================================================================
     const updated = await Scheduler.findOneAndUpdate(
       { _id: schedulerId, deletedAt: { $exists: false } },
       { $set: { deletedAt: new Date() } },
@@ -262,6 +295,9 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
     console.log(`[Scheduler DELETE] Soft-deleted scheduler ${schedulerId}`);
     logActivity({
       action: 'delete',
@@ -281,6 +317,9 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       console.error('[Scheduler DELETE] Activity log failed:', err)
     );
 
+    // ============================================================================
+    // STEP 6: Return success response
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteDelete(
       functionName,

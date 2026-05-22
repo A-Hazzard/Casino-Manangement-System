@@ -40,8 +40,14 @@ export default function CollectionReportMonthlySummaryTable({
   summary,
   loading,
 }: CollectionReportMonthlySummaryTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatVal = (v: number | string | null | undefined) => {
     if (v === '-' || v === undefined || v === null || v === '') return '—';
     const num = typeof v === 'string' ? parseFloat(v) : v;
@@ -54,6 +60,9 @@ export default function CollectionReportMonthlySummaryTable({
     return isNaN(num) ? '' : getGrossColorClass(num);
   };
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const copy = async (text: string, label: string) => {
     if (!text || text === '-') {
       toast.error(`No ${label} value to copy`);
@@ -69,6 +78,9 @@ export default function CollectionReportMonthlySummaryTable({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">

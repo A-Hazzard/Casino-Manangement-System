@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
 
-    // Count total logs with ObjectID-format resourceName
     const total = await ActivityLog.countDocuments({
       resourceName: { $regex: /^[a-fA-F0-9]{24}$/ },
       deletedAt: null,
@@ -88,7 +87,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch a batch of logs to process
     const logsToResolve = await ActivityLog.find(
       { resourceName: { $regex: /^[a-fA-F0-9]{24}$/ }, deletedAt: null },
       { _id: 1, resourceName: 1 }
@@ -96,7 +94,6 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean<ActivityLogDocument[]>();
 
-    // Collect unique ObjectIDs
     const objectIds = [
       ...new Set(
         logsToResolve
@@ -105,7 +102,6 @@ export async function GET(request: NextRequest) {
       ),
     ];
 
-    // Batch-query machines
     const machines = await Machine.find(
       { _id: { $in: objectIds } },
       { _id: 1, serialNumber: 1, 'custom.name': 1 }
@@ -120,7 +116,6 @@ export async function GET(request: NextRequest) {
       machineNameMap.set(id, displayName);
     }
 
-    // Update logs whose machine was resolved
     let updated = 0;
     const bulkOps: Array<{
       updateOne: {
@@ -150,7 +145,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Re-count remaining after update
     const remaining = await ActivityLog.countDocuments({
       resourceName: { $regex: /^[a-fA-F0-9]{24}$/ },
       deletedAt: null,

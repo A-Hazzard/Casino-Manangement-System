@@ -72,7 +72,7 @@ export function useManagerScheduleData(
   const [deleting, setDeleting] = useState(false);
 
   // ============================================================================
-  // Computed Values (Pagination)
+  // Computed
   // ============================================================================
   const totalPages = useMemo(
     () => Math.ceil(schedulers.length / ITEMS_PER_PAGE) || 1,

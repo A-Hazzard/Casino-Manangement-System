@@ -24,6 +24,9 @@ type VaultOverviewHealthGridProps = {
 export default function VaultOverviewHealthGrid({
   metrics,
 }: VaultOverviewHealthGridProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [breakdown, setBreakdown] = useState<{
     open: boolean;
     type: 'in' | 'out' | 'payout';
@@ -35,12 +38,22 @@ export default function VaultOverviewHealthGrid({
   });
 
   const { user } = useUserStore();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const locationId = user?.assignedLocations?.[0] || '';
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const openBreakdown = (type: 'in' | 'out' | 'payout', title: string) => {
     setBreakdown({ open: true, type, title });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <div className="mb-2 flex items-center justify-between">

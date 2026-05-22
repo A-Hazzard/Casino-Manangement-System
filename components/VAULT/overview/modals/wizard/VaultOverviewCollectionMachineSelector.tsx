@@ -39,6 +39,9 @@ export default function VaultOverviewCollectionMachineSelector({
   onSearchChange,
   onViewHistory,
 }: VaultOverviewCollectionMachineSelectorProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredMachines = useMemo(() => {
     // Sort machines by most moneyIn (descending)
     const sortedMachines = [...machines].sort(
@@ -63,6 +66,9 @@ export default function VaultOverviewCollectionMachineSelector({
   const percentComplete =
     totalCount > 0 ? Math.round((collectedCount / totalCount) * 100) : 0;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-full w-full min-w-0 flex-col border-r border-gray-100 bg-white">
       {/* Header & Search */}

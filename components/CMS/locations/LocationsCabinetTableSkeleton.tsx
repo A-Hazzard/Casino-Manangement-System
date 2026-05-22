@@ -11,9 +11,13 @@ interface LocationsCabinetTableSkeletonProps {
  */
 const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
   includeJackpot = false,
-}) => (
-  <div className="w-full overflow-x-auto bg-white shadow">
-    <table className="w-full">
+}) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <div className="w-full overflow-x-auto bg-white shadow">
+      <table className="w-full">
       <thead>
         <tr className="bg-[#00b517] hover:bg-[#00b517]">
           <th className="relative w-[240px] p-3 text-left font-semibold text-white">
@@ -105,9 +109,10 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
             </td>
           </tr>
         ))}
-      </tbody>
-    </table>
-  </div>
-);
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 export default LocationsCabinetTableSkeleton;

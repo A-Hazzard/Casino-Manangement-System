@@ -21,7 +21,7 @@ export function useMonthlyReportData(
   activeTab: string
 ) {
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [locations, setLocations] = useState<{ id: string; name: string }[]>(
     []
@@ -108,7 +108,7 @@ export function useMonthlyReportData(
   }, []);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const monthlyTotalPages = useMemo(() => {
     return Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE) || 1;

@@ -288,6 +288,9 @@ export default function CollectionReportV2Mobile({
   onPermanentDeleteSession,
   isRefreshing,
 }: V2MobileProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if ((loading && sessions.length === 0) || isRefreshing) {
     return <CollectionReportV2SessionsSkeleton />;
   }

@@ -22,6 +22,9 @@ import Link from 'next/link';
 export default function CollectionReportDesktopLayout(
   props: CollectionReportDesktopUIProps
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const locationSummary = useMemo(() => {
     if (
       !props.selectedLocation ||
@@ -54,6 +57,9 @@ export default function CollectionReportDesktopLayout(
     );
   }, [props.selectedLocation, props.locations]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-4">
       {/* Count Summary */}

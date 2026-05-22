@@ -41,10 +41,19 @@ export default function VaultOverviewActiveShiftsModal({
   onForceCloseShift,
   isBlurred = false,
 }: VaultOverviewActiveShiftsModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalBlocked = activeShifts.length + pendingShifts.length;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent

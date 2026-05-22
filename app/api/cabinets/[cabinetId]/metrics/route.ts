@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
   const cabinetId = pathname.split('/')[3];
 
   try {
+    // ============================================================================
+    // STEP 1: Parse Query Params
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
 

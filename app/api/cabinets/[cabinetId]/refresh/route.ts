@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'GET /api/cabinets/[cabinetId]/refresh';
   const user = extractUserFromRequest(request);
+  // ============================================================================
+  // STEP 1: Parse Params
+  // ============================================================================
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/')[3];
 

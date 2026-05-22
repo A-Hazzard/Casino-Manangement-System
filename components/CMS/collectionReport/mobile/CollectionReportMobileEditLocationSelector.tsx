@@ -54,6 +54,9 @@ export default function CollectionReportMobileEditLocationSelector({
   onViewForm,
   onViewCollectedMachines,
 }: MobileEditLocationSelectorProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (isLoadingCollections) {
     return (
       <div className="space-y-4">

@@ -10,10 +10,16 @@ type FeedbackStatsProps = {
 };
 
 export default function FeedbackStats({ allFeedback }: FeedbackStatsProps) {
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const pending = allFeedback.filter(f => f.status === 'pending').length;
   const reviewed = allFeedback.filter(f => f.status === 'reviewed').length;
   const resolved = allFeedback.filter(f => f.status === 'resolved').length;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Mobile: 2 combined cards */}

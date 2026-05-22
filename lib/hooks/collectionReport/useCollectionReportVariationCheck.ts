@@ -70,11 +70,18 @@ interface UseVariationCheckOptions {
 export function useCollectionReportVariationCheck(
   options: UseVariationCheckOptions = {}
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { debounceMs = 500 } = options;
 
   const [state, setState] = useState<VariationCheckState>(DEFAULT_STATE);
   const lastMachinesRef = useRef<CheckVariationsMachine[] | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Check variations for the given machines in a location
@@ -190,6 +197,10 @@ export function useCollectionReportVariationCheck(
       clearTimeout(debounceTimeoutRef.current);
     }
   }, []);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   /**
    * Cleanup debounce timeout on unmount

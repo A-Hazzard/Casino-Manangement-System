@@ -33,6 +33,9 @@ export default function CollectionReportManagerScheduleTable({
   onDelete,
   showActions = false,
 }: CollectionReportManagerScheduleTableProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (loading) {
     return (
       <div className="hidden items-center justify-center py-8 lg:flex">

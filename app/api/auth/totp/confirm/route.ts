@@ -71,9 +71,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Determine which secret to verify against
+    // ============================================================================
+    // STEP 1: Determine which secret to verify against
     // 1. Recovery setup uses totpTempSecret
     // 2. Initial setup uses totpSecret (where totpEnabled is false)
+    // ============================================================================
     const secretToVerify = foundUser.totpTempSecret || foundUser.totpSecret;
 
     if (!secretToVerify) {
@@ -92,7 +94,9 @@ export async function POST(req: NextRequest) {
 
     const isValid = verifyTOTPCode(token, secretToVerify);
     if (isValid) {
-      // If we verified a temp secret, promote it to the active secret
+      // ============================================================================
+      // STEP 2: Promote temp secret to active secret if applicable
+      // ============================================================================
       if (foundUser.totpTempSecret) {
         foundUser.totpSecret = foundUser.totpTempSecret;
         foundUser.totpTempSecret = null;
@@ -100,7 +104,9 @@ export async function POST(req: NextRequest) {
 
       foundUser.totpEnabled = true;
 
-      // Clear recovery tokens if they exist
+      // ============================================================================
+      // STEP 3: Clear recovery tokens
+      // ============================================================================
       foundUser.totpRecoveryToken = null;
       foundUser.totpRecoveryExpires = null;
 

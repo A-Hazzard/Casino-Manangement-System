@@ -36,6 +36,9 @@ export default function ScheduleDeleteDialog({
   locationName,
   deleting = false,
 }: ScheduleDeleteDialogProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <AlertDialog open={open} onOpenChange={open ? onClose : undefined}>
       <AlertDialogContent>

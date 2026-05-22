@@ -38,7 +38,7 @@ import LocationsNewLocationModal from './modals/LocationsNewLocationModal';
 
 export default function LocationsPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
@@ -76,7 +76,7 @@ export default function LocationsPageContent() {
   } = locationsPageData;
 
   // ============================================================================
-  // Computed Values & Memoization
+  // Computed
   // ============================================================================
   /**
    * Check if the current user can manage (create/edit/delete) locations.
@@ -97,7 +97,7 @@ export default function LocationsPageContent() {
   }, [user]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   /**
    * Navigate to a specific location's detail page.
@@ -130,16 +130,13 @@ export default function LocationsPageContent() {
   };
 
   // ============================================================================
-  // Permission Checks
+  // Render
   // ============================================================================
   // If user has no licencee assigned, show the "No Licencee Assigned" message
   if (shouldShowNoLicenceeMessage(user)) {
     return <NoLicenceeAssigned />;
   }
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <>
       {/* Modal Components for CRUD operations */}

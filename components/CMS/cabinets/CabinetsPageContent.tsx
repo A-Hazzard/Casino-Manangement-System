@@ -107,6 +107,9 @@ export default function CabinetsPageContent() {
     transformCabinet,
   } = cabinetsPageData;
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const userRoles = (user?.roles || []).filter(
     (r): r is string => typeof r === 'string'
   );

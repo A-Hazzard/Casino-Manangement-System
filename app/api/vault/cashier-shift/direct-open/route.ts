@@ -40,6 +40,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const hasVaultAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -59,6 +62,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate request
+      // ============================================================================
       const { locationId, cashierId, amount, denominations, notes } =
         await request.json();
       if (!locationId || !cashierId || amount === undefined || !denominations) {
@@ -93,6 +99,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate vault state and balance
+      // ============================================================================
       const vaultShift = await VaultShiftModel.findOne({
         locationId,
         status: 'active',
@@ -179,6 +188,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Create cashier shift and float request
+      // ============================================================================
       const shiftId = await generateMongoId(),
         reqId = await generateMongoId(),
         txId = await generateMongoId(),
@@ -223,6 +235,9 @@ export async function POST(request: NextRequest) {
         updatedAt: now,
       });
 
+      // ============================================================================
+      // STEP 5: Update vault state and log transaction
+      // ============================================================================
       vaultShift.closingBalance = currentBalance - amount;
       vaultShift.currentDenominations = updateDenominationInventory(
         vaultShift.currentDenominations || [],
@@ -258,6 +273,9 @@ export async function POST(request: NextRequest) {
         metadata: { resourceId: shiftId, locationId, cashierId },
       });
 
+      // ============================================================================
+      // STEP 6: Return response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteCreate(
         functionName,

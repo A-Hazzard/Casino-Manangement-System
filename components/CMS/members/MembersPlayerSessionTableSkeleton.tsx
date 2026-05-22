@@ -61,6 +61,9 @@ const SessionCardSkeleton = () => {
 };
 
 export default function MembersPlayerSessionTableSkeleton() {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="rounded-md border bg-white" suppressHydrationWarning>
       {/* Card Grid Skeleton View - below xl */}

@@ -28,6 +28,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const hasVMAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -47,6 +50,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse request
+      // ============================================================================
       const {
         cashierId,
         shiftId,
@@ -73,6 +79,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate cashier shift
+      // ============================================================================
       const activeStatuses = ['active', 'pending_start'];
       const cashierShift = shiftId
         ? await CashierShiftModel.findOne({
@@ -98,6 +107,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Close shift and calculate discrepancy
+      // ============================================================================
       const expected = calculateExpectedBalance(
         cashierShift.openingBalance,
         cashierShift.payoutsTotal,
@@ -117,6 +129,9 @@ export async function POST(request: NextRequest) {
       cashierShift.updatedAt = now;
       await cashierShift.save();
 
+      // ============================================================================
+      // STEP 5: Update vault state and log
+      // ============================================================================
       const allShifts = await CashierShiftModel.find({
         vaultShiftId: cashierShift.vaultShiftId,
       });
@@ -141,6 +156,9 @@ export async function POST(request: NextRequest) {
         metadata: { resourceId: cashierShift._id, cashierId, notes },
       });
 
+      // ============================================================================
+      // STEP 6: Return response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteUpdate(
         functionName,

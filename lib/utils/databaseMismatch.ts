@@ -1,3 +1,8 @@
+/**
+ * @module lib/utils/databaseMismatch
+ * Utilities for detecting database connection mismatches and clearing client-side user state in the Evolution One CMS.
+ */
+
 import { useUserStore } from '@/lib/store/userStore';
 
 /**

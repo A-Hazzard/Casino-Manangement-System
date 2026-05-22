@@ -123,7 +123,7 @@ export function useCollectionReportDetailsData() {
   const tabContentRef = useRef<HTMLDivElement>(null);
 
   // ==========================================================================
-  // Computed Values
+  // Computed
   // ==========================================================================
 
   /**
@@ -202,7 +202,7 @@ export function useCollectionReportDetailsData() {
   }, [filteredSortedAndSearchedData, machinePage]);
 
   // ==========================================================================
-  // Event Handlers - Table Controls
+  // Handlers
   // ==========================================================================
 
   /**
@@ -219,7 +219,7 @@ export function useCollectionReportDetailsData() {
   };
 
   // ==========================================================================
-  // Event Handlers - Tab Navigation
+  // Handlers
   // ==========================================================================
 
   /**
@@ -240,7 +240,7 @@ export function useCollectionReportDetailsData() {
   };
 
   // ==========================================================================
-  // Event Handlers - Data Operations
+  // Handlers
   // ==========================================================================
 
   /**

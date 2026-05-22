@@ -25,7 +25,7 @@ export function useMembersTabContent({
   tabComponents,
 }: UseMembersTabContentProps): UseMembersTabContentReturn {
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   // Get animation props for current tab
@@ -40,6 +40,10 @@ export function useMembersTabContent({
       className: 'h-full',
     };
   }, [activeTab, animations.tabVariants]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Check if tab is transitioning (for loading states)
   const isTabTransitioning = useMemo(() => {

@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate query parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locId = searchParams.get('locationId'),
         uid = searchParams.get('userId'),
@@ -57,6 +60,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Build match filters
+      // ============================================================================
       const filters: Record<string, unknown> = { locationId: locId };
       const isVM = userRoles
         .map(r => String(r).toLowerCase())
@@ -78,6 +84,9 @@ export async function GET(request: NextRequest) {
         };
       }
 
+      // ============================================================================
+      // STEP 3: Execute query and pagination
+      // ============================================================================
       const pipeline = [
         { $match: filters },
         { $sort: { timestamp: -1 } },
@@ -128,6 +137,9 @@ export async function GET(request: NextRequest) {
         VaultTransactionModel.countDocuments(filters),
       ]);
 
+      // ============================================================================
+      // STEP 4: Return formatted results
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,

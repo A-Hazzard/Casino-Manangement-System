@@ -25,9 +25,15 @@ import {
 } from '@/lib/utils/roleBasedRedirect';
 import { UserRole } from '@/lib/utils/permissions';
 export default function UnauthorizedPage() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   /**
    * Auto-redirects user to their default page after 5 seconds.
    * Redirect path is determined by user's roles.
@@ -44,6 +50,9 @@ export default function UnauthorizedPage() {
     return () => clearTimeout(timer);
   }, [router, user]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const userRole = user?.roles
     ? getRoleDisplayName(user.roles as UserRole[])
     : 'User';

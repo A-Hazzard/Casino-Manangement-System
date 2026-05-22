@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
     // STEP 1: Authorization
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       logRouteError(
@@ -47,7 +49,9 @@ export async function GET(request: NextRequest) {
     }
     const userId = userPayload._id as string;
 
+    // ============================================================================
     // STEP 2: Find latest relevant shift
+    // ============================================================================
     await connectDB();
 
     // We look for any shift that is NOT closed, or closed very recently?
@@ -57,7 +61,9 @@ export async function GET(request: NextRequest) {
       status: { $in: ['active', 'pending_start', 'pending_review'] },
     }).sort({ createdAt: -1 });
 
+    // ============================================================================
     // STEP 3: Check for active vault shift at user's location
+    // ============================================================================
     const locationId = (userPayload.assignedLocations as string[])?.[0];
     let hasActiveVaultShift = false;
     let isVaultReconciled = false;
@@ -79,7 +85,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // ============================================================================
     // STEP 4: Get current balance tracking
+    // ============================================================================
     let currentBalance = 0;
     if (shift.status === 'active') {
       currentBalance =
@@ -91,7 +99,9 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    // ============================================================================
     // STEP 5: Check for pending float movements (dual-approval flow)
+    // ============================================================================
     // Only check for requests related to the current shift
     const pendingVmApproval = await FloatRequestModel.findOne({
       cashierId: userId,

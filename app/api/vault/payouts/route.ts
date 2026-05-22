@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate permissions
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVaultAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager', 'cashier'].includes(
@@ -48,6 +51,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse query params
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       if (!locationId) {
@@ -70,6 +76,9 @@ export async function GET(request: NextRequest) {
       const search = searchParams.get('search');
       const type = searchParams.get('type');
 
+      // ============================================================================
+      // STEP 3: Build query
+      // ============================================================================
       const query: Record<string, unknown> = { locationId };
       if (type && type !== 'all') query.type = type;
       if (search) {
@@ -84,6 +93,9 @@ export async function GET(request: NextRequest) {
         query.$or = orArray;
       }
 
+      // ============================================================================
+      // STEP 4: Fetch payouts
+      // ============================================================================
       const [payouts, total] = await Promise.all([
         PayoutModel.aggregate([
           { $match: query },
@@ -131,7 +143,7 @@ export async function GET(request: NextRequest) {
       ]);
 
       // ============================================================================
-      // Reviewer Multiplier Scaling
+      // STEP 5: Apply reviewer scaling
       // ============================================================================
       payouts.forEach(
         (payoutItem: { amount: number; timestamp?: Date | string | null }) => {
@@ -160,6 +172,9 @@ export async function GET(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 6: Return response
+      // ============================================================================
       return NextResponse.json({
         success: true,
         payouts,

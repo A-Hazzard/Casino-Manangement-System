@@ -32,7 +32,7 @@ export function useSessions() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +48,7 @@ export function useSessions() {
   const itemsPerBatch = 100;
 
   // ============================================================================
-  // Data Fetching
+  // Handlers
   // ============================================================================
   const fetchSessions = useCallback(
     async (batch: number = 1, append: boolean = false) => {
@@ -244,7 +244,7 @@ export function useSessions() {
   // Batch loading logic (removed)
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const sessions = useMemo(() => {
     const start = currentPage * itemsPerPage;

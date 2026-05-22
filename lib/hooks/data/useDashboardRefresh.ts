@@ -31,6 +31,9 @@ export function useDashboardRefresh({
   activeTab,
   displayCurrency,
 }: UseDashboardRefreshProps): UseDashboardRefreshReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     refreshing,
     setRefreshing,
@@ -43,8 +46,16 @@ export function useDashboardRefresh({
     setTopPerformingData,
   } = useDashBoardStore();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // Check if refresh is possible
   const canRefresh = Boolean(activeMetricsFilter && activePieChartFilter);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle refresh functionality
   const handleRefresh = useCallback(async () => {

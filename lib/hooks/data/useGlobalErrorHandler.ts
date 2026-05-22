@@ -12,6 +12,10 @@ import {
  * Provides consistent error handling for API calls
  */
 export function useGlobalErrorHandler() {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
   const handleError = useCallback((error: unknown, context?: string) => {
     const apiError = classifyError(error);
 

@@ -75,6 +75,9 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
   onMachineSearchChange,
   onMachineSelect,
 }: NewCollectionLocationMachineSelectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex min-h-0 w-full flex-col space-y-3 overflow-y-auto p-3 md:p-4">
       <div

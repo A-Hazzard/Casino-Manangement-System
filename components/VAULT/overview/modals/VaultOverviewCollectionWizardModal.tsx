@@ -73,7 +73,9 @@ export default function VaultOverviewCollectionWizardModal({
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
 
-  // -- State --
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -99,7 +101,9 @@ export default function VaultOverviewCollectionWizardModal({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [forceShowHistoryOnce, setForceShowHistoryOnce] = useState(false);
 
-  // -- Derivations --
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const selectedMachine = machines.find(m => m._id === selectedMachineId);
   const collectedMachineIds = entries.map(e => e.machineId);
 
@@ -108,7 +112,9 @@ export default function VaultOverviewCollectionWizardModal({
     'selector' | 'form' | 'summary'
   >('selector');
 
-  // -- Effects --
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // 1. Load or Start Session on Open
   useEffect(() => {
@@ -210,7 +216,9 @@ export default function VaultOverviewCollectionWizardModal({
     }
   };
 
-  // -- Handlers --
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleAddEntry = async (
     entryData: Omit<
@@ -346,6 +354,9 @@ export default function VaultOverviewCollectionWizardModal({
     onConfirm(); // Trigger parent refresh/next step
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog

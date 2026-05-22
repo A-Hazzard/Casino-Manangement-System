@@ -22,6 +22,9 @@ import { useEffect } from 'react';
  * @module components/reports/ReportsDateFilters
  */
 export default function ReportsDateFilters() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
@@ -32,6 +35,9 @@ export default function ReportsDateFilters() {
   const { setDateRange, activeView } = useReportsStore();
   const searchParams = useSearchParams();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Check if we're in location-evaluation or location-revenue sub-tabs
   const activeLocationSubTab = searchParams?.get('ltab') || '';
   const isLocationEvaluationOrRevenue =
@@ -39,6 +45,9 @@ export default function ReportsDateFilters() {
     (activeLocationSubTab === 'location-evaluation' ||
       activeLocationSubTab === 'location-revenue');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset to "Today" if Quarterly is active but not available on this tab
   useEffect(() => {
     if (!isLocationEvaluationOrRevenue && activeMetricsFilter === 'Quarterly') {
@@ -50,6 +59,9 @@ export default function ReportsDateFilters() {
     setActiveMetricsFilter,
   ]);
 
+  // ============================================================================
+  // Handlers & Helpers
+  // ============================================================================
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {
     const baseButtons = [
@@ -162,6 +174,9 @@ export default function ReportsDateFilters() {
     setActiveMetricsFilter(filter);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full flex-col gap-3">
       {/* Date Range Indicator - shown above filters */}

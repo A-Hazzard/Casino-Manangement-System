@@ -24,9 +24,15 @@ export default function MembersEditMemberProfileHeader({
   username,
   email,
 }: MembersEditMemberProfileHeaderProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const displayName =
     firstName && lastName ? `${firstName} ${lastName}` : username || 'Member';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col items-center lg:items-start">
       <div className="relative">

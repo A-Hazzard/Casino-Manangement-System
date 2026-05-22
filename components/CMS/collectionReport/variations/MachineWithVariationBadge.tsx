@@ -32,6 +32,9 @@ export function MachineWithVariationBadge({
     return <div className={className}>{children}</div>;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`relative ${className}`}>
       {children}

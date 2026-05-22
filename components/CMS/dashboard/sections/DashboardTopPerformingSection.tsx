@@ -42,6 +42,9 @@ export function DashboardTopPerformingSection({
   onViewCabinet,
   onViewLocation,
 }: DashboardTopPerformingSectionProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
       className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md"
@@ -59,6 +62,9 @@ export function DashboardTopPerformingSection({
     return <DashboardTopPerformingSkeleton />;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       {/* Section Header */}

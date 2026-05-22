@@ -66,6 +66,9 @@ const CabinetsDetailsAccountingDetails = ({
   setActiveMetricsTabContent,
   onRefresh,
 }: AccountingDetailsProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const hook = useCabinetAccountingData({ cabinet, activeMetricsTabContent });
 
@@ -85,6 +88,9 @@ const CabinetsDetailsAccountingDetails = ({
     setMachine,
   } = hook;
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const menuItems = [
     'Movements',
     'Live Meters',
@@ -95,6 +101,9 @@ const CabinetsDetailsAccountingDetails = ({
     'Configurations',
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <motion.div
       className="mt-2 rounded-lg bg-container p-4 shadow-md shadow-purple-200 md:p-6"

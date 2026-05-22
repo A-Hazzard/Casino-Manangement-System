@@ -1,3 +1,7 @@
+/**
+ * DownloadFirmwareModal Component
+ * Confirmation modal for downloading a firmware file with GSAP animations.
+ */
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
@@ -12,11 +16,19 @@ export const DownloadFirmwareModal = ({
 }: {
   onDownloadComplete: () => void;
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { isDownloadModalOpen, selectedFirmware, closeDownloadModal } =
     useFirmwareActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     if (isDownloadModalOpen) {
@@ -33,6 +45,10 @@ export const DownloadFirmwareModal = ({
       });
     }
   }, [isDownloadModalOpen]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleClose = () => {
     gsap.to(modalRef.current, {
@@ -79,6 +95,11 @@ export const DownloadFirmwareModal = ({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: modal not open or no firmware selected
   if (!isDownloadModalOpen || !selectedFirmware) return null;
 
   return (

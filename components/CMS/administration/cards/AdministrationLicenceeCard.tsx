@@ -41,10 +41,16 @@ function AdministrationLicenceeCard({
   onPaymentHistory,
   onTogglePaymentStatus,
 }: AdministrationLicenceeCardProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const isPaid = isLicenceePaid(licencee);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
@@ -58,6 +64,9 @@ function AdministrationLicenceeCard({
     };
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={cardRef}

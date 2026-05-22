@@ -133,8 +133,15 @@ export const ReportsMachinesOverview = ({
   onEdit,
   onDelete,
 }: ReportsMachinesOverviewProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const formatCurrency = (val: number | null | undefined) =>
     formatCurrencyWithCodeString(val, displayCurrency);
 

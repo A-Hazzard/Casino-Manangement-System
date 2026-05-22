@@ -35,9 +35,19 @@ export default function CabinetsDetailsAccountingSection({
   onTabChange,
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isTechnicianOnly = user?.roles?.[0] == 'technician';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-8 w-full max-w-full space-y-6 overflow-x-hidden">
       {/* Date Filters */}

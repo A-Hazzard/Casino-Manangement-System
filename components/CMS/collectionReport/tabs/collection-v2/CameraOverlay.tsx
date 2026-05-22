@@ -22,6 +22,9 @@ export default function CameraOverlay({
   onCapture,
   onCancel,
 }: CameraOverlayProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -31,7 +34,7 @@ export default function CameraOverlay({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   // ============================================================================
-  // Camera
+  // Effects
   // ============================================================================
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function CameraOverlay({
   }, []);
 
   // ============================================================================
-  // Resize
+  // Handlers
   // ============================================================================
 
   const resizeImage = (
@@ -91,9 +94,7 @@ export default function CameraOverlay({
     return { width, height };
   };
 
-  // ============================================================================
-  // Capture
-  // ============================================================================
+
 
   const captureFrame = (): string | null => {
     const video = videoRef.current;
@@ -160,9 +161,7 @@ export default function CameraOverlay({
     }
   };
 
-  // ============================================================================
-  // Gallery
-  // ============================================================================
+
 
   const handleGalleryFile = (file: File) => {
     const reader = new FileReader();
@@ -199,7 +198,7 @@ export default function CameraOverlay({
   };
 
   // ============================================================================
-  // Capture confirmation overlay (Keep / Retake)
+  // Render
   // ============================================================================
 
   if (capturedImage) {

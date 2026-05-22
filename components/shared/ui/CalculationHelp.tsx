@@ -26,6 +26,9 @@ export function CalculationHelp({
   description,
   className = '',
 }: CalculationHelpProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Popover>
       <PopoverTrigger asChild>

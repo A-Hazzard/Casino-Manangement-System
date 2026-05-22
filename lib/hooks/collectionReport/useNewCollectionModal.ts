@@ -152,6 +152,12 @@ export function useNewCollectionModal({
   const [previousCollectionTime, setPreviousCollectionTime] = useState<
     string | Date | undefined
   >(undefined);
+  const [machineFirstCollectionTime, setMachineFirstCollectionTime] = useState<
+    Date | null
+  >(null);
+  const [machineLastCollectionTime, setMachineLastCollectionTime] = useState<
+    Date | null
+  >(null);
   const [isLoadingExistingCollections, setIsLoadingExistingCollections] =
     useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(false);
@@ -257,7 +263,7 @@ export function useNewCollectionModal({
   );
 
   // ==========================================================================
-  // Computed Values (useMemo)
+  // Computed
   // ==========================================================================
 
   /**
@@ -351,10 +357,24 @@ export function useNewCollectionModal({
     [machineForDataEntry, selectedMachineId]
   );
 
+  const isMiddleReportWarning = useMemo(() => {
+    const targetTime = sasEndTime || currentCollectionTime;
+    if (machineFirstCollectionTime && machineLastCollectionTime && targetTime) {
+      if (
+        targetTime > machineFirstCollectionTime &&
+        targetTime < machineLastCollectionTime
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }, [machineFirstCollectionTime, machineLastCollectionTime, sasEndTime, currentCollectionTime]);
+
   /**
    * Whether the "Add Machine" button should be enabled
    */
   const isAddMachineEnabled = useMemo(() => {
+    if (isMiddleReportWarning) return false;
     if (!machineForDataEntry) return false;
     if (!currentMetersIn || !currentMetersOut) return false;
     if (
@@ -814,9 +834,16 @@ export function useNewCollectionModal({
           .then(res => {
             const data = res.data?.data;
             const lastTime = data?.collectionTime;
+            const firstTime = data?.firstCollectionTime;
+
+            if (firstTime) setMachineFirstCollectionTime(new Date(firstTime));
+            else setMachineFirstCollectionTime(null);
+
             if (lastTime) {
+              setMachineLastCollectionTime(new Date(lastTime));
               setSasStartTime(new Date(lastTime));
             } else {
+              setMachineLastCollectionTime(null);
               const loc = locations.find(
                 l => String(l._id) === (lockedLocationId || selectedLocationId)
               );
@@ -890,7 +917,7 @@ export function useNewCollectionModal({
   ]);
 
   // ==========================================================================
-  // Event Handlers - Location & Machine Selection
+  // Handlers
   // ==========================================================================
   // Helper Functions
   // ==========================================================================
@@ -939,7 +966,7 @@ export function useNewCollectionModal({
   };
 
   // ==========================================================================
-  // Event Handlers - Location & Machine Selection
+  // Handlers
   // ==========================================================================
 
   /**
@@ -979,7 +1006,7 @@ export function useNewCollectionModal({
   }, [inputsEnabled]);
 
   // ==========================================================================
-  // Event Handlers - Machine Entry
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1061,6 +1088,20 @@ export function useNewCollectionModal({
         JSON.stringify(entryData, null, 2)
       );
 
+      // Guard: validate SAS time ordering before hitting the API
+      if (entryData.sasStartTime && entryData.sasEndTime) {
+        const sasStart = new Date(entryData.sasStartTime as string | Date);
+        const sasEnd = new Date(entryData.sasEndTime as string | Date);
+        if (sasStart >= sasEnd) {
+          toast.error('SAS start time must be before end time', {
+            description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
+            duration: 7000,
+          });
+          setIsProcessing(false);
+          return;
+        }
+      }
+
       const createdCollection = await addMachineCollection(entryData);
       console.log(
         '[executeAddEntry] createdCollection response:',
@@ -1120,9 +1161,10 @@ export function useNewCollectionModal({
         );
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to add machine: ${errorMessage}`);
+      const apiMessage = (error as { response?: { data?: { error?: string } } })
+        ?.response?.data?.error;
+      const errorMessage = apiMessage ?? (error instanceof Error ? error.message : 'Unknown error');
+      toast.error(`Failed to add machine: ${errorMessage}`, { duration: 7000 });
     } finally {
       setIsProcessing(false);
     }
@@ -1181,7 +1223,7 @@ export function useNewCollectionModal({
   }, [editingEntryId, handleAddEntry]);
 
   // ==========================================================================
-  // Event Handlers - Editing
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1407,7 +1449,7 @@ export function useNewCollectionModal({
   }, []);
 
   // ==========================================================================
-  // Event Handlers - Deletion
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1461,7 +1503,7 @@ export function useNewCollectionModal({
   };
 
   // ==========================================================================
-  // Event Handlers - Rollover Warning
+  // Handlers
   // ==========================================================================
 
   const handleConfirmMachineRollover = useCallback(() => {
@@ -1478,7 +1520,7 @@ export function useNewCollectionModal({
   }, []);
 
   // ==========================================================================
-  // Event Handlers - Report Creation
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1669,7 +1711,7 @@ export function useNewCollectionModal({
   };
 
   // ==========================================================================
-  // Event Handlers - Bulk Operations
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1747,7 +1789,7 @@ export function useNewCollectionModal({
   }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
 
   // ==========================================================================
-  // Event Handlers - Modal Close
+  // Handlers
   // ==========================================================================
 
   /**
@@ -1809,6 +1851,7 @@ export function useNewCollectionModal({
     machineForDataEntry,
     inputsEnabled,
     isAddMachineEnabled,
+    isMiddleReportWarning,
 
     // Form Data
     currentCollectionTime,

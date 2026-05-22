@@ -37,6 +37,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse query params
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isVM = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
@@ -53,6 +56,9 @@ export async function GET(request: NextRequest) {
       const startDate = searchParams.get('startDate');
       const endDate = searchParams.get('endDate');
 
+      // ============================================================================
+      // STEP 2: Enforce permissions and build query
+      // ============================================================================
       const query: Record<string, unknown> = {};
       if (locationId) query.locationId = locationId;
       if (finalCashierId) query.cashierId = finalCashierId;
@@ -65,6 +71,9 @@ export async function GET(request: NextRequest) {
         };
       }
 
+      // ============================================================================
+      // STEP 3: Fetch pending requests
+      // ============================================================================
       const [pendingRequests, total] = await Promise.all([
         FloatRequestModel.aggregate([
           { $match: query },
@@ -213,6 +222,9 @@ export async function GET(request: NextRequest) {
         FloatRequestModel.countDocuments(query),
       ]);
 
+      // ============================================================================
+      // STEP 4: Return results
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,
@@ -272,6 +284,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
       const body = await request.json();
       const {
         type,
@@ -295,6 +310,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate vault shift
+      // ============================================================================
       const vaultShift = await (
         await import('@/app/api/lib/models/vaultShift')
       ).default.findOne({ locationId, status: 'active' });
@@ -312,6 +330,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Create float request
+      // ============================================================================
       const { generateMongoId } = await import('@/lib/utils/id');
       const requestId = await generateMongoId();
       const now = new Date();
@@ -340,6 +361,9 @@ export async function POST(request: NextRequest) {
         ],
       });
 
+      // ============================================================================
+      // STEP 4: Notify and return
+      // ============================================================================
       try {
         const { createFloatRequestNotification } =
           await import('@/lib/helpers/vault/notifications');
@@ -397,6 +421,9 @@ export async function DELETE(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
       const { requestId } = await request.json();
       if (!requestId) {
         logRouteError(
@@ -412,6 +439,9 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate float request
+      // ============================================================================
       const requestDoc = await FloatRequestModel.findOne({ _id: requestId });
       if (!requestDoc) {
         logRouteError(
@@ -462,6 +492,9 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Cancel request and cleanup notifications
+      // ============================================================================
       requestDoc.status = 'cancelled';
       requestDoc.auditLog.push({
         action: 'cancelled',

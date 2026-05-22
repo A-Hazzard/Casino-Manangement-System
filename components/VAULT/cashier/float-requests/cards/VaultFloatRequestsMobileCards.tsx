@@ -56,7 +56,7 @@ export default function VaultFloatRequestsMobileCards({
   showActions = false,
 }: VaultFloatRequestsMobileCardsProps) {
   // ============================================================================
-  // Hooks
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 

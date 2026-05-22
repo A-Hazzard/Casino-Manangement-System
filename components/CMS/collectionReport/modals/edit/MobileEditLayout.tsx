@@ -57,6 +57,9 @@ type MobileEditLayoutProps = {
 };
 
 export default function MobileEditLayout(props: MobileEditLayoutProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     modalState,
     setModalState,
@@ -89,6 +92,9 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
   } = props;
   const machineStatusMap = props.machineStatusMap ?? {};
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleMachineSelect = (machine: CollectionReportMachineSummary) => {
     // Check if machine is already collected in this report
     const isAlreadyCollected = collectedMachines.some(
@@ -106,6 +112,9 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
 
   /* handleMachineUnselect removed as it is unused */
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white">
       {/* Search Header */}

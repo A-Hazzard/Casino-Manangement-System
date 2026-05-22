@@ -28,12 +28,22 @@ export default function CollectionReportV2StartSessionDialog({
   onClose,
   onSessionCreated,
 }: StartSessionDialogProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   const selectedLocation = locations.find(l => l._id === selectedLocationId);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleStart = async () => {
     if (!selectedLocationId || !selectedLocation) return;
     setCreating(true);
@@ -60,6 +70,9 @@ export default function CollectionReportV2StartSessionDialog({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg bg-white shadow-xl">

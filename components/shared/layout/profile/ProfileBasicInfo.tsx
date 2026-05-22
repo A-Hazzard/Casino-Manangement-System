@@ -50,6 +50,9 @@ export default function ProfileBasicInfo({
   validationErrors,
   setValidationErrors,
 }: ProfileBasicInfoProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleInputChangeWithValidation = (field: string, value: string) => {
     onInputChange(field, value);
     // Clear error when user starts typing
@@ -61,6 +64,9 @@ export default function ProfileBasicInfo({
       });
     }
   };
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card>
       <CardHeader>

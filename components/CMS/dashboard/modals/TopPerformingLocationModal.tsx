@@ -61,6 +61,9 @@ export default function TopPerformingLocationModal({
   onClose,
   onNavigate,
 }: TopPerformingLocationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [locationData, setLocationData] = useState<LocationMetricsData | null>(
@@ -78,14 +81,17 @@ export default function TopPerformingLocationModal({
     selectedLicencee,
   } = useDashBoardStore();
 
-  // Use activeMetricsFilter if available (from location detail page), otherwise fall back to activePieChartFilter (from dashboard)
-  const effectiveTimePeriod =
-    activeMetricsFilter || activePieChartFilter || 'Today';
-
   // Chart granularity state - initialize after store values are available
   const [chartGranularity, setChartGranularity] = useState<
     'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
   >('hourly');
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  // Use activeMetricsFilter if available (from location detail page), otherwise fall back to activePieChartFilter (from dashboard)
+  const effectiveTimePeriod =
+    activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format
@@ -129,6 +135,9 @@ export default function TopPerformingLocationModal({
     return false;
   }, [effectiveTimePeriod, customDateRange]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Recalculate default granularity when date filters change
   // For "Today", also recalculate periodically as time passes
   // For 7d and 30d, always use 'hourly' (which displays as daily format in Chart component)
@@ -526,6 +535,9 @@ export default function TopPerformingLocationModal({
 
   if (!open) return null;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleNavigate = () => {
     // Navigate to location details page
     if (locationId) {
@@ -535,6 +547,9 @@ export default function TopPerformingLocationModal({
     onClose();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={backdropRef}

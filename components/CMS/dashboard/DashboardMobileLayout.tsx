@@ -36,6 +36,9 @@ import { DashboardTopPerformingSection } from './sections/DashboardTopPerforming
 export default function DashboardMobileLayout(
   props: DashboardMobileLayoutProps
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -52,6 +55,9 @@ export default function DashboardMobileLayout(
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const licenceeName =
     props.selectedLicencee && props.selectedLicencee !== 'all'
       ? props.selectedLicencee
@@ -61,6 +67,9 @@ export default function DashboardMobileLayout(
   const offlineCount = props.machineStats?.offlineMachines || 0;
   const totalCount = props.machineStats?.totalMachines || 0;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-10">
       {/* Date Filter Controls (mobile) */}

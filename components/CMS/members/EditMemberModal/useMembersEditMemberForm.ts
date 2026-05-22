@@ -52,6 +52,9 @@ export function useMembersEditMemberForm({
   onClose,
   logActivity,
 }: UseMembersEditMemberFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -73,6 +76,9 @@ export function useMembersEditMemberForm({
   // Helper to trim values
   const trimValue = (value: string): string => (value || '').trim();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Load form data when member is selected
   useEffect(() => {
     if (selectedMember) {
@@ -94,6 +100,9 @@ export function useMembersEditMemberForm({
     }
   }, [selectedMember]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({

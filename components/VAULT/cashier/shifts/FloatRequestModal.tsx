@@ -1,3 +1,13 @@
+/**
+ * Float Request Modal Component
+ *
+ * Two-step modal for cashiers to request a float increase or decrease.
+ * Step 1: Denomination input. Step 2: Review before TOTP confirmation.
+ *
+ * @module components/VAULT/cashier/shifts/FloatRequestModal
+ */
+'use client';
+
 import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
@@ -39,6 +49,9 @@ export default function FloatRequestModal({
   type,
   loading = false,
 }: FloatRequestModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
   const [step, setStep] = useState<'input' | 'review'>('input');
@@ -53,6 +66,10 @@ export default function FloatRequestModal({
     [effectiveLicenceeId]
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Update denominations when licencee changes or modal opens
   useEffect(() => {
     if (open && step === 'input') {
@@ -66,6 +83,9 @@ export default function FloatRequestModal({
     }
   }, [denomsList, open, step]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = useMemo(() => {
     return denominations.reduce(
       (sum, d) => sum + d.denomination * d.quantity,
@@ -79,6 +99,9 @@ export default function FloatRequestModal({
   );
   const isFormValid = totalAmount > 0 || isAllTouched;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -108,6 +131,9 @@ export default function FloatRequestModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>

@@ -16,7 +16,7 @@ export function useReportsTabContent({
   tabComponents,
 }: UseReportsTabContentProps): UseReportsTabContentReturn {
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   // Get animation props for current tab
@@ -31,6 +31,10 @@ export function useReportsTabContent({
       className: 'w-full h-full',
     };
   }, [activeView, animations.tabVariants]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Check if tab is transitioning (for loading states)
   const isTabTransitioning = useMemo(() => {

@@ -30,6 +30,9 @@ export default function AdministrationAddCountryModal({
     isoNumeric: '',
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current) {
       gsap.fromTo(
@@ -40,6 +43,9 @@ export default function AdministrationAddCountryModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -85,8 +91,14 @@ export default function AdministrationAddCountryModal({
     }
   };
 
+  // ============================================================================
+  // Computed Values & Guard
+  // ============================================================================
   if (!open) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div

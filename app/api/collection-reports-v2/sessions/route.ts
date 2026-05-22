@@ -36,8 +36,14 @@ export async function GET(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -46,6 +52,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const rawLicencee = searchParams.get('licencee') || undefined;
     const licencee =
@@ -110,6 +119,9 @@ export async function GET(req: NextRequest) {
     const userLocations =
       (userPayloadRecord.assignedLocations as string[]) || [];
 
+    // ============================================================================
+    // STEP 4: Determine allowed location IDs
+    // ============================================================================
     // Guard: only privileged roles may query archived sessions.
     // admin/developer/owner → unrestricted access.
     // location admin → restricted to their assignedLocations (enforced below).
@@ -136,7 +148,9 @@ export async function GET(req: NextRequest) {
       userLocations
     );
 
-    // Build match stage
+    // ============================================================================
+    // STEP 5: Build query filter
+    // ============================================================================
     const matchStage: Record<string, unknown> = {};
     if (licencee) matchStage.licencee = licencee;
     if (allowedLocationIds !== 'all') {
@@ -198,7 +212,9 @@ export async function GET(req: NextRequest) {
       matchStage.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
     }
 
-    // Aggregate sessions
+    // ============================================================================
+    // STEP 6: Aggregate sessions
+    // ============================================================================
     const [sessions, totalResult] = await Promise.all([
       ReportedMachine.aggregate([
         { $match: matchStage },
@@ -362,6 +378,9 @@ export async function GET(req: NextRequest) {
       duration
     );
 
+    // ============================================================================
+    // STEP 7: Return success response
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: sessions,
@@ -399,8 +418,14 @@ export async function POST(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -409,6 +434,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request body
+    // ============================================================================
     const body = await req.json();
     const { locationId, locationName, licencee } = body as {
       locationId: string;
@@ -448,7 +476,9 @@ export async function POST(req: NextRequest) {
       sessionStartTime = new Date(previousSession.sessionEndTime);
     }
 
-    // Verify user can access this location
+    // ============================================================================
+    // STEP 4: Verify user can access this location
+    // ============================================================================
     const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
     const userRoles = (userPayloadRecord.roles as string[]) || [];
     const userLicencees =
@@ -477,7 +507,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch machines for this location
+    // ============================================================================
+    // STEP 5: Fetch machines for this location
+    // ============================================================================
     const machines = await Machine.find({
       gamingLocation: locationId,
       ...DELETION_FILTER,
@@ -490,7 +522,9 @@ export async function POST(req: NextRequest) {
 
     const sessionId = await generateMongoId();
 
-    // Map machines to V2 format
+    // ============================================================================
+    // STEP 6: Map machines to V2 format
+    // ============================================================================
     const machineList = machines.map((machine, index) => {
       const sasIn =
         (machine.sasMeters as Record<string, number> | undefined)?.drop ?? 0;
@@ -538,7 +572,9 @@ export async function POST(req: NextRequest) {
       previousSubmissions.map(s => [s._id as string, s.sasEndTime as Date])
     );
 
-    // Persist machines as ReportedMachine documents
+    // ============================================================================
+    // STEP 7: Persist machines as ReportedMachine documents
+    // ============================================================================
     const collectorId = String(userPayload._id);
     const machineIds = await Promise.all(
       machineList.map(() => generateMongoId())
@@ -587,6 +623,9 @@ export async function POST(req: NextRequest) {
       duration
     );
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: {

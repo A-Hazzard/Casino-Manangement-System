@@ -94,6 +94,9 @@ type DesktopEditLayoutProps = {
 };
 
 export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     selectedLocationId,
     setSelectedLocationId,
@@ -158,9 +161,15 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const desktopMachineIds = machinesOfSelectedLocation.map(m => String(m._id));
   const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
       {/* Left sidebar: Location selector and machine list - 1/5 width */}

@@ -61,7 +61,7 @@ export default function ProfileValidationGate({
   context = 'CMS',
 }: ProfileValidationGateProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   // Context is available for future use when different validation rules are needed
   // for CMS vs VAULT applications
@@ -106,7 +106,7 @@ export default function ProfileValidationGate({
   const justUpdatedRef = useRef(false);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const hasInvalidFields = useMemo(() => {
     if (!invalidFields) return false;
@@ -114,7 +114,7 @@ export default function ProfileValidationGate({
   }, [invalidFields]);
 
   // ============================================================================
-  // Effects - Profile Validation Evaluation
+  // Effects
   // ============================================================================
   useEffect(() => {
     let cancelled = false;
@@ -305,7 +305,7 @@ export default function ProfileValidationGate({
   ]);
 
   // ============================================================================
-  // Event Handlers - Profile Update
+  // Handlers
   // ============================================================================
   const handleUpdate = async (
     data: ProfileValidationFormData
@@ -520,7 +520,7 @@ export default function ProfileValidationGate({
   // ...
 
   // ============================================================================
-  // Render - Profile Validation Modal
+  // Render
   // ============================================================================
   if (!open || !hasInvalidFields) {
     return null;

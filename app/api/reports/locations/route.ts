@@ -359,7 +359,7 @@ export async function GET(req: NextRequest) {
         });
 
         // ============================================================================
-        // SMIB AUTO-TAG — classify each location based on machine relayId presence
+        // STEP 5: SMIB AUTO-TAG — classify each location based on machine relayId presence
         // Uses cached DB values unless syncAll=true is specified
         // ============================================================================
         if (syncAll && allLocationIds.length > 0) {
@@ -593,7 +593,9 @@ export async function GET(req: NextRequest) {
           } as AggregatedLocation;
         });
 
-        // Filter and Sort results
+        // ============================================================================
+        // STEP 6: Filter and Sort results
+        // ============================================================================
         let filteredResults = locationResults;
         if (onlineStatus !== 'all') {
           filteredResults = locationResults.filter(loc => {
@@ -645,6 +647,10 @@ export async function GET(req: NextRequest) {
           user,
           duration
         );
+
+        // ============================================================================
+        // STEP 7: Return final response
+        // ============================================================================
 
         return NextResponse.json({
           data: converted,

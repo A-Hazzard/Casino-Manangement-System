@@ -40,7 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
  */
 export default function DashboardPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { handleApiCallWithRetry } = useGlobalErrorHandler();
   const { displayCurrency } = useCurrency();
@@ -161,7 +161,7 @@ export default function DashboardPageContent() {
   }, [selectedLicencee]);
 
   // ============================================================================
-  // Computed Values & Memoization
+  // Computed
   // ============================================================================
   const showGranularitySelector = useMemo(() => {
     if (
@@ -438,7 +438,7 @@ export default function DashboardPageContent() {
   }, [totals]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   const renderCustomizedLabel = useCallback(
     (props: CustomizedLabelProps) => <PieChartLabelRenderer props={props} />,

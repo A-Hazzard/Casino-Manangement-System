@@ -41,7 +41,7 @@ export function useCabinetDetailsData({
   dateFilterInitialized,
 }: UseCabinetDetailsDataProps): UseCabinetDetailsDataReturn {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [cabinet, setCabinet] = useState<CabinetDetail | null>(null);
   const [locationName, setLocationName] = useState<string>('');
@@ -244,6 +244,10 @@ export function useCabinetDetailsData({
   const handleCabinetUpdated = useCallback(() => {
     fetchCabinetDetailsData();
   }, [fetchCabinetDetailsData]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     // Only fetch if we have a valid date filter and it's been properly initialized

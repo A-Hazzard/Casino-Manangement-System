@@ -37,6 +37,9 @@ export default function CabinetsMovementRequests({
   locations,
   refreshTrigger = 0,
 }: CabinetsMovementRequestsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<
@@ -50,6 +53,9 @@ export default function CabinetsMovementRequests({
   );
   const { openEditModal, openDeleteModal } = useMovementRequestActionsStore();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Fetch all locations and build a map for lookups
   useEffect(() => {
     async function loadLocationsMap() {
@@ -86,6 +92,9 @@ export default function CabinetsMovementRequests({
     }
   }, [refreshTrigger, loadRequests]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredRequests = requests.filter(req => {
     const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch =
@@ -116,6 +125,9 @@ export default function CabinetsMovementRequests({
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleEdit = (req: MovementRequest) => {
     openEditModal(req);
   };
@@ -123,6 +135,9 @@ export default function CabinetsMovementRequests({
     openDeleteModal(req);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full max-w-full flex-col p-1">
       <EditMovementRequestModal onSaved={loadRequests} />

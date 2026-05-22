@@ -28,13 +28,13 @@ import { useRouter } from 'next/navigation';
 
 export default function VaultUnauthorized() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, clearUser } = useUserStore();
   const router = useRouter();
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   /**
    * Handle logout action
@@ -47,7 +47,7 @@ export default function VaultUnauthorized() {
   };
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Format user role for display

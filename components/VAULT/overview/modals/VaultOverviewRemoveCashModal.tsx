@@ -58,7 +58,7 @@ export default function VaultOverviewRemoveCashModal({
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   // ============================================================================
-  // hooks & State
+  // State & Hooks
   // ============================================================================
   const [reason, setReason] = useState('');
   const [denominations, setDenominations] = useState<Denomination[]>([]);
@@ -71,6 +71,14 @@ export default function VaultOverviewRemoveCashModal({
     [selectedLicencee]
   );
 
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAuthenticator, setShowAuthenticator] = useState(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open) {
       setDenominations(
@@ -82,13 +90,9 @@ export default function VaultOverviewRemoveCashModal({
       setTouchedDenominations(new Set());
     }
   }, [open, denomsList]);
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Calculate total amount from denomination breakdown
@@ -112,7 +116,7 @@ export default function VaultOverviewRemoveCashModal({
   const isValid = reason.trim() !== '' && (totalAmount > 0 || isAllTouched);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   /**
    * Handle denomination input change

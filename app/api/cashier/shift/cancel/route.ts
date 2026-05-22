@@ -51,10 +51,14 @@ export async function POST(request: NextRequest) {
     const userId = userPayload._id as string;
     const username = userPayload.username as string;
 
+    // ============================================================================
     // STEP 2: Connect to DB
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
     // STEP 3: Find the pending or review shift for this cashier
+    // ============================================================================
     const pendingShift = await CashierShiftModel.findOne({
       cashierId: userId,
       status: { $in: ['pending_start', 'pending_review'] },
@@ -78,7 +82,9 @@ export async function POST(request: NextRequest) {
     const locationId = pendingShift.locationId;
     const currentStatus = pendingShift.status;
 
+    // ============================================================================
     // STEP 4: Handle based on status
+    // ============================================================================
     if (currentStatus === 'pending_start') {
       // Find and handle associated float request
       const floatRequest = await FloatRequestModel.findOne({

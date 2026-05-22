@@ -35,8 +35,14 @@ export async function POST(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse payload
+    // ============================================================================
     const body = (await request.json()) as ClientErrorPayload;
 
+    // ============================================================================
+    // STEP 2: Log error
+    // ============================================================================
     const divider = '='.repeat(60);
 
     console.error(

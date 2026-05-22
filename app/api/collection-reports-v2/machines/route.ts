@@ -44,7 +44,7 @@ import {
   UpdateMachinePayload,
 } from '@/app/api/lib/types/collectionReportV2';
 import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
-import { cascadeMachineEdit } from '@/app/api/lib/helpers/collectionReportV2/recalculation';
+import { cascadeMachineEdit, propagateV2MetersToNextSession } from '@/app/api/lib/helpers/collectionReportV2/recalculation';
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -52,8 +52,14 @@ export async function POST(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -62,6 +68,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request body
+    // ============================================================================
     const body = (await req.json()) as CaptureMachinePayload;
     const {
       sessionId,
@@ -95,7 +104,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // === STEP 1: Build the base document ===
+    // ============================================================================
+    // STEP 4: RAM clear validation
+    // ============================================================================
+    // When ramClear is true, both peak meter values are required.
+    const ramClear = body.ramClear === true;
+    const ramClearIn =
+      body.ramClearMetersIn !== undefined && body.ramClearMetersIn !== null
+        ? Number(body.ramClearMetersIn)
+        : undefined;
+    const ramClearOut =
+      body.ramClearMetersOut !== undefined && body.ramClearMetersOut !== null
+        ? Number(body.ramClearMetersOut)
+        : undefined;
+    if (ramClear && (ramClearIn === undefined || ramClearOut === undefined)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'ramClearMetersIn and ramClearMetersOut are required when ramClear is true',
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Build the base document
+    // ============================================================================
     const id = await generateMongoId();
 
     const sasStartTime = body.sasStartTime
@@ -103,7 +138,9 @@ export async function POST(req: NextRequest) {
       : undefined;
     const sasEndTime = body.sasEndTime ? new Date(body.sasEndTime) : new Date();
 
-    // === STEP 2: Compute movement delta (current - previous submitted session) ===
+    // ============================================================================
+    // STEP 6: Compute movement delta (current - previous submitted session)
+    // ============================================================================
     const {
       prevMeters,
       movement,
@@ -123,10 +160,34 @@ export async function POST(req: NextRequest) {
         : undefined,
       metersMatch,
       sasStartTime,
-      sasEndTime
+      sasEndTime,
+      ramClear,
+      ramClearIn,
+      ramClearOut
     );
 
-    // === STEP 2.5: Log computed values ===
+    // Now that prev values are known, enforce the V1 invariant:
+    //   ramClearMetersIn  >= prevSasMetersIn
+    //   ramClearMetersOut >= prevSasMetersOut
+    if (ramClear) {
+      if (
+        (ramClearIn as number) < prevMeters.prevSasMetersIn ||
+        (ramClearOut as number) < prevMeters.prevSasMetersOut
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'ramClearMetersIn/Out must be greater than or equal to previous meters',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // ============================================================================
+    // STEP 7: Log computed values
+    // ============================================================================
     console.log(
       `[${functionName}] POST captured machine:`,
       JSON.stringify(
@@ -153,7 +214,9 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // === STEP 3: Build the final document ===
+    // ============================================================================
+    // STEP 8: Build the final document
+    // ============================================================================
     const docData: Omit<ReportedMachineDocument, 'createdAt' | 'updatedAt'> = {
       _id: id,
       sessionId,
@@ -189,6 +252,9 @@ export async function POST(req: NextRequest) {
       prevSasMetersIn: prevMeters.prevSasMetersIn,
       prevSasMetersOut: prevMeters.prevSasMetersOut,
       movement,
+      ramClear,
+      ramClearMetersIn: ramClear ? ramClearIn : undefined,
+      ramClearMetersOut: ramClear ? ramClearOut : undefined,
       sasStartTime,
       sasEndTime,
       metersMatch: body.metersMatch ?? undefined,
@@ -202,6 +268,9 @@ export async function POST(req: NextRequest) {
         : undefined,
     };
 
+    // ============================================================================
+    // STEP 9: Save document and log activity
+    // ============================================================================
     const doc = await ReportedMachine.create(docData);
 
     const duration = Date.now() - startTime;
@@ -242,8 +311,14 @@ export async function PATCH(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -252,6 +327,9 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request body
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const reportedMachineId = searchParams.get('id');
     if (!reportedMachineId) {
@@ -262,6 +340,63 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = (await req.json()) as UpdateMachinePayload;
+
+    // ============================================================================
+    // STEP 3.5: Chronological edit check
+    // ============================================================================
+    const targetMachine = await ReportedMachine.findOne({ _id: reportedMachineId }).lean<ReportedMachineDocument>();
+    if (!targetMachine) {
+      return NextResponse.json(
+        { success: false, error: 'Machine capture not found' },
+        { status: 404 }
+      );
+    }
+
+    const keyFields = [
+      'sasMetersIn',
+      'sasMetersOut',
+      'manualMetersIn',
+      'manualMetersOut',
+      'ramClear',
+      'ramClearMetersIn',
+      'ramClearMetersOut',
+      'sasStartTime',
+      'sasEndTime',
+    ];
+    const isModifyingKeyFields = keyFields.some(key => body[key as keyof UpdateMachinePayload] !== undefined);
+
+    if (isModifyingKeyFields && targetMachine.machineId) {
+      const targetTime = body.sasEndTime ? new Date(body.sasEndTime as string) : (targetMachine.sasEndTime || new Date());
+      
+      const nextReport = await ReportedMachine.findOne({
+        machineId: targetMachine.machineId,
+        sessionStatus: 'submitted',
+        sessionId: { $ne: targetMachine.sessionId },
+        sasEndTime: { $gt: targetTime },
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+      }).lean();
+
+      if (nextReport) {
+        const prevReport = await ReportedMachine.findOne({
+          machineId: targetMachine.machineId,
+          sessionStatus: 'submitted',
+          sessionId: { $ne: targetMachine.sessionId },
+          sasEndTime: { $lt: targetTime },
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        }).lean();
+
+        if (prevReport) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Chronological check failed: cannot edit into a middle-date report. A more recent collection session has already been submitted for this machine. To make changes, you must revert or delete the newer session(s) first.',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
 
     const updateData: Partial<ReportedMachineDocument> = {};
     const dateFields = [
@@ -289,23 +424,39 @@ export async function PATCH(req: NextRequest) {
       updateData.metersMatch = body.metersMatch;
     if (body.notes !== undefined) updateData.notes = body.notes;
 
+    // RAM clear toggle handling. When body.ramClear is explicitly false we
+    // also unset the peak fields so the doc matches V1's $unset behavior on
+    // toggle-off (see collections/[id]/route.ts).
+    const unsetData: Record<string, 1> = {};
+    if (body.ramClear !== undefined) {
+      updateData.ramClear = body.ramClear;
+      if (body.ramClear === false) {
+        unsetData.ramClearMetersIn = 1;
+        unsetData.ramClearMetersOut = 1;
+      }
+    }
+    if (body.ramClearMetersIn !== undefined && body.ramClearMetersIn !== null) {
+      updateData.ramClearMetersIn = Number(body.ramClearMetersIn);
+    }
+    if (
+      body.ramClearMetersOut !== undefined &&
+      body.ramClearMetersOut !== null
+    ) {
+      updateData.ramClearMetersOut = Number(body.ramClearMetersOut);
+    }
+
     // ============================================================================
-    // STEP: For noSMIB locations enforce null on all SAS fields regardless of
-    // what the payload or stored document contains. Stale non-null SAS values
+    // STEP 4: For noSMIB locations enforce null on all SAS fields
+    // ============================================================================
+    // regardless of what the payload or stored document contains. Stale non-null SAS values
     // from sessions captured before this rule existed must be wiped on every
     // edit so they never leak into SAS columns.
-    // ============================================================================
     {
-      const machineForLocation = await ReportedMachine.findOne(
-        { _id: reportedMachineId },
-        'machineId locationId'
-      ).lean<{ machineId?: string; locationId?: string }>();
-
-      if (machineForLocation?.locationId) {
+      if (targetMachine?.locationId) {
         const { GamingLocations } =
           await import('@/app/api/lib/models/gaminglocations');
         const locForCheck = await GamingLocations.findOne(
-          { _id: machineForLocation.locationId },
+          { _id: targetMachine.locationId },
           'noSMIBLocation'
         ).lean<{ noSMIBLocation?: boolean }>();
 
@@ -317,6 +468,9 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // ============================================================================
+    // STEP 5: Handle image updates
+    // ============================================================================
     // Handle removeImage flag — delete existing Drive file and clear temp data
     const removeImage = body.removeImage === true;
     if (removeImage) {
@@ -347,7 +501,9 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // === STEP: Recompute movement if meters or metersMatch changed ===
+    // ============================================================================
+    // STEP 6: Recompute movement if meters, metersMatch, or RAM clear changed
+    // ============================================================================
     const shouldRecalcMovement =
       body.status === 'confirmed' ||
       body.status === 'captured' ||
@@ -355,13 +511,16 @@ export async function PATCH(req: NextRequest) {
       body.sasMetersOut !== undefined ||
       body.manualMetersIn !== undefined ||
       body.manualMetersOut !== undefined ||
-      body.metersMatch !== undefined;
+      body.metersMatch !== undefined ||
+      body.ramClear !== undefined ||
+      body.ramClearMetersIn !== undefined ||
+      body.ramClearMetersOut !== undefined;
 
     if (shouldRecalcMovement) {
       // Fetch the current document to get machineId, sessionId, and latest meters
       const currentDoc = await ReportedMachine.findOne(
         { _id: reportedMachineId },
-        'machineId sessionId sasMetersIn sasMetersOut manualMetersIn manualMetersOut metersMatch sasStartTime sasEndTime'
+        'machineId sessionId sasMetersIn sasMetersOut manualMetersIn manualMetersOut metersMatch sasStartTime sasEndTime ramClear ramClearMetersIn ramClearMetersOut'
       ).lean<{
         machineId: string;
         sessionId: string;
@@ -372,6 +531,9 @@ export async function PATCH(req: NextRequest) {
         metersMatch?: boolean;
         sasStartTime?: Date;
         sasEndTime?: Date;
+        ramClear?: boolean;
+        ramClearMetersIn?: number;
+        ramClearMetersOut?: number;
       }>();
 
       if (currentDoc) {
@@ -408,6 +570,19 @@ export async function PATCH(req: NextRequest) {
           updateData.sasStartTime ?? currentDoc.sasStartTime;
         const resolvedSasEnd = updateData.sasEndTime ?? currentDoc.sasEndTime;
 
+        // Resolve RAM clear: explicit body value wins, else use stored value.
+        // When ramClear ends up false, peak values are ignored downstream.
+        const resolvedRamClear =
+          body.ramClear !== undefined
+            ? body.ramClear
+            : (currentDoc.ramClear ?? false);
+        const resolvedRamClearIn = resolvedRamClear
+          ? (updateData.ramClearMetersIn ?? currentDoc.ramClearMetersIn)
+          : undefined;
+        const resolvedRamClearOut = resolvedRamClear
+          ? (updateData.ramClearMetersOut ?? currentDoc.ramClearMetersOut)
+          : undefined;
+
         const {
           prevMeters,
           movement,
@@ -423,8 +598,29 @@ export async function PATCH(req: NextRequest) {
           resolvedManualOut ?? undefined,
           resolvedMetersMatch,
           resolvedSasStart,
-          resolvedSasEnd
+          resolvedSasEnd,
+          resolvedRamClear,
+          resolvedRamClearIn,
+          resolvedRamClearOut
         );
+
+        // Enforce ramClear peak >= prev invariant (mirrors V1).
+        if (
+          resolvedRamClear &&
+          resolvedRamClearIn !== undefined &&
+          resolvedRamClearOut !== undefined &&
+          (resolvedRamClearIn < prevMeters.prevSasMetersIn ||
+            resolvedRamClearOut < prevMeters.prevSasMetersOut)
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'ramClearMetersIn/Out must be greater than or equal to previous meters',
+            },
+            { status: 400 }
+          );
+        }
 
         console.log(
           `[${functionName}] PATCH recomputed movement:`,
@@ -463,16 +659,37 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    if (Object.keys(updateData).length === 0 && !removeImage) {
+    if (
+      Object.keys(updateData).length === 0 &&
+      Object.keys(unsetData).length === 0 &&
+      !removeImage
+    ) {
       return NextResponse.json(
         { success: false, error: 'No valid fields to update' },
         { status: 400 }
       );
     }
 
+    // When toggling ramClear off the peak fields are also being set above by
+    // recalc — strip them from updateData so $unset is the only operation
+    // applied to those keys (otherwise Mongo would error on conflict).
+    if (Object.keys(unsetData).length > 0) {
+      if ('ramClearMetersIn' in unsetData)
+        delete updateData.ramClearMetersIn;
+      if ('ramClearMetersOut' in unsetData)
+        delete updateData.ramClearMetersOut;
+    }
+
+    const updateOps: Record<string, unknown> = {};
+    if (Object.keys(updateData).length > 0) updateOps.$set = updateData;
+    if (Object.keys(unsetData).length > 0) updateOps.$unset = unsetData;
+
+    // ============================================================================
+    // STEP 7: Update document
+    // ============================================================================
     let result = await ReportedMachine.findOneAndUpdate(
       { _id: reportedMachineId },
-      { $set: updateData },
+      updateOps,
       { new: true }
     ).lean();
 
@@ -483,7 +700,7 @@ export async function PATCH(req: NextRequest) {
       if (mongoose.Types.ObjectId.isValid(reportedMachineId)) {
         const nativeResult = await ReportedMachine.collection.findOneAndUpdate(
           { _id: new mongoose.Types.ObjectId(reportedMachineId) },
-          { $set: updateData },
+          updateOps,
           { returnDocument: 'after' }
         );
         if (nativeResult) {
@@ -500,7 +717,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP: Cascade to Machine + Meters if session is submitted (edit mode)
+    // STEP 8: Cascade to Machine + Meters if session is submitted (edit mode)
     // ============================================================================
     if (result.sessionStatus === 'submitted') {
       cascadeMachineEdit({
@@ -515,11 +732,28 @@ export async function PATCH(req: NextRequest) {
         sasMetersOut: result.sasMetersOut,
         prevSasMetersIn: result.prevSasMetersIn,
         prevSasMetersOut: result.prevSasMetersOut,
+        ramClear: result.ramClear,
+        ramClearMetersIn: result.ramClearMetersIn,
+        ramClearMetersOut: result.ramClearMetersOut,
       }).catch(cascadeErr => {
         console.error(`[${functionName}] Cascade failed:`, cascadeErr);
       });
+
+      // Propagate updated meters forward to the next session if this was a middle-date edit
+      propagateV2MetersToNextSession(
+        result.machineId,
+        result.sessionId,
+        result.manualMetersIn ?? result.sasMetersIn,
+        result.manualMetersOut ?? result.sasMetersOut,
+        result.sasEndTime
+      ).catch(propErr => {
+        console.error(`[${functionName}] Propagation failed:`, propErr);
+      });
     }
 
+    // ============================================================================
+    // STEP 9: Return success response
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteUpdate(
       functionName,

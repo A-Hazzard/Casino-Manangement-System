@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
       const context = apiLogger.createContext(request, '/api/users');
       apiLogger.startLogging();
 
+      // ============================================================================
+      // STEP 1: Process User Permissions
+      // ============================================================================
+
       // Check if the assignedLicencees field exists and is a valid array
       const currentUserLicencees = Array.isArray(currentUser?.assignedLicencees)
         ? currentUser.assignedLicencees
@@ -61,6 +65,9 @@ export async function GET(request: NextRequest) {
       const isVaultManager =
         userRoles.includes('vault-manager') && !isAdminOrDev && !isManager;
 
+      // ============================================================================
+      // STEP 2: Parse query parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const status = searchParams.get('status') || 'all';
       const role = searchParams.get('role');
@@ -79,6 +86,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Handle request based on status/role filters
+      // ============================================================================
       // PURPOSE: Get deleted users
       if (status === 'deleted') {
         if (!isAdminOrDev && !isManager && !isLocationAdmin) {
@@ -171,6 +181,10 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'POST /api/users';
     const user = extractUserFromRequest(request);
+    
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = await request.json();
 
     const {
@@ -189,6 +203,9 @@ export async function POST(request: NextRequest) {
       reviewerMultiplierStartTime,
     } = body;
 
+    // ============================================================================
+    // STEP 2: Validate required fields and constraints
+    // ============================================================================
     if (!username || typeof username !== 'string') {
       logRouteError(
         functionName,
@@ -263,6 +280,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Create User and handle response
+    // ============================================================================
     try {
       const userWithoutPassword = await createUserHelper(
         {
@@ -313,9 +333,16 @@ export async function PUT(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'PUT /api/users';
     const user = extractUserFromRequest(request);
+    
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = await request.json();
     const { _id, ...updateFields } = body;
 
+    // ============================================================================
+    // STEP 2: Validate ID
+    // ============================================================================
     if (!_id) {
       logRouteError(
         functionName,
@@ -330,6 +357,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Process update
+    // ============================================================================
     try {
       const updatedUser = await updateUserHelper(_id, updateFields, request);
       const userObject = updatedUser.toObject
@@ -372,9 +402,16 @@ export async function DELETE(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'DELETE /api/users';
     const user = extractUserFromRequest(request);
+    
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = await request.json();
     const { _id } = body;
 
+    // ============================================================================
+    // STEP 2: Validate ID
+    // ============================================================================
     if (!_id) {
       logRouteError(
         functionName,
@@ -389,6 +426,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Process deletion
+    // ============================================================================
     try {
       await deleteUserHelper(_id, request);
       const duration = Date.now() - startTime;

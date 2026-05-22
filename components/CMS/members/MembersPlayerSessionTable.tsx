@@ -242,13 +242,22 @@ export default function MembersPlayerSessionTable({
   sortOrder,
   onSort,
 }: MembersPlayerSessionTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleFirstPage = () => onPageChange(0);
   const handleLastPage = () => onPageChange(totalPages - 1);
   const handlePrevPage = () => currentPage > 0 && onPageChange(currentPage - 1);
   const handleNextPage = () =>
     currentPage < totalPages - 1 && onPageChange(currentPage + 1);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Sort sessions based on current sort option and order
   const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
@@ -326,6 +335,9 @@ export default function MembersPlayerSessionTable({
     });
   }, [sessions, sortOption, sortOrder]);
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const renderCell = (session: MemberSession, header: string) => {
     const wonLess = (session.won || 0) - (session.bet || 0);
     const wonLessColor = wonLess >= 0 ? 'text-green-600' : 'text-red-600';
@@ -423,6 +435,9 @@ export default function MembersPlayerSessionTable({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="rounded-md border bg-white">
       {/* Card Grid View - shown below xl breakpoint */}

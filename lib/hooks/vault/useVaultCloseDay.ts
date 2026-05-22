@@ -17,6 +17,10 @@ import { toast } from 'sonner';
 export type CloseDayStep = 'softCount' | null;
 
 export function useVaultCloseDay(locationId?: string, username?: string) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [activeStep, setActiveStep] = useState<CloseDayStep>(null);
   const [vaultBalance, setVaultBalance] = useState<VaultBalance | null>(null);
   const [machines, setMachines] = useState<GamingMachine[]>([]);
@@ -24,6 +28,10 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
   const [pendingShifts, setPendingShifts] = useState<UnbalancedShiftInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [showBlockedShifts, setShowBlockedShifts] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchStatus = useCallback(async () => {
     if (!locationId) return;

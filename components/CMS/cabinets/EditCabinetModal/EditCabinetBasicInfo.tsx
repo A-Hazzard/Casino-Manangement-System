@@ -69,6 +69,9 @@ export default function EditCabinetBasicInfo({
   onSerialNumberBlur,
   onCustomNameBlur,
 }: EditCabinetBasicInfoProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">

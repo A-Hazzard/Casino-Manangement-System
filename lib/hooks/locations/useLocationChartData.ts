@@ -50,7 +50,7 @@ export function useLocationChartData({
   const makeChartRequest = useAbortableRequest();
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [chartData, setChartData] = useState<dashboardData[] | null>(null);
   const [loadingChartData, setLoadingChartData] = useState(true);
@@ -78,7 +78,7 @@ export function useLocationChartData({
   } | null>(null);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Also show for Quarterly/All Time if data span >= 1 week

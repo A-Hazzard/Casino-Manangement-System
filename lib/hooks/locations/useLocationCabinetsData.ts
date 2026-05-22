@@ -84,7 +84,7 @@ export function useLocationCabinetsData({
   const makeCabinetsRequest = useAbortableRequest();
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [loading, setLoading] = useState(true);
   const [cabinetsLoading, setCabinetsLoading] = useState(true);
@@ -155,7 +155,7 @@ export function useLocationCabinetsData({
   const prevCabinetsFetchKey = useRef<string>('');
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 

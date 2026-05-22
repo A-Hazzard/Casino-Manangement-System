@@ -55,8 +55,9 @@ type AppSidebarProps = {
 export default function AppSidebar({
   navConfig = cmsNavigationConfig,
 }: AppSidebarProps) {
-  // Use provided navConfig or default to CMS config for backward compatibility
-  const items = navConfig.items;
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { collapsed, toggleCollapsed, setIsOpen } = useSidebar();
   const { user, clearUser } = useUserStore();
   const pathname = usePathname();
@@ -91,6 +92,9 @@ export default function AppSidebar({
 
   const router = useRouter();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close sidebar on mobile when pathname changes (navigation occurs)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
@@ -342,6 +346,12 @@ export default function AppSidebar({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [menuOpen, collapsed]);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Use provided navConfig or default to CMS config for backward compatibility
+  const items = navConfig.items;
 
   return (
     <ClientOnly

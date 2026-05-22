@@ -54,6 +54,8 @@ The Collection Reporting system is the primary workflow for reconciling physical
 
 For deep-dive documentation on API endpoints, data flow, and the calculation pipeline, refer to the [Collections Technical Reference](./COLLECTIONS_TECHNICAL_REFERENCE.md).
 
+V2 collection reports now support the same RAM clear scenario as V1 with identical financial results — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for the unified movement formula and the no-SMIB 2-`Meters`-doc creation pattern.
+
 ---
 
 **Maintained By**: Evolution One Development Team

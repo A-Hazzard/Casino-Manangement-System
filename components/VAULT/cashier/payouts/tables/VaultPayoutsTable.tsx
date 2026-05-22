@@ -53,9 +53,21 @@ export default function VaultPayoutsTable({
   sortOrder = 'asc',
   onSort,
 }: VaultPayoutsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatDate = (dateString: string) => safeFormatDate(dateString);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: empty state
   if (payouts.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center shadow-md">

@@ -56,6 +56,10 @@ async function fetchUserData(userId: string): Promise<User | null> {
 }
 
 export function useProfileModal({ open, onClose }: UseProfileModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { user: authUser } = useUserStore();
   const [userData, setUserData] = useState<User | null>(null);
   const [formData, setFormData] = useState<Partial<User['profile']>>({});
@@ -154,6 +158,10 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const hasAttemptedLicenceeFetchRef = useRef(false);
   const hasAttemptedLocationsFetchRef = useRef(false);
   const hasReconciledLicenceesRef = useRef(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Load initial data
   useEffect(() => {
@@ -273,6 +281,10 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     }
   }, [passwordData.newPassword]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // Options for multi-select
   const licenceeOptions: MultiSelectOption[] = useMemo(
     () =>
@@ -301,6 +313,10 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       })),
     [availableLocations]
   );
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle image upload
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {

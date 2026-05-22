@@ -4,6 +4,9 @@
  */
 
 function AdministrationCountryCardSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="block lg:hidden">
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">

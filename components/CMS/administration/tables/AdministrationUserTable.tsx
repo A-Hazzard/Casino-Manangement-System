@@ -45,6 +45,9 @@ export function AdministrationUserTable({
   onDelete,
   currentUser,
 }: AdministrationUserTableProps) {
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   // Check if current user is a location admin
   const isLocationAdmin =
     currentUser?.roles?.some(
@@ -58,6 +61,9 @@ export function AdministrationUserTable({
         )
     ) || false;
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   // Helper function to check if a user is a manager, developer, or admin
   const isProtectedRole = (targetUser: User): boolean => {
     const roles = (targetUser.roles || []).map(r => r?.toLowerCase());
@@ -80,6 +86,9 @@ export function AdministrationUserTable({
     { header: 'ACTIONS', sortKey: null }, // Not sortable
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden overflow-x-auto rounded-lg bg-white shadow-md lg:block">
       <Table>

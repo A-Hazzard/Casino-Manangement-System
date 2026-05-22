@@ -64,6 +64,9 @@ export default function CashierActivityLogModal({
   cashier,
   shiftId,
 }: CashierActivityLogModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
 
@@ -76,6 +79,10 @@ export default function CashierActivityLogModal({
 
   const locationId = user?.assignedLocations?.[0];
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Note: fetchActivities is declared before Effects since useEffect depends on it.
   const fetchActivities = async (page = 0) => {
     if (!cashier || !locationId) return;
 
@@ -110,6 +117,9 @@ export default function CashierActivityLogModal({
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen && cashier) {
       fetchActivities(0);
@@ -123,6 +133,11 @@ export default function CashierActivityLogModal({
     }
   }, [currentPage]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
+  // Guard: cashier must be present
   if (!cashier) return null;
 
   const cashierName = cashier.profile
@@ -141,6 +156,9 @@ export default function CashierActivityLogModal({
     return typeMap[activity.type] || activity.type;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent

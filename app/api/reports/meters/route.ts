@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
       const params = parseMetersReportParams(searchParams);
 
       // ============================================================================
-      // STEP 3: Get user permissions and determine accessible locations
+      // STEP 2: Get user permissions and determine accessible locations
       // ============================================================================
       console.log(
         '[Meters Report API] STEP 3: Determining accessible locations...'
@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 4: Fetch location data and calculate gaming day ranges
+      // STEP 3: Fetch location data and calculate gaming day ranges
       // ============================================================================
       console.log(
         '[Meters Report API] STEP 4: Fetch location data and calculate gaming day ranges...'
@@ -222,7 +222,7 @@ export async function GET(req: NextRequest) {
         );
 
       // ============================================================================
-      // STEP 5: Fetch machines data
+      // STEP 4: Fetch machines data
       // ============================================================================
       console.log(
         `[Meters Report API] STEP 5: Fetching machines for ${locationList.length} defined locations...`
@@ -239,7 +239,7 @@ export async function GET(req: NextRequest) {
       const machineIds = machinesData.map(machine => machine._id);
 
       // ============================================================================
-      // STEP 6: Get last meter document per machine
+      // STEP 5: Get last meter document per machine
       // ============================================================================
       console.log(
         `[Meters Report API] STEP 6: Fetching last meter for ${machineIds.length} machines...`
@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 7: Optionally aggregate hourly chart data
+      // STEP 6: Optionally aggregate hourly chart data
       // ============================================================================
       console.log(
         `[Meters Report API] STEP 7: Optionally aggregate hourly chart data (includeHourlyData: ${params.includeHourlyData})...`
@@ -285,7 +285,7 @@ export async function GET(req: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 8: Transform machine and meter data into report format
+      // STEP 7: Transform machine and meter data into report format
       // ============================================================================
       console.log(
         `[Meters Report API] STEP 8: Transforming meter data for ${machinesData.length} machines...`
@@ -299,7 +299,7 @@ export async function GET(req: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 9: Apply search filter if provided
+      // STEP 8: Apply search filter if provided
       // ============================================================================
       console.log(
         `[Meters Report API] STEP 9: Applying search filter ('${params.search}') if provided...`
@@ -311,7 +311,7 @@ export async function GET(req: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 9.5: Apply reviewer multiplier scaling
+      // STEP 9: Apply reviewer multiplier scaling
       // ============================================================================
       console.log(
         '[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...'

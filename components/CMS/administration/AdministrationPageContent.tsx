@@ -31,7 +31,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export default function AdministrationPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
@@ -75,7 +75,32 @@ export default function AdministrationPageContent() {
   }, [selectedLicencee, setSelectedLicencee]);
 
   // ============================================================================
-  // Render Helpers
+  // Handlers
+  // ============================================================================
+  /**
+   * Manual refresh handler for all administration sections.
+   */
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (activeSection === 'users') {
+        await usersHook.refreshUsers();
+      } else if (activeSection === 'licencees') {
+        await licenceesHook.refreshLicencees();
+      } else if (activeSection === 'feedback') {
+        window.dispatchEvent(new CustomEvent('refreshFeedback'));
+      } else if (activeSection === 'countries') {
+        await countriesHook.refreshCountries();
+      } else if (activeSection === 'activity-logs') {
+        window.dispatchEvent(new CustomEvent('refreshActivityLogs'));
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeSection, usersHook, licenceesHook, countriesHook]);
+
+  // ============================================================================
+  // Computed
   // ============================================================================
   /**
    * Renders the content for the currently active administration section.
@@ -244,37 +269,15 @@ export default function AdministrationPageContent() {
     countriesHook,
   ]);
 
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
-  /**
-   * Manual refresh handler for all administration sections.
-   */
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      if (activeSection === 'users') {
-        await usersHook.refreshUsers();
-      } else if (activeSection === 'licencees') {
-        await licenceesHook.refreshLicencees();
-      } else if (activeSection === 'feedback') {
-        window.dispatchEvent(new CustomEvent('refreshFeedback'));
-      } else if (activeSection === 'countries') {
-        await countriesHook.refreshCountries();
-      } else if (activeSection === 'activity-logs') {
-        window.dispatchEvent(new CustomEvent('refreshActivityLogs'));
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  }, [activeSection, usersHook, licenceesHook, countriesHook]);
-
   // Prevent hydration mismatch
+
+
   if (!mounted) return null;
 
   // ============================================================================
   // Render
   // ============================================================================
+  // Guard: prevent hydration mismatch
   return (
     <PageLayout
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"

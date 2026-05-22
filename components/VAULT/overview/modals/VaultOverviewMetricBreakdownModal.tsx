@@ -37,15 +37,24 @@ export function VaultOverviewMetricBreakdownModal({
   type,
   title,
 }: VaultOverviewMetricBreakdownModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<VaultTransaction[]>([]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && locationId) {
       fetchData();
     }
   }, [open, locationId, type]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -69,6 +78,9 @@ export function VaultOverviewMetricBreakdownModal({
     return '';
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-3xl">

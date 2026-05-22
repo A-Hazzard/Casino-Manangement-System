@@ -93,6 +93,7 @@ type NewCollectionFormFieldsProps = {
   isProcessing: boolean;
   editingEntryId: string | null;
   isAddMachineEnabled: boolean;
+  isMiddleReportWarning: boolean;
   onSasStartTimeChange: (date: Date | null) => void;
   onSasEndTimeChange: (date: Date | null) => void;
   onMetersInChange: (value: string) => void;
@@ -133,6 +134,7 @@ export default function CollectionReportNewCollectionFormFields({
   isProcessing,
   editingEntryId,
   isAddMachineEnabled,
+  isMiddleReportWarning,
   onSasStartTimeChange,
   onSasEndTimeChange,
   onMetersInChange,
@@ -150,6 +152,9 @@ export default function CollectionReportNewCollectionFormFields({
   onViewMachine,
   isLoadingTime = false,
 }: NewCollectionFormFieldsProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Location Info & Previous Collection Banner */}
@@ -198,11 +203,8 @@ export default function CollectionReportNewCollectionFormFields({
             ) : (
               <ModernCalendar
                 date={
-                  sasStartTime
-                    ? {
-                        from: sasStartTime,
-                        to: sasStartTime,
-                      }
+                  inputsEnabled && sasStartTime
+                    ? { from: sasStartTime, to: sasStartTime }
                     : undefined
                 }
                 onSelect={range => {
@@ -210,6 +212,7 @@ export default function CollectionReportNewCollectionFormFields({
                 }}
                 enableTimeInputs={true}
                 mode="single"
+                disabled={!inputsEnabled || isProcessing}
                 maxDate={sasEndTime || new Date()}
               />
             )}
@@ -223,11 +226,8 @@ export default function CollectionReportNewCollectionFormFields({
             ) : (
               <ModernCalendar
                 date={
-                  sasEndTime
-                    ? {
-                        from: sasEndTime,
-                        to: sasEndTime,
-                      }
+                  inputsEnabled && sasEndTime
+                    ? { from: sasEndTime, to: sasEndTime }
                     : undefined
                 }
                 onSelect={range => {
@@ -235,12 +235,21 @@ export default function CollectionReportNewCollectionFormFields({
                 }}
                 enableTimeInputs={true}
                 mode="single"
+                disabled={!inputsEnabled || isProcessing}
                 maxDate={new Date()}
                 minDate={sasStartTime || undefined}
               />
             )}
           </div>
         </div>
+        {inputsEnabled && sasStartTime && sasEndTime && sasStartTime >= sasEndTime && (
+          <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2">
+            <p className="text-xs text-red-600">
+              ⚠️ Start time cannot be after end time. Start:{' '}
+              {sasStartTime.toLocaleString()}, End: {sasEndTime.toLocaleString()}
+            </p>
+          </div>
+        )}
         <p className="mt-3 text-xs italic leading-relaxed text-blue-600">
           Start time is automatically set from the previous collection time.
         </p>
@@ -486,6 +495,18 @@ export default function CollectionReportNewCollectionFormFields({
         </div>
       </div>
 
+      {/* Middle-Date Block Warning */}
+      {isMiddleReportWarning && (
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 shadow-sm">
+          <p className="flex items-center text-sm font-semibold text-red-700">
+            <span className="mr-2">⚠️</span> Cannot add machine
+          </p>
+          <p className="mt-1 text-xs text-red-600">
+            The selected collection time falls between existing reports. Middle-date collections are not allowed.
+          </p>
+        </div>
+      )}
+
       {/* Add / Update Entry Actions */}
       <div className="mt-3 flex gap-2">
         {editingEntryId ? (
@@ -501,7 +522,11 @@ export default function CollectionReportNewCollectionFormFields({
             <Button
               onClick={onAddOrUpdateEntry}
               className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-              disabled={(!inputsEnabled && !editingEntryId) || isProcessing}
+              disabled={
+                (!inputsEnabled && !editingEntryId) ||
+                isProcessing ||
+                (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
+              }
             >
               {isProcessing ? 'Processing...' : 'Update Entry in List'}
             </Button>
@@ -518,7 +543,10 @@ export default function CollectionReportNewCollectionFormFields({
                       : 'cursor-not-allowed bg-gray-400'
                   }`}
                   disabled={
-                    !inputsEnabled || isProcessing || !isAddMachineEnabled
+                    !inputsEnabled ||
+                    isProcessing ||
+                    !isAddMachineEnabled ||
+                    (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}
@@ -527,15 +555,17 @@ export default function CollectionReportNewCollectionFormFields({
               {!isAddMachineEnabled && (
                 <TooltipContent>
                   <p>
-                    {!machineForDataEntry
-                      ? 'Please select a machine'
-                      : !currentMetersIn || !currentMetersOut
-                        ? 'Please enter meters in and out'
-                        : currentRamClear &&
-                            (!currentRamClearMetersIn ||
-                              !currentRamClearMetersOut)
-                          ? 'Please enter RAM Clear meters when RAM Clear is checked'
-                          : 'Please fill required fields'}
+                    {isMiddleReportWarning
+                      ? 'Middle-date collections are not allowed'
+                      : !machineForDataEntry
+                        ? 'Please select a machine'
+                        : !currentMetersIn || !currentMetersOut
+                          ? 'Please enter meters in and out'
+                          : currentRamClear &&
+                              (!currentRamClearMetersIn ||
+                                !currentRamClearMetersOut)
+                            ? 'Please enter RAM Clear meters when RAM Clear is checked'
+                            : 'Please fill required fields'}
                   </p>
                 </TooltipContent>
               )}

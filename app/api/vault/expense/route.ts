@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse form data
+      // ============================================================================
       const formData = await request.formData();
       const category = formData.get('category') as string;
       const amount = parseFloat(formData.get('amount') as string);
@@ -99,6 +102,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 3: Upload attachment
+      // ============================================================================
       let attachmentId, attachmentName;
       if (file && file.size > 0) {
         try {
@@ -139,6 +145,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 4: Validate vault and location
+      // ============================================================================
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
@@ -181,6 +190,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Validate amount and denominations
+      // ============================================================================
       const currentBal =
         activeVaultShift.closingBalance ?? activeVaultShift.openingBalance;
       if (currentBal < amount) {
@@ -213,6 +225,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 6: Process expense details and update vault
+      // ============================================================================
       let bankDetails, expenseDetails;
       try {
         bankDetails = formData.get('bankDetails')
@@ -292,6 +307,9 @@ export async function POST(request: NextRequest) {
         false
       );
 
+      // ============================================================================
+      // STEP 7: Log and return
+      // ============================================================================
       await logActivity({
         userId: userPayload._id,
         username: userPayload.username,
@@ -352,6 +370,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Enforce permissions
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
@@ -370,6 +391,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and build query
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locId = searchParams.get('locationId');
       const start = searchParams.get('startDate');
@@ -411,6 +435,9 @@ export async function GET(request: NextRequest) {
       }
       if (cat) query['to.id'] = cat;
 
+      // ============================================================================
+      // STEP 3: Fetch expenses
+      // ============================================================================
       type LocalTransaction = Omit<VaultTransaction, 'expenseDetails'> & {
         expenseDetails?: VaultTransaction['expenseDetails'] & {
           machineDetails?: unknown[];
@@ -422,6 +449,9 @@ export async function GET(request: NextRequest) {
         .limit(500)
         .lean<VaultTransactionDocument[]>()) as unknown as LocalTransaction[];
 
+      // ============================================================================
+      // STEP 4: Process machine details
+      // ============================================================================
       const missingIds = new Set<string>();
       expenses.forEach((expenseItem: LocalTransaction) => {
         if (
@@ -479,6 +509,9 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // ============================================================================
+      // STEP 5: Return results
+      // ============================================================================
       expenses.forEach((expense: VaultTransaction) => {
         if (expense.expenseDetails) delete expense.expenseDetails.machineIds;
       });

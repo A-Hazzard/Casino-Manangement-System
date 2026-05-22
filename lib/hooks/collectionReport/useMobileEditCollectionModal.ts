@@ -106,6 +106,9 @@ export function useMobileEditCollectionModal({
   onRefresh,
   onClose,
 }: UseMobileEditCollectionModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const user = useUserStore(state => state.user);
   const locationsRef = useRef(locations);
 
@@ -320,6 +323,10 @@ export function useMobileEditCollectionModal({
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [showCreateReportConfirmation, setShowCreateReportConfirmation] =
     useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Navigation helper functions
   const pushNavigation = useCallback((screen: string) => {

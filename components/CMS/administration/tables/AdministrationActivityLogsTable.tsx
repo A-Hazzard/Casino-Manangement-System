@@ -74,6 +74,9 @@ type AdministrationActivityLogsTableProps = {
 function AdministrationActivityLogsTable({
   className,
 }: AdministrationActivityLogsTableProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const [allLogs, setAllLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed
@@ -603,6 +606,9 @@ function AdministrationActivityLogsTable({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={className}>
       {/* Developer-only: ObjectID resolution progress banner */}

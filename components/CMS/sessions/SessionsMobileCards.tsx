@@ -11,7 +11,14 @@ import { formatDuration } from './SessionsDesktopTable';
 export function SessionsMobileCards({
   sessions,
 }: Pick<SessionsTableProps, 'sessions'>) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className="block p-4 lg:hidden">

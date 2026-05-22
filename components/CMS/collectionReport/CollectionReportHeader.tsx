@@ -38,6 +38,9 @@ export default function CollectionReportHeader({
   onCreateDesktop,
   onCreateMobile,
 }: CollectionReportHeaderProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full max-w-full items-center justify-between">
       <h1 className="flex items-center gap-2 text-xl font-bold text-gray-800 sm:text-2xl md:text-3xl">

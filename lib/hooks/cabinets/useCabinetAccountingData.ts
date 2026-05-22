@@ -27,6 +27,9 @@ export function useCabinetAccountingData({
   cabinet,
   activeMetricsTabContent,
 }: UseCabinetAccountingDataProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
@@ -55,6 +58,10 @@ export function useCabinetAccountingData({
   const billValidatorState = getBillValidatorState(cabinet._id);
   const billValidatorTimePeriod = billValidatorState.timePeriod;
   const billValidatorDateRange = billValidatorState.customDateRange;
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     async function loadData() {

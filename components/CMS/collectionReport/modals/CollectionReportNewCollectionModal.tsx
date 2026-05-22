@@ -76,6 +76,9 @@ export default function CollectionReportNewCollectionModal({
   onRefreshLocations,
   onSuccess,
 }: CollectionReportNewCollectionModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const user = useUserStore(state => state.user);
   const userId = user?._id;
 
@@ -100,6 +103,9 @@ export default function CollectionReportNewCollectionModal({
   const [showVariationsConfirmation, setShowVariationsConfirmation] =
     useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Helper function to get proper user display name for activity logging
   const getUserDisplayNameCallback = useCallback(() => {
     if (!user) return 'Unknown User';
@@ -192,6 +198,7 @@ export default function CollectionReportNewCollectionModal({
     machineForDataEntry,
     inputsEnabled,
     isAddMachineEnabled,
+    isMiddleReportWarning,
     debouncedCurrentMetersIn,
     debouncedCurrentMetersOut,
     debouncedCurrentRamClearMetersIn,
@@ -232,6 +239,9 @@ export default function CollectionReportNewCollectionModal({
   );
   const machineStatusMap = useMachineOnlineStatus(availableMachineIds);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset variation check when modal opens/closes
   useEffect(() => {
     if (!show) {
@@ -250,6 +260,9 @@ export default function CollectionReportNewCollectionModal({
     }
   }, [show, resetCollectionModalStore]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Main Container */}
@@ -348,6 +361,7 @@ export default function CollectionReportNewCollectionModal({
                     isProcessing={isProcessing}
                     editingEntryId={editingEntryId}
                     isAddMachineEnabled={isAddMachineEnabled}
+                    isMiddleReportWarning={isMiddleReportWarning}
                     onSasStartTimeChange={setSasStartTime}
                     onSasEndTimeChange={setSasEndTime}
                     onMetersInChange={setCurrentMetersIn}

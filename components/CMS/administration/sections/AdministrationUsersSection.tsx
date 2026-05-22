@@ -98,6 +98,9 @@ export default function AdministrationUsersSection({
   requestSort,
   refreshUsers,
 }: AdministrationUsersSectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Summary Cards */}

@@ -74,6 +74,9 @@ export default function CollectionReportEditLocationMachineSelection({
   editingEntryId,
   machineStatusMap = {},
 }: EditCollectionLocationMachineSelectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-3 p-3 transition-all md:p-4">
       <div className="pointer-events-none opacity-50">

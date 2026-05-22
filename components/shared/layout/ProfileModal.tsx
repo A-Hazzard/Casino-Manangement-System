@@ -27,6 +27,9 @@ type ProfileModalProps = {
 };
 
 export default function ProfileModal({ open, onClose }: ProfileModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     userData,
     formData,
@@ -76,6 +79,9 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     validateNewPassword,
   } = useProfileModal({ open, onClose });
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleInputChange = (
     field: string,
     value: string,
@@ -96,6 +102,9 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!open) return null;
 
   return (

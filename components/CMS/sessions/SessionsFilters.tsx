@@ -16,6 +16,9 @@ export function SessionsFilters({
   setSortOrder,
   onSortChange,
 }: SessionsFiltersProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSortFieldChange = (value: string) => {
     if (setSortBy) setSortBy(value);
     if (onSortChange) onSortChange(value);
@@ -25,6 +28,9 @@ export function SessionsFilters({
     if (setSortOrder) setSortOrder(value as 'asc' | 'desc');
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full max-w-full space-y-4">
       {/* Date Filters */}

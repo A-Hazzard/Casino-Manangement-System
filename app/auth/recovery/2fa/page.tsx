@@ -19,10 +19,16 @@ import { toast } from 'sonner';
  * Extracted to allow wrapping with Suspense for useSearchParams()
  */
 function TwoFactorRecoveryContent() {
+  // ============================================================================
+  // Router & Params
+  // ============================================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
+  // ============================================================================
+  // State
+  // ============================================================================
   const [loading, setLoading] = useState(true);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [setupData, setSetupData] = useState<{
@@ -33,6 +39,9 @@ function TwoFactorRecoveryContent() {
   const [code, setCode] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (token) {
       verifyToken();
@@ -40,6 +49,10 @@ function TwoFactorRecoveryContent() {
       setLoading(false);
     }
   }, [token]);
+
+  // ============================================================================
+  // Handlers & API
+  // ============================================================================
 
   const verifyToken = async () => {
     try {
@@ -154,6 +167,8 @@ function TwoFactorRecoveryContent() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 sm:p-8">
       <div className="w-full max-w-xl space-y-8">
+        
+        {/* Header Section */}
         <div className="space-y-2 text-center">
           <h1 className="text-4xl font-black tracking-tight text-slate-900">
             Setup New Authenticator
@@ -164,7 +179,10 @@ function TwoFactorRecoveryContent() {
           </p>
         </div>
 
+        {/* QR Code and Form Section */}
         <div className="grid items-center gap-8 rounded-3xl border border-slate-100 bg-slate-50 p-6 sm:p-10 md:grid-cols-2">
+          
+          {/* QR Code Display */}
           <div className="flex flex-col items-center justify-center">
             <div className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm">
               <img
@@ -178,6 +196,7 @@ function TwoFactorRecoveryContent() {
             </p>
           </div>
 
+          {/* Verification Code Form */}
           <div className="space-y-6">
             <div className="space-y-3">
               <h3 className="font-bold text-slate-800">Verification Code</h3>

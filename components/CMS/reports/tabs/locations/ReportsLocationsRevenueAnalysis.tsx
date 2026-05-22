@@ -130,12 +130,18 @@ export default function ReportsLocationsRevenueAnalysis({
   onGranularityChange,
   showGranularitySelector,
 }: ReportsLocationsRevenueAnalysisProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
   const formatCurrency = (val: number | null | undefined) =>
     formatCurrencyWithCodeString(val, displayCurrency);
   const { activeMetricsFilter } = useDashBoardStore();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Calculate display totals from selected locations
   const displayTotals = useMemo(() => {
     if (selectedRevenueLocations.length === 0) {
@@ -180,6 +186,9 @@ export default function ReportsLocationsRevenueAnalysis({
     }));
   }, [allLocationsForDropdown]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header with Export Buttons */}

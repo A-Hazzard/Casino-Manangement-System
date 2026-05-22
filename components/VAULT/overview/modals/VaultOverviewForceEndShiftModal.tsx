@@ -51,6 +51,9 @@ export default function VaultOverviewForceEndShiftModal({
   locationId,
   onSuccess,
 }: VaultOverviewForceEndShiftModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
   const [denominations, setDenominations] = useState<Record<string, number>>(
@@ -61,8 +64,25 @@ export default function VaultOverviewForceEndShiftModal({
   );
   const [loading, setLoading] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const finalLicenceeId = licenceeId || effectiveLicenceeId;
   const denomValues = getDenominationValues(finalLicenceeId);
+
+  const shiftTotal = Object.entries(denominations).reduce(
+    (sum, [val, qty]) => sum + Number(val) * qty,
+    0
+  );
+
+  const allTouched = denomValues.every(d =>
+    touchedDenominations.has(d.toString())
+  );
+  const isValid = shiftTotal > 0 || allTouched;
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     if (open) {
@@ -71,11 +91,9 @@ export default function VaultOverviewForceEndShiftModal({
     }
   }, [open, finalLicenceeId]);
 
-  const shiftTotal = Object.entries(denominations).reduce(
-    (sum, [val, qty]) => sum + Number(val) * qty,
-    0
-  );
-
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async () => {
     if (!cashier || !locationId) return;
 
@@ -114,11 +132,9 @@ export default function VaultOverviewForceEndShiftModal({
     }
   };
 
-  const allTouched = denomValues.every(d =>
-    touchedDenominations.has(d.toString())
-  );
-  const isValid = shiftTotal > 0 || allTouched;
-
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent

@@ -29,10 +29,16 @@ export default function VaultOverviewCollectionTallyList({
   locationId,
   date = new Date().toLocaleDateString('en-CA'), // Returns YYYY-MM-DD in local time
 }: VaultOverviewCollectionTallyListProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [tally, setTally] = useState<TallyItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!locationId) return;
 
@@ -69,9 +75,15 @@ export default function VaultOverviewCollectionTallyList({
     );
   }
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const collectedCount = tally.filter(t => t.collected).length;
   const isComplete = collectedCount === tally.length && tally.length > 0;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">

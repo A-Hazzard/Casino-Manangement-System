@@ -56,6 +56,9 @@ export default function VaultOverviewModals({
   currentVaultShiftId,
   currentLocationId,
 }: VaultOverviewModalsProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <VaultOverviewAddCashModal

@@ -40,8 +40,14 @@ export async function PATCH(
   let sessionId = '';
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -50,6 +56,9 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request body
+    // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
       return NextResponse.json(
@@ -73,6 +82,49 @@ export async function PATCH(
       ? new Date(requestStartTime)
       : new Date();
 
+    // ============================================================================
+    // STEP 3.5: Chronological submit check (Middle-Date Block per Machine)
+    // ============================================================================
+    const sessionMachines = await ReportedMachine.find({ sessionId }, 'machineId sasEndTime').lean();
+    
+    for (const sm of sessionMachines) {
+      if (!sm.machineId) continue;
+      
+      const targetTime = sm.sasEndTime ? new Date(sm.sasEndTime) : sessionEndTime;
+      
+      // Check if this machine is being inserted in the middle of its history
+      const nextReport = await ReportedMachine.findOne({
+        machineId: sm.machineId,
+        sessionStatus: 'submitted',
+        sessionId: { $ne: sessionId },
+        sasEndTime: { $gt: targetTime },
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+      }).lean();
+
+      if (nextReport) {
+        const prevReport = await ReportedMachine.findOne({
+          machineId: sm.machineId,
+          sessionStatus: 'submitted',
+          sessionId: { $ne: sessionId },
+          sasEndTime: { $lt: targetTime },
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        }).lean();
+
+        if (prevReport) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Chronological check failed: cannot insert a middle-date report. A more recent collection session has already been submitted for one or more of these machines. To proceed, you must revert or delete the newer session(s) first.',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
+    // ============================================================================
+    // STEP 4: Mark session as submitted
+    // ============================================================================
     const updateFields: Record<string, unknown> = {
       sessionStatus: 'submitted',
       sessionStartTime,
@@ -119,7 +171,8 @@ export async function PATCH(
     );
 
     // ============================================================================
-    // Upload images to Google Drive
+    // STEP 5: Upload images to Google Drive
+    // ============================================================================
     // Merge two sources:
     //   1. tempImageData stored in MongoDB during in-progress captures
     //   2. Legacy frontend-sent images array (for backwards compatibility)
@@ -272,7 +325,7 @@ export async function PATCH(
     );
 
     // ============================================================================
-    // Relocate existing Drive photos when sasEndTime changed date since last submit
+    // STEP 6: Relocate existing Drive photos when sasEndTime changed date since last submit
     // ============================================================================
     // When a user edits a session and changes the custom SAS end date (e.g. May 13 → May 8),
     // any photo already uploaded to the old date folder needs to be moved.
@@ -379,7 +432,8 @@ export async function PATCH(
     }
 
     // ============================================================================
-    // Update Machine.collectionMeters and collectionTime
+    // STEP 7: Update Machine.collectionMeters and collectionTime
+    // ============================================================================
     // After a session is fully submitted, persist the latest captured SAS meters
     // and sas end time back to the Machine document so it can be used as the
     // "previous" baseline for the NEXT collection report.
@@ -389,7 +443,7 @@ export async function PATCH(
         sessionId,
         status: { $in: ['captured', 'confirmed'] },
       },
-      'machineId sasMetersIn sasMetersOut sasEndTime locationName prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut'
+      'machineId sasMetersIn sasMetersOut sasEndTime locationName locationId prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut ramClear ramClearMetersIn ramClearMetersOut'
     ).lean<
       Array<{
         machineId: string;
@@ -397,10 +451,14 @@ export async function PATCH(
         sasMetersOut: number | null;
         sasEndTime?: Date;
         locationName: string;
+        locationId?: string;
         prevSasMetersIn?: number;
         prevSasMetersOut?: number;
         manualMetersIn?: number;
         manualMetersOut?: number;
+        ramClear?: boolean;
+        ramClearMetersIn?: number;
+        ramClearMetersOut?: number;
       }>
     >();
 
@@ -554,11 +612,16 @@ export async function PATCH(
             });
           }
 
-          // If it's a No SMIB location, upsert the Meter document.
+          // If it's a No SMIB location, upsert the Meter document(s).
           // On first submit: no existing meter — create one.
           // On re-submit after editing: a meter already exists for this
           // machine + session — delete it first, then create with the
           // updated values so there are never duplicate meter records.
+          //
+          // When ramClear is true, create TWO meter docs (mirrors V1):
+          //   1. RAM clear meter: pre-reset drop (peak - prev), isRamClear=true
+          //   2. Current meter: post-reset drop (current - 0)
+          // Otherwise create ONE meter doc with the normal delta.
           if (isNoSasLocation) {
             // Resolve the true "before this session" meter values.
             // Priority:
@@ -573,72 +636,156 @@ export async function PATCH(
             const prevOut =
               existingHistoryEntry?.prevMetersOut ?? m.prevSasMetersOut ?? 0;
 
-            // STEP 1: Remove any existing meter for this machine + session.
-            // Uses collection.deleteMany to bypass the soft-delete pre-hook
-            // so hard-deleted meters don't block the subsequent create.
-            const existingMeter = await Meters.findOne({
+            // STEP 1: Remove any existing meter(s) for this machine + session.
+            // deleteMany handles the ramClear case where 2 docs may exist.
+            await Meters.deleteMany({
               machine: m.machineId,
               locationSession: sessionId,
-            }).lean<{ _id: string }>();
-
-            if (existingMeter) {
-              // Meter exists — delete and recreate with the updated values.
-              // Use findOneAndDelete so Mongoose resolves the string _id
-              // correctly without hitting the native driver's ObjectId typing.
-              await Meters.findOneAndDelete({ _id: existingMeter._id }).catch(
-                deleteErr => {
-                  console.error(
-                    `[submit] Failed to delete existing Meter ${existingMeter._id} for machine ${m.machineId}:`,
-                    deleteErr
-                  );
-                }
+            }).catch(deleteErr => {
+              console.error(
+                `[submit] Failed to delete existing Meters for machine ${m.machineId} session ${sessionId}:`,
+                deleteErr
               );
+            });
 
-              console.log(
-                `[${functionName}] Replaced existing meter ${existingMeter._id} for machine ${m.machineId} (session ${sessionId})`
-              );
-            }
+            const baseReadAt = m.sasEndTime ?? sessionEndTime;
+            const isRamClear =
+              m.ramClear === true &&
+              m.ramClearMetersIn !== undefined &&
+              m.ramClearMetersOut !== undefined;
 
-            // STEP 2: Create the meter — either fresh or replacement.
-            const meterId = await generateMongoId();
-            const meterDoc = {
-              _id: meterId,
-              machine: m.machineId,
-              location: m.locationName,
-              locationSession: sessionId,
-              movement: {
+            if (isRamClear) {
+              // STEP 2a: RAM clear meter — captures drop up to the reset point.
+              const ramClearMeterId = await generateMongoId();
+              const ramClearMeterDoc = {
+                _id: ramClearMeterId,
+                machine: m.machineId,
+                location: m.locationId || locationId,
+                locationSession: sessionId,
+                isRamClear: true,
+                movement: {
+                  coinIn: 0,
+                  coinOut: 0,
+                  totalCancelledCredits:
+                    (m.ramClearMetersOut as number) - prevOut,
+                  totalHandPaidCancelledCredits: 0,
+                  totalWonCredits: 0,
+                  drop: (m.ramClearMetersIn as number) - prevIn,
+                  jackpot: 0,
+                  currentCredits: 0,
+                  gamesPlayed: 0,
+                  gamesWon: 0,
+                },
                 coinIn: 0,
                 coinOut: 0,
-                totalCancelledCredits: (m.manualMetersOut ?? 0) - prevOut,
+                totalCancelledCredits: m.ramClearMetersOut as number,
                 totalHandPaidCancelledCredits: 0,
                 totalWonCredits: 0,
-                drop: (m.manualMetersIn ?? 0) - prevIn,
+                drop: m.ramClearMetersIn as number,
                 jackpot: 0,
                 currentCredits: 0,
                 gamesPlayed: 0,
                 gamesWon: 0,
-              },
-              coinIn: 0,
-              coinOut: 0,
-              totalCancelledCredits: m.manualMetersOut ?? null,
-              totalHandPaidCancelledCredits: 0,
-              totalWonCredits: 0,
-              drop: m.manualMetersIn ?? null,
-              jackpot: 0,
-              currentCredits: 0,
-              gamesPlayed: 0,
-              gamesWon: 0,
-              meterSource: 'COLLECTION_REPORT' as const,
-              readAt: m.sasEndTime ?? sessionEndTime,
-              createdAt: new Date(),
-            };
+                meterSource: 'COLLECTION_REPORT' as const,
+                readAt: new Date(
+                  (baseReadAt instanceof Date
+                    ? baseReadAt
+                    : new Date(baseReadAt)
+                  ).getTime() - 1000
+                ), // 1 second behind
+                createdAt: new Date(),
+              };
 
-            await Meters.create(meterDoc).catch(meterCreateError => {
-              console.error(
-                `[submit] Failed to create Meter document for machine ${m.machineId}:`,
-                meterCreateError
-              );
-            });
+              await Meters.create(ramClearMeterDoc).catch(meterCreateError => {
+                console.error(
+                  `[submit] Failed to create RAM-clear Meter for machine ${m.machineId}:`,
+                  meterCreateError
+                );
+              });
+
+              // STEP 2b: Current meter — captures drop from 0 after reset.
+              const currentMeterId = await generateMongoId();
+              const currentMeterDoc = {
+                _id: currentMeterId,
+                machine: m.machineId,
+                location: m.locationId || locationId,
+                locationSession: sessionId,
+                isRamClear: false,
+                movement: {
+                  coinIn: 0,
+                  coinOut: 0,
+                  totalCancelledCredits: m.manualMetersOut ?? 0,
+                  totalHandPaidCancelledCredits: 0,
+                  totalWonCredits: 0,
+                  drop: m.manualMetersIn ?? 0,
+                  jackpot: 0,
+                  currentCredits: 0,
+                  gamesPlayed: 0,
+                  gamesWon: 0,
+                },
+                coinIn: 0,
+                coinOut: 0,
+                totalCancelledCredits: m.manualMetersOut ?? null,
+                totalHandPaidCancelledCredits: 0,
+                totalWonCredits: 0,
+                drop: m.manualMetersIn ?? null,
+                jackpot: 0,
+                currentCredits: 0,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                meterSource: 'COLLECTION_REPORT' as const,
+                readAt: baseReadAt, // exactly at collection time
+                createdAt: new Date(new Date().getTime() + 1000),
+              };
+
+              await Meters.create(currentMeterDoc).catch(meterCreateError => {
+                console.error(
+                  `[submit] Failed to create post-RAM-clear Meter for machine ${m.machineId}:`,
+                  meterCreateError
+                );
+              });
+            } else {
+              // Non-RAM-clear path: single Meter doc with the normal delta.
+              const meterId = await generateMongoId();
+              const meterDoc = {
+                _id: meterId,
+                machine: m.machineId,
+                location: m.locationId || locationId,
+                locationSession: sessionId,
+                movement: {
+                  coinIn: 0,
+                  coinOut: 0,
+                  totalCancelledCredits: (m.manualMetersOut ?? 0) - prevOut,
+                  totalHandPaidCancelledCredits: 0,
+                  totalWonCredits: 0,
+                  drop: (m.manualMetersIn ?? 0) - prevIn,
+                  jackpot: 0,
+                  currentCredits: 0,
+                  gamesPlayed: 0,
+                  gamesWon: 0,
+                },
+                coinIn: 0,
+                coinOut: 0,
+                totalCancelledCredits: m.manualMetersOut ?? null,
+                totalHandPaidCancelledCredits: 0,
+                totalWonCredits: 0,
+                drop: m.manualMetersIn ?? null,
+                jackpot: 0,
+                currentCredits: 0,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                meterSource: 'COLLECTION_REPORT' as const,
+                readAt: baseReadAt,
+                createdAt: new Date(),
+              };
+
+              await Meters.create(meterDoc).catch(meterCreateError => {
+                console.error(
+                  `[submit] Failed to create Meter document for machine ${m.machineId}:`,
+                  meterCreateError
+                );
+              });
+            }
           }
         })
       );
@@ -671,7 +818,7 @@ export async function PATCH(
     }
 
     // ============================================================================
-    // Log Activity (Detailed V2 Session Submit)
+    // STEP 8: Log Activity
     // ============================================================================
     try {
       const reportMachines = (await ReportedMachine.find({

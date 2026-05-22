@@ -1,3 +1,7 @@
+/**
+ * UploadSmibDataModal Component
+ * Modal for uploading a CSV file containing SMIB device data.
+ */
 import { useState, useRef } from 'react';
 
 import { ChangeEvent, FC } from 'react';
@@ -21,10 +25,18 @@ const UploadSmibDataModal: FC<UploadSmibDataModalProps> = ({
   onClose,
   onRefresh,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { user } = useUserStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comments, setComments] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Helper function to get proper user display name for activity logging
   const getUserDisplayName = () => {
@@ -58,6 +70,10 @@ const UploadSmibDataModal: FC<UploadSmibDataModalProps> = ({
     // Fallback
     return 'Unknown User';
   };
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Activity logging is now handled via API calls
   const logActivity = async (
@@ -166,6 +182,10 @@ const UploadSmibDataModal: FC<UploadSmibDataModalProps> = ({
     clearForm();
     onClose();
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>

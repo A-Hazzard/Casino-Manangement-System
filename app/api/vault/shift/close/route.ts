@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const hasVaultAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -52,6 +55,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const { vaultShiftId, closingBalance, denominations } =
         await request.json();
       if (!vaultShiftId || closingBalance === undefined || !denominations) {
@@ -68,6 +74,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate denominations
+      // ============================================================================
       const validation = validateDenominations(denominations);
       if (!validation.valid) {
         logRouteError(
@@ -87,6 +96,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Validate vault shift status
+      // ============================================================================
       const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
       if (!vaultShift) {
         logRouteError(
@@ -149,6 +161,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Close vault shift and create transaction
+      // ============================================================================
       const now = new Date(),
         attrDate = await getAttributionDate(
           vaultShift.openedAt,
@@ -195,6 +210,9 @@ export async function POST(request: NextRequest) {
         createdAt: now,
       });
 
+      // ============================================================================
+      // STEP 6: Log activity and return
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteUpdate(
         functionName,

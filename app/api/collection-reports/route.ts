@@ -416,6 +416,65 @@ export async function POST(req: NextRequest) {
     const sanitizedBody = sanitizeCollectionReportPayload(body);
 
     // ============================================================================
+    // STEP 3.5: Per-Machine Chronological creation check
+    // ============================================================================
+    let isInsertingFirstReport = false;
+    if (sanitizedBody.location && sanitizedBody.timestamp && sanitizedBody.machines) {
+      const targetTime = new Date(sanitizedBody.timestamp);
+      const { Collections } = await import('@/app/api/lib/models/collections');
+      
+      const validMachines = [];
+      let firstReportInsertedCount = 0;
+
+      for (const machine of sanitizedBody.machines) {
+        if (!machine.machineId) continue;
+
+        const nextReport = await Collections.findOne({
+          machineId: machine.machineId,
+          timestamp: { $gt: targetTime },
+          deletedAt: { $exists: false },
+        }).lean();
+
+        const prevReport = await Collections.findOne({
+          machineId: machine.machineId,
+          timestamp: { $lt: targetTime },
+          deletedAt: { $exists: false },
+        }).lean();
+
+        if (nextReport && prevReport) {
+          console.warn(
+            `[Collection Reports POST API] Chronological check failed for machine ${machine.machineId}: cannot insert a middle-date collection.`
+          );
+          // Skip this machine (filter it out)
+          continue;
+        }
+
+        // If it passes, keep it
+        validMachines.push(machine);
+        
+        if (nextReport && !prevReport) {
+          firstReportInsertedCount++;
+        }
+      }
+
+      if (validMachines.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'All machines were blocked due to chronological constraints (middle-date block).',
+          },
+          { status: 400 }
+        );
+      }
+
+      sanitizedBody.machines = validMachines;
+      
+      if (firstReportInsertedCount > 0) {
+        isInsertingFirstReport = true;
+      }
+    }
+
+    // ============================================================================
     // STEP 4: Create collection report using helper
     // ============================================================================
     const result = await createCollectionReport(sanitizedBody);
@@ -432,6 +491,23 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // ============================================================================
+    // STEP 4.5: Propagate meters if we inserted before the oldest report
+    // ============================================================================
+    if (isInsertingFirstReport && sanitizedBody.machines && sanitizedBody.location && sanitizedBody.timestamp) {
+      console.log(`[Collection Reports POST API] Inserted a first report. Propagating meters to the next report...`);
+      const { propagateMetersToNextReport } = await import('@/app/api/lib/helpers/collectionReport/reportCreation');
+      for (const machine of sanitizedBody.machines) {
+        await propagateMetersToNextReport(
+          machine.machineId,
+          sanitizedBody.location,
+          new Date(sanitizedBody.timestamp),
+          machine.metersIn ?? 0,
+          machine.metersOut ?? 0
+        );
+      }
     }
 
     // ============================================================================

@@ -106,6 +106,9 @@ export default function AdministrationLicenceesSection({
   handleConfirmPaymentStatusChange,
   refreshLicencees,
 }: AdministrationLicenceesSectionProps) {
+  // ============================================================================
+  // Computed Values & Guards
+  // ============================================================================
   if (isLicenceesLoading) {
     return (
       <>
@@ -119,6 +122,9 @@ export default function AdministrationLicenceesSection({
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <AdministrationLicenceeSearchBar

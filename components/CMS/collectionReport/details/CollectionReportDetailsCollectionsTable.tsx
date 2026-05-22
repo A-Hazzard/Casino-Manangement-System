@@ -81,7 +81,7 @@ export function CollectionReportDetailsCollectionsTable({
   useNetGross = false,
 }: CollectionReportDetailsCollectionsTableProps) {
   // ============================================================================
-  // Formatting helpers
+  // Helpers
   // ============================================================================
   // Show decimals only when the fractional part is >= 0.1 (e.g. 78596 → "78,596", 26440.50 → "26,440.50")
   const smartNum = (value: number | string): string => {
@@ -98,7 +98,7 @@ export function CollectionReportDetailsCollectionsTable({
   const smartCurrency = (value: number | string) => '$' + smartNum(value);
 
   // ============================================================================
-  // Router & Component State
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
 
@@ -113,12 +113,12 @@ export function CollectionReportDetailsCollectionsTable({
   const detailsMachineStatusMap = useMachineOnlineStatus(detailsMachineIds);
 
   // ============================================================================
-  // Metric Summary & Indicators Checks
+  // Computed
   // ============================================================================
   const hasRamClears = metrics.some(m => m.ramClear);
 
   // ============================================================================
-  // Machine Detail Navigation Handlers
+  // Handlers
   // ============================================================================
   const handleMachineClick = useCallback(
     (metric: MachineMetric) => {
@@ -129,6 +129,9 @@ export function CollectionReportDetailsCollectionsTable({
     [router]
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       {/* Search Bar */}

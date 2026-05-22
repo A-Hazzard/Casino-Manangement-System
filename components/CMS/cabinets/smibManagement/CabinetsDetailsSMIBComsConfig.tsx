@@ -55,6 +55,9 @@ export function CabinetsDetailsSMIBComsConfig({
   disabled = false,
   isLoading = false,
 }: CabinetsDetailsSMIBComsConfigProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [formData, setFormData] = useState({
     comsMode: comsMode || '',
     comsAddr: comsAddr || '',
@@ -64,6 +67,9 @@ export function CabinetsDetailsSMIBComsConfig({
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update form data when props change
   useEffect(() => {
     setFormData({
@@ -75,6 +81,9 @@ export function CabinetsDetailsSMIBComsConfig({
     });
   }, [comsMode, comsAddr, comsRateMs, comsRTE, comsGPC]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
@@ -99,11 +108,17 @@ export function CabinetsDetailsSMIBComsConfig({
     onToggleEdit();
   };
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const formatLastConfigured = () => {
     if (!updatedAt) return 'Unknown';
     return formatDateWithOrdinal(new Date(updatedAt));
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">

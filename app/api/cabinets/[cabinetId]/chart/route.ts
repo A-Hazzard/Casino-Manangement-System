@@ -81,6 +81,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');

@@ -91,6 +91,9 @@ export function ReportsManufacturerPerformanceTooltip({
   coordinate,
   chartContainerRef,
 }: ReportsManufacturerPerformanceTooltipProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { displayCurrency } = useCurrencyFormat();
   const formatCurrency = (value: number | null | undefined) =>
     formatCurrencyWithCodeString(value, displayCurrency);
@@ -99,6 +102,9 @@ export function ReportsManufacturerPerformanceTooltip({
     left: number;
   } | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useLayoutEffect(() => {
     if (active && coordinate && chartContainerRef?.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
@@ -112,6 +118,9 @@ export function ReportsManufacturerPerformanceTooltip({
     }
   }, [active, coordinate, chartContainerRef]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!active || !payload || payload.length === 0) {
     return null;
   }

@@ -35,6 +35,9 @@ import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/Cab
  * Cabinets Details Page Content Component
  */
 export default function CabinetsDetailsPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const hook = useCabinetPageData();
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
@@ -98,6 +101,9 @@ export default function CabinetsDetailsPageContent() {
       <CabinetsEditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
       <CabinetsDeleteCabinetModal />
 
+      {/* ============================================================================ */}
+      {/* Render Main Content */}
+      {/* ============================================================================ */}
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
         hideOptions

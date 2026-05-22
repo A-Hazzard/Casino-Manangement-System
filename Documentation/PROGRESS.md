@@ -475,6 +475,19 @@ The system uses **30+ Mongoose schemas** across two primary domains:
 
 This section records notable technical work completed during the v4.3.0 development cycle.
 
+### Collection Report V2 — RAM Clear Parity with V1 (2026-05-21)
+
+**Requirement**: V2 collection reports needed to support the RAM clear scenario (machine meters reset between collections) with the **same financial result** as V1 — including 2-`Meters`-doc creation for no-SMIB locations.
+
+**Implementation**:
+- Added `ramClear`, `ramClearMetersIn`, `ramClearMetersOut` to the `ReportedMachine` schema and `CaptureMachinePayload` / `UpdateMachinePayload` types.
+- Extended `computeMovement()` to apply the unified formula `(ramClearMetersIn − prevSasIn) + effectiveIn` across all three branches (no-SMIB, `metersMatch === true`, `metersMatch === false`). Same for the out side.
+- POST/PATCH `/api/collection-reports-v2/machines` now accepts and validates the new fields; toggling RAM clear off triggers `$unset` of the peak fields (mirrors V1).
+- Submit route branches no-SMIB Meters creation: 1 doc for non-RAM-clear, 2 docs (with `isRamClear: true` on the first, `+1000ms readAt` on the second) when RAM clear is on.
+- Capture wizard exposes the toggle always (any `metersMatch` / SMIB state); a yellow "RAM Clear" badge surfaces it on the review list.
+
+**Result**: Identical gross to V1 across all four combinations (SMIB ± RAM clear, no-SMIB ± RAM clear); identical `Meters` collection structure for no-SMIB.
+
 ### Collection Report — Portal Dropdown for Location Select
 
 **Problem**: The `LocationSingleSelect` component inside the "New Collection Report" modal was clipped by parent `overflow: hidden` containers, truncating the dropdown for large location lists (248+ locations).  

@@ -19,6 +19,9 @@ export default function CollectionReportFormMachineNotes({
   placeholder = 'Machine-specific notes...',
   className = '',
 }: MachineNotesInputProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={className}>
       <label className="mb-1 block text-sm font-medium">

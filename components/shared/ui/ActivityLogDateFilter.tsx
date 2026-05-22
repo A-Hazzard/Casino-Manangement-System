@@ -39,10 +39,16 @@ export default function ActivityLogDateFilter({
   onTimePeriodChange,
   disabled = false,
 }: ActivityLogDateFilterProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [activeFilter, setActiveFilter] = useState<TimePeriod>('7d');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [pendingCustomDateRange, setPendingCustomDateRange] =
     useState<RDPDateRange>();
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
       const baseButtons = [
@@ -61,6 +67,9 @@ export default function ActivityLogDateFilter({
       return baseButtons;
     }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleFilterClick = (filter: TimePeriod) => {
     if (filter === 'Custom') {
       setShowCustomPicker(true);
@@ -100,6 +109,9 @@ export default function ActivityLogDateFilter({
     setPendingCustomDateRange({ from: firstDay, to: lastDay });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full flex-col gap-3">
       {/* Filter Controls */}

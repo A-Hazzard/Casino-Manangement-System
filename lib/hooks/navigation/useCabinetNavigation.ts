@@ -13,6 +13,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,6 +32,10 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
     getActiveSectionFromURLLocal()
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
   // Handle section changes with URL updates
   const handleSectionChange = useCallback(
     (section: CabinetSection) => {
@@ -41,6 +49,10 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
     },
     [activeSection, searchParams, pathname, router]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Sync state with URL changes
   useEffect(() => {

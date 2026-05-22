@@ -12,16 +12,28 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useEffect, useState } from 'react';
 
 export default function CabinetsCabinetTableSkeleton() {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const [isClient, setIsClient] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!isClient) {
     return null; // Don't render on server to prevent hydration mismatch
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full overflow-x-auto bg-white shadow">
       <table className="w-full">

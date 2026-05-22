@@ -54,9 +54,16 @@ function MachinesWithDataModal({
   details: VerificationDetails;
   formatValue: (value: number) => string;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Sort machines by value descending
   const sortedMachines = [...details.allMachinesWithData].sort(
@@ -69,6 +76,9 @@ function MachinesWithDataModal({
   const endIndex = startIndex + itemsPerPage;
   const paginatedMachines = sortedMachines.slice(startIndex, endIndex);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset to first page when modal opens or machines change
   useEffect(() => {
     if (isOpen) {
@@ -76,6 +86,9 @@ function MachinesWithDataModal({
     }
   }, [isOpen, sortedMachines.length]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] w-[95vw] max-w-4xl overflow-y-auto sm:w-full">
@@ -543,9 +556,15 @@ function VerificationDetailsSection({
   statement: string;
   formatValue: (value: number) => string;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="border-t border-gray-200 pt-2">
       <button
@@ -684,11 +703,21 @@ export default function ReportsMachinesEvaluationSummary({
   winDetails,
   gamesPlayedDetails,
 }: ReportsMachinesEvaluationSummaryProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatCurrency = (value: number) =>
     formatCurrencyWithCodeString(value, displayCurrency);
   const formatNumber = (value: number) => value.toLocaleString();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card>
       <CardHeader>

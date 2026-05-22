@@ -34,6 +34,9 @@ export default function CollectionReportV2Filters({
   onShowArchivedChange,
   canViewArchived = false,
 }: V2FiltersProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex w-full flex-col gap-y-3 rounded-lg bg-buttonActive p-4 lg:gap-y-4">
       {/* Top row - Search and Location */}

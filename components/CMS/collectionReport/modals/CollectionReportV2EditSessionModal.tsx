@@ -89,6 +89,9 @@ export default function CollectionReportV2EditSessionModal({
   onClose,
   onEdit,
 }: Props) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export default function CollectionReportV2EditSessionModal({
   const panelRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
-  // Fetch session on open
+  // Effects
   // ============================================================================
 
   useEffect(() => {
@@ -126,9 +129,7 @@ export default function CollectionReportV2EditSessionModal({
       });
   }, [isOpen, sessionId]);
 
-  // ============================================================================
-  // Animation on open
-  // ============================================================================
+
 
   useEffect(() => {
     if (isOpen && backdropRef.current && panelRef.current) {

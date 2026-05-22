@@ -52,7 +52,9 @@ export async function POST() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Generate secret if not exists
+    // ============================================================================
+    // STEP 1: Generate secret if not exists
+    // ============================================================================
     let secret = foundUser.totpSecret;
     if (!secret) {
       secret = generateTOTPSecret();

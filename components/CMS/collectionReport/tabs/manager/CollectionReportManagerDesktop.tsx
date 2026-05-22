@@ -28,6 +28,9 @@ export default function CollectionReportManagerDesktop({
   onDelete,
   showActions,
 }: CollectionReportManagerDesktopUIProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden space-y-4 lg:block">
       <ManagerScheduleFilters

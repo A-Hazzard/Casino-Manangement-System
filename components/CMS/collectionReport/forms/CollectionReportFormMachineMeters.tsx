@@ -50,6 +50,9 @@ export default function CollectionReportFormMachineMeters({
   onDisabledClick,
   className = '',
 }: MachineMetersFormProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const inputsEnabled = !disabled;
 
   // Validation checks
@@ -86,6 +89,9 @@ export default function CollectionReportFormMachineMeters({
     prevOut !== undefined &&
     Number(ramClearMetersOut) < Number(prevOut);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Meters In and Meters Out - Side by Side */}

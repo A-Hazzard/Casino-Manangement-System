@@ -44,7 +44,9 @@ export async function POST(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
     // STEP 1: Authentication & Authorization
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       logRouteError(
@@ -81,7 +83,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 2: Parse and validate request
+    // ============================================================================
     const body: CloseCashierShiftRequest = await request.json();
     const { shiftId, physicalCount, denominations } = body;
 
@@ -103,7 +107,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 3: Validate denominations
+    // ============================================================================
     const denominationValidation = validateDenominations(denominations);
     if (!denominationValidation.valid) {
       logRouteError(
@@ -140,10 +146,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 4: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
     // STEP 5: Get cashier shift
+    // ============================================================================
     const cashierShift = await CashierShiftModel.findOne({ _id: shiftId });
 
     if (!cashierShift) {
@@ -192,20 +202,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 6: Calculate expected balance
+    // ============================================================================
     const expectedBalance = calculateExpectedBalance(
       cashierShift.openingBalance,
       cashierShift.payoutsTotal,
       cashierShift.floatAdjustmentsTotal
     );
 
+    // ============================================================================
     // STEP 7: Compare with cashier's physical count
+    // ============================================================================
     const discrepancy = physicalCount - expectedBalance;
     const isMatch = Math.abs(discrepancy) < 0.01; // Allow for floating point precision
 
     const now = new Date();
 
+    // ============================================================================
     // STEP 8: ALWAYS flag for review (C-4 CRITICAL)
+    // ============================================================================
     cashierShift.cashierEnteredBalance = physicalCount;
     cashierShift.cashierEnteredDenominations = denominations;
     cashierShift.expectedClosingBalance = expectedBalance;

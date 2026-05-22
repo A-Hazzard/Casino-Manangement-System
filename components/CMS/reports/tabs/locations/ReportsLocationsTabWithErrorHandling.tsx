@@ -23,10 +23,16 @@ import axios from 'axios';
  * Main ReportsLocationsTabWithErrorHandling Component
  */
 export default function ReportsLocationsTabWithErrorHandling() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { selectedLicencee } = useDashBoardStore();
   const [connectionError, setConnectionError] = useState<Error | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
 
+  // ============================================================================
+  // Fetching & Hooks
+  // ============================================================================
   // API function for fetching locations data
   const fetchLocationsData = useCallback(async () => {
     const params = new URLSearchParams();
@@ -59,6 +65,9 @@ export default function ReportsLocationsTabWithErrorHandling() {
     },
   });
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     setConnectionError(null);
@@ -75,6 +84,9 @@ export default function ReportsLocationsTabWithErrorHandling() {
     }
   }, [execute]);
 
+  // ============================================================================
+  // Computed (Error/Loading States)
+  // ============================================================================
   // If there's a connection error, show the error UI
   if (connectionError) {
     return (
@@ -107,6 +119,9 @@ export default function ReportsLocationsTabWithErrorHandling() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Render the actual ReportsLocationsTab component
   return <ReportsLocationsTab />;
 }

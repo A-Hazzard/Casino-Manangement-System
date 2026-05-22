@@ -66,11 +66,17 @@ export default function ScheduleEditModal({
   initialData,
   saving = false,
 }: ScheduleEditModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [status, setStatus] = useState('pending');
   const [error, setError] = useState<string | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Populate form when modal opens
   useEffect(() => {
     if (initialData) {
@@ -81,6 +87,9 @@ export default function ScheduleEditModal({
     }
   }, [initialData, open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSave = async () => {
     setError(null);
 
@@ -101,6 +110,9 @@ export default function ScheduleEditModal({
     });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={open ? onClose : undefined}>
       <DialogContent className="max-w-md">

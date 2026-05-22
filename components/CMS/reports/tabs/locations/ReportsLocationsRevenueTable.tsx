@@ -58,12 +58,18 @@ export default function ReportsLocationsRevenueTable({
   onPageChange,
   onLocationClick,
 }: ReportsLocationsRevenueTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof AggregatedLocation | 'name'>(
     'name'
   );
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Calculate total machines across all locations for floor position calculation
   const totalMachinesAcrossAllLocations = useMemo(() => {
     return locations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
@@ -132,6 +138,9 @@ export default function ReportsLocationsRevenueTable({
   // Use sorted locations - sorting is applied here, pagination is handled by parent
   const paginatedLocations = sortedLocations;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSort = (field: keyof AggregatedLocation | 'name') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -141,6 +150,9 @@ export default function ReportsLocationsRevenueTable({
     }
   };
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const SortButton = ({
     field,
     children,
@@ -329,6 +341,9 @@ export default function ReportsLocationsRevenueTable({
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (loading) {
     return (
       <Card>

@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP1: Connect to database
+    // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
 

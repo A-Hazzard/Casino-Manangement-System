@@ -800,6 +800,20 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 4.5: Resolve location ID and check chronological constraints
+    // ============================================================================
+    let locationId = '';
+
+    if (originalCollection.machineId) {
+      const machineDoc = await Machine.findOne({
+        _id: originalCollection.machineId,
+      }).lean<GamingMachine>();
+      if (machineDoc?.gamingLocation) {
+        locationId = String(machineDoc.gamingLocation);
+      }
+    }
+
+    // ============================================================================
     // STEP 5: Check if meters or timestamp changed
     // ============================================================================
 
@@ -1103,7 +1117,7 @@ export async function PATCH(req: NextRequest) {
       const currentMeter = {
         _id: currentMeterId,
         machine: originalCollection.machineId,
-        location: originalCollection.location,
+        location: locationId,
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -1177,13 +1191,10 @@ export async function PATCH(req: NextRequest) {
       const baseReadAt = explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp;
       const baseCreatedAt = new Date();
 
-      const currentMeterReadAt = new Date(baseReadAt.getTime() + 1000);
-      const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
-
       const ramClearMeter = {
         _id: ramClearMeterId,
         machine: originalCollection.machineId,
-        location: originalCollection.location,
+        location: locationId,
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -1208,14 +1219,14 @@ export async function PATCH(req: NextRequest) {
         drop: newRamClearMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
         isRamClear: true,
-        readAt: baseReadAt,
+        readAt: baseReadAt, // at collection time
         createdAt: baseCreatedAt,
       };
 
       const currentMeter = {
         _id: currentMeterId,
         machine: originalCollection.machineId,
-        location: originalCollection.location,
+        location: locationId,
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -1239,8 +1250,8 @@ export async function PATCH(req: NextRequest) {
         totalWonCredits: 0,
         drop: newMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
-        readAt: currentMeterReadAt,
-        createdAt: currentMeterCreatedAt,
+        readAt: new Date(baseReadAt.getTime() + 1000), // 1 second after collection time
+        createdAt: new Date(baseCreatedAt.getTime() + 1000),
       };
 
       await Meters.create(ramClearMeter);
@@ -1266,13 +1277,43 @@ export async function PATCH(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 8.5: Update meters' readAt and movement metrics
+    // STEP 8.5: Update meters' readAt and movement metrics, propagate, and recalculate
     // ============================================================================
     if (updated) {
-      const { updateRegularAndRamClearMeters: updateMetersMovement } = await import(
+      const { updateRegularAndRamClearMeters: updateMetersMovement, propagateMetersToNextReport } = await import(
         '@/app/api/lib/helpers/collectionReport/reportCreation'
       );
       await updateMetersMovement(updated);
+
+      try {
+        await propagateMetersToNextReport(
+          String(updated.machineId),
+          String(updated.location),
+          updated.collectionTime || updated.timestamp || new Date(),
+          updated.metersIn || 0,
+          updated.metersOut || 0
+        );
+      } catch (propagateError) {
+        console.error('Failed to propagate meters to next report in bulk update:', propagateError);
+      }
+
+      // Re-sync machine's current meters and history from database
+      if (updated.machineId) {
+        try {
+          const { recalculateMachineCollections } = await import(
+            '@/app/api/lib/helpers/collectionReport/recalculation'
+          );
+          await recalculateMachineCollections(
+            String(updated.machineId),
+            true
+          );
+        } catch (recalcError) {
+          console.error(
+            'Failed to recalculate machine collections in bulk update:',
+            recalcError
+          );
+        }
+      }
     }
 
     // ============================================================================
@@ -1378,7 +1419,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP1: Connect to database
+    // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
 
@@ -1433,50 +1474,111 @@ export async function DELETE(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Revert machine collectionMeters and remove history entry
+    // STEP 6: Propagate deletion and recalculate machine collections
     // ============================================================================
-
-    // Revert machine's collectionMeters and remove collection history entry
     if (collectionToDelete.machineId) {
       try {
-        // CRITICAL: ALWAYS revert meters AND remove any history entries
-        // Even if locationReportId is empty, there might be orphaned history entries
-        const updateOperation: {
-          $set: Record<string, unknown>;
-          $pull?: Record<string, unknown>;
-        } = {
-          $set: {
-            'collectionMeters.metersIn': collectionToDelete.prevIn || 0,
-            'collectionMeters.metersOut': collectionToDelete.prevOut || 0,
-            updatedAt: new Date(),
-          },
-        };
-
-        // If collection has a locationReportId, remove its history entry
-        if (collectionToDelete.locationReportId) {
-          updateOperation.$pull = {
-            collectionMetersHistory: {
-              locationReportId: collectionToDelete.locationReportId,
-            },
-          };
+        const { Meters } = await import('@/app/api/lib/models/meters');
+        
+        // Delete Meters associated with the deleted collection
+        if (collectionToDelete.meterId) {
+          await Meters.findOneAndDelete({ _id: collectionToDelete.meterId });
+        }
+        if (collectionToDelete.ramClearMeterId) {
+          await Meters.findOneAndDelete({ _id: collectionToDelete.ramClearMeterId });
         }
 
-        // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        const machineRevertResult = await Machine.findOneAndUpdate(
-          { _id: collectionToDelete.machineId },
-          updateOperation
-        );
-        if (!machineRevertResult) {
-          console.warn(
-            `[Collections DELETE] Machine ${collectionToDelete.machineId} not found for meter revert`
+        // Find successor report
+        const nextReport = await Collections.findOne({
+          machineId: collectionToDelete.machineId,
+          timestamp: { $gt: collectionToDelete.timestamp || collectionToDelete.collectionTime || new Date() },
+          deletedAt: { $exists: false },
+        })
+          .sort({ timestamp: 1 })
+          .lean<CollectionDocument>();
+
+        if (nextReport) {
+          console.log(
+            `[DELETE /api/collection-reports/collections] Propagating deletion: setting successor ${nextReport._id} prevMeters to deleted report's prevMetersIn=${collectionToDelete.prevIn}, prevMetersOut=${collectionToDelete.prevOut}`
           );
+
+          const newPrevIn = collectionToDelete.prevIn || 0;
+          const newPrevOut = collectionToDelete.prevOut || 0;
+          const currentMetersIn = nextReport.metersIn ?? 0;
+          const currentMetersOut = nextReport.metersOut ?? 0;
+          const ramClear = !!nextReport.ramClear;
+          const ramClearMetersIn = nextReport.ramClearMetersIn;
+          const ramClearMetersOut = nextReport.ramClearMetersOut;
+
+          let movementIn = 0;
+          let movementOut = 0;
+
+          if (ramClear) {
+            if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+              movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
+              movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
+            } else {
+              movementIn = currentMetersIn;
+              movementOut = currentMetersOut;
+            }
+          } else {
+            movementIn = currentMetersIn - newPrevIn;
+            movementOut = currentMetersOut - newPrevOut;
+          }
+
+          const movement = {
+            metersIn: Number(movementIn.toFixed(2)),
+            metersOut: Number(movementOut.toFixed(2)),
+            gross: Number((movementIn - movementOut).toFixed(2)),
+          };
+
+          const collectionUpdate: Record<string, unknown> = {
+            prevIn: newPrevIn,
+            prevOut: newPrevOut,
+            movement,
+            softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+            softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+          };
+
+          if (nextReport.sasMeters) {
+            const sasMetersData = {
+              ...nextReport.sasMeters,
+              drop: movement.metersIn,
+              totalCancelledCredits: movement.metersOut,
+              gross: movement.gross,
+            };
+            collectionUpdate.sasMeters = sasMetersData;
+          }
+
+          await Collections.updateOne(
+            { _id: nextReport._id },
+            { $set: collectionUpdate }
+          );
+
+          const updatedNextReport = {
+            ...nextReport,
+            ...collectionUpdate,
+          };
+
+          const { updateRegularAndRamClearMeters } = await import(
+            '@/app/api/lib/helpers/collectionReport/reportCreation'
+          );
+          await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
         }
+
+        // Re-sync machine's current meters and history from database
+        const { recalculateMachineCollections } = await import(
+          '@/app/api/lib/helpers/collectionReport/recalculation'
+        );
+        await recalculateMachineCollections(
+          String(collectionToDelete.machineId),
+          true
+        );
       } catch (machineUpdateError) {
         console.error(
-          'Failed to revert machine collectionMeters or remove history:',
+          'Failed to propagate deletion or recalculate machine collections:',
           machineUpdateError
         );
-        // Don't fail the deletion if machine update fails, but log the error
       }
     }
 

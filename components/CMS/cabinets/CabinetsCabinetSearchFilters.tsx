@@ -43,10 +43,16 @@ export const CabinetsCabinetSearchFilters = ({
   onSortChange,
   activeSection,
 }: CabinetsCabinetSearchFiltersProps) => {
+  // ============================================================================
+  // Guard
+  // ============================================================================
   if (activeSection !== 'cabinets') {
     return null;
   }
 
+  // ============================================================================
+  // Computed & Constants
+  // ============================================================================
   const sortOptions = [
     { value: 'moneyIn-desc', label: 'Money In (Highest First)' },
     { value: 'moneyIn-asc', label: 'Money In (Lowest First)' },
@@ -76,6 +82,9 @@ export const CabinetsCabinetSearchFilters = ({
     label: gameType,
   }));
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSortChange = (value: string) => {
     const [option, order] = value.split('-');
     onSortChange(option as CabinetSortOption, order as 'asc' | 'desc');
@@ -95,6 +104,9 @@ export const CabinetsCabinetSearchFilters = ({
     onSearchChange(event.target.value);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Mobile View: Horizontal scrollable filters */}

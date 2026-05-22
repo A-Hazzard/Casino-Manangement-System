@@ -87,6 +87,9 @@ export function ReportsLocationTrendChart({
   timePeriod,
   granularity,
 }: ReportsLocationTrendChartProps) {
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Debug: Log raw data for jackpot to investigate missing data points
   useEffect(() => {
     if (dataKey === 'jackpot' && data.length > 0) {
@@ -124,6 +127,9 @@ export function ReportsLocationTrendChart({
       });
     }
   }, [data, dataKey, locations, locationNames, title]);
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Determine formatting based on time period (matching dashboard chart logic)
   const shouldShowTimes = useMemo(() => {
     // Explicitly check for 7d and 30d - always use daily format
@@ -383,6 +389,9 @@ export function ReportsLocationTrendChart({
   // 60px per data point gives enough room for labels
   const minWidth = Math.max(700, filteredData.length * 60);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full">
       <Card className="w-full">

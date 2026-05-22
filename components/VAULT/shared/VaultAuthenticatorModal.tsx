@@ -1,3 +1,11 @@
+/**
+ * Vault Authenticator Modal Component
+ *
+ * Two-factor authentication modal for Vault Manager operations.
+ * Handles TOTP setup, verification, and recovery flows.
+ *
+ * @module components/VAULT/shared/VaultAuthenticatorModal
+ */
 import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
@@ -26,6 +34,9 @@ export default function VaultAuthenticatorModal({
   onVerified,
   actionName,
 }: VaultAuthenticatorModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -41,6 +52,9 @@ export default function VaultAuthenticatorModal({
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Check setup status on open
   useEffect(() => {
     if (open) {
@@ -52,6 +66,9 @@ export default function VaultAuthenticatorModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const checkSetup = async () => {
     setCheckingSetup(true);
     try {
@@ -200,6 +217,9 @@ export default function VaultAuthenticatorModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent

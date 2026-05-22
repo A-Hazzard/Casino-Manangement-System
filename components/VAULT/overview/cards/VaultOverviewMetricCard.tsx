@@ -51,15 +51,22 @@ export default function VaultMetricCard({
   onClick,
   formatType = 'currency',
 }: VaultMetricCardProps) {
-  // ===================================
-  // Hooks
-  // ===================================
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formattedValue =
     formatType === 'currency'
       ? formatAmount(value || 0)
       : (value || 0).toLocaleString();
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Helper for dynamic font size
   const getDynamicFontSize = (text: string) => {
     if (text.length > 15) return 'text-base sm:text-lg';
@@ -67,9 +74,9 @@ export default function VaultMetricCard({
     return 'text-xl sm:text-2xl';
   };
 
-  // ===================================
+  // ============================================================================
   // Render
-  // ===================================
+  // ============================================================================
   const cardContent = (
     <Card
       className={cn(

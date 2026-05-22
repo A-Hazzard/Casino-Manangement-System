@@ -126,6 +126,9 @@ export default function CollectionReportMobileCollectedListPanel({
   onBaseBalanceCorrectionChange,
   variationMachineIds = [],
 }: MobileCollectedListPanelProps) {
+  // ============================================================================
+  // State & Variables
+  // ============================================================================
   // Submit button always enabled in edit mode (unless processing)
   // hasChanges check removed - button should always be available
   const showSubmitButton = true;
@@ -133,6 +136,9 @@ export default function CollectionReportMobileCollectedListPanel({
   // Convert newMachineIds to Set for O(1) lookup
   const newMachineIdsSet = new Set(newMachineIds);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter and sort machines
   const filteredMachines = collectedMachines.filter(machine => {
     if (!searchTerm) return true;
@@ -154,6 +160,9 @@ export default function CollectionReportMobileCollectedListPanel({
 
   const sortedMachines = sortMachines(filteredMachines);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:w-full md:flex-1 md:rounded-xl md:shadow-none ${

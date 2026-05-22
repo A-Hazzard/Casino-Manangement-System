@@ -38,6 +38,9 @@ export default function CabinetsEditCabinetModal({
 }: {
   onCabinetUpdated?: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isEditModalOpen, selectedCabinet, closeEditModal } =
     useCabinetsActionsStore();
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
@@ -70,6 +73,9 @@ export default function CabinetsEditCabinetModal({
 
 
 
+  // ============================================================================
+  // Helpers & Handlers
+  // ============================================================================
   const checkSerialNumberAvailability = async (serialNumber: string) => {
     if (!serialNumber || serialNumber.trim().length < 3) return;
     if (!formData._id) return;
@@ -256,6 +262,9 @@ export default function CabinetsEditCabinetModal({
     },
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     userModifiedFieldsRef.current = userModifiedFields;
   }, [userModifiedFields]);
@@ -551,6 +560,9 @@ export default function CabinetsEditCabinetModal({
     }
   }, [isEditModalOpen]);
 
+  // ============================================================================
+  // Additional Handlers
+  // ============================================================================
   const handleClose = () => {
     // Clear user modified fields when closing modal
     setUserModifiedFields(new Set());
@@ -655,15 +667,22 @@ export default function CabinetsEditCabinetModal({
           lastCollectionTime: selectedCabinet.collectionTime
             ? new Date(selectedCabinet.collectionTime).toISOString()
             : '',
-          // Collection meters (metersIn/Out) are the last-collected values from
-          // a submitted V2 collection report. These are distinct from sasMeters
-          // (which are the live, always-updating lifetime counters from the machine).
-          lastMetersIn: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-            : '',
-          lastMetersOut: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-            : '',
+          // Align with the initialization logic in useEffect and detail fetch:
+          // Prefer sasMeters (source of truth for CR baseline) over collectionMeters.
+          lastMetersIn:
+            selectedCabinet.sasMeters?.drop != null &&
+            selectedCabinet.sasMeters.drop > 0
+              ? String(selectedCabinet.sasMeters.drop)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+                : '',
+          lastMetersOut:
+            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
+            selectedCabinet.sasMeters.totalCancelledCredits > 0
+              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+                : '',
         },
       };
 
@@ -838,6 +857,9 @@ export default function CabinetsEditCabinetModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isEditModalOpen || !selectedCabinet) return null;
 
   // Modal Content - full viewport overlay with high z-index to cover sidebar

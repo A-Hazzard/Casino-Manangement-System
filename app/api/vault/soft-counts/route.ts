@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate permissions
+      // ============================================================================
       const hasVMAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -54,6 +57,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const { amount, denominations, notes, isEndOfDay } = await request.json();
       if (!amount || !denominations) {
         logRouteError(
@@ -69,6 +75,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate vault shift
+      // ============================================================================
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
@@ -88,6 +97,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Validate denomination total
+      // ============================================================================
       if (!validateDenominationTotal(amount, denominations)) {
         logRouteError(
           functionName,
@@ -102,6 +114,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Create soft count and transaction
+      // ============================================================================
       const scId = await generateMongoId(),
         txId = await generateMongoId();
       const attrDate = await getAttributionDate(
@@ -149,6 +164,9 @@ export async function POST(request: NextRequest) {
         false
       );
 
+      // ============================================================================
+      // STEP 6: Log activity and return response
+      // ============================================================================
       await logActivity({
         userId: userPayload._id,
         username: userPayload.username || userPayload.emailAddress,

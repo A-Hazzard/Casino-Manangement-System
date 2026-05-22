@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const hasCashierAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -54,6 +57,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const body = await request.json();
       const {
         cashierShiftId,
@@ -92,6 +98,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate cashier shift
+      // ============================================================================
       const cashierShift = await CashierShiftModel.findOne({
         _id: cashierShiftId,
         status: 'active',
@@ -123,6 +132,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Validate location access
+      // ============================================================================
       const allowedLocIds = await getUserLocationFilter(
         payload.assignedLicencees || [],
         undefined,
@@ -161,6 +173,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Create payout and transaction
+      // ============================================================================
       const now = new Date(),
         pId = await generateMongoId(),
         txId = await generateMongoId();
@@ -207,11 +222,17 @@ export async function POST(request: NextRequest) {
         createdAt: now,
       });
 
+      // ============================================================================
+      // STEP 6: Update cashier shift
+      // ============================================================================
       cashierShift.payoutsTotal += amount;
       cashierShift.payoutsCount += 1;
       cashierShift.currentBalance -= amount;
       await cashierShift.save();
 
+      // ============================================================================
+      // STEP 7: Log activity and return response
+      // ============================================================================
       await logActivity({
         userId: payload._id,
         username: payload.username,

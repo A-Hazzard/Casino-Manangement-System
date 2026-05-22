@@ -36,9 +36,15 @@ export default function VaultOverviewViewDenominationsModal({
   denominations = [],
   totalAmount,
 }: VaultOverviewViewDenominationsModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Ensure all denominations are present even if quantity is 0
   const standardDenoms = getDenominationValues(selectedLicencee);
   const displayDenoms = standardDenoms.map(val => {
@@ -49,6 +55,9 @@ export default function VaultOverviewViewDenominationsModal({
     };
   });
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={val => !val && onClose()}>
       <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-md">

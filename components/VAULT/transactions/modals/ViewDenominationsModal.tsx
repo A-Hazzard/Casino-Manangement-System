@@ -1,3 +1,11 @@
+/**
+ * View Denominations Modal Component
+ *
+ * Displays a denomination breakdown for a cash amount.
+ * Shows individual bill counts and verified total balance.
+ *
+ * @module components/VAULT/transactions/modals/ViewDenominationsModal
+ */
 import {
   Dialog,
   DialogContent,

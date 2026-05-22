@@ -16,14 +16,14 @@ type Firmware = {
  */
 export function useSmibOTA(onUpdateComplete?: () => void) {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [isUpdating, setIsUpdating] = useState(false);
   const [firmwares, setFirmwares] = useState<Firmware[]>([]);
   const [isLoadingFirmwares, setIsLoadingFirmwares] = useState(false);
 
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   /**

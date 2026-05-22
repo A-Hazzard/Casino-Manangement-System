@@ -57,12 +57,22 @@ export default function VaultTransfersTable({
   onReject,
   showActions = false,
 }: VaultTransfersTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatDate = (dateString: string | Date) => {
     return safeFormatDate(dateString);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: No transfers to display
   if (transfers.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center shadow-md">

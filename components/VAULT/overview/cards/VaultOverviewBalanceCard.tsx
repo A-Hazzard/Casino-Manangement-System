@@ -41,9 +41,13 @@ export default function VaultBalanceCard({
   isStaleShift = false,
 }: VaultBalanceCardProps) {
   // ============================================================================
-  // Hooks
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Helper to determine font size based on amount string length
   const getDynamicFontSize = (
@@ -59,6 +63,9 @@ export default function VaultBalanceCard({
     return baseSize;
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const balanceStr = formatAmount(balance.balance);
   const premisesStr = formatAmount(
     balance.totalCashOnPremises || balance.balance

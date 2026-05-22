@@ -17,9 +17,15 @@ type CollectionReportDetailsMachineDisplayProps = {
 export const CollectionReportDetailsMachineDisplay: FC<
   CollectionReportDetailsMachineDisplayProps
 > = ({ name, onClick }) => {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Split the name by parenthesized parts to bold them all
   const parts = name.split(/(\(.+?\))/g);
   
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <button
       onClick={onClick}

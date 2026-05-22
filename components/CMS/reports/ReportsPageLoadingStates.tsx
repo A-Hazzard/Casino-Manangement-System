@@ -20,6 +20,9 @@ type ReportsPageAccessDeniedStateProps = Record<string, never>;
 export function ReportsPageLoadingOverlay({
   isLoading,
 }: ReportsPageLoadingOverlayProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <AnimatePresence>
       {isLoading && (
@@ -48,6 +51,9 @@ export function ReportsPageLoadingOverlay({
  * Loading state while authentication is being checked
  */
 export function ReportsPageAuthLoadingState({}: ReportsPageAuthLoadingStateProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return <ReportsPageSkeleton />;
 }
 
@@ -55,7 +61,13 @@ export function ReportsPageAuthLoadingState({}: ReportsPageAuthLoadingStateProps
  * Access denied state when user has no permissions
  */
 export function ReportsPageAccessDeniedState({}: ReportsPageAccessDeniedStateProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="mx-auto max-w-md p-6 text-center">

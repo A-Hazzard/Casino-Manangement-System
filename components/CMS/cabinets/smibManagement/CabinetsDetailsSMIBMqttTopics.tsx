@@ -64,6 +64,9 @@ export function CabinetsDetailsSMIBMqttTopics({
   disabled = false,
   isLoading = false,
 }: CabinetsDetailsSMIBMqttTopicsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [formData, setFormData] = useState({
     mqttPubTopic: mqttPubTopic || '',
     mqttCfgTopic: mqttCfgTopic || '',
@@ -71,6 +74,9 @@ export function CabinetsDetailsSMIBMqttTopics({
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update form data when props change
   useEffect(() => {
     setFormData({
@@ -80,6 +86,9 @@ export function CabinetsDetailsSMIBMqttTopics({
     });
   }, [mqttPubTopic, mqttCfgTopic, mqttURI]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
@@ -102,11 +111,17 @@ export function CabinetsDetailsSMIBMqttTopics({
     onToggleEdit();
   };
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const formatLastConfigured = () => {
     if (!updatedAt) return 'Unknown';
     return formatDateWithOrdinal(new Date(updatedAt));
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">

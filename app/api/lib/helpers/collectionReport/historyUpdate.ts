@@ -237,6 +237,26 @@ async function processSingleMachineChange(
   }
 
   // ============================================================================
+  // STEP 2.5: Ensure manual Meters documents exist / recreate if missing
+  // ============================================================================
+  // For no-SMIB locations, Meters documents are created manually and may have
+  // been soft-deleted or hard-deleted. Call updateRegularAndRamClearMeters to
+  // update existing meters or recreate them if they are missing from the DB.
+  try {
+    const { updateRegularAndRamClearMeters } = await import('./reportCreation');
+    await updateRegularAndRamClearMeters(syncedCollection);
+    console.warn(
+      `🔄 Meters recreated/updated for machine ${machineId} collection ${collectionId}`
+    );
+  } catch (metersError) {
+    console.error(
+      '[processSingleMachineChange] Error updating/recreating Meters documents:',
+      metersError instanceof Error ? metersError.message : 'Unknown error'
+    );
+    // Non-fatal: meter recreation failure should not roll back the collection update
+  }
+
+  // ============================================================================
   // STEP 3: Mark collection as completed and update machine timestamp
   // ============================================================================
   // Mark the collection as completed since it's part of a finalized report

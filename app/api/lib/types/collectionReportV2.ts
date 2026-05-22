@@ -22,6 +22,11 @@ export type CaptureMachinePayload = {
   sasStartTime?: string;
   sasEndTime?: string;
   metersMatch?: boolean;
+  /** RAM clear flag — true when meters were reset between collections */
+  ramClear?: boolean;
+  /** Pre-reset peak readings (only meaningful when ramClear === true) */
+  ramClearMetersIn?: number | null;
+  ramClearMetersOut?: number | null;
   sequenceOrder: number;
   status: ReportedMachineStatus;
   imageData?: string;
@@ -38,6 +43,9 @@ export type UpdateMachinePayload = Partial<
     | 'metersMatch'
     | 'sasStartTime'
     | 'sasEndTime'
+    | 'ramClear'
+    | 'ramClearMetersIn'
+    | 'ramClearMetersOut'
   >
 > & {
   imageCapturedAt?: string;

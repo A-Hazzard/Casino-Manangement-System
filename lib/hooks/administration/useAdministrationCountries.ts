@@ -10,12 +10,19 @@ import { Country } from '@/lib/types/country';
 import { useCallback, useEffect, useState } from 'react';
 
 export function useAdministrationCountries() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchCountries = useCallback(async () => {
     try {
@@ -35,6 +42,10 @@ export function useAdministrationCountries() {
       setIsLoading(false);
     }
   }, []);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Initial fetch
   useEffect(() => {

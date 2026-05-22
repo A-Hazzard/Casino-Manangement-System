@@ -23,6 +23,9 @@ export default function ProfileHeader({
   onClose,
   userId,
 }: ProfileHeaderProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-5">
       <div className="flex items-center justify-between">

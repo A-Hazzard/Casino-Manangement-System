@@ -31,8 +31,14 @@ function AdministrationLicenceeSuccessModal({
   onClose,
   licencee,
 }: AdministrationLicenceeSuccessModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current) {
       gsap.fromTo(
@@ -43,6 +49,9 @@ function AdministrationLicenceeSuccessModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const copyToClipboard = async () => {
     if (licencee?.licenceKey) {
       try {
@@ -58,8 +67,14 @@ function AdministrationLicenceeSuccessModal({
     }
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open || !licencee) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div

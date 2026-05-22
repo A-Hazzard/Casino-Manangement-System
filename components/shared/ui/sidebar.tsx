@@ -58,7 +58,7 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
  */
 export function SidebarProvider({ children }: { children: ReactNode }) {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(true); // Default to collapsed
@@ -126,7 +126,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [collapsed]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Memoized context value containing sidebar state and control functions

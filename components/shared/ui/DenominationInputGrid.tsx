@@ -30,6 +30,9 @@ export default function DenominationInputGrid({
   touchedDenominations,
   onTouchedChange,
 }: DenominationInputGridProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
@@ -44,6 +47,9 @@ export default function DenominationInputGrid({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {denominations.map((denom, index) => {

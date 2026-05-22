@@ -1,3 +1,11 @@
+/**
+ * Vault Transaction Details Modal Component
+ *
+ * Displays full details of a single vault transaction including
+ * amount, source/destination, notes, bank details, and machine info.
+ *
+ * @module components/VAULT/transactions/modals/VaultTransactionDetailsModal
+ */
 'use client';
 
 import { Badge } from '@/components/shared/ui/badge';
@@ -42,8 +50,15 @@ export default function VaultTransactionDetailsModal({
   onClose,
   transaction,
 }: VaultTransactionDetailsModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: No transaction to display
   if (!transaction) return null;
 
   // Format bank details for display

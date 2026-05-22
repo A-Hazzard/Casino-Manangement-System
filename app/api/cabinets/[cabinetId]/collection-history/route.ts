@@ -67,11 +67,14 @@ export async function PATCH(request: NextRequest) {
   const machineId = pathname.split('/')[3];
 
   try {
+    // ============================================================================
+    // STEP 1: Parse body and connect to DB
+    // ============================================================================
     const { operation, entry, entryId } = await request.json();
     await connectDB();
 
     // ============================================================================
-    // STEP 4: Find machine document
+    // STEP 2: Find machine document
     // ============================================================================
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = await Machine.findOne({ _id: machineId });
@@ -90,7 +93,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Initialize collectionMetersHistory if needed
+    // STEP 3: Initialize collectionMetersHistory if needed
     // ============================================================================
     // Initialize collectionMetersHistory if it doesn't exist
     if (!machine.collectionMetersHistory) {
@@ -98,7 +101,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Execute operation (add/update/delete)
+    // STEP 4: Execute operation (add/update/delete)
     // ============================================================================
     let updated = false;
 
@@ -242,7 +245,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Save machine document
+    // STEP 5: Save machine document
     // ============================================================================
     if (updated) {
       // Save the updated machine
@@ -250,7 +253,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 8: Return success response
+    // STEP 6: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteUpdate(

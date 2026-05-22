@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const cashierId = searchParams.get('cashierId'),
         locationId = searchParams.get('locationId');
@@ -49,6 +52,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Enforce authorization
+      // ============================================================================
       const isCashier = userRoles
         .map(r => String(r).toLowerCase())
         .includes('cashier');
@@ -70,6 +76,9 @@ export async function GET(request: NextRequest) {
       if (locationId) query.locationId = locationId;
       if (varianceOnly) query.discrepancy = { $ne: 0 };
 
+      // ============================================================================
+      // STEP 3: Execute query and return results
+      // ============================================================================
       const [shifts, total] = await Promise.all([
         CashierShiftModel.find(query)
           .sort({ openedAt: -1 })

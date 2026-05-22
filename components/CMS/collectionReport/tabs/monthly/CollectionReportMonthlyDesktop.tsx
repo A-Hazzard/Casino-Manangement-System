@@ -67,6 +67,9 @@ export default function CollectionReportMonthlyDesktop({
   sortDirection,
   handleSort,
 }: MonthlyDesktopUIProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handler for export with format selection
   const handleExport = async (format: 'pdf' | 'excel') => {
     const totalLocations = locations.length;
@@ -88,6 +91,9 @@ export default function CollectionReportMonthlyDesktop({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden space-y-4 rounded-lg bg-white shadow-md md:block">
       {/* Controls Bar */}

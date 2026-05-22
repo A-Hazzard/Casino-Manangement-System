@@ -30,10 +30,16 @@ function TopPerformingSkeleton() {
 }
 
 export default function DashboardTopPerforming({ locationId }: Props) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<TopPerformingItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     let mounted = true;
     const fetchData = async () => {
@@ -70,8 +76,14 @@ export default function DashboardTopPerforming({ locationId }: Props) {
       </div>
     );
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const top = data ?? [];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <section
       aria-label="Top Performing"

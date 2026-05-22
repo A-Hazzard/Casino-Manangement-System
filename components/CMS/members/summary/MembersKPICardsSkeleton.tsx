@@ -8,9 +8,15 @@
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 export default function MembersKPICardsSkeleton() {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isLocalhost =
     typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div
       className={`mb-6 grid grid-cols-1 gap-4 ${isLocalhost ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}

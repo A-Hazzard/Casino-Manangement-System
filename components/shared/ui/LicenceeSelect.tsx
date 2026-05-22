@@ -34,11 +34,17 @@ export default function LicenceeSelect({
   disabled = false,
   userLicenceeIds,
 }: LicenceeSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [licencees, setLicencees] = useState<Licencee[]>([]);
   const [loading, setLoading] = useState(true);
 
   const lastLicenceeKeyRef = useRef<string | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const normalizedUserLicenceeIds = userLicenceeIds
       ? [...userLicenceeIds].map(String)
@@ -81,6 +87,9 @@ export default function LicenceeSelect({
     void loadLicencees();
   }, [userLicenceeIds]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <select
       value={selected}

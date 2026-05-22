@@ -36,6 +36,9 @@ export async function GET(req: NextRequest) {
 
   return withApiAuth(req, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters
+      // ============================================================================
       if (!payoutId) {
         logRouteError(
           functionName,
@@ -50,6 +53,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate payout
+      // ============================================================================
       const payout = await getPayoutById(payoutId);
       if (!payout) {
         logRouteError(
@@ -65,6 +71,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Log and return response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,
@@ -115,6 +124,9 @@ export async function PUT(req: NextRequest) {
 
   return withApiAuth(req, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters and body
+      // ============================================================================
       if (!payoutId) {
         logRouteError(
           functionName,
@@ -134,6 +146,9 @@ export async function PUT(req: NextRequest) {
         `[Payout PUT] Request — payoutId: ${payoutId}, fields: ${Object.keys(body).join(', ')}`
       );
 
+      // ============================================================================
+      // STEP 2: Fetch and validate payout
+      // ============================================================================
       const payout = await getPayoutById(payoutId);
       if (!payout) {
         logRouteError(
@@ -149,6 +164,9 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Update payout
+      // ============================================================================
       const updated = await updatePayout(payoutId, body);
       if (!updated) {
         logRouteError(
@@ -164,6 +182,9 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Log activity and return response
+      // ============================================================================
       console.log(`[Payout PUT] Updated payout ${payoutId}`);
       logActivity({
         action: 'update',

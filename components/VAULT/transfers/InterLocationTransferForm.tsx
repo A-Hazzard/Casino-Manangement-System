@@ -59,6 +59,9 @@ export default function InterLocationTransferForm({
   onSubmit,
   loading = false,
 }: InterLocationTransferFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
@@ -70,11 +73,17 @@ export default function InterLocationTransferForm({
   );
   const [notes, setNotes] = useState('');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
     0
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 0) return;
     const newDenominations = [...denominations];
@@ -136,6 +145,9 @@ export default function InterLocationTransferForm({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="rounded-lg bg-container shadow-md">
       <CardHeader>

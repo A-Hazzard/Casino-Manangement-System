@@ -80,7 +80,7 @@ export default function VaultOverviewRecordExpenseModal({
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
 
@@ -140,6 +140,9 @@ export default function VaultOverviewRecordExpenseModal({
   >([]);
   const [loadingMachines, setLoadingMachines] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && category === 'Repairs' && expenseDetails.isMachineRepair) {
       const fetchMachines = async () => {
@@ -191,7 +194,7 @@ export default function VaultOverviewRecordExpenseModal({
   }, [open, category, expenseDetails.isMachineRepair, selectedLicencee]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Calculate total amount from denominations
@@ -211,7 +214,7 @@ export default function VaultOverviewRecordExpenseModal({
   const isValid = category !== '' && (amountNum > 0 || isAllTouched);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
 
   /**

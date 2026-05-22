@@ -70,8 +70,14 @@ export default function VaultFloatRequestsTable({
   showHistory = false,
   disabled = false,
 }: VaultFloatRequestsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     try {
@@ -89,6 +95,11 @@ export default function VaultFloatRequestsTable({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: empty state
   if (requests.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center shadow-md">

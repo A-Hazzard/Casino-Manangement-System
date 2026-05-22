@@ -10,6 +10,9 @@
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 export default function CabinetsCabinetCardSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
       {[...Array(4)].map((_, i) => (

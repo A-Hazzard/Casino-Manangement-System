@@ -46,7 +46,7 @@ import ReportsLocationsSASEvaluation from './ReportsLocationsSASEvaluation';
  */
 export default function ReportsLocationsTab() {
   // ============================================================================
-  // Navigation & Persistence Hooks
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
@@ -92,6 +92,9 @@ export default function ReportsLocationsTab() {
   );
   const hasManuallySetGranularityRef = useRef(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   const showGranularitySelector = useMemo(() => {
     if (
@@ -128,6 +131,9 @@ export default function ReportsLocationsTab() {
     return false;
   }, [activeMetricsFilter, customDateRange]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Recalculate default granularity when date filters change
   useEffect(() => {
     if (hasManuallySetGranularityRef.current) {
@@ -218,7 +224,7 @@ export default function ReportsLocationsTab() {
   });
 
   // ============================================================================
-  // User Interaction & URL Sync Handlers
+  // Handlers
   // ============================================================================
   const handleLocationsTabChange = useCallback(
     (tab: string) => {
@@ -235,6 +241,9 @@ export default function ReportsLocationsTab() {
     [searchParams, pathname, router]
   );
 
+  // ============================================================================
+  // Effects (Continued)
+  // ============================================================================
   // Sync activeTab with URL parameter
   useEffect(() => {
     const initial = searchParams?.get('ltab') || 'overview';
@@ -558,6 +567,9 @@ export default function ReportsLocationsTab() {
     },
     [setLocationTrendData, setLocationTrendLoading]
   );
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP1: Connect to database
+    // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
 
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3.5: Technician Restriction - Force last hour data
+    // STEP 4: Technician Restriction - Force last hour data
     // ============================================================================
     const { getUserFromServer } =
       await import('@/app/api/lib/helpers/users/users');
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP4: Build base query with filters
+    // STEP 5: Build base query with filters
     // ============================================================================
     // Build the base query with machine ID
     const baseQuery: Record<string, unknown> = { machine: machineId };
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Calculate date range if time period provided
+    // STEP 6: Calculate date range if time period provided
     // ============================================================================
     // Apply date filtering if provided
     let dateFilterStart: Date | null = null;
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Query events with pagination
+    // STEP 7: Query events with pagination
     // ============================================================================
     // Try to find events with the base query
     let events = await MachineEvent.find(baseQuery)
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       .lean<MachineEventDocument[]>();
 
     // ============================================================================
-    // STEP 7: Try alternative machine identifiers if no events found
+    // STEP 8: Try alternative machine identifiers if no events found
     // ============================================================================
     // If no events found with direct machine ID, try alternative matching
     if (events.length === 0) {
@@ -266,7 +266,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 8: Get total count for pagination
+    // STEP 9: Get total count for pagination
     // ============================================================================
     // Get total count for pagination
     let totalEvents = events.length;
@@ -279,7 +279,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 9: Return events with pagination metadata
+    // STEP 10: Return events with pagination metadata
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

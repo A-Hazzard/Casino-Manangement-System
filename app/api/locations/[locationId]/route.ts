@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse Query Params and Check Basic/Name Only Modes
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const nameOnly = searchParams.get('nameOnly') === 'true';
       const basicInfo = searchParams.get('basicInfo') === 'true';
@@ -176,7 +179,7 @@ export async function GET(request: NextRequest) {
       }
 
       // ============================================================================
-      // SMIB AUTO-TAG — re-classify this location on every detail page load.
+      // STEP 2: SMIB AUTO-TAG — re-classify this location on every detail page load.
       // Uses a lightweight projection (relayId only) so it doesn't slow the response.
       // Fire-and-forget: result is not awaited.
       // ============================================================================
@@ -626,8 +629,10 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      // Final Sorting
+      // ============================================================================
+      // STEP 3: Final Sorting
       // Priority: Search Relevance -> Online Status -> Gross Descending
+      // ============================================================================
       machinesWithMeters.sort((a, b) => {
         // 1. Search Relevance (if searching)
         if (searchTerm) {

@@ -20,9 +20,16 @@ type UserCounts = {
 };
 
 export function useAdministrationUserCounts(selectedLicencee: string | null) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [counts, setCounts] = useState<UserCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     let isMounted = true;

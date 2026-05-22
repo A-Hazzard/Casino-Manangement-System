@@ -31,9 +31,15 @@ export default function ConfirmationModal({
   loading = false,
   variant = 'default',
 }: ConfirmationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -49,11 +55,17 @@ export default function ConfirmationModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     if (loading) return;
     onOpenChange(false);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!open) return null;
 
   return createPortal(

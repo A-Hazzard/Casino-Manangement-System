@@ -9,6 +9,9 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
+    // ============================================================================
+    // STEP 1: Validate fileId
+    // ============================================================================
     const { fileId } = await params;
     if (!fileId) {
       return NextResponse.json(
@@ -17,8 +20,14 @@ export async function GET(
       );
     }
 
+    // ============================================================================
+    // STEP 2: Fetch file from Drive
+    // ============================================================================
     const file = await getDriveFileMeta(fileId);
 
+    // ============================================================================
+    // STEP 3: Return file response
+    // ============================================================================
     return new NextResponse(new Uint8Array(file.data), {
       status: 200,
       headers: {

@@ -50,11 +50,22 @@ export default function ShiftStatusBanner({
   onConfirm,
   onCancelRequest,
 }: ShiftStatusBannerProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isPendingStart = status === 'pending_start';
   const isPendingReview = status === 'pending_review';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: approved VM float — show receipt confirmation banner
   if (pendingVmApproval) {
     const isStartRequest =
       !pendingVmApproval.type ||

@@ -44,6 +44,10 @@ export function DateTimePicker({
   disabled,
   dateOnly = false,
 }: DateTimePickerProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Store hours and minutes separately for UI handling
   const [time, setTime] = useState(() => {
     if (!date) return { hours: '12', minutes: '00', period: 'AM' };
@@ -56,6 +60,10 @@ export function DateTimePicker({
     };
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // When the date changes (from calendar), update the time state to match the new date
   useEffect(() => {
     if (!date) return;
@@ -67,6 +75,10 @@ export function DateTimePicker({
       period: hours >= 12 ? 'PM' : 'AM',
     });
   }, [date]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleDateSelect: SelectSingleEventHandler = (
     selectedDay,
@@ -103,11 +115,19 @@ export function DateTimePicker({
     }
   }, [time, date, setDate]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // Format display string
   const formattedDate = useMemo(() => {
     if (!date) return dateOnly ? 'Pick a date' : 'Pick a date and time';
     return format(date, dateOnly ? 'PPP' : 'PPP p');
   }, [date, dateOnly]);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <Popover>

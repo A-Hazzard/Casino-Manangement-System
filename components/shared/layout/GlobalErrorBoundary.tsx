@@ -202,14 +202,25 @@ export default function GlobalErrorBoundary({
 }: {
   children: ReactNode;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [errorDetails, setErrorDetails] = useState<ErrorDetails | null>(null);
   const { user } = useUserStore();
+  const pathname = usePathname();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   const isDeveloper =
     user?.roles
       ?.filter((r): r is string => typeof r === 'string')
       ?.some(r => r === 'developer') ?? false;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleWindowError = useCallback((event: ErrorEvent) => {
     const error = event.error as Error | null;
     if (!error) return;
@@ -264,6 +275,9 @@ export default function GlobalErrorBoundary({
     []
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     window.addEventListener('error', handleWindowError);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
@@ -277,12 +291,14 @@ export default function GlobalErrorBoundary({
   }, [handleWindowError, handleUnhandledRejection]);
 
   // Reset error state when URL changes (e.g., after logout redirects)
-  const pathname = usePathname();
   useEffect(() => {
     // Clear error state when URL changes to prevent stale error displays
     setErrorDetails(null);
   }, [pathname]);
 
+  // ============================================================================
+  // Handlers (continued)
+  // ============================================================================
   const handleReactError = useCallback((error: Error, info: ErrorInfo) => {
     const componentStack = info.componentStack ?? undefined;
     console.error(
@@ -302,6 +318,9 @@ export default function GlobalErrorBoundary({
     window.location.reload();
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (errorDetails) {
     return isDeveloper ? (
       <DeveloperErrorView details={errorDetails} onRetry={retry} />

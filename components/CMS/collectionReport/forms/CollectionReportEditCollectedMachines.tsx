@@ -62,8 +62,14 @@ export default function CollectionReportEditCollectedMachines({
 
   onApplyAllDates,
 }: EditCollectionCollectedMachinesProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredEntries = useMemo(() => {
     const reversed = collectedMachineEntries.slice().reverse();
     if (!searchQuery.trim()) return reversed;
@@ -79,6 +85,9 @@ export default function CollectionReportEditCollectedMachines({
     );
   }, [collectedMachineEntries, searchQuery]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-[250px] min-h-0 w-full shrink-0 flex-col bg-gray-50 lg:h-full">
       <div className="border-b border-gray-300 bg-gray-100 p-3">

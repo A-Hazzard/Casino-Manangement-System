@@ -48,6 +48,10 @@ export function useMembersActivityLog({
   startDate = '',
   endDate = '',
 }: UseMembersActivityLogProps = {}) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [isLoading, setIsLoading] = useState(false);
   const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
   const [pagination, setPagination] = useState({
@@ -56,6 +60,10 @@ export function useMembersActivityLog({
     totalCount: 0,
     limit: 20,
   });
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchActivityLogs = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +96,10 @@ export function useMembersActivityLog({
       setIsLoading(false);
     }
   }, [page, limit, search, actionFilter, startDate, endDate]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     fetchActivityLogs();

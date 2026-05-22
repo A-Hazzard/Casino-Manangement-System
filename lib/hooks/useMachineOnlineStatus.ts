@@ -10,10 +10,22 @@ import { useEffect, useState } from 'react';
 export function useMachineOnlineStatus(
   machineIds: string[]
 ): Record<string, boolean> {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [statusMap, setStatusMap] = useState<Record<string, boolean>>({});
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Deduplicate and sort so the joined string is stable between renders.
   const dedupedKey = [...new Set(machineIds.filter(Boolean))].sort().join(',');
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     if (!dedupedKey) {

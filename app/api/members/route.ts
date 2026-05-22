@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Parse query parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const search = searchParams.get('search') || '';
       const page = parseInt(searchParams.get('page') || '1');
@@ -52,6 +55,9 @@ export async function GET(request: NextRequest) {
       const displayCurrency = searchParams.get('currency') || 'USD';
       const licencee = searchParams.get('licencee') || null;
 
+      // ============================================================================
+      // STEP 2: Build query filter
+      // ============================================================================
       const query: Record<string, unknown> = {
         $or: [
           { deletedAt: null },
@@ -90,6 +96,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 3: Build relevance and sort options
+      // ============================================================================
       let relevanceStage: PipelineStage | null = null;
       if (search) {
         const searchTermLower = search.trim();
@@ -164,6 +173,9 @@ export async function GET(request: NextRequest) {
         sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
       }
 
+      // ============================================================================
+      // STEP 4: Build aggregation pipeline
+      // ============================================================================
       const pipeline: PipelineStage[] = [
         { $match: query },
         {
@@ -242,6 +254,9 @@ export async function GET(request: NextRequest) {
       if (relevanceStage) pipeline.push(relevanceStage);
       pipeline.push({ $sort: sortOptions as Record<string, 1 | -1> });
 
+      // ============================================================================
+      // STEP 5: Execute aggregation and calculate pagination
+      // ============================================================================
       const countResult = await Member.aggregate([
         ...pipeline,
         { $count: 'total' },
@@ -253,6 +268,9 @@ export async function GET(request: NextRequest) {
 
       const members = await Member.aggregate(pipeline);
 
+      // ============================================================================
+      // STEP 6: Apply currency conversion
+      // ============================================================================
       const convertedMembers = await applyCurrencyConversionToMetrics(
         members,
         licencee,
@@ -269,6 +287,9 @@ export async function GET(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 7: Return success response
+      // ============================================================================
       return NextResponse.json({
         success: true,
         data: {
@@ -310,6 +331,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: currentUser }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate request body
+      // ============================================================================
       const body = await request.json();
       const trimmedFirstName = body.profile?.firstName?.trim();
       const trimmedLastName = body.profile?.lastName?.trim();
@@ -329,6 +353,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Check username uniqueness
+      // ============================================================================
       const existingMember = await Member.findOne({
         username: trimmedUsername,
       });
@@ -346,6 +373,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Create member entry
+      // ============================================================================
       const memberId = await generateMongoId();
       const newMember = new Member({
         _id: memberId,
@@ -366,6 +396,9 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logRouteCreate(functionName, 'POST', '/api/members', 1, user, duration);
 
+      // ============================================================================
+      // STEP 4: Log activity
+      // ============================================================================
       if (currentUser?._id) {
         try {
           const changes = calculateChanges(
@@ -394,6 +427,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 5: Return success response
+      // ============================================================================
       return NextResponse.json(newMember, { status: 201 });
     } catch (error) {
       const errorMessage =

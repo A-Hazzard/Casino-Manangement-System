@@ -43,6 +43,9 @@ export async function GET(req: NextRequest) {
       const functionName = 'GET /api/movement-requests';
       const user = extractUserFromRequest(req);
       try {
+        // ============================================================================
+        // STEP 1: Parse user payload
+        // ============================================================================
         const assignedLicencees =
           (userPayload as { assignedLicencees?: string[] })
             ?.assignedLicencees || [];

@@ -44,7 +44,7 @@ import Image from 'next/image';
  */
 export default function ReportsPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
@@ -103,6 +103,9 @@ export default function ReportsPageContent() {
 
   const { activeView, handleTabChange } = useReportsNavigation(availableTabs);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Tab content rendering
   const tabComponents: Record<ReportView, ReactElement> = {
     locations: <ReportsLocationsTabWithErrorHandling />,
@@ -146,6 +149,9 @@ export default function ReportsPageContent() {
     tabComponents,
   });
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   /**
    * Render the content for the active tab
    */
@@ -162,6 +168,9 @@ export default function ReportsPageContent() {
     );
   };
 
+  // ============================================================================
+  // Computed (Auth & Loading Checks)
+  // ============================================================================
   // Show loading state while authentication is loading
   if (isLoading) {
     return <ReportsPageAuthLoadingState />;
@@ -172,6 +181,9 @@ export default function ReportsPageContent() {
     return <ReportsPageAccessDeniedState />;
   }
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
@@ -183,6 +195,9 @@ export default function ReportsPageContent() {
     setRefreshing(false);
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <PageLayout
       headerProps={{

@@ -36,6 +36,9 @@ export default function MobileValuePopover({
   showIcon,
   className,
 }: MobileValuePopoverProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <span className={cn('flex items-center gap-1', className)}>
       {displayValue}

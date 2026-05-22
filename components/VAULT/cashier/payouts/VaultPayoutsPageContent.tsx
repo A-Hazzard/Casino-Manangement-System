@@ -56,11 +56,14 @@ type MappedPayout = {
 };
 
 export default function VaultPayoutsPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
 
-  // Role Detection
+  // Role detection
   const isAdminOrDev = user?.roles?.some(r =>
     ['admin', 'developer'].includes(r.toLowerCase())
   );
@@ -77,7 +80,6 @@ export default function VaultPayoutsPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // -- Shift Hook --
   const {
     shift,
     currentBalance,
@@ -86,7 +88,10 @@ export default function VaultPayoutsPageContent() {
     refresh: refreshShift,
   } = useCashierShift();
 
-  // -- Data Fetching --
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Note: fetchPayouts/fetchMachinesData declared before Effects since useEffect depends on them.
   const fetchPayouts = useCallback(async () => {
     setLoading(true);
     const locationId = user?.assignedLocations?.[0];
@@ -150,6 +155,9 @@ export default function VaultPayoutsPageContent() {
     }
   }, [user?.assignedLocations]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchPayouts();
     fetchMachinesData();
@@ -165,6 +173,10 @@ export default function VaultPayoutsPageContent() {
 
     return () => clearInterval(interval);
   }, [fetchPayouts, payouts.length]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Raw shift date calculation for display
   const rawShiftDate = useMemo(() => {
@@ -272,6 +284,11 @@ export default function VaultPayoutsPageContent() {
     });
   }, [payouts, sortOption, sortOrder]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show skeleton during initial load
   if (loading && payouts.length === 0) {
     return (
       <PageLayout>

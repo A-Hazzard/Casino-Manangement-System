@@ -21,6 +21,9 @@ export default function VaultOverviewCashDesksSection({
   cashDesks,
   onViewDenominations,
 }: VaultOverviewCashDesksSectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

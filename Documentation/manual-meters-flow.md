@@ -423,5 +423,54 @@ If updates show `matchedCount: 0`:
 
 ---
 
-_Document Version: 1.0_
-\*Last Updated: May 4, 2026
+## 7. CR V2 — RAM Clear & Meter Creation (No-SMIB Locations)
+
+The V2 capture system follows the same RAM clear math as V1 but stores intermediate state on `ReportedMachine` and only writes `Meters` docs at session submit.
+
+### 7.1 Capture (POST/PATCH `/api/collection-reports-v2/machines`)
+
+`ReportedMachine` documents store the RAM clear inputs alongside the regular meters:
+
+```typescript
+{
+  manualMetersIn?: number,      // Post-reset current reading
+  manualMetersOut?: number,
+  ramClear?: boolean,
+  ramClearMetersIn?: number,    // Pre-reset peak
+  ramClearMetersOut?: number,
+  movement: {
+    manualMetersIn:  (ramClearMetersIn  - prevSasIn)  + manualMetersIn,
+    manualMetersOut: (ramClearMetersOut - prevSasOut) + manualMetersOut,
+    machineGross:    manualMetersIn - manualMetersOut
+  }
+}
+```
+
+`computeMovement` in `app/api/lib/helpers/collectionReportV2/movement.ts` applies this formula in **all three branches** (no-SMIB, `metersMatch === true`, `metersMatch === false`). When `ramClear` is false, the formula collapses back to the simple `current - prev` delta.
+
+### 7.2 Submit (PATCH `/api/collection-reports-v2/sessions/[sessionId]/submit`)
+
+For **no-SMIB locations only**, the submit route creates `Meters` docs:
+
+| `ramClear` | Docs created | Movement fields |
+|---|---|---|
+| `false` | 1 | `movement.drop = manualMetersIn - prevIn`, `movement.totalCancelledCredits = manualMetersOut - prevOut` |
+| `true`  | 2 | RAM clear meter (`isRamClear: true`): `movement.drop = ramClearMetersIn - prevIn`. Post-reset meter: `movement.drop = manualMetersIn` (prev treated as 0). |
+
+The post-reset meter's `readAt` is offset by `+1000ms` to preserve chronological order. On re-submit, `Meters.deleteMany({ machine, locationSession })` clears the existing docs first so there are never duplicates.
+
+For **SMIB locations**, no `Meters` docs are created — the SAS relay handles that. RAM clear still updates `ReportedMachine.movement` identically.
+
+### 7.3 Toggling RAM Clear in Edit Mode (PATCH machines route)
+
+When the user re-opens a captured machine and toggles RAM clear:
+
+- **`false → true`**: Peak fields required; `computeMovement` re-runs with the combined formula; movement on `ReportedMachine` recalculated.
+- **`true → false`**: `$unset` is applied to `ramClearMetersIn` and `ramClearMetersOut`; `computeMovement` re-runs with the simple `current - prev` formula.
+
+For sessions already in `submitted` state, `cascadeMachineEdit` propagates the new meters to `Machine.collectionMeters` and `Machine.collectionMetersHistory` as usual. The Meters docs themselves are re-created on the next submit.
+
+---
+
+_Document Version: 1.1_
+_Last Updated: May 21, 2026_

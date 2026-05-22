@@ -64,7 +64,9 @@ export default function VaultOverviewCollectionEntryForm({
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
-  // States
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [meters, setMeters] = useState({
     billIn: '',
     ticketIn: '',
@@ -87,7 +89,9 @@ export default function VaultOverviewCollectionEntryForm({
     [selectedLicencee]
   );
 
+  // ============================================================================
   // Effects
+  // ============================================================================
   useEffect(() => {
     setDenominations(
       denomsList.map((d: string | number) => ({
@@ -123,7 +127,9 @@ export default function VaultOverviewCollectionEntryForm({
     }
   }, [machine?._id, denomsList, defaultShowHistory]);
 
-  // Calculations
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalPhysical = denominations.reduce(
     (acc: number, curr: Denomination) =>
       acc + curr.denomination * curr.quantity,
@@ -135,7 +141,9 @@ export default function VaultOverviewCollectionEntryForm({
     ? (variance > 0 ? '+' : '') + formatAmount(variance)
     : '--';
 
+  // ============================================================================
   // Handlers
+  // ============================================================================
   const fetchMachineDetails = async (id: string) => {
     setFetchingDetails(true);
     try {
@@ -195,6 +203,9 @@ export default function VaultOverviewCollectionEntryForm({
     return base;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-white">
       {/* Header */}

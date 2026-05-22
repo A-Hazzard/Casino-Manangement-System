@@ -49,14 +49,14 @@ export default function ApplicationRouteGuard({
   applicationMode,
 }: ApplicationRouteGuardProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const pathname = usePathname();
   const router = useRouter();
   // Use prop if provided, otherwise fall back to env var (for client-side)
 
   // ============================================================================
-  // Effects - Route Protection
+  // Effects
   // ============================================================================
   useEffect(() => {
     // Skip protection if applicationMode is not set

@@ -37,9 +37,15 @@ function AdministrationPaymentStatusConfirmModal({
   licenceeName,
   currentExpiryDate,
 }: AdministrationPaymentStatusConfirmModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -55,12 +61,18 @@ function AdministrationPaymentStatusConfirmModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open) return null;
 
   const newStatus = !currentStatus;
   const currentDate = new Date();
   const newExpiryDate = getNext30DaysDate();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-[100000]">
       <div

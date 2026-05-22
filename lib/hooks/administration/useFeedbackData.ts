@@ -26,12 +26,19 @@ export function useFeedbackData({
   itemsPerBatch,
   pagesPerBatch,
 }: UseFeedbackDataProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [allFeedback, setAllFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
   const [serverTotalCount, setServerTotalCount] = useState(0);
   const [serverTotalPages, setServerTotalPages] = useState(1);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Calculate which batch corresponds to the current page
   const calculateBatchNumber = useCallback(
@@ -86,6 +93,10 @@ export function useFeedbackData({
       setLoading(false);
     }
   }, [debouncedEmailFilter, categoryFilter, statusFilter, itemsPerBatch]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -164,6 +175,10 @@ export function useFeedbackData({
   useEffect(() => {
     fetchInitialBatch();
   }, [fetchInitialBatch]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Memoized current page of feedback
   const feedback = useMemo(() => {

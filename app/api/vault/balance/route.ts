@@ -37,6 +37,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Authenticate and authorize
+      // ============================================================================
       const hasVaultAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -48,6 +51,9 @@ export async function GET(request: NextRequest) {
           { status: 403 }
         );
 
+      // ============================================================================
+      // STEP 2: Find active or last closed shift
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       if (!locationId)
@@ -99,6 +105,9 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // ============================================================================
+      // STEP 3: Calculate reconciliation and audit times
+      // ============================================================================
       const lastReconTime =
         activeShift.reconciliations && activeShift.reconciliations.length > 0
           ? new Date(
@@ -123,6 +132,9 @@ export async function GET(request: NextRequest) {
         ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
         : vaultManager?.username || 'Unknown';
 
+      // ============================================================================
+      // STEP 4: Aggregate cashier floats and machine meters
+      // ============================================================================
       const activeCashierShifts = await CashierShiftModel.countDocuments({
         vaultShiftId: activeShift._id,
         status: { $in: ['active', 'pending_review', 'pending_start'] },
@@ -168,6 +180,9 @@ export async function GET(request: NextRequest) {
         isEndOfDay: true,
       });
 
+      // ============================================================================
+      // STEP 5: Return vault balance summary
+      // ============================================================================
       const vaultBalanceVal =
         activeShift.closingBalance ?? activeShift.openingBalance ?? 0;
 

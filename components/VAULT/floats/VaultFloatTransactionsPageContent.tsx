@@ -48,7 +48,7 @@ import VaultFloatTransactionsTable from './tables/VaultFloatTransactionsTable';
 
 export default function VaultFloatTransactionsPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { user, isVaultReconciled } = useUserStore();
@@ -74,8 +74,9 @@ export default function VaultFloatTransactionsPageContent() {
   const [totalTransactions, setTotalTransactions] = useState(0);
 
   // ============================================================================
-  // Data Fetching
+  // Handlers
   // ============================================================================
+  // Note: fetchData declared before Effects since useEffect depends on it.
   const fetchData = async () => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) {
@@ -104,13 +105,17 @@ export default function VaultFloatTransactionsPageContent() {
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Load data on component mount
   useEffect(() => {
     fetchData();
   }, [user?.assignedLocations, currentPage]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   /**
    * Sum of all cashier float amounts
@@ -207,7 +212,7 @@ export default function VaultFloatTransactionsPageContent() {
   }, [floatTransactions, transactionSortOption, transactionSortOrder]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers (continued)
   // ============================================================================
   /**
    * Handle refresh data

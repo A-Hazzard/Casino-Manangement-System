@@ -56,6 +56,9 @@ export default function LocationsCabinetGrid({
   showArchived = false,
   includeJackpot = true,
 }: LocationsCabinetGridProps & { includeJackpot?: boolean }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
@@ -63,18 +66,25 @@ export default function LocationsCabinetGrid({
     'desc'
   );
 
-  const sortOption = externalSortOption || internalSortOption;
-  const sortOrder = externalSortOrder || internalSortOrder;
-
   // Use cabinet actions store for modal management
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
-  const userRoles = (user?.roles || []) as UserRole[];
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  const sortOption = externalSortOption || internalSortOption;
+  const sortOrder = externalSortOrder || internalSortOrder;
+
+  const userRoles = (user?.roles || []) as UserRole[];
   const canEdit = canEditMachines(userRoles);
   const canDelete = canDeleteMachines(userRoles);
   const canViewArchived = canViewArchivedMachines(userRoles);
   const canPermanentlyDelete = canPermanentlyDeleteMachines(userRoles);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Handles column sorting with toggle behavior.
@@ -112,6 +122,9 @@ export default function LocationsCabinetGrid({
     openDeleteModal(cabinet as Cabinet);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div>
       {/* Table view for lg screens and above */}

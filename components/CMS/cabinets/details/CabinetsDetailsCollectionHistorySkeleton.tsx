@@ -1,6 +1,9 @@
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 export default function CabinetsDetailsCollectionHistorySkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       {/* Search and filter bar skeleton */}

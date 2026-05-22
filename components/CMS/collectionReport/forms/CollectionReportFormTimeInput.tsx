@@ -29,6 +29,9 @@ export default function CollectionReportFormTimeInput({
   maxDate = new Date(),
   isLoadingTime = false,
 }: CollectionTimeInputProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={className}>
       <label className="mb-1 block text-sm font-medium">Collection Time</label>

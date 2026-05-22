@@ -61,6 +61,9 @@ interface VaultAdvancedDashboardData {
 }
 
 export default function VaultOverviewAdvancedDashboard() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
   const [selectedView, setSelectedView] = useState<
@@ -70,10 +73,16 @@ export default function VaultOverviewAdvancedDashboard() {
   const [dashboardData, setDashboardData] =
     useState<VaultAdvancedDashboardData | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchAdvancedDashboardData();
   }, [user?.assignedLocations]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchAdvancedDashboardData = async () => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) return;
@@ -92,6 +101,9 @@ export default function VaultOverviewAdvancedDashboard() {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header */}

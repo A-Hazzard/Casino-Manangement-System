@@ -14,7 +14,7 @@ import type { UseAuthReturn } from '@/lib/types/auth';
  */
 export function useAuth(): UseAuthReturn {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const { user, setUser } = useUserStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -50,9 +50,6 @@ export function useAuth(): UseAuthReturn {
     initializeAuth();
   }, [user, setUser]);
 
-  // ============================================================================
-  // Return
-  // ============================================================================
   return {
     user: user as UserAuthPayload | null,
     isLoading,

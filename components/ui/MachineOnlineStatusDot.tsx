@@ -1,3 +1,11 @@
+/**
+ * Machine Online Status Dot Component
+ *
+ * Displays an Online/Offline badge for a machine based on SMIB connectivity.
+ * Renders nothing when the machine has no SMIB assigned (isOnline is undefined).
+ *
+ * @module components/ui/MachineOnlineStatusDot
+ */
 'use client';
 
 import { Badge } from '@/components/shared/ui/badge';

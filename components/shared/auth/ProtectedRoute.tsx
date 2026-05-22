@@ -48,7 +48,7 @@ export default function ProtectedRoute({
   requiredPage,
 }: ProtectedRouteProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function ProtectedRoute({
   const [hasWaitedForRoles, setHasWaitedForRoles] = useState(false);
 
   // ============================================================================
-  // Effects - Authentication & Authorization Check
+  // Effects
   // ============================================================================
   useEffect(() => {
     // Wait for auth to fully load
@@ -244,6 +244,9 @@ export default function ProtectedRoute({
     hasWaitedForRoles,
   ]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Show loading while checking authentication
   if (isLoading || isChecking) return <></>;
 

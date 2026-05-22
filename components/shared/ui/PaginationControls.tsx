@@ -27,14 +27,9 @@ export default function PaginationControls({
   showTotalCount = false,
   className,
 }: PaginationControlsProps) {
-  // Standard rule: hide if 20 or fewer items total
-  if (totalCount !== undefined && totalCount <= 20) {
-    return null;
-  }
-
-  if (totalPages <= 1) {
-    return null;
-  }
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handlePageChange = (page: number) => {
     if (page >= 0 && page < totalPages) {
@@ -50,9 +45,24 @@ export default function PaginationControls({
     setCurrentPage(val - 1);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const navButtonClass =
     'border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50';
 
+  // Standard rule: hide if 20 or fewer items total
+  if (totalCount !== undefined && totalCount <= 20) {
+    return null;
+  }
+
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={cn(

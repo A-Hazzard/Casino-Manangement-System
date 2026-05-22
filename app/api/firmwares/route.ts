@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
     const functionName = 'GET /api/firmwares';
     const user = extractUserFromRequest(request);
     try {
+      // ============================================================================
+      // STEP 1: Parse query parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
@@ -38,9 +41,15 @@ export async function GET(request: NextRequest) {
             ],
           };
 
+      // ============================================================================
+      // STEP 2: Fetch firmwares
+      // ============================================================================
       const firmwares = await Firmware.find(query)
         .sort({ createdAt: -1 })
         .lean<FirmwareDocument[]>();
+      // ============================================================================
+      // STEP 3: Return success response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,
@@ -77,11 +86,17 @@ export async function POST(request: NextRequest) {
     const functionName = 'POST /api/firmwares';
     const user = extractUserFromRequest(request);
     try {
+      // ============================================================================
+      // STEP 1: Connect to database and bucket
+      // ============================================================================
       if (!db) throw new Error('Database connection failed');
       const bucket = new GridFSBucket(db as unknown as Db, {
         bucketName: 'firmwares',
       });
 
+      // ============================================================================
+      // STEP 2: Parse form data and validate
+      // ============================================================================
       const formData = await request.formData();
       const product = formData.get('product') as string;
       const version = formData.get('version') as string;
@@ -102,10 +117,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Prepare file for upload
+      // ============================================================================
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const stream = Readable.from(buffer);
 
+      // ============================================================================
+      // STEP 4: Upload file to GridFS
+      // ============================================================================
       const uploadStream = bucket.openUploadStream(file.name, {
         metadata: {
           originalName: file.name,
@@ -120,6 +141,9 @@ export async function POST(request: NextRequest) {
         stream.pipe(uploadStream).on('error', reject).on('finish', resolve);
       });
 
+      // ============================================================================
+      // STEP 5: Create firmware entry
+      // ============================================================================
       const firmwareId = await generateMongoId();
       const firmware = new Firmware({
         _id: firmwareId,
@@ -141,6 +165,9 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime;
       logRouteCreate(functionName, 'POST', '/api/firmwares', 1, user, duration);
 
+      // ============================================================================
+      // STEP 6: Log activity
+      // ============================================================================
       if (currentUser && currentUser.emailAddress) {
         await logActivity({
           action: 'CREATE',
@@ -162,6 +189,9 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // ============================================================================
+      // STEP 7: Return success response
+      // ============================================================================
       return NextResponse.json(firmware, { status: 201 });
     } catch (error) {
       const errorMessage =

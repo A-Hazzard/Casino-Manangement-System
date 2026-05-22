@@ -47,13 +47,22 @@ export default function VaultOverviewFinalizeDayModal({
   loading = false,
   locationId,
 }: VaultOverviewFinalizeDayModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleConfirm = async () => {
     if (!canClose) return;
     await onConfirm(currentBalance, currentDenominations);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <AlertDialog open={open} onOpenChange={val => !val && onClose()}>
       <AlertDialogContent className="max-w-xl">

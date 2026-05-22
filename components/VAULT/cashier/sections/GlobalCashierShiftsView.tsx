@@ -2,6 +2,8 @@
  * Global Cashier Shifts View Section
  *
  * Redesigned view for Administrators and Developers to monitor all ongoing cashier shifts.
+ *
+ * @module components/VAULT/cashier/sections/GlobalCashierShiftsView
  */
 'use client';
 
@@ -25,8 +27,14 @@ type GlobalCashierShiftsViewProps = {
 export default function GlobalCashierShiftsView({
   cashDesks,
 }: GlobalCashierShiftsViewProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       <Card className="rounded-lg border-t-4 border-orangeHighlight bg-container shadow-md">

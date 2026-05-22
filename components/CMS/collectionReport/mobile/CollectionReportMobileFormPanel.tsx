@@ -120,6 +120,9 @@ export default function CollectionReportMobileFormPanel({
   isManager = false,
   isLoadingTime = false,
 }: MobileFormPanelProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:w-full md:flex-1 md:rounded-xl md:shadow-none ${

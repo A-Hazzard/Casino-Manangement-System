@@ -95,7 +95,7 @@ const MotionDiv = motion.div;
 
 const CollectionReportPageContent: FC = () => {
   // ============================================================================
-  // Global Page State & Navigation
+  // State & Hooks
   // ============================================================================
   const hook = useCollectionReportPageData();
   const { user } = useUserStore();
@@ -111,19 +111,21 @@ const CollectionReportPageContent: FC = () => {
     null
   );
 
-  // ============================================================================
-  // URL ↔ View-modal sync (?view=<sessionId>) — lets a shared link open
-  // the session report modal automatically.
-  // ============================================================================
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // On mount + whenever the URL changes, mirror ?view= into local state.
   useEffect(() => {
     const viewParam = searchParams?.get('view') ?? null;
     setV2EditSessionId(prev => (prev === viewParam ? prev : viewParam));
   }, [searchParams]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Open a session in view-mode AND push the URL so it's shareable.
   const openV2View = useCallback(
     (sessionId: string) => {
@@ -146,6 +148,9 @@ const CollectionReportPageContent: FC = () => {
     });
   }, [router, searchParams]);
 
+  // ============================================================================
+  // Computed & Additional Hooks
+  // ============================================================================
   // Destructure hook for better readability
   const {
     activeTab,
@@ -246,7 +251,7 @@ const CollectionReportPageContent: FC = () => {
               : false;
 
   // ============================================================================
-  // Early Returns: Authentication & Tenancy Checks
+  // Render
   // ============================================================================
   if (shouldShowNoLicenceeMessage(user)) {
     return (
@@ -264,9 +269,6 @@ const CollectionReportPageContent: FC = () => {
     );
   }
 
-  // ============================================================================
-  // Main App Filter Coordination
-  // ============================================================================
   return (
     <>
       <PageLayout

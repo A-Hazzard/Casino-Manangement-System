@@ -70,9 +70,15 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
   showArchived = false,
   canPermanentlyDelete = false,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const tableRef = useRef<HTMLTableElement>(null);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <div className="overflow-x-auto rounded-b-lg bg-white shadow">

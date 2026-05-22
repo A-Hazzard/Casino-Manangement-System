@@ -105,7 +105,7 @@ export interface EndOfDayReportData {
 
 export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
@@ -134,7 +134,7 @@ export default function VaultEndOfDayReportsPageContent() {
   });
 
   // ============================================================================
-  // Data Fetching
+  // Effects
   // ============================================================================
   const fetchReportData = async () => {
     const locationId = user?.assignedLocations?.[0];
@@ -178,7 +178,7 @@ export default function VaultEndOfDayReportsPageContent() {
   }, [selectedDate, user?.assignedLocations]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const metrics = calculateEndOfDayMetrics(reportData);
 
@@ -198,7 +198,7 @@ export default function VaultEndOfDayReportsPageContent() {
   );
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
 
   /**

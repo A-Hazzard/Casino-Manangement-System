@@ -52,6 +52,12 @@ export type ReportedMachineDocument = {
   prevSasMetersOut?: number;
   // Calculated movement deltas (current - previous), manual meters only
   movement?: ReportedMachineMovement;
+  // RAM clear — when true, the machine's meters were reset between collections.
+  // ramClearMetersIn/Out hold the pre-reset peak readings; sasMetersIn/Out (or
+  // manualMetersIn/Out for no-SMIB) hold the post-reset readings starting from 0.
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
   sessionStartTime?: Date;
   sessionEndTime?: Date;
   sasStartTime?: Date;
@@ -106,6 +112,9 @@ const reportedMachineSchema = new Schema<ReportedMachineDocument>(
         { _id: false }
       ),
     },
+    ramClear: { type: Boolean, default: false },
+    ramClearMetersIn: { type: Number },
+    ramClearMetersOut: { type: Number },
     sessionStartTime: { type: Date },
     sessionEndTime: { type: Date },
     sasStartTime: { type: Date },

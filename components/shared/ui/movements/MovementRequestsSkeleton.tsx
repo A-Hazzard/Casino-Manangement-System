@@ -1,4 +1,7 @@
 export function MovementRequestCardSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-4 space-y-4">
       {[...Array(5)].map((_, i) => (
@@ -36,6 +39,9 @@ export function MovementRequestCardSkeleton() {
 }
 
 export function MovementRequestsTableSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="overflow-x-auto">
       <table className="w-full table-fixed border-collapse text-center">

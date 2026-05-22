@@ -71,12 +71,22 @@ export default function LocationsLocationCard({
   showArchived?: boolean;
   canPermanentlyDelete?: boolean;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
   const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatCurrency = (amount: number) =>
     formatCurrencyWithCodeString(amount, displayCurrency);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={cardRef}

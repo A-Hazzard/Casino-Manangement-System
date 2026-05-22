@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const { relayIds, firmwareId } = await request.json();
 
     // ============================================================================
-    // STEP 2: Validate relayIds and firmwareId
+    // STEP 1: Validate relayIds and firmwareId
     // ============================================================================
 
     if (!relayIds || relayIds.length === 0) {
@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Connect to database
+    // STEP 2: Connect to database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 4: Prepare firmware file and get URL
+    // STEP 3: Prepare firmware file and get URL
     // ============================================================================
     const serveResponse = await axios.get(
       `${request.headers.get('origin') || 'http://localhost:3000'}/api/firmwares/${firmwareId}/serve`
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     const { fileName } = serveResponse.data;
 
     // ============================================================================
-    // STEP 5: Build firmware URL from request headers
+    // STEP 4: Build firmware URL from request headers
     // ============================================================================
     let host = request.headers.get('host');
     const protocol = request.headers.get('x-forwarded-proto') || 'http';
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     const firmwareBinUrl = `${baseUrl}/firmwares/`;
 
     // ============================================================================
-    // STEP 6: Process OTA updates in batches
+    // STEP 5: Process OTA updates in batches
     // ============================================================================
     const uniqueRelayIds = Array.from(new Set(relayIds)) as string[];
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             results.successful++;
 
             // ============================================================================
-            // STEP 7: Update machine firmwareUpdatedAt timestamps
+            // STEP 6: Update machine firmwareUpdatedAt timestamps
             // ============================================================================
             const machineOtaUpdate = await Machine.updateOne(
               { $or: [{ relayId }, { smibBoard: relayId }] },
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 8: Log activity
+    // STEP 7: Log activity
     // ============================================================================
     const currentUser = await getUserFromServer();
     const clientIP = getClientIP(request);
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 9: Return results
+    // STEP 8: Return results
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

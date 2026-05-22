@@ -87,6 +87,9 @@ export default function ChartItemBreakdownModal({
 }: ChartItemBreakdownModalProps) {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Calculate location breakdown
   const locationBreakdown = useMemo(() => {
     // Filter machines by item (manufacturer or game)
@@ -220,6 +223,9 @@ export default function ChartItemBreakdownModal({
 
   const itemLabel = itemType === 'manufacturer' ? 'Manufacturer' : 'Game';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] max-w-7xl flex-col">

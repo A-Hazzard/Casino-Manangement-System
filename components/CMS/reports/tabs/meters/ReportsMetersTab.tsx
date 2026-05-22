@@ -58,7 +58,7 @@ import ReportsMetersTable from './ReportsMetersTable';
  */
 export default function ReportsMetersTab() {
   // ============================================================================
-  // Hooks & Store
+  // State & Hooks
   // ============================================================================
   const {
     selectedLicencee,
@@ -69,9 +69,7 @@ export default function ReportsMetersTab() {
   } = useDashBoardStore();
   const { activeView } = useReportsStore();
 
-  // ============================================================================
   // State
-  // ============================================================================
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -84,16 +82,12 @@ export default function ReportsMetersTab() {
   );
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
 
-  // ============================================================================
   // Constants Used for API Requests
-  // ============================================================================
   const itemsPerPage = 20;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 
-  // ============================================================================
   // Data Fetching Hook
-  // ============================================================================
   const {
     allMetersData,
     locations,

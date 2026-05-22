@@ -26,6 +26,9 @@ export default function CabinetsDeleteCabinetModal({
 }: {
   onCabinetDeleted?: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isDeleteModalOpen, closeDeleteModal, selectedCabinet } =
     useCabinetsActionsStore();
   const { user } = useUserStore();
@@ -34,6 +37,9 @@ export default function CabinetsDeleteCabinetModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isDeveloper = useMemo(() => {
     const roles = user?.roles || [];
     return roles.map((r: string) => r.toLowerCase()).includes('developer');
@@ -43,6 +49,9 @@ export default function CabinetsDeleteCabinetModal({
     return isDeveloper;
   }, [isDeveloper]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -60,6 +69,9 @@ export default function CabinetsDeleteCabinetModal({
     }
   }, [isDeleteModalOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleArchive = async () => {
     if (!selectedCabinet) return;
 
@@ -104,6 +116,9 @@ export default function CabinetsDeleteCabinetModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isDeleteModalOpen || !selectedCabinet) return null;
 
   const cabinetName = selectedCabinet.assetNumber || selectedCabinet._id;

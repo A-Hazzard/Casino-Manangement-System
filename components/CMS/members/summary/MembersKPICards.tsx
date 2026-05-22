@@ -16,11 +16,17 @@ type MembersKPICardsProps = {
 export default function MembersKPICards({
   summaryStats,
 }: MembersKPICardsProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   if (!summaryStats) return null;
 
   const isLocalhost =
     typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={`mb-6 grid grid-cols-1 gap-4 ${isLocalhost ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}

@@ -1,6 +1,6 @@
 /**
- * Request Deduplication Utility
- * Prevents duplicate API calls by tracking in-flight requests
+ * @module lib/utils/requestDeduplication
+ * Request deduplication utility that prevents duplicate in-flight API calls in the Evolution One CMS.
  */
 
 import axios from 'axios';

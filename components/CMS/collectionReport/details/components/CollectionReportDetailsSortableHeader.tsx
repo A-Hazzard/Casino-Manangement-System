@@ -23,6 +23,9 @@ type CollectionReportDetailsSortableHeaderProps = {
 export const CollectionReportDetailsSortableHeader: FC<
   CollectionReportDetailsSortableHeaderProps
 > = ({ label, field, currentField, direction, onClick }) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <TableHead
       onClick={() => onClick(field)}

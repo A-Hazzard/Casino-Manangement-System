@@ -25,6 +25,9 @@ import { Card, CardContent } from '@/components/shared/ui/card';
  * Restricted to Admins, Developers, and Owners.
  */
 export default function MembersActivityLogTab() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -36,6 +39,9 @@ export default function MembersActivityLogTab() {
       search: debouncedSearch,
     });
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle search with debounce behavior
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
@@ -64,6 +70,9 @@ export default function MembersActivityLogTab() {
       .join(' ');
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-6 space-y-6">
       {/* Filters Bar */}

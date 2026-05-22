@@ -66,9 +66,15 @@ export default function CollectionReportTable({
   editableReportIds,
   selectedLicencee,
 }: CollectionReportTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const user = useUserStore(state => state.user);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Helper to format financial values with dollar signs
   const formatVal = (v: number | string | null | undefined) => {
     if (v === 'No Variance' || v === '-' || v === undefined || v === null)
@@ -85,6 +91,9 @@ export default function CollectionReportTable({
     return isNaN(num) ? '' : getGrossColorClass(num);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles
     ? hasAdminAccess(user.roles as UserRole[])
@@ -97,6 +106,9 @@ export default function CollectionReportTable({
     return hasManagerAccess(userRoles);
   }, [user]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Show skeleton while loading (initial load or subsequent loads)
   if (loading && (!data || data.length === 0)) {
     return <CollectionReportTableSkeleton />;

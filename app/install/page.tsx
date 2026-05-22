@@ -33,6 +33,9 @@ import { useRouter } from 'next/navigation';
  * If it is, redirects to /login to prevent accidental re-initialization.
  */
 export default function InstallPage() {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [status, setStatus] = useState<
     'idle' | 'installing' | 'success' | 'error'
   >('idle');
@@ -41,6 +44,9 @@ export default function InstallPage() {
   const [checking, setChecking] = useState(true);
   const router = useRouter();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Check if system is already initialized — redirect to /login if so
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +79,9 @@ export default function InstallPage() {
     );
   }
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleInstall = async () => {
     setStatus('installing');
     setMessage('Initializing system components...');

@@ -1,3 +1,7 @@
+/**
+ * NotFoundError Component
+ * 404 Not Found error display with animated design and context-aware navigation.
+ */
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
@@ -16,11 +20,6 @@ type NotFoundErrorProps = {
   customBackHref?: string;
 };
 
-/**
- * 404 Not Found Error Component with animated design
- * Displays when a specific resource (cabinet, location, etc.) is not found
- * Automatically determines context-aware navigation based on current route
- */
 export default function NotFoundError({
   title = 'Resource Not Found',
   message = 'The requested resource could not be found.',
@@ -32,8 +31,16 @@ export default function NotFoundError({
   customBackText,
   customBackHref,
 }: NotFoundErrorProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const router = useRouter();
   const pathname = usePathname();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Determine context-aware navigation
   const getContextualNavigation = () => {
@@ -105,6 +112,10 @@ export default function NotFoundError({
 
   const navigation = getContextualNavigation();
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
   const handleNavigation = () => {
     if (onGoBack) {
       onGoBack();
@@ -112,6 +123,10 @@ export default function NotFoundError({
       router.push(navigation.href);
     }
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-white p-6">

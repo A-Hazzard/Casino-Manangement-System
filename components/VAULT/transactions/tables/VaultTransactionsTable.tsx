@@ -60,6 +60,9 @@ export default function VaultTransactionsTable({
   itemsPerPage = 10,
   disablePagination = false,
 }: VaultTransactionsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [selectedTxDenominations, setSelectedTxDenominations] = useState<{
     denominations: Denomination[];
@@ -72,6 +75,9 @@ export default function VaultTransactionsTable({
   // Pagination State
   const [currentPage, setCurrentPage] = useState(0);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formatDate = (date: string | Date) => safeFormatDate(date);
 
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
@@ -82,6 +88,10 @@ export default function VaultTransactionsTable({
     return transactions.slice(start, start + itemsPerPage);
   }, [transactions, currentPage, itemsPerPage, disablePagination]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: No transactions to display
   if (transactions.length === 0) {
     return (
       <div className="rounded-lg bg-container p-8 text-center shadow-md">

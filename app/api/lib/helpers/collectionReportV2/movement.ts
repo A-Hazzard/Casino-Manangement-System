@@ -29,6 +29,13 @@
  *   - movement.manualMetersIn  = currentManualIn  - prevSasMetersIn
  *   - movement.manualMetersOut = currentManualOut - prevSasMetersOut
  *
+ * ## When `ramClear === true` (any branch)
+ *   - The machine's meters were reset between collections.
+ *   - ramClearMetersIn/Out hold the pre-reset peak; current meters start from 0.
+ *   - movement.manualMetersIn  = (ramClearMetersIn  - prevSasMetersIn)  + effectiveIn
+ *   - movement.manualMetersOut = (ramClearMetersOut - prevSasMetersOut) + effectiveOut
+ *   - sasGross calculation is unchanged.
+ *
  * ## Previous meter fallback
  *   1. First checks the most recent *submitted* ReportedMachine for this machine.
  *   2. If none found, falls back to Machine.collectionMeters.metersIn/Out.
@@ -74,6 +81,9 @@ type MovementResult = {
  * @param metersMatch       - Whether the collector confirmed meters match the photo
  * @param sasStartTime      - Start of the SAS reading window (for time-range aggregation)
  * @param sasEndTime        - End of the SAS reading window (for time-range aggregation)
+ * @param ramClear          - True if the machine's meters were reset between collections
+ * @param ramClearMetersIn  - Pre-reset peak metersIn (only meaningful when ramClear===true)
+ * @param ramClearMetersOut - Pre-reset peak metersOut (only meaningful when ramClear===true)
  */
 export async function computeMovement(
   machineId: string,
@@ -84,7 +94,10 @@ export async function computeMovement(
   currentManualOut: number | undefined,
   metersMatch: boolean | undefined,
   sasStartTime?: Date,
-  sasEndTime?: Date
+  sasEndTime?: Date,
+  ramClear?: boolean,
+  ramClearMetersIn?: number,
+  ramClearMetersOut?: number
 ): Promise<MovementResult> {
   // === STEP 1: Check Machine.collectionMetersHistory for the current session ===
   // If a history entry for this session already exists, its prevMetersIn/Out
@@ -209,15 +222,33 @@ export async function computeMovement(
     resolvedSasMetersOut = null;
     sasGross = null;
 
-    manualMovIn = effectiveManualIn - prevSasIn;
-    manualMovOut = effectiveManualOut - prevSasOut;
+    if (
+      ramClear &&
+      ramClearMetersIn !== undefined &&
+      ramClearMetersOut !== undefined
+    ) {
+      manualMovIn = ramClearMetersIn - prevSasIn + effectiveManualIn;
+      manualMovOut = ramClearMetersOut - prevSasOut + effectiveManualOut;
+    } else {
+      manualMovIn = effectiveManualIn - prevSasIn;
+      manualMovOut = effectiveManualOut - prevSasOut;
+    }
   } else if (metersMatch === true) {
     // Meters match: manual === sas
     const effectiveManualIn = currentSasIn;
     const effectiveManualOut = currentSasOut;
 
-    manualMovIn = effectiveManualIn - prevSasIn;
-    manualMovOut = effectiveManualOut - prevSasOut;
+    if (
+      ramClear &&
+      ramClearMetersIn !== undefined &&
+      ramClearMetersOut !== undefined
+    ) {
+      manualMovIn = ramClearMetersIn - prevSasIn + effectiveManualIn;
+      manualMovOut = ramClearMetersOut - prevSasOut + effectiveManualOut;
+    } else {
+      manualMovIn = effectiveManualIn - prevSasIn;
+      manualMovOut = effectiveManualOut - prevSasOut;
+    }
 
     // sasGross = SUM of meters.movement.drop - SUM of meters.movement.totalCancelledCredits
     // over the [sasStartTime, sasEndTime] window
@@ -265,8 +296,17 @@ export async function computeMovement(
 
     const effectiveManualIn = currentManualIn ?? currentSasIn;
     const effectiveManualOut = currentManualOut ?? currentSasOut;
-    manualMovIn = effectiveManualIn - prevSasIn;
-    manualMovOut = effectiveManualOut - prevSasOut;
+    if (
+      ramClear &&
+      ramClearMetersIn !== undefined &&
+      ramClearMetersOut !== undefined
+    ) {
+      manualMovIn = ramClearMetersIn - prevSasIn + effectiveManualIn;
+      manualMovOut = ramClearMetersOut - prevSasOut + effectiveManualOut;
+    } else {
+      manualMovIn = effectiveManualIn - prevSasIn;
+      manualMovOut = effectiveManualOut - prevSasOut;
+    }
   }
 
   const movement: ReportedMachineMovement = {

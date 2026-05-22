@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Parse Query Params and Validation
+      // ============================================================================
       const { searchParams } = request.nextUrl;
       const id = searchParams.get('id');
       const locationId = searchParams.get('locationId');
@@ -218,6 +221,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Parse Body and Validate
+      // ============================================================================
       const data = (await request.json()) as MachinePayload;
       if (!data.gamingLocation && data.locationId)
         data.gamingLocation = data.locationId;
@@ -236,7 +242,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Deduplication
+      // ============================================================================
+      // STEP 2: Deduplication and Generation
+      // ============================================================================
       const normalizedSerial = normalizeSerialNumber(data.serialNumber);
       const normalizedSmib =
         normalizeSmibBoard(data.smibBoard || data.relayId) ?? '';
@@ -465,6 +473,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // ============================================================================
+      // STEP 3: Save and Log
+      // ============================================================================
       await newCabinet.save();
 
       // Fetch location name for better logging
@@ -546,6 +557,9 @@ export async function PUT(request: NextRequest) {
   // For now, let's just implement the basic update to maintain root PUT support
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Update Cabinet
+      // ============================================================================
       const data = await request.json();
       const updated = await Machine.findOneAndUpdate(
         { _id: id },
@@ -588,6 +602,9 @@ export async function DELETE(request: NextRequest) {
 
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Delete Cabinet
+      // ============================================================================
       await Machine.findOneAndUpdate(
         { _id: id },
         { $set: { deletedAt: new Date(), updatedAt: new Date() } }

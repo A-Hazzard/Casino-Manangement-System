@@ -27,8 +27,16 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 export function useAbortableRequest() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Map of AbortControllers keyed by purpose (e.g., 'chart', 'cabinets', 'totals')
   const controllersRef = useRef<Map<string, AbortController>>(new Map());
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Cleanup on unmount - abort any in-flight requests
   useEffect(() => {
@@ -40,6 +48,10 @@ export function useAbortableRequest() {
       controllers.clear();
     };
   }, []);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Execute an abortable request

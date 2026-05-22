@@ -39,6 +39,9 @@ type MappedFloatRequest = {
 };
 
 export default function VaultFloatRequestsPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user, isVaultReconciled } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +70,10 @@ export default function VaultFloatRequestsPageContent() {
     'desc'
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Note: fetchRequests and mapRequests are declared before Effects since useEffect depends on them.
   const fetchRequests = async (isManual = false) => {
     const locationId = user?.assignedLocations?.[0];
 
@@ -156,6 +163,9 @@ export default function VaultFloatRequestsPageContent() {
     }));
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchRequests();
   }, [user?.assignedLocations, currentPage]);
@@ -176,6 +186,10 @@ export default function VaultFloatRequestsPageContent() {
     pendingRequests.length,
     requestHistory.length,
   ]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Actions
   const handleApprove = async (requestId: string) => {
@@ -307,6 +321,11 @@ export default function VaultFloatRequestsPageContent() {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show spinner during initial load
   if (loading && pendingRequests.length === 0 && requestHistory.length === 0) {
     return (
       <PageLayout>

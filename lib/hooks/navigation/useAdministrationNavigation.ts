@@ -8,6 +8,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 export const useAdministrationNavigation = () => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +30,10 @@ export const useAdministrationNavigation = () => {
   const [activeSection, setActiveSection] = useState<AdministrationSection>(
     getActiveSectionFromURL()
   );
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle section changes with URL updates
   const handleSectionChange = useCallback(
@@ -57,6 +65,10 @@ export const useAdministrationNavigation = () => {
     },
     [activeSection, searchParams, pathname, router]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Sync state with URL changes (only when searchParams change)
   useEffect(() => {

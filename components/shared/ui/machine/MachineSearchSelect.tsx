@@ -1,3 +1,7 @@
+/**
+ * MachineSearchSelect Component
+ * Searchable dropdown select for gaming machines with keyboard navigation support.
+ */
 'use client';
 
 import { KeyboardEvent } from 'react';
@@ -25,12 +29,20 @@ export function MachineSearchSelect({
   className,
   emptyMessage = 'No machines found',
 }: MachineSearchSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Filter Machines based on search term
   const filteredMachines = useMemo(() => {
@@ -51,6 +63,10 @@ export function MachineSearchSelect({
 
   // Find selected Machine
   const selectedMachine = machines.find(m => m._id === value);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -80,6 +96,10 @@ export function MachineSearchSelect({
     }
     return undefined;
   }, [isOpen]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle keyboard navigation
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -130,6 +150,10 @@ export function MachineSearchSelect({
       : machine.serialNumber;
     return `${identifier} - ${machine.game}`;
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <div className={cn('relative w-full', className)}>

@@ -1,3 +1,7 @@
+/**
+ * SMIBFirmwareCard Component
+ * Mobile/tablet card view for a single firmware entry with download and delete actions.
+ */
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
@@ -12,7 +16,15 @@ type SMIBFirmwareCardProps = {
 };
 
 export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { openDeleteModal, openDownloadModal } = useFirmwareActionsStore();
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">

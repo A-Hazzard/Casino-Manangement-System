@@ -37,6 +37,9 @@ export default function MovementRequestsTable({
   onDelete,
   locationsMap,
 }: MovementRequestsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const tableRef = useRef<HTMLTableElement>(null);
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
@@ -47,6 +50,9 @@ export default function MovementRequestsTable({
   const [viewMachinesReq, setViewMachinesReq] =
     useState<MovementRequest | null>(null);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full max-w-full overflow-x-auto rounded-lg bg-white shadow">
       <Table ref={tableRef} className="w-full">

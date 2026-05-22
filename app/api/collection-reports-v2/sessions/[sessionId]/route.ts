@@ -35,8 +35,14 @@ export async function GET(
   let sessionId = '';
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -45,6 +51,9 @@ export async function GET(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse session ID
+    // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
       return NextResponse.json(
@@ -53,7 +62,9 @@ export async function GET(
       );
     }
 
-    // Fetch all machines for this session
+    // ============================================================================
+    // STEP 4: Fetch all machines for this session
+    // ============================================================================
     const machines = await ReportedMachine.find({
       sessionId,
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
@@ -68,7 +79,9 @@ export async function GET(
       );
     }
 
-    // Verify user can access this session's location
+    // ============================================================================
+    // STEP 5: Verify user can access this session's location
+    // ============================================================================
     const sessionLocationId = machines[0].locationId;
     const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
     const userRoles = (userPayloadRecord.roles as string[]) || [];
@@ -98,7 +111,9 @@ export async function GET(
       );
     }
 
-    // Look up last collection time per machine.
+    // ============================================================================
+    // STEP 6: Look up last collection time per machine
+    // ============================================================================
     // Uses only V2 ReportedMachine records: the sasEndTime of the most recent
     // submitted report for that machine (excluding the current session).
     // This sasEndTime represents the end of the previous SAS collection period
@@ -162,7 +177,9 @@ export async function GET(
       machineCollectionTimeMap.get(machineId) ??
       null;
 
-    // Look up collector details
+    // ============================================================================
+    // STEP 7: Look up collector details
+    // ============================================================================
     const collectorId = machines[0].collector;
     let collectorFirstName: string | undefined;
     let collectorLastName: string | undefined;
@@ -181,7 +198,9 @@ export async function GET(
       }
     }
 
-    // Look up location to check noSMIBLocation
+    // ============================================================================
+    // STEP 8: Look up location to check noSMIBLocation
+    // ============================================================================
     const { GamingLocations } =
       await import('@/app/api/lib/models/gaminglocations');
     const locationDoc = await GamingLocations.findOne({
@@ -191,7 +210,9 @@ export async function GET(
       .lean<{ noSMIBLocation?: boolean }>();
     const noSMIBLocation = locationDoc?.noSMIBLocation ?? false;
 
-    // Build session summary from machines
+    // ============================================================================
+    // STEP 9: Build session summary and return
+    // ============================================================================
     const sessionData = {
       sessionId,
       sessionStatus: machines[0].sessionStatus,
@@ -289,6 +310,9 @@ export async function GET(
             ? `/api/collection-reports-v2/drive-files/${m.driveFileId}`
             : m.tempImageData || undefined,
           metersMatch: noSMIBLocation ? true : m.metersMatch,
+          ramClear: m.ramClear === true,
+          ramClearMetersIn: m.ramClearMetersIn,
+          ramClearMetersOut: m.ramClearMetersOut,
           lastCollectionTime: getLastCollectionTime(m.machineId),
           createdAt: m.createdAt,
           updatedAt: m.updatedAt,
@@ -339,8 +363,14 @@ export async function DELETE(
   let sessionId = '';
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user and check permissions
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -359,6 +389,9 @@ export async function DELETE(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request params
+    // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
       return NextResponse.json(
@@ -367,7 +400,9 @@ export async function DELETE(
       );
     }
 
-    // Check the session exists (any status, including submitted)
+    // ============================================================================
+    // STEP 4: Check if session exists
+    // ============================================================================
     const existing = await ReportedMachine.findOne({ sessionId })
       .select('sessionStatus')
       .lean();
@@ -383,6 +418,9 @@ export async function DELETE(
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action') || 'permanent';
 
+    // ============================================================================
+    // STEP 5: Clean up Google Drive assets
+    // ============================================================================
     // Clean up Google Drive assets for this session before deleting/archiving.
     // Prefer folder-level deletion (deletes folder + all contents in one call).
     // Fall back to individual file deletion for older records without driveFolderId.
@@ -418,6 +456,9 @@ export async function DELETE(
 
     let count = 0;
 
+    // ============================================================================
+    // STEP 6: Execute delete or archive action
+    // ============================================================================
     if (action === 'archive') {
       // Soft delete — set deletedAt timestamp
       const updateResult = await ReportedMachine.updateMany(
@@ -450,6 +491,9 @@ export async function DELETE(
       duration
     );
 
+    // ============================================================================
+    // STEP 7: Return success response
+    // ============================================================================
     return NextResponse.json({
       success: true,
       data: { sessionId, action, count },
@@ -486,8 +530,14 @@ export async function PATCH(
   let sessionId = '';
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -496,6 +546,9 @@ export async function PATCH(
       );
     }
 
+    // ============================================================================
+    // STEP 3: Parse request params and body
+    // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
       return NextResponse.json(
@@ -512,7 +565,7 @@ export async function PATCH(
     };
 
     // ============================================================================
-    // STEP 1: Restore path — unset deletedAt on ReportedMachine and Meters
+    // STEP 4: Restore path — unset deletedAt on ReportedMachine and Meters
     // ============================================================================
     if (action === 'restore') {
       const restoreMachinesResult = await ReportedMachine.updateMany(
@@ -542,7 +595,7 @@ export async function PATCH(
     }
 
     // ============================================================================
-    // STEP 2: Update session time fields
+    // STEP 5: Update session time fields
     // ============================================================================
     const updateFields: Record<string, unknown> = {};
     if (sessionStartTime) {

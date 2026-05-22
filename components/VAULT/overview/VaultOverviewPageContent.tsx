@@ -104,7 +104,7 @@ export default function VaultOverviewPageContent() {
   );
 
   // ============================================================================
-  // STATE & HOOKS
+  // State & Hooks
   // ============================================================================
 
   // Data State
@@ -143,8 +143,12 @@ export default function VaultOverviewPageContent() {
     total: number;
   } | null>(null);
 
+  // Derived shift state — needed by effects below
+  const isShiftActive = !!vaultBalance.activeShiftId;
+  const isReconciled = !!vaultBalance.isReconciled;
+
   // ============================================================================
-  // DATA FETCHING
+  // Effects
   // ============================================================================
 
   /**
@@ -228,8 +232,18 @@ export default function VaultOverviewPageContent() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
+  useEffect(() => {
+    setHasActiveVaultShift(isShiftActive);
+    setIsVaultReconciled(isReconciled);
+  }, [
+    isShiftActive,
+    isReconciled,
+    setHasActiveVaultShift,
+    setIsVaultReconciled,
+  ]);
+
   // ============================================================================
-  // ACTIONS HANDLERS
+  // Handlers
   // ============================================================================
 
   /**
@@ -512,21 +526,8 @@ export default function VaultOverviewPageContent() {
   };
 
   // ============================================================================
-  // HELPERS
+  // Computed
   // ============================================================================
-
-  const isShiftActive = !!vaultBalance.activeShiftId;
-  const isReconciled = !!vaultBalance.isReconciled;
-
-  useEffect(() => {
-    setHasActiveVaultShift(isShiftActive);
-    setIsVaultReconciled(isReconciled);
-  }, [
-    isShiftActive,
-    isReconciled,
-    setHasActiveVaultShift,
-    setIsVaultReconciled,
-  ]);
 
   const isStaleShift = useMemo(() => {
     return isShiftStale(vaultBalance.openedAt);
@@ -589,10 +590,10 @@ export default function VaultOverviewPageContent() {
   };
 
   // ============================================================================
-  // Handlers
+  // Render
   // ============================================================================
 
-  // Check for critical missing user data (Skip check for Admin/Dev)
+  // Guard: Check for critical missing user data (Skip check for Admin/Dev)
   if (!loading && !isAdminOrDev && !user?.assignedLocations?.[0]) {
     return (
       <PageLayout>

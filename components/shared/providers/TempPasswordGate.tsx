@@ -25,14 +25,14 @@ import { useCallback, useState } from 'react';
 
 export default function TempPasswordGate() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, setUser, clearUser } = useUserStore();
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const needsPasswordChange = user?.requiresPasswordUpdate === true;
   const isCashier =
@@ -113,7 +113,7 @@ export default function TempPasswordGate() {
   }, [clearUser]);
 
   // ============================================================================
-  // Render — only mount the modal when it is actually needed
+  // Render
   // ============================================================================
   if (!needsPasswordChange) return null;
 

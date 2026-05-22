@@ -90,6 +90,9 @@ export function ReportsGamesPerformanceTooltip({
   coordinate,
   chartContainerRef,
 }: ReportsGamesPerformanceTooltipProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { displayCurrency } = useCurrencyFormat();
   const formatCurrency = (value: number | null | undefined) =>
     formatCurrencyWithCodeString(value, displayCurrency);
@@ -98,6 +101,9 @@ export function ReportsGamesPerformanceTooltip({
     left: number;
   } | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useLayoutEffect(() => {
     if (active && coordinate && chartContainerRef?.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
@@ -109,6 +115,9 @@ export function ReportsGamesPerformanceTooltip({
     }
   }, [active, coordinate, chartContainerRef]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!active || !payload || payload.length === 0) {
     return null;
   }

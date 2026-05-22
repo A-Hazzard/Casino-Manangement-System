@@ -67,6 +67,10 @@ export const useCabinetSorting = ({
 }: UseCabinetSortingProps & {
   searchTerm?: string;
 }): UseCabinetSortingReturn => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
@@ -75,6 +79,10 @@ export const useCabinetSorting = ({
   // Use controlled page if provided, otherwise fall back to internal state
   const currentPage = controlledCurrentPage ?? internalCurrentPage;
   const setCurrentPage = (page: number) => setInternalCurrentPage(page);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Sort toggle handler
   const handleSortToggle = useCallback(() => {
@@ -102,6 +110,10 @@ export const useCabinetSorting = ({
     },
     [sortOption, handleSortToggle]
   );
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Sort cabinets based on current sort option and order
   const sortedCabinets = useMemo(() => {

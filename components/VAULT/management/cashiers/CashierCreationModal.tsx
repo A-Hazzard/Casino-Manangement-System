@@ -50,6 +50,9 @@ export default function CashierCreationModal({
   assignedLicencees = [],
   assignedLocations = [],
 }: CashierCreationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [formData, setFormData] = useState({
     username: '',
     firstName: '',
@@ -65,6 +68,9 @@ export default function CashierCreationModal({
     null
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -160,6 +166,9 @@ export default function CashierCreationModal({
     onClose();
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open) {
       setFormData({
@@ -182,6 +191,9 @@ export default function CashierCreationModal({
     return null;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md overflow-hidden p-0">

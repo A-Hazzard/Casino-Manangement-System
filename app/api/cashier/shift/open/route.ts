@@ -36,7 +36,9 @@ export async function POST(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
     // STEP 1: Authentication & Authorization
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       logRouteError(
@@ -74,7 +76,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 2: Parse and validate request
+    // ============================================================================
     const body: OpenCashierShiftRequest = await request.json();
     const { locationId, requestedFloat, denominations } = body;
 
@@ -96,7 +100,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 3: Validate denominations
+    // ============================================================================
     const denominationValidation = validateDenominations(denominations);
     if (!denominationValidation.valid) {
       logRouteError(
@@ -133,10 +139,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 4: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
     // STEP 5: Check for active Vault Shift
+    // ============================================================================
     const vaultShift = await VaultShiftModel.findOne({
       locationId,
       status: 'active',
@@ -178,7 +188,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // STEP 5.5: Ensure cashier is assigned to this location
+    // ============================================================================
+    // STEP 6: Ensure cashier is assigned to this location
+    // ============================================================================
     const assignedLocations = (userPayload.assignedLocations as string[]) || [];
     if (!assignedLocations.includes(locationId)) {
       logRouteError(
@@ -197,7 +209,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // STEP 6: Check if cashier already has an active or pending shift
+    // ============================================================================
+    // STEP 7: Check if cashier already has an active or pending shift
+    // ============================================================================
     const existingShift = await CashierShiftModel.findOne({
       cashierId: userId,
       status: { $in: ['active', 'pending_start', 'pending_review'] },
@@ -220,7 +234,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // STEP 7: Create Cashier Shift (Pending Start)
+    // ============================================================================
+    // STEP 8: Create Cashier Shift (Pending Start)
+    // ============================================================================
     const shiftId = await generateMongoId();
     const now = new Date();
 
@@ -240,7 +256,9 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    // STEP 8: Create Float Request
+    // ============================================================================
+    // STEP 9: Create Float Request
+    // ============================================================================
     const requestId = await generateMongoId();
     const floatRequest = await FloatRequestModel.create({
       _id: requestId,
@@ -258,7 +276,9 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    // STEP 9: Audit Activity
+    // ============================================================================
+    // STEP 10: Audit Activity
+    // ============================================================================
     await logActivity({
       userId,
       username,
@@ -273,7 +293,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // STEP 10: Create notification for Vault Manager
+    // ============================================================================
+    // STEP 11: Create notification for Vault Manager
+    // ============================================================================
     try {
       const { createFloatRequestNotification } =
         await import('@/lib/helpers/vault/notifications');

@@ -1,3 +1,11 @@
+/**
+ * Stale Shift Detected Block Component
+ *
+ * Reusable component to block interactions when a stale shift is detected.
+ * Shows a high-prominence alert and a link to the appropriate closure page.
+ *
+ * @module components/VAULT/shared/StaleShiftDetectedBlock
+ */
 'use client';
 
 import { ReactNode } from 'react';

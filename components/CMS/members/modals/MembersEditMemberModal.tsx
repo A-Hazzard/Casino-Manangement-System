@@ -51,7 +51,7 @@ export default function MembersEditMemberModal({
   onMemberUpdated,
 }: MembersEditMemberModalProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { isEditModalOpen, selectedMember, closeEditModal } =
     useMembersActionsStore();
@@ -178,7 +178,7 @@ export default function MembersEditMemberModal({
   }, [isEditModalOpen, setTouched, setSubmitAttempted]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
 
   const handleClose = () => {

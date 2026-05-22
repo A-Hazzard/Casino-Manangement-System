@@ -39,6 +39,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function CollectionReportDetailsPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const hook = useCollectionReportDetailsData();
   const user = useUserStore(state => state.user);
 
@@ -56,6 +59,9 @@ export default function CollectionReportDetailsPageContent() {
   >([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     try {
@@ -110,7 +116,7 @@ export default function CollectionReportDetailsPageContent() {
   } = hook;
 
   // ============================================================================
-  // Tab Transition Effects
+  // Effects
   // ============================================================================
   // Animate tab transitions on desktop
   useEffect(() => {
@@ -118,7 +124,7 @@ export default function CollectionReportDetailsPageContent() {
   }, [activeTab, tabContentRef]);
 
   // ============================================================================
-  // Report Financial Calculations
+  // Computed & Render
   // ============================================================================
   const locationTotal = reportData ? calculateLocationTotal(collections) : 0;
   //red = negative values, green = positive values

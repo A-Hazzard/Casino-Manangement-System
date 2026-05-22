@@ -21,6 +21,9 @@ export default function CabinetsPermanentDeleteModal({
 }: {
   onCabinetDeleted?: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     isPermanentDeleteModalOpen,
     closePermanentDeleteModal,
@@ -30,6 +33,9 @@ export default function CabinetsPermanentDeleteModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isPermanentDeleteModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -46,6 +52,9 @@ export default function CabinetsPermanentDeleteModal({
     }
   }, [isPermanentDeleteModalOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handlePermanentDelete = async () => {
     if (!selectedCabinet) return;
 
@@ -66,6 +75,9 @@ export default function CabinetsPermanentDeleteModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isPermanentDeleteModalOpen) return null;
 
   return (

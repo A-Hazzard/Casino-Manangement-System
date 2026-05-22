@@ -63,6 +63,9 @@ type SessionMachine = {
   sessionEndTime?: string;
   imageData?: string;
   metersMatch?: boolean;
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
   // These are movement-based (movement.machineGross / movement.sasGross)
   machineGross?: number;
   sasGross?: number;
@@ -96,6 +99,9 @@ type CaptureState = {
   metersMatch: boolean | null;
   manualMetersIn: string;
   manualMetersOut: string;
+  ramClear: boolean;
+  ramClearMetersIn: string;
+  ramClearMetersOut: string;
 };
 
 // ============================================================================
@@ -113,6 +119,9 @@ export default function CollectionReportV2SessionDetail({
   sessionId: sessionIdProp,
   onClose,
 }: SessionDetailProps = {}) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const params = useParams();
   const router = useRouter();
   const sessionId = sessionIdProp ?? (params?.sessionId as string);
@@ -171,10 +180,13 @@ export default function CollectionReportV2SessionDetail({
     metersMatch: null,
     manualMetersIn: '',
     manualMetersOut: '',
+    ramClear: false,
+    ramClearMetersIn: '',
+    ramClearMetersOut: '',
   });
 
   // ============================================================================
-  // Fetch
+  // Effects
   // ============================================================================
 
   const fetchSession = useCallback(
@@ -227,6 +239,9 @@ export default function CollectionReportV2SessionDetail({
           metersMatch: isNoSMIB ? true : null,
           manualMetersIn: '',
           manualMetersOut: '',
+          ramClear: false,
+          ramClearMetersIn: '',
+          ramClearMetersOut: '',
         };
       }
       return {
@@ -239,6 +254,15 @@ export default function CollectionReportV2SessionDetail({
         manualMetersOut:
           isNoSMIB || machine.metersMatch === false
             ? String(machine.manualMetersOut ?? machine.sasMetersOut ?? '')
+            : '',
+        ramClear: machine.ramClear === true,
+        ramClearMetersIn:
+          machine.ramClearMetersIn !== undefined
+            ? String(machine.ramClearMetersIn)
+            : '',
+        ramClearMetersOut:
+          machine.ramClearMetersOut !== undefined
+            ? String(machine.ramClearMetersOut)
             : '',
       };
     },
@@ -306,12 +330,19 @@ export default function CollectionReportV2SessionDetail({
   }, [currentIndex, currentMachine?.reportedMachineId]);
 
   // ============================================================================
-  // Custom Period System Meters Handling
+  // Handlers
   // ============================================================================
 
   const handleApplyCustomPeriod = async () => {
     if (!currentMachine || !customSasStart || !customSasEnd) {
       toast.error('Please select both start and end date/time');
+      return;
+    }
+    if (new Date(customSasStart) >= new Date(customSasEnd)) {
+      toast.error('Start time must be before end time', {
+        description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
+        duration: 6000,
+      });
       return;
     }
     setFetchingCustomMeters(true);
@@ -498,6 +529,19 @@ export default function CollectionReportV2SessionDetail({
         return;
       }
 
+      // RAM clear: both peak values required when toggle is on.
+      if (
+        captureState.ramClear &&
+        (captureState.ramClearMetersIn === '' ||
+          captureState.ramClearMetersOut === '')
+      ) {
+        setSaveError(
+          'Please enter both RAM Clear Meters In and Meters Out values.'
+        );
+        setSaving(false);
+        return;
+      }
+
       // Determine if user cleared an existing image
       const imageWasCleared =
         !captureState.imageData && currentMachine.imageData;
@@ -541,6 +585,26 @@ export default function CollectionReportV2SessionDetail({
           captureState.manualMetersOut !== ''
             ? Number(captureState.manualMetersOut)
             : currentMachine.sasMetersOut;
+      }
+
+      // RAM clear toggle — always included so the backend can $unset peak
+      // values when the user turns it off.
+      payload.ramClear = captureState.ramClear;
+      if (captureState.ramClear) {
+        payload.ramClearMetersIn = Number(captureState.ramClearMetersIn);
+        payload.ramClearMetersOut = Number(captureState.ramClearMetersOut);
+      }
+
+      // Validate custom period start/end ordering before saving
+      if (useCustomPeriod && customSasStart && customSasEnd) {
+        if (new Date(customSasStart) >= new Date(customSasEnd)) {
+          toast.error('Start time must be before end time', {
+            description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
+            duration: 6000,
+          });
+          setSaving(false);
+          return;
+        }
       }
 
       // SAS period: custom override takes precedence over stored values.
@@ -800,7 +864,7 @@ export default function CollectionReportV2SessionDetail({
   };
 
   // ============================================================================
-  // Loading / Error
+  // Render
   // ============================================================================
 
   if (loading) {
@@ -910,7 +974,7 @@ export default function CollectionReportV2SessionDetail({
     currentMachine.status === 'skipped';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Back + Progress */}
         <div className="mb-6">
@@ -1025,6 +1089,15 @@ export default function CollectionReportV2SessionDetail({
                             target.metersMatch === false
                               ? String(target.sasMetersOut)
                               : '',
+                          ramClear: target.ramClear === true,
+                          ramClearMetersIn:
+                            target.ramClearMetersIn !== undefined
+                              ? String(target.ramClearMetersIn)
+                              : '',
+                          ramClearMetersOut:
+                            target.ramClearMetersOut !== undefined
+                              ? String(target.ramClearMetersOut)
+                              : '',
                         });
                         setCurrentIndex(value - 1);
                       }
@@ -1136,6 +1209,7 @@ export default function CollectionReportV2SessionDetail({
                             mode="single"
                             showTime={true}
                             buttonLabel="Apply"
+                            maxDate={customSasEnd ? new Date(customSasEnd) : new Date()}
                             onSelect={range => {
                               if (range?.from) {
                                 setCustomSasStart(range.from.toISOString());
@@ -1177,6 +1251,8 @@ export default function CollectionReportV2SessionDetail({
                             mode="single"
                             showTime={true}
                             buttonLabel="Apply"
+                            maxDate={new Date()}
+                            minDate={customSasStart ? new Date(customSasStart) : undefined}
                             onSelect={range => {
                               if (range?.from) {
                                 setCustomSasEnd(range.from.toISOString());
@@ -1188,6 +1264,13 @@ export default function CollectionReportV2SessionDetail({
                       </Popover>
                     </div>
                   </div>
+                  {/* Inline error when start >= end */}
+                  {customSasStart && customSasEnd && new Date(customSasStart) >= new Date(customSasEnd) && (
+                    <p className="mt-2 text-xs font-semibold text-red-600">
+                      ⚠️ Start time must be before end time
+                    </p>
+                  )}
+
                   {/* Apply Period Meters button — SMIB locations only */}
                   {!session?.noSMIBLocation && (
                     <div className="mt-3 flex justify-end">
@@ -1197,9 +1280,10 @@ export default function CollectionReportV2SessionDetail({
                         disabled={
                           fetchingCustomMeters ||
                           !customSasStart ||
-                          !customSasEnd
+                          !customSasEnd ||
+                          (!!customSasStart && !!customSasEnd && new Date(customSasStart) >= new Date(customSasEnd))
                         }
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {fetchingCustomMeters
                           ? 'Applying...'
@@ -1324,6 +1408,7 @@ export default function CollectionReportV2SessionDetail({
                           mode="single"
                           showTime={true}
                           buttonLabel="Set"
+                          maxDate={new Date()}
                           onSelect={range => {
                             if (range?.from) {
                               setMachineLastCollectionInput(
@@ -1552,6 +1637,78 @@ export default function CollectionReportV2SessionDetail({
             </div>
           )}
 
+          {/* RAM Clear — always available regardless of metersMatch / SMIB state */}
+          <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={captureState.ramClear}
+                onChange={e =>
+                  setCaptureState(prev => ({
+                    ...prev,
+                    ramClear: e.target.checked,
+                    ramClearMetersIn: e.target.checked
+                      ? prev.ramClearMetersIn
+                      : '',
+                    ramClearMetersOut: e.target.checked
+                      ? prev.ramClearMetersOut
+                      : '',
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 rounded border-yellow-400 text-yellow-600 focus:ring-yellow-500"
+              />
+              <div className="flex-1">
+                <span className="block text-sm font-medium text-yellow-900">
+                  RAM Clear
+                </span>
+                <span className="mt-0.5 block text-xs text-yellow-700">
+                  Check if the machine's meters were reset between the previous
+                  collection and this one. Movement is computed as (peak − prev)
+                  + current.
+                </span>
+              </div>
+            </label>
+
+            {captureState.ramClear && (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div>
+                  <label className="block text-xs text-yellow-800">
+                    RAM Clear Meters In (peak before reset)
+                  </label>
+                  <input
+                    type="number"
+                    value={captureState.ramClearMetersIn}
+                    onChange={e =>
+                      setCaptureState(prev => ({
+                        ...prev,
+                        ramClearMetersIn: e.target.value,
+                      }))
+                    }
+                    placeholder="0"
+                    className="mt-1 w-full rounded-lg border border-yellow-300 bg-white px-4 py-3 text-sm focus:border-yellow-500 focus:outline-none sm:py-2.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-yellow-800">
+                    RAM Clear Meters Out (peak before reset)
+                  </label>
+                  <input
+                    type="number"
+                    value={captureState.ramClearMetersOut}
+                    onChange={e =>
+                      setCaptureState(prev => ({
+                        ...prev,
+                        ramClearMetersOut: e.target.value,
+                      }))
+                    }
+                    placeholder="0"
+                    className="mt-1 w-full rounded-lg border border-yellow-300 bg-white px-4 py-3 text-sm focus:border-yellow-500 focus:outline-none sm:py-2.5"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Save Error */}
           {saveError && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -1613,7 +1770,13 @@ export default function CollectionReportV2SessionDetail({
                     <button
                       type="button"
                       onClick={handleNext}
-                      disabled={saving}
+                      disabled={
+                        saving ||
+                        (useCustomPeriod &&
+                          !!customSasStart &&
+                          !!customSasEnd &&
+                          new Date(customSasStart) >= new Date(customSasEnd))
+                      }
                       className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                     >
                       Next
@@ -1626,7 +1789,9 @@ export default function CollectionReportV2SessionDetail({
                       saving ||
                       captureState.metersMatch === null ||
                       (useCustomPeriod
-                        ? !customSasStart || !customSasEnd
+                        ? !customSasStart ||
+                          !customSasEnd ||
+                          new Date(customSasStart) >= new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }
@@ -1643,7 +1808,13 @@ export default function CollectionReportV2SessionDetail({
                 <button
                   type="button"
                   onClick={handleNext}
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    (useCustomPeriod &&
+                      !!customSasStart &&
+                      !!customSasEnd &&
+                      new Date(customSasStart) >= new Date(customSasEnd))
+                  }
                   className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                 >
                   Next
@@ -1677,7 +1848,9 @@ export default function CollectionReportV2SessionDetail({
                       saving ||
                       captureState.metersMatch === null ||
                       (useCustomPeriod
-                        ? !customSasStart || !customSasEnd
+                        ? !customSasStart ||
+                          !customSasEnd ||
+                          new Date(customSasStart) >= new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }
@@ -1914,6 +2087,14 @@ function ReviewView({
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
+                        {machine.ramClear === true && (
+                          <span
+                            className="inline-flex items-center rounded-full border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-yellow-800"
+                            title={`Pre-reset peak: ${machine.ramClearMetersIn ?? '-'} / ${machine.ramClearMetersOut ?? '-'}`}
+                          >
+                            RAM Clear
+                          </span>
+                        )}
                         <StatusBadge status={machine.status} />
                         {onEditMachine && (
                           <button

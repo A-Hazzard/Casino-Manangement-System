@@ -23,7 +23,7 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-interface VaultNotification {
+type VaultNotification = {
   _id: string;
   type: string;
   title: string;
@@ -35,15 +35,23 @@ interface VaultNotification {
     cashierName?: string;
     [key: string]: unknown;
   };
-}
+};
 
 export default function VaultNotificationsPanel() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const [notifications, setNotifications] = useState<VaultNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const selectedLocation = user?.assignedLocations?.[0];
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Note: fetchNotifications is declared before Effects since the useEffect
+  // that triggers it depends on this function being in scope.
   const fetchNotifications = async () => {
     if (!selectedLocation) return;
     setLoading(true);
@@ -63,6 +71,9 @@ export default function VaultNotificationsPanel() {
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchNotifications();
   }, [selectedLocation]);
@@ -129,6 +140,9 @@ export default function VaultNotificationsPanel() {
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const getIcon = (type: string) => {
     switch (type) {
       case 'warning':
@@ -146,6 +160,11 @@ export default function VaultNotificationsPanel() {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show skeleton while loading
   if (loading) {
     return (
       <div className="space-y-4 duration-500 animate-in fade-in">

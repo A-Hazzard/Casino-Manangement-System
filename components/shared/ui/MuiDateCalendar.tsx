@@ -33,6 +33,10 @@ type MuiDateCalendarProps = {
   hideLabels?: boolean;
   /** Whether to show the time input fields. Defaults to true. */
   showTime?: boolean;
+  /** Earliest selectable date (inclusive). Days before this are greyed out. */
+  minDate?: Date;
+  /** Latest selectable date (inclusive). Days after this are greyed out. */
+  maxDate?: Date;
 };
 
 // === Styled Components for Range Highlighting ===
@@ -88,6 +92,9 @@ const TimeInput = ({
   color?: string;
   hideLabel?: boolean;
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
 
@@ -98,6 +105,9 @@ const TimeInput = ({
   const [isHourFocused, setIsHourFocused] = useState(false);
   const [isMinuteFocused, setIsMinuteFocused] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!isHourFocused) setHourInput(displayHour.toString());
   }, [displayHour, isHourFocused]);
@@ -106,6 +116,9 @@ const TimeInput = ({
     if (!isMinuteFocused) setMinuteInput(minutes.toString().padStart(2, '0'));
   }, [minutes, isMinuteFocused]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleHoursChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
     setHourInput(value);
@@ -133,6 +146,9 @@ const TimeInput = ({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       {!hideLabel && (
@@ -220,7 +236,12 @@ export function MuiDateCalendar({
   mode = 'range',
   hideLabels = false,
   showTime = true,
+  minDate,
+  maxDate,
 }: MuiDateCalendarProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [fromDate, setFromDate] = useState<Date>(date || new Date());
   const [toDate, setToDate] = useState<Date>(propEndDate || date || new Date());
 
@@ -257,6 +278,9 @@ export function MuiDateCalendar({
     );
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Sync internal state with provided date prop when it changes
   useEffect(() => {
     if (date) {
@@ -269,6 +293,9 @@ export function MuiDateCalendar({
     }
   }, [date, propEndDate, mode]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const theme = useMemo(
     () =>
       createTheme({
@@ -281,6 +308,9 @@ export function MuiDateCalendar({
     []
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleApply = () => {
     const finalStart = new Date(fromDate);
     if (showTime) {
@@ -307,6 +337,9 @@ export function MuiDateCalendar({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <ThemeProvider theme={theme}>
       <Paper
@@ -379,6 +412,8 @@ export function MuiDateCalendar({
                 }}
                 slots={{ day: Day }}
                 views={['year', 'month', 'day']}
+                minDate={minDate}
+                maxDate={maxDate}
                 sx={{
                   margin: 0,
                   width: '320px',
@@ -433,6 +468,8 @@ export function MuiDateCalendar({
                   }}
                   slots={{ day: Day }}
                   views={['year', 'month', 'day']}
+                  minDate={minDate}
+                  maxDate={maxDate}
                   sx={{
                     margin: 0,
                     width: '320px',

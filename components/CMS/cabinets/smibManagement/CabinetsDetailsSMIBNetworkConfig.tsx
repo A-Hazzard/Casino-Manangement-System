@@ -53,6 +53,9 @@ export function CabinetsDetailsSMIBNetworkConfig({
   isLoading = false,
   isConnectedToMqtt = false,
 }: CabinetsDetailsSMIBNetworkConfigProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [formData, setFormData] = useState({
     networkSSID: networkSSID || '',
     networkPassword: networkPassword || '',
@@ -60,6 +63,9 @@ export function CabinetsDetailsSMIBNetworkConfig({
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update form data when props change
   useEffect(() => {
     setFormData({
@@ -69,6 +75,9 @@ export function CabinetsDetailsSMIBNetworkConfig({
     });
   }, [networkSSID, networkPassword, networkChannel]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
@@ -91,11 +100,17 @@ export function CabinetsDetailsSMIBNetworkConfig({
     onToggleEdit();
   };
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const formatLastConfigured = () => {
     if (!updatedAt) return 'Unknown';
     return formatDateWithOrdinal(new Date(updatedAt));
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">

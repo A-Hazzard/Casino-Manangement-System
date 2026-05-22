@@ -26,8 +26,14 @@ type VaultCashierFloatsMobileCardsProps = {
 export default function VaultCashierFloatsMobileCards({
   floats,
 }: VaultCashierFloatsMobileCardsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (floats.length === 0) {
     return (
       <div className="block rounded-lg bg-container p-8 text-center shadow-md lg:hidden">

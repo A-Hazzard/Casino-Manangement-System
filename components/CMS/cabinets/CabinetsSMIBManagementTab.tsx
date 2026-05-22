@@ -45,6 +45,9 @@ export type CabinetsSMIBManagementTabProps = {
 export default function CabinetsSMIBManagementTab({
   refreshTrigger = 0,
 }: CabinetsSMIBManagementTabProps = {}) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const { availableSmibs, loading, error, refreshSmibs } = useSMIBDiscovery();
@@ -540,6 +543,9 @@ export default function CabinetsSMIBManagementTab({
     }
   };
 
+  // ============================================================================
+  // Guard & Render
+  // ============================================================================
   if (loading) {
     return <SMIBManagementSkeleton />;
   }

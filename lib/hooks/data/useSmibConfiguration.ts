@@ -165,7 +165,7 @@ type UseSmibConfigurationReturn = {
 
 export function useSmibConfiguration(): UseSmibConfigurationReturn {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
   const [communicationMode, setCommunicationMode] =
@@ -249,6 +249,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     mqttCfgTopic: 'No Value Provided',
     mqttURI: 'No Value Provided',
   });
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const toggleSmibConfig = useCallback(() => {
     setSmibConfigExpanded(!smibConfigExpanded);
@@ -1214,6 +1218,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     },
     [publishConfigUpdate]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Debug formData changes (reduced logging)
   useEffect(() => {

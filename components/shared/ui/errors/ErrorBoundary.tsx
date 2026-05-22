@@ -1,3 +1,7 @@
+/**
+ * ErrorBoundary Component
+ * Class-based React error boundary that catches rendering errors and displays a fallback UI.
+ */
 'use client';
 
 import { Button } from '@/components/shared/ui/button';

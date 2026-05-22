@@ -54,6 +54,9 @@ export default function CabinetsDetailsSummarySection({
   onCopyToClipboard,
   onLocationClick,
 }: CabinetsDetailsSummarySectionProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const cabinetDisplayName = cabinet
     ? formatMachineDisplayNameWithBold(cabinet)
     : 'Unknown';
@@ -61,6 +64,9 @@ export default function CabinetsDetailsSummarySection({
     ? formatMachineDisplayName(cabinet)
     : 'Unknown';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Back Button */}

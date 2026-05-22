@@ -40,6 +40,9 @@ export default function LocationsDetailsChartSection({
   showGranularitySelector,
   availableGranularityOptions = [],
 }: LocationsDetailsChartSectionProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Check if all financial totals are zero
   /*
   const hasZeroTotals =
@@ -61,6 +64,9 @@ export default function LocationsDetailsChartSection({
   }
   */
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <motion.div
       className="mt-4 w-full"

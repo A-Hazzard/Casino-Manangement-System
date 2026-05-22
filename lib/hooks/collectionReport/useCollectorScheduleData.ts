@@ -69,7 +69,7 @@ export function useCollectorScheduleData(
   const [deleting, setDeleting] = useState(false);
 
   // ============================================================================
-  // Computed Values (Pagination)
+  // Computed
   // ============================================================================
   const totalPages = useMemo(
     () => Math.ceil(collectorSchedules.length / ITEMS_PER_PAGE) || 1,

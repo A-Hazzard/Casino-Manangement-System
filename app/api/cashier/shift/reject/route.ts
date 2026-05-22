@@ -148,7 +148,9 @@ export async function POST(request: NextRequest) {
 
     await cashierShift.save();
 
+    // ============================================================================
     // STEP 6: Audit Activity
+    // ============================================================================
     await logActivity({
       userId: vaultManagerId as string,
       username: userPayload.username as string,

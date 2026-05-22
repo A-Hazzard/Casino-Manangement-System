@@ -37,6 +37,10 @@ type PendingFloatRequest = {
 };
 
 export function useCashierShift() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { user } = useAuth();
   const [shift, setShift] = useState<CashierShift | null>(null);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
@@ -55,9 +59,17 @@ export function useCashierShift() {
 
   const [isStaleFromApi, setIsStaleFromApi] = useState<boolean>(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   const isStaleShift = useMemo(() => {
     return isStaleFromApi || isShiftStale(shift?.openedAt);
   }, [isStaleFromApi, shift?.openedAt]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchCurrentShift = useCallback(async (isSilent = false) => {
     try {
@@ -95,6 +107,10 @@ export function useCashierShift() {
       setRefreshing(false);
     }
   }, []);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Initial fetch
   useEffect(() => {

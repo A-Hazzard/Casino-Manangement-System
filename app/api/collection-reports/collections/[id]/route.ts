@@ -117,6 +117,9 @@ export async function PATCH(request: NextRequest) {
   const collectionId = pathname.split('/').pop();
 
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const updateData = await request.json();
     // ============================================================================
     // STEP 2: Validate collection ID
@@ -687,6 +690,20 @@ export async function PATCH(request: NextRequest) {
         // Update regular and RAM clear meters
         if (finalUpdatedCollection) {
           await updateRegularAndRamClearMeters(finalUpdatedCollection);
+          try {
+            const { propagateMetersToNextReport } = await import(
+              '@/app/api/lib/helpers/collectionReport/reportCreation'
+            );
+            await propagateMetersToNextReport(
+              String(finalUpdatedCollection.machineId),
+              String(finalUpdatedCollection.location),
+              finalUpdatedCollection.collectionTime || finalUpdatedCollection.timestamp || new Date(),
+              finalUpdatedCollection.metersIn || 0,
+              finalUpdatedCollection.metersOut || 0
+            );
+          } catch (propagateError) {
+            console.error('Failed to propagate meters to next report:', propagateError);
+          }
         }
 
         // Update machine collectionMetersHistory if meters were updated
@@ -795,7 +812,8 @@ export async function PATCH(request: NextRequest) {
         if (shouldRecalculate && updatedCollection.machineId) {
           try {
             await recalculateMachineCollections(
-              String(updatedCollection.machineId)
+              String(updatedCollection.machineId),
+              true
             );
           } catch (recalcError) {
             console.error(

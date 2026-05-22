@@ -58,6 +58,9 @@ export default function ActivityLogPanel({
   title = 'Activity Log',
   limit = 100, // Query limit in background
 }: ActivityLogPanelProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +75,9 @@ export default function ActivityLogPanel({
   const [currentPage, setCurrentPage] = useState(0);
   const ITEMS_PER_PAGE = 20;
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   const fetchActivities = useCallback(async () => {
     if (!locationId) return;
 
@@ -105,6 +111,9 @@ export default function ActivityLogPanel({
     fetchActivities();
   }, [fetchActivities]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const getBadgeVariant = (type: string) => {
     switch (type) {
       case 'float_increase':
@@ -138,6 +147,9 @@ export default function ActivityLogPanel({
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="flex h-full flex-col rounded-lg border-t-4 border-orangeHighlight bg-container shadow-md duration-500 animate-in fade-in">
       <CardHeader className="space-y-4 pb-4">

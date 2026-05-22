@@ -28,6 +28,9 @@ export default function CollectionReportCollectorMobile({
   onDelete,
   showActions,
 }: CollectionReportCollectorMobileUIProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full lg:hidden">
       <div className="space-y-4">

@@ -87,16 +87,25 @@ export default function ReportsLocationsTable({
   totalCount = 0,
   onPageChange,
 }: ReportsLocationsTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Calculate total machines across all locations for floor position calculation
   const totalMachinesAcrossAllLocations = useMemo(() => {
     return locations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
   }, [locations]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -184,6 +193,9 @@ export default function ReportsLocationsTable({
     }
   });
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return null;
     return sortOrder === 'asc' ? (
@@ -381,6 +393,9 @@ export default function ReportsLocationsTable({
     </div>
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`rounded-lg bg-white shadow ${className}`}>
       {/* Search Bar */}

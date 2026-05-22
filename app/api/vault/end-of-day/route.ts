@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate query params
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locId = searchParams.get('locationId'),
         dateStr = searchParams.get('date');
@@ -66,6 +69,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
 
+      // ============================================================================
+      // STEP 3: Generate report and return
+      // ============================================================================
       const report = await generateEndOfDayReport(locId, new Date(dateStr));
       const duration = Date.now() - startTime;
       logRouteFetch(

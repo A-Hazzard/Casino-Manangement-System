@@ -26,6 +26,9 @@ import { useCallback, useEffect, useMemo } from 'react';
 export function useDashboardFilters({
   selectedLicencee,
 }: UseDashboardFiltersProps): UseDashboardFiltersReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
@@ -40,12 +43,20 @@ export function useDashboardFilters({
   // Ensure showDatePicker is boolean
   const isShowDatePicker = Boolean(showDatePicker);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Initialize selected licencee on component mount
   useEffect(() => {
     if (!selectedLicencee) {
       // This would be handled by the parent component
     }
   }, [selectedLicencee]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Validate if current filter configuration is valid
   const isFilterValid = useMemo(() => {
@@ -57,6 +68,10 @@ export function useDashboardFilters({
 
     return true;
   }, [activeMetricsFilter, customDateRange]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Reset all filters to default state
   const resetFilters = useCallback(() => {

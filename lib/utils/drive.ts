@@ -1,3 +1,8 @@
+/**
+ * @module lib/utils/drive
+ * Google Drive client utilities for uploading and managing files in the Evolution One CMS.
+ */
+
 import { google, drive_v3 } from 'googleapis';
 import { Readable } from 'stream';
 

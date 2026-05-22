@@ -45,6 +45,9 @@ export function useMembersEditMemberValidation({
   formData,
   selectedMemberId,
 }: UseMembersEditMemberValidationProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -56,6 +59,9 @@ export function useMembersEditMemberValidation({
   const debouncedUsername = useDebounce(formData.username, 500);
   const debouncedEmail = useDebounce(formData.email, 500);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Debounced validation - only validate fields that have been touched or on submit
   useEffect(() => {
     const handler = setTimeout(() => {

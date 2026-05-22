@@ -17,6 +17,9 @@ import { ExternalLink, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+// ============================================================================
+// Handlers
+// ============================================================================
 /**
  * Formats duration from minutes to H:MM:SS
  */
@@ -46,8 +49,15 @@ export function SessionsDesktopTable({
   SessionsTableProps,
   'sessions' | 'sortOption' | 'sortOrder' | 'onSort'
 >) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const router = useRouter();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const renderSortArrow = (field: string) => {
     if (sortOption === field) {
@@ -56,6 +66,9 @@ export function SessionsDesktopTable({
     return null;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden rounded-md border border-gray-200 bg-white lg:block">
       <Table>

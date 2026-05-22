@@ -34,10 +34,16 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'POST /api/cabinets/[cabinetId]/sync-meters';
   const user = extractUserFromRequest(request);
+  // ============================================================================
+  // STEP 1: Parse Params
+  // ============================================================================
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/')[3];
 
   try {
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
     // ============================================================================

@@ -13,6 +13,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useMachinePageData() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -54,6 +58,10 @@ export function useMachinePageData() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   const canManageMachines = useMemo(() => {
     const roles = user?.roles || [];
     if (roles.includes('collector')) return false;
@@ -65,6 +73,10 @@ export function useMachinePageData() {
       'technician',
     ].some(role => roles.includes(role));
   }, [user]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleTabChange = useCallback(
     (tab: string) => {
@@ -97,6 +109,10 @@ export function useMachinePageData() {
       setRefreshing(false);
     }
   };
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     if (activeMetricsFilter) setDateFilterInitialized(true);

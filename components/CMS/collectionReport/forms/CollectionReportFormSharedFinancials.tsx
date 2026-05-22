@@ -22,6 +22,9 @@ export default function CollectionReportFormSharedFinancials({
   disabled = false,
   className = '',
 }: SharedFinancialsFormProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={className}>
       <h3 className="mb-3 text-base font-semibold">

@@ -58,6 +58,9 @@ export function useLocationData({
   sortBy,
   sortOrder,
 }: UseLocationDataProps): UseLocationDataReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [locationData, setLocationData] = useState<AggregatedLocation[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,10 @@ export function useLocationData({
 
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Memoize selectedFilters to avoid recreating fetchBatch
   const selectedFiltersKey = useMemo(() => {
@@ -108,6 +115,10 @@ export function useLocationData({
     customDateRange?.startDate,
     customDateRange?.endDate,
   ]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Fetch a specific batch of locations
   const fetchBatch = useCallback(
@@ -288,6 +299,10 @@ export function useLocationData({
       sortOrder,
     ]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Refresh data when user returns to the page
   useEffect(() => {

@@ -62,10 +62,12 @@ export default function SoftCountForm({
   loading = false,
   isEndOfDayFixed,
 }: SoftCountFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
-  // Form State
   const [notes, setNotes] = useState('');
   const [isEndOfDay, setIsEndOfDay] = useState(false);
   const [denominations, setDenominations] = useState<Denomination[]>([]);
@@ -85,6 +87,10 @@ export default function SoftCountForm({
     () => getDenominationValues(selectedLicencee),
     [selectedLicencee]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Reset form when machine changes
   useEffect(() => {
@@ -106,6 +112,9 @@ export default function SoftCountForm({
     }
   }, [machine?._id, denomsList, isEndOfDayFixed]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchMachineDetails = async (id: string) => {
     setIsFetchingDetails(true);
     try {
@@ -134,6 +143,9 @@ export default function SoftCountForm({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalPhysical = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
     0
@@ -191,6 +203,11 @@ export default function SoftCountForm({
     return 'text-4xl';
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: no machine selected
   if (!machine) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-10 text-center text-gray-400">

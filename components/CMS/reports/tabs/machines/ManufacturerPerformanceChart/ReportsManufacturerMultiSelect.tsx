@@ -35,10 +35,16 @@ export function ReportsManufacturerMultiSelect({
   onSelectionChange,
   placeholder = 'Select manufacturers...',
 }: ReportsManufacturerMultiSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,6 +62,9 @@ export function ReportsManufacturerMultiSelect({
     };
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleToggleManufacturer = (manufacturerId: string) => {
     if (selectedManufacturers.includes(manufacturerId)) {
       onSelectionChange(
@@ -70,6 +79,9 @@ export function ReportsManufacturerMultiSelect({
     onSelectionChange([]);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredOptions = manufacturers.filter(option => {
     const name = option.name || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -97,6 +109,9 @@ export function ReportsManufacturerMultiSelect({
         } selected`
       : placeholder;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <Button

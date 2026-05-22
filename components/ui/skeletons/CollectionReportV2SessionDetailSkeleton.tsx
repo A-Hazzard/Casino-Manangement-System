@@ -1,3 +1,11 @@
+/**
+ * Collection Report V2 Session Detail Skeleton Loader
+ *
+ * Matches the exact layout of the CollectionReportV2SessionDetail page
+ * Used while machine meter capture data is loading.
+ *
+ * @module components/ui/skeletons/CollectionReportV2SessionDetailSkeleton
+ */
 'use client';
 
 import { Skeleton } from '@/components/shared/ui/skeleton';

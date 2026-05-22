@@ -18,6 +18,9 @@ export function SessionsTable({
   sortOrder,
   onSort,
 }: SessionsTableProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   // === Loading State ===
   if (isLoading) {
     return (

@@ -101,10 +101,16 @@ export default function ReportsLocationsOverview({
   onRefresh,
   onExportLocationOverview,
 }: ReportsLocationsOverviewProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { displayCurrency } = useCurrencyFormat();
   const formatCurrency = (val: number | null | undefined) =>
     formatCurrencyWithCodeString(val, displayCurrency);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Check if any location has includeJackpot and compute total jackpot
   const { anyIncludeJackpot, totalJackpot } = useMemo(() => {
     const dataSource =
@@ -141,6 +147,9 @@ export default function ReportsLocationsOverview({
     };
   }, [locationAggregates, allLocationsForDropdown]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Metrics Overview */}

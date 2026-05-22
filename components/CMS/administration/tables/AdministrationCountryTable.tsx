@@ -35,6 +35,9 @@ function AdministrationCountryTable({
   onEdit,
   onDelete,
 }: AdministrationCountryTableProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden lg:block">
       <Table className="rounded-lg bg-white shadow-md">

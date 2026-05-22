@@ -54,6 +54,9 @@ export default function VaultOverviewFloatRequestsPanel({
   loading = false,
   readOnly = false,
 }: VaultOverviewFloatRequestsPanelProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<number>(0);
@@ -62,10 +65,16 @@ export default function VaultOverviewFloatRequestsPanel({
   );
   const [editNotes, setEditNotes] = useState<string>('');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const activeRequests = floatRequests.filter(
     req => req.status === 'pending' || req.status === 'approved_vm'
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const startEdit = (request: FloatRequest) => {
     setEditingId(request._id);
     setEditAmount(request.requestedAmount);
@@ -90,6 +99,9 @@ export default function VaultOverviewFloatRequestsPanel({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (activeRequests.length === 0) {
     return (
       <Card className="rounded-lg bg-container shadow-md">

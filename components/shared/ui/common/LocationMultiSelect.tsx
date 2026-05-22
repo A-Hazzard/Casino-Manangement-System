@@ -38,10 +38,16 @@ export default function LocationMultiSelect({
   showSearch = true,
   showSasBadge = true,
 }: LocationMultiSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,6 +63,9 @@ export default function LocationMultiSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleToggleLocation = (locationId: string) => {
     const newSelection = selectedLocations.includes(locationId)
       ? selectedLocations.filter(id => id !== locationId)
@@ -69,6 +78,9 @@ export default function LocationMultiSelect({
     setIsOpen(false); // Close the dropdown after clearing
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter options based on search term
   const filteredOptions = locations.filter(option => {
     const name = option.name || '';
@@ -106,6 +118,9 @@ export default function LocationMultiSelect({
           } selected`
         : placeholder;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <Button

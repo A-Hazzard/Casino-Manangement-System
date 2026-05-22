@@ -23,11 +23,18 @@ export function useLocationMachineStats(
   gameTypeFilter?: string | null,
   selectedStatus?: string
 ): UseLocationMachineStatsReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const makeRequest = useAbortableRequest();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Fetch machine stats
   const fetchMachineStatsData = useCallback(async () => {
@@ -86,6 +93,10 @@ export function useLocationMachineStats(
   const refreshMachineStats = useCallback(async () => {
     await fetchMachineStatsData();
   }, [fetchMachineStatsData]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Load machine stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {

@@ -13,9 +13,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // 1. Authenticate user
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -24,7 +29,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 2. Parse and validate parameters
+    // ============================================================================
+    // STEP 3: Parse and validate parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const machineId = searchParams.get('machineId');
     const startDate = searchParams.get('startDate');
@@ -37,7 +44,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 3. Find the single most recent meter document in the specified range
+    // ============================================================================
+    // STEP 4: Find the single most recent meter document in the specified range
+    // ============================================================================
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -53,6 +62,9 @@ export async function GET(req: NextRequest) {
       sasMetersOut: latestMeter?.totalCancelledCredits ?? 0,
     };
 
+    // ============================================================================
+    // STEP 5: Return data
+    // ============================================================================
     return NextResponse.json({ success: true, data });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';

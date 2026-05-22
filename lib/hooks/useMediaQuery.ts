@@ -3,7 +3,15 @@
 import { useEffect, useState } from 'react';
 
 export function useMediaQuery(query: string): boolean {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [matches, setMatches] = useState(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     const media = window.matchMedia(query);

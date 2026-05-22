@@ -1,3 +1,7 @@
+/**
+ * SMIBFirmwareSection Component
+ * Full firmware management section with table (desktop) and card grid (mobile/tablet) views.
+ */
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -16,9 +20,17 @@ import type { Firmware } from '@/lib/types/firmware';
 export default function SMIBFirmwareSection({
   refreshTrigger = 0,
 }: { refreshTrigger?: number } = {}) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [firmwares, setFirmwares] = useState<Firmware[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchFirmwares = useCallback(async () => {
     try {
@@ -36,17 +48,6 @@ export default function SMIBFirmwareSection({
     }
   }, []);
 
-  useEffect(() => {
-    fetchFirmwares();
-  }, [fetchFirmwares]);
-
-  // Refresh when trigger changes from parent
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchFirmwares();
-    }
-  }, [refreshTrigger, fetchFirmwares]);
-
   const handleUploadComplete = () => {
     fetchFirmwares(); // Refresh the list after upload
   };
@@ -61,6 +62,25 @@ export default function SMIBFirmwareSection({
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  useEffect(() => {
+    fetchFirmwares();
+  }, [fetchFirmwares]);
+
+  // Refresh when trigger changes from parent
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchFirmwares();
+    }
+  }, [refreshTrigger, fetchFirmwares]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Loading skeleton for cards
   const renderCardSkeleton = () => (
@@ -105,6 +125,10 @@ export default function SMIBFirmwareSection({
       </button>
     </div>
   );
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <>

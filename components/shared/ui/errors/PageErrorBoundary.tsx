@@ -1,3 +1,7 @@
+/**
+ * PageErrorBoundary Component
+ * Page-level error boundary that catches errors gracefully with retry functionality.
+ */
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -12,18 +16,22 @@ type PageErrorBoundaryProps = {
   onError?: (error: unknown) => void;
 };
 
-/**
- * Page-level error boundary that catches and handles errors gracefully
- * Provides retry functionality and user-friendly error messages
- */
 export default function PageErrorBoundary({
   children,
   fallback,
   onError,
 }: PageErrorBoundaryProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [error, setError] = useState<Error | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
   const { handleError } = useGlobalErrorHandler();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleRetry = useCallback(async () => {
     setIsRetrying(true);
@@ -57,7 +65,11 @@ export default function PageErrorBoundary({
     [handleError, onError]
   );
 
-  // If there's an error, show error UI
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show error UI if an error occurred
   if (error) {
     if (fallback) {
       return <>{fallback}</>;
@@ -93,9 +105,18 @@ function ErrorBoundaryWrapper({
   children: ReactNode;
   onError: (error: Error, errorInfo: ErrorInfo) => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [hasError, setHasError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: propagate error to parent boundary
   if (hasError && error) {
     onError(error, { componentStack: '' });
     return null;

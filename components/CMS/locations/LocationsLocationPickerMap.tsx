@@ -29,54 +29,18 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
   onMapLoadError,
   onMapLoadSuccess,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Load Google Maps API
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
 
-  // Debug API key loading
-  useEffect(() => {
-    if (loadError) {
-      console.error('Google Maps API Error:', loadError);
-      console.error(
-        'API Key:',
-        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing'
-      );
-      console.error('Current domain:', window.location.hostname);
-      // Call the error handler if provided
-      onMapLoadError?.();
-    }
-    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-      console.error(
-        'Google Maps API Key is missing from environment variables'
-      );
-      // Call the error handler if provided
-      onMapLoadError?.();
-    } else {
-      console.warn('Google Maps API Key loaded successfully');
-    }
-  }, [loadError, onMapLoadError]);
-
-  // Call success handler when map is loaded
-  useEffect(() => {
-    if (isLoaded && !loadError) {
-      onMapLoadSuccess?.();
-    }
-  }, [isLoaded, loadError, onMapLoadSuccess]);
-
   // Map state
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [center, setCenter] = useState({ lat: initialLat, lng: initialLng });
-
-  // Sync center with props when they change (e.g. from link extraction)
-  useEffect(() => {
-    const newCenter = { lat: initialLat, lng: initialLng };
-    setCenter(newCenter);
-    if (map) {
-      map.panTo(newCenter);
-    }
-  }, [initialLat, initialLng, map]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,6 +55,10 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
     null
   );
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Memoized map options - only create when google is loaded
   const mapOptions = useMemo(() => {
@@ -112,6 +80,9 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
     };
   }, [mapType, isLoaded]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle map load
   const onMapLoad = useCallback(
     (mapInstance: google.maps.Map) => {
@@ -340,6 +311,48 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
     }
   }, []);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  // Debug API key loading
+  useEffect(() => {
+    if (loadError) {
+      console.error('Google Maps API Error:', loadError);
+      console.error(
+        'API Key:',
+        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing'
+      );
+      console.error('Current domain:', window.location.hostname);
+      // Call the error handler if provided
+      onMapLoadError?.();
+    }
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      console.error(
+        'Google Maps API Key is missing from environment variables'
+      );
+      // Call the error handler if provided
+      onMapLoadError?.();
+    } else {
+      console.warn('Google Maps API Key loaded successfully');
+    }
+  }, [loadError, onMapLoadError]);
+
+  // Call success handler when map is loaded
+  useEffect(() => {
+    if (isLoaded && !loadError) {
+      onMapLoadSuccess?.();
+    }
+  }, [isLoaded, loadError, onMapLoadSuccess]);
+
+  // Sync center with props when they change (e.g. from link extraction)
+  useEffect(() => {
+    const newCenter = { lat: initialLat, lng: initialLng };
+    setCenter(newCenter);
+    if (map) {
+      map.panTo(newCenter);
+    }
+  }, [initialLat, initialLng, map]);
+
   // Handle click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -364,6 +377,9 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
     };
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Handle loading error
   if (loadError) {
     return (

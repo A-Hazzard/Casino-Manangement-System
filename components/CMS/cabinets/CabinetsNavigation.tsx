@@ -35,9 +35,15 @@ export default function CabinetsNavigation({
   activeSection,
   onChange,
 }: Props) {
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   // Filter out tabs that are under maintenance
   const visibleTabs = tabs.filter(tab => tab.available !== false);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop: Horizontal Tab Navigation */}

@@ -1,6 +1,6 @@
 # Collection Report V2 — Movement Calculation Engine
 
-**Last Updated:** 2026-05-16
+**Last Updated:** 2026-05-21
 
 ## Overview
 
@@ -21,6 +21,9 @@ The V2 Collection Report system uses a **Movement Delta Method** to calculate ac
 | `manualMetersOut` | The manual cancelled-credits value entered by the collector (only set when `metersMatch === false`). |
 | `prevSasMetersIn` | The SAS `metersIn` from the most recent previous submitted report (or `Machine.collectionMeters.metersIn` for first-time reports). |
 | `prevSasMetersOut` | The SAS `metersOut` from the most recent previous submitted report (or `Machine.collectionMeters.metersOut` for first-time reports). |
+| `ramClear` | Boolean flag — true when the machine's meters were reset between the previous collection and this one. |
+| `ramClearMetersIn` | Pre-reset peak `metersIn` reading (only meaningful when `ramClear === true`). |
+| `ramClearMetersOut` | Pre-reset peak `metersOut` reading (only meaningful when `ramClear === true`). |
 
 ### `movement` Sub-Document
 
@@ -69,6 +72,35 @@ When meters don't match, `sasMetersIn/Out` are overridden with `Machine.sasMeter
 
 > **Note:** `Machine.sasMeters` (lifetime meter totals) is distinct from `Machine.collectionMeters` (the previous collection checkpoint). They are intentionally separate fields.
 
+### When `ramClear === true` (machine was reset between collections)
+
+RAM clear handles the real-world scenario where a machine's meters were reset to 0 between the previous collection and the current one. The current readings cannot be compared against the previous baseline directly — they reflect only the post-reset accumulation.
+
+```
+movement.manualMetersIn  = (ramClearMetersIn  - prevSasMetersIn)  + effectiveIn
+movement.manualMetersOut = (ramClearMetersOut - prevSasMetersOut) + effectiveOut
+movement.machineGross    = movement.manualMetersIn - movement.manualMetersOut
+```
+
+Where `effectiveIn/Out` is whichever current reading applies under the existing branch (SAS values for `metersMatch === true`, manual values for `metersMatch === false`, manual values for no-SMIB).
+
+`sasGross` is **not** affected by RAM clear — it is still computed from time-range aggregation (`metersMatch === true`) or simple lifetime arithmetic (`metersMatch === false`).
+
+The RAM clear toggle is **always available** in the capture UI regardless of `metersMatch` or SMIB status. Validation enforces `ramClearMetersIn ≥ prevSasMetersIn` and `ramClearMetersOut ≥ prevSasMetersOut`.
+
+#### Worked example
+
+| Input | Value |
+|---|---|
+| `prevSasMetersIn / Out` | 10 / 20 |
+| `ramClearMetersIn / Out` | 20 / 25 |
+| Current `metersIn / Out` (post-reset) | 5 / 0 |
+| `movement.manualMetersIn` | (20 − 10) + 5 = **15** |
+| `movement.manualMetersOut` | (25 − 20) + 0 = **5** |
+| `movement.machineGross` | **10** |
+
+This matches V1's two-meter calculation exactly.
+
 ---
 
 ## Previous Meter Baseline (Fallback Chain)
@@ -105,6 +137,19 @@ To maintain lifetime meter accuracy on machines without a live SMIB connection:
 
 This ensures that the next collection report will use the current report's SAS readings as the "previous" baseline, maintaining continuity across collections.
 
+### Meters Document Creation (No-SMIB Locations)
+
+For no-SMIB locations the submit route creates `Meters` documents (one per machine + session) since there is no live SAS relay producing them. When RAM clear is active, **two** docs are created instead of one — mirroring V1's behavior so downstream aggregations (`SUM(movement.drop)`) yield the same total.
+
+| `ramClear` | Meters docs created | Per-doc movement |
+|---|---|---|
+| `false` | 1 | `movement.drop = manualMetersIn - prev`, `movement.totalCancelledCredits = manualMetersOut - prev` |
+| `true`  | 2 — RAM clear meter (`isRamClear: true`) + post-reset meter | RAM clear: `movement.drop = ramClearMetersIn - prev`; post-reset: `movement.drop = manualMetersIn` (prev treated as 0) |
+
+The post-reset meter's `readAt` is set to `sasEndTime + 1000ms` so it sorts after the RAM clear meter. On re-submit, existing meters for the machine + session are deleted first via `Meters.deleteMany()` to keep the collection clean.
+
+For **SMIB locations** no `Meters` docs are created by the submit route — the SAS relay owns that. RAM clear still adjusts `movement` on the `ReportedMachine` doc identically.
+
 ---
 
 ## UI Column Mapping
@@ -120,6 +165,7 @@ The Collection Report V2 session view displays these columns in the machines tab
 | Movement Machine Gross | `movement.machineGross` | Machine-perspective collection gross |
 | Movement SAS Gross | `sasGross` | SAS-perspective collection gross |
 | Variation | `grossDifference` | `machineGross - sasGross` |
+| RAM Clear badge | `ramClear === true` | Yellow pill on the machine row; tooltip shows the pre-reset peak values |
 
 ---
 
@@ -147,3 +193,13 @@ To maintain data integrity across both collection engines, the V1 system has bee
 - **V1 Helper (Creation/Capture):** `app/api/lib/helpers/collectionReport/creation.ts`
 - **V1 Helper (Report Finalization):** `app/api/lib/helpers/collectionReport/reportCreation.ts`
 - **V1 Route (PATCH Capture):** `app/api/collection-reports/collections/route.ts`
+
+## Chronological Validation and Cascade Updates
+
+To guarantee mathematical consistency in movement deltas, both V1 and V2 systems enforce strict chronological rules:
+
+1. **Middle-Date Blocking**: You cannot insert a report (or session) for a machine if its timestamp falls exactly *between* two existing reports for that machine. The system checks the sasEndTime against the specific machine's history and blocks the submission to prevent breaking the contiguous timeline.
+2. **Cascade Updates**: If you edit a machine's data in an *older* report (i.e. a newer report exists chronologically), the system automatically triggers a cascade update. It finds the immediate next report for that machine, updates its prevSasMetersIn and prevSasMetersOut, and recalculates its movement and gross to ensure the timeline remains mathematically sound.
+3. **Location ID Enforcement**: To preserve referential integrity, meters are strictly saved using the machine's \locationId\ (ObjectId). They never fallback to the location name string, ensuring robust ID-based aggregations.
+4. **RAM Clear Offsets**: For no-SMIB locations, when creating Meters documents for a RAM clear event, the system guarantees the current meter is exactly at the collection time, while the RAM clear peak meter is logged exactly 1 second prior (\collectionTime - 1000ms\).
+

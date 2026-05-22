@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
   const functionName = 'POST /api/e2e/auth';
   const logUser = extractUserFromRequest(request);
 
+  // ============================================================================
+  // STEP 1: Verify environment
+  // ============================================================================
   // Only available outside production unless specifically enabled
   if (
     process.env.NODE_ENV === 'production' &&
@@ -36,6 +39,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  // ============================================================================
+  // STEP 2: Parse request body
+  // ============================================================================
   const body = await request.json();
   const user = body.user as {
     _id: string;
@@ -61,6 +67,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ============================================================================
+  // STEP 3: Generate access token
+  // ============================================================================
   // generateAccessToken automatically fills sessionId and dbContext from env
   const token = await generateAccessToken({
     _id: user._id,
@@ -74,6 +83,9 @@ export async function POST(request: NextRequest) {
     dbContext: { connectionString: '', timestamp: 0 }, // overwritten by generateAccessToken
   });
 
+  // ============================================================================
+  // STEP 4: Set auth cookie and return response
+  // ============================================================================
   const response = NextResponse.json({
     success: true,
     data: { user },

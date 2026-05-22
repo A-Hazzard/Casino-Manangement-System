@@ -38,6 +38,9 @@ export default function CabinetsNewCabinetModal({
   currentLocationName,
   onCreated,
 }: CabinetsNewCabinetModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isCabinetModalOpen, locationId, closeCabinetModal } =
     useNewCabinetStore();
   const modalRef = useRef<HTMLDivElement>(null);
@@ -54,6 +57,9 @@ export default function CabinetsNewCabinetModal({
 
 
 
+  // ============================================================================
+  // Helpers & Handlers
+  // ============================================================================
   // SMIB Board validation function
   const validateSmibBoard = (value: string): string => {
     if (!value) return '';
@@ -119,6 +125,9 @@ export default function CabinetsNewCabinetModal({
     },
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update gaming location when locationId changes
   useEffect(() => {
     if (locationId) {
@@ -178,6 +187,9 @@ export default function CabinetsNewCabinetModal({
     }
   }, [isCabinetModalOpen]);
 
+  // ============================================================================
+  // Additional Handlers
+  // ============================================================================
   const handleClose = () => {
     gsap.to(modalRef.current, {
       opacity: 0,
@@ -434,6 +446,9 @@ export default function CabinetsNewCabinetModal({
     });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isCabinetModalOpen) return null;
 
   // Desktop View

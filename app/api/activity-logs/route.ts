@@ -66,12 +66,10 @@ export async function GET(request: NextRequest) {
       const startTime = Date.now();
       const { searchParams } = new URL(request.url);
 
-      // Pagination parameters
       const page = parseInt(searchParams.get('page') || '1');
       const limit = parseInt(searchParams.get('limit') || '50');
       const skip = (page - 1) * limit;
 
-      // Filters
       const userId = searchParams.get('userId');
       const username = searchParams.get('username');
       const email = searchParams.get('email');
@@ -118,7 +116,6 @@ export async function GET(request: NextRequest) {
         ];
       }
 
-      // Role-based filtering
       const isManager = userRoles.includes('manager') && !isAdminOrDev;
       const isLocationAdmin =
         userRoles.includes('location admin') && !isAdminOrDev && !isManager;
@@ -439,7 +436,6 @@ export async function DELETE(request: NextRequest): Promise<Response> {
       );
     }
 
-    // Permanently deletes all documents from the ActivityLog collection
     const deleteResult = await ActivityLog.deleteMany({});
 
     const duration = Date.now() - startTime;

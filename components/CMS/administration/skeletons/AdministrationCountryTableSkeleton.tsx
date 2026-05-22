@@ -4,6 +4,9 @@
  */
 
 function AdministrationCountryTableSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="hidden lg:block">
       <div className="animate-pulse rounded-lg bg-white p-6 shadow-md">

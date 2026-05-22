@@ -91,6 +91,9 @@ type LocationDetails = {
 export default function LocationsEditLocationModal({
   onLocationUpdated,
 }: EditLocationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isEditModalOpen, selectedLocation, closeEditModal } =
     useLocationsActionsStore();
   const { user } = useUserStore();
@@ -241,8 +244,14 @@ export default function LocationsEditLocationModal({
     return options;
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const timeOptions = generateTimeOptions();
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Fetch full location details when modal opens
   const fetchLocationDetails = async (locationId: string) => {
     setLocationDetailsLoading(true);
@@ -300,6 +309,9 @@ export default function LocationsEditLocationModal({
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!isEditModalOpen) return;
 
@@ -883,6 +895,9 @@ export default function LocationsEditLocationModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isEditModalOpen || !selectedLocation) return null;
 
   // Modal Content - full viewport overlay with high z-index to cover sidebar

@@ -79,10 +79,16 @@ const monthlyTrendsData = [
 ];
 
 export default function PerformanceReports() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [selectedMetric, setSelectedMetric] = useState<
     'cashier' | 'vault' | 'monthly'
   >('cashier');
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header */}

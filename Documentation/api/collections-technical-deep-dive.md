@@ -256,6 +256,15 @@ See [`isEditing` Flag System](#isediting-flag-system---unsaved-changes-protectio
 
 **Fixed:** DELETE `/api/collection-reports` endpoint now properly removes `collectionMetersHistory` entries when deleting collections. Previously, it only reverted `collectionMeters` but left orphaned history entries, causing data integrity issues and incorrect collection counts in the UI. See [DELETE Implementation](#delete-apicollections) for details.
 
+## Chronological Validation and Cascade Updates (V1 & V2)
+
+To maintain data integrity and accurate mathematical flow between sequential reports, the collections engine enforces the following strict chronological rules:
+
+1. **Middle-Date Blocking**: A new collection report cannot be inserted if its timestamp falls exactly *between* two existing reports for any machine in the report. This per-machine check prevents breaking the contiguous timeline.
+2. **Cascade Updates**: Editing a machine's values in an *older* report automatically triggers a cascade update. The system finds the chronologically next report for that machine, updates its `prevMetersIn/Out` (or `prevSasMetersIn/Out` in V2), and recalculates its movement to reflect the corrected baseline.
+3. **Location ID Enforcement**: Meter objects are strictly saved using the machine's `locationId` (ObjectId) rather than falling back to the location name string. This prevents referential integrity issues during RAM clear toggles and ensures ID-based backend aggregations succeed.
+4. **RAM Clear Timing**: When a RAM clear occurs, the system generates two Meter documents. The post-reset "Current" meter is logged exactly at the collection time. The pre-reset "RAM Clear" peak meter is logged exactly 1 second prior (`collectionTime - 1000ms`). This ensures queries process them in the correct sequential order.
+
 ## Overview
 
 The backend handles collection report creation, SAS metrics calculation, machine time management, and report queries. This guide documents all backend logic for the collection report system.

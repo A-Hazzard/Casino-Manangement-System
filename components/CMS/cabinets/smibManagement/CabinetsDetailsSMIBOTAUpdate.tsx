@@ -50,6 +50,9 @@ export function CabinetsDetailsSMIBOTAUpdate({
   firmwareUpdatedAt,
   onUpdateComplete,
 }: CabinetsDetailsSMIBOTAUpdateProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [selectedFirmwareId, setSelectedFirmwareId] = useState<string>('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const {
@@ -60,10 +63,16 @@ export function CabinetsDetailsSMIBOTAUpdate({
     updateSmib,
   } = useSmibOTA(onUpdateComplete);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchFirmwares();
   }, [fetchFirmwares]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdate = async () => {
     if (!relayId || !selectedFirmwareId) return;
 
@@ -78,6 +87,9 @@ export function CabinetsDetailsSMIBOTAUpdate({
     }
   };
 
+  // ============================================================================
+  // Helpers & Computed
+  // ============================================================================
   const formatLastUpdate = () => {
     if (!firmwareUpdatedAt) return 'Never updated';
     return formatDateWithOrdinal(new Date(firmwareUpdatedAt));
@@ -85,6 +97,9 @@ export function CabinetsDetailsSMIBOTAUpdate({
 
   const selectedFirmware = firmwares.find(f => f._id === selectedFirmwareId);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Card className="w-full min-w-0 max-w-full overflow-x-hidden">

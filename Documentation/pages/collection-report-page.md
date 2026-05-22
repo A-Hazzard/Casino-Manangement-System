@@ -1,8 +1,8 @@
 # Collection Report Page Implementation (`/collection-report`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** May 12, 2026  
-**Version:** 4.4.0
+**Last Updated:** May 21, 2026  
+**Version:** 4.5.0
 
 ---
 
@@ -118,6 +118,12 @@ Triggered via **"Create Collection Report"**. Both a desktop modal (`CollectionR
 
 ---
 
+## 4.5. Chronological UI Validation
+
+To prevent users from breaking chronological timelines, both New and Edit Collection Modals check if the selected collection date falls between two existing reports for any selected machine. If it detects a middle-date insertion, it disables submission and displays a warning banner to the user, enforcing sequential collection report submissions.
+
+---
+
 ## 5. Edit Collection Report
 
 - **Desktop**: `CollectionReportEditCollectionModal` → `DesktopEditLayout`
@@ -190,11 +196,19 @@ All V2 data lives in the `ReportedMachine` collection (`app/api/lib/models/repor
 | `manualMetersIn` / `manualMetersOut` | Number | Manually captured readings |
 | `status` | `'pending' \| 'captured' \| 'confirmed' \| 'skipped'` | Per-machine capture state |
 | `metersMatch` | Boolean | Whether manual and SAS readings agree |
+| `ramClear` | Boolean | True when the machine's meters were reset between collections |
+| `ramClearMetersIn` / `ramClearMetersOut` | Number | Pre-reset peak readings (only when `ramClear === true`) |
 | `sequenceOrder` | Number | Capture/display order within the session |
 | `sessionStartTime` / `sessionEndTime` | Date | Session window — start derived from previous session's end |
 | `driveFileId` | String | Google Drive ID for captured meter image |
 | `imageCapturedAt` | Date | Timestamp of meter photo |
 | `deletedAt` | Date | Soft-delete marker |
+
+### RAM Clear (V2)
+
+The capture wizard exposes a "RAM Clear" toggle on every machine regardless of `metersMatch` or SMIB status. When checked, two additional fields appear: `ramClearMetersIn` and `ramClearMetersOut` (the pre-reset peak readings). The movement formula becomes `(ramClear − prev) + current`, identical to V1's two-meter math. A yellow "RAM Clear" badge is shown on rows in the review list.
+
+For no-SMIB locations the submit route creates **two** `Meters` docs (RAM clear + post-reset, `isRamClear: true` on the first) instead of one — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for the calculation engine and field mappings.
 
 ### Session Lifecycle
 

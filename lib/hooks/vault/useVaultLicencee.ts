@@ -13,8 +13,16 @@ import { useMemo } from 'react';
  * while Admins can switch between licencees.
  */
 export function useVaultLicencee() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { user } = useUserStore();
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   const isAdminOrDev = useMemo(() => {
     return user?.roles?.some(role =>

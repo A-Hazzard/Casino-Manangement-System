@@ -13,6 +13,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const THREE_MINUTES_MS = 3 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
+  // ============================================================================
+  // STEP 1: Parse Query Params
+  // ============================================================================
   const { searchParams } = new URL(req.url);
   const idsParam = searchParams.get('ids');
 
@@ -29,6 +32,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({});
   }
 
+  // ============================================================================
+  // STEP 2: Connect to DB
+  // ============================================================================
   const db = await connectDB();
   if (!db) {
     return NextResponse.json({}, { status: 500 });
@@ -36,6 +42,9 @@ export async function GET(req: NextRequest) {
 
   const threeMinutesAgo = new Date(Date.now() - THREE_MINUTES_MS);
 
+  // ============================================================================
+  // STEP 3: Fetch Machines
+  // ============================================================================
   const machines = await Machine.find(
     {
       _id: { $in: machineIds },
@@ -44,6 +53,9 @@ export async function GET(req: NextRequest) {
     { _id: 1, relayId: 1, lastActivity: 1 }
   ).lean();
 
+  // ============================================================================
+  // STEP 4: Build Status Map
+  // ============================================================================
   const statusMap: Record<string, boolean> = {};
 
   for (const machine of machines) {

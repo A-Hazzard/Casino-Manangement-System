@@ -54,7 +54,9 @@ import FloatRequestModal, {
 } from './shifts/FloatRequestModal';
 
 export default function CashierDashboardPageContent() {
-  // --- Hooks & State ---
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const isAdminOrDev = user?.roles?.some(r =>
     ['admin', 'developer'].includes(r.toLowerCase())
@@ -133,7 +135,9 @@ export default function CashierDashboardPageContent() {
     }
   }, [isAdminOrDev, fetchGlobalShifts]);
 
-  // --- Logic Handlers ---
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Fetch machines for payout selection
@@ -280,8 +284,11 @@ export default function CashierDashboardPageContent() {
     }
   };
 
-  // --- Render Sections ---
+  // ============================================================================
+  // Render
+  // ============================================================================
 
+  // Guard: show skeleton while loading (non-admin)
   if (shiftLoading && !isAdminOrDev) {
     return (
       <PageLayout>

@@ -42,17 +42,37 @@ export const FloatingActionButtons = ({
   refreshing,
   onRefresh,
 }: FloatingActionButtonsProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const { user } = useUserStore();
+  
+  const {
+    notifications: storeNotifications,
+    unreadCount,
+    onMarkAsRead,
+    onMarkAllAsRead,
+    onDismiss,
+  } = useNotificationStore();
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isPrivileged =
     user?.roles?.includes('admin') || user?.roles?.includes('developer');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const refreshPendingCount = useCallback(async () => {
     if (!isPrivileged) return;
     try {
@@ -70,14 +90,11 @@ export const FloatingActionButtons = ({
     return () => clearInterval(interval);
   }, [refreshPendingCount]);
 
-  const {
-    notifications: storeNotifications,
-    unreadCount,
-    onMarkAsRead,
-    onMarkAllAsRead,
-    onDismiss,
-  } = useNotificationStore();
 
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Avoid rendering on the server to prevent hydration mismatches
   if (!mounted) {
     return null;

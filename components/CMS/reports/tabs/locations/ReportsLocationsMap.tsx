@@ -59,15 +59,27 @@ const MapImplementation = dynamic(
  * This is a thin wrapper that loads the actual map implementation only on the client
  */
 export default function ReportsLocationsMap(props: ReportsLocationsMapProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [mounted, setMounted] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   if (!mounted || props.loading) {
     return <LocationMapSkeleton />;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return <MapImplementation {...props} />;
 }

@@ -29,6 +29,9 @@ export default function MembersDeleteMemberModal({
   onClose,
   onDelete,
 }: MembersDeleteMemberModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isDeleteModalOpen, selectedMember, closeDeleteModal } =
     useMembersActionsStore();
 
@@ -37,6 +40,9 @@ export default function MembersDeleteMemberModal({
   const [loading, setLoading] = useState(false);
 
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -53,6 +59,9 @@ export default function MembersDeleteMemberModal({
     }
   }, [isDeleteModalOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     closeDeleteModal();
     onClose();
@@ -84,6 +93,9 @@ export default function MembersDeleteMemberModal({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   if (!isDeleteModalOpen || !selectedMember) return null;
 
   const memberDisplayName =
@@ -91,6 +103,9 @@ export default function MembersDeleteMemberModal({
       selectedMember.profile?.lastName || ''
     }`.trim() || selectedMember._id;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-[100000]">
       <div

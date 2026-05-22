@@ -50,8 +50,14 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
   onSetLastMonth,
   disabled = false,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Format display value to show month and year
   const displayValue = useMemo(() => {
     if (value?.from && value?.to) {
@@ -68,6 +74,9 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
     return 'Select month';
   }, [value]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle date selection - automatically set to full month
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) {
@@ -112,6 +121,9 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
     onSetLastMonth();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 rounded-b-lg bg-gray-50 px-4 py-3">
       <Button

@@ -34,6 +34,9 @@ interface UseVariationCheckFlowOptions {
 export function useCollectionReportVariationCheckFlow(
   options: UseVariationCheckFlowOptions = {}
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     isChecking,
     checkComplete,
@@ -49,6 +52,10 @@ export function useCollectionReportVariationCheckFlow(
   const [flowState, setFlowState] = useState<VariationFlowState>('idle');
   const [showConfirmationWithVariations, setShowConfirmationWithVariations] =
     useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Start the variation check flow

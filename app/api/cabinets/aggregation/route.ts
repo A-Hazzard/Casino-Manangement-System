@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
       const user = extractUserFromRequest(req);
 
       // ============================================================================
-      // STEP 2: Parse query parameters
+      // STEP 1: Parse query parameters
       // ============================================================================
       const { searchParams } = new URL(req.url);
 
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
         : undefined;
 
       // ============================================================================
-      // STEP 3: Validate timePeriod parameter
+      // STEP 2: Validate timePeriod parameter
       // ============================================================================
       if (!timePeriod) {
         logRouteError(
@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
       const endDateParam = searchParams.get('endDate');
 
       // ============================================================================
-      // STEP 4: Get user's accessible licencees and permissions
+      // STEP 3: Get user's accessible licencees and permissions
       // ============================================================================
       const userAccessibleLicencees =
         await getUserAccessibleLicenceesFromToken();
@@ -185,7 +185,7 @@ export async function GET(req: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 4.5: Technician Restriction - Force last hour meter data
+      // STEP 4: Technician Restriction - Force last hour meter data
       // ============================================================================
       const userRolesLower = userRoles.map(
         r => r?.toLowerCase?.() ?? String(r).toLowerCase()
@@ -227,7 +227,7 @@ export async function GET(req: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 6: Fetch locations with gameDayOffset
+      // STEP 5: Fetch locations with gameDayOffset
       // ============================================================================
       // We'll calculate gaming day ranges per location instead of using a single range
       let timePeriodForGamingDay: string;
@@ -361,7 +361,7 @@ export async function GET(req: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 7: Calculate gaming day ranges per location
+      // STEP 6: Calculate gaming day ranges per location
       // ============================================================================
       // Calculate gaming day ranges for each location
       // Always use gaming day offset logic (including for custom dates)
@@ -388,7 +388,7 @@ export async function GET(req: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 8: Aggregate machine metrics (optimized for 30d/7d vs Today/Yesterday)
+      // STEP 7: Aggregate machine metrics (optimized for 30d/7d vs Today/Yesterday)
       // ============================================================================
       // 🚀 OPTIMIZED: For 30d periods, use single aggregation across all machines
       // For shorter periods, use parallel batch processing per location

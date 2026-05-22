@@ -9,6 +9,10 @@ import type { ReportView, ReportTab } from '@/shared/types/reports';
  * Handles URL state management, permission checking, and tab switching
  */
 export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -17,6 +21,10 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
 
   // All tabs are available for authenticated users
   const availableTabs = reportsTabsConfig;
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   /**
    * Handle URL state management for tab selection
@@ -48,6 +56,10 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
       }
     }
   }, [availableTabs, activeView, setActiveView]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   /**
    * Handle tab change with loading state and permission check

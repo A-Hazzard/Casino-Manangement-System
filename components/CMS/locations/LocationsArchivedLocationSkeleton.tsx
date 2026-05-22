@@ -7,6 +7,9 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  * Matches the exact structure of LocationsLocationCard (mobile) and LocationsLocationTable (desktop) for archived status.
  */
 export default function LocationsArchivedLocationSkeleton() {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Desktop skeleton (table) - matches LocationsLocationTable with showArchived=true */}

@@ -21,8 +21,14 @@ export const AccessRestricted = ({
   sectionName,
   message,
 }: AccessRestrictedProps) => {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const defaultMessage = `You don't have permission to access ${sectionName}. Please contact your administrator for access.`;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex min-h-[400px] items-center justify-center">
       <div className="text-center">

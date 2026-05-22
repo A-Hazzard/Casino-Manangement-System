@@ -20,6 +20,9 @@ type MembersPlayerHeaderProps = {
 export default function MembersPlayerHeader({
   member,
 }: MembersPlayerHeaderProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const fullName =
     member.profile?.firstName && member.profile?.lastName
       ? `${member.profile.firstName} ${member.profile.lastName}`
@@ -27,6 +30,9 @@ export default function MembersPlayerHeader({
 
   const occupation = member.profile?.occupation || '';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="my-8 flex items-center">
       <div className="mr-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-300">

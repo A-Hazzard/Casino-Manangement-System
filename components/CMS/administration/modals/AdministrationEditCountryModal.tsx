@@ -24,6 +24,9 @@ export default function AdministrationEditCountryModal({
   onSave,
   country,
 }: AdministrationEditCountryModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,6 +36,9 @@ export default function AdministrationEditCountryModal({
     isoNumeric: '',
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (country) {
       setFormData({
@@ -54,6 +60,9 @@ export default function AdministrationEditCountryModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -103,8 +112,14 @@ export default function AdministrationEditCountryModal({
     }
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div

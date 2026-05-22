@@ -30,6 +30,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse query params
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       const type = searchParams.get('type');
@@ -47,6 +50,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Enforce permissions
+      // ============================================================================
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
         undefined,
@@ -71,6 +77,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Process time range
+      // ============================================================================
       const locationInfo = await GamingLocations.findOne(
         { _id: locationId },
         { gameDayOffset: 1 }
@@ -87,6 +96,9 @@ export async function GET(request: NextRequest) {
         endDateParam ? new Date(endDateParam) : undefined
       );
 
+      // ============================================================================
+      // STEP 4: Build query and fetch transactions
+      // ============================================================================
       const query: Record<string, unknown> = {
         locationId,
         timestamp: { $gte: rangeStart, $lte: rangeEnd },
@@ -102,6 +114,9 @@ export async function GET(request: NextRequest) {
         .sort({ timestamp: -1 })
         .lean<VaultTransactionDocument[]>();
 
+      // ============================================================================
+      // STEP 5: Log and return results
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,

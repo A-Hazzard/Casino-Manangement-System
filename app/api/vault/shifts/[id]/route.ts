@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
 
   return withApiAuth(req, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters
+      // ============================================================================
       if (!shiftId) {
         logRouteError(
           functionName,
@@ -43,6 +46,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate shift
+      // ============================================================================
       const shift = await getShiftById(shiftId);
       if (!shift) {
         logRouteError(
@@ -58,6 +64,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Return response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,

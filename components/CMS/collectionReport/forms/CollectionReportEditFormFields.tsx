@@ -137,6 +137,9 @@ export default function CollectionReportEditFormFields({
   onDisabledFieldClick,
   onViewMachine,
 }: EditCollectionFormFieldsProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <div className="flex items-center justify-between">
@@ -186,11 +189,8 @@ export default function CollectionReportEditFormFields({
             </label>
             <ModernCalendar
               date={
-                sasStartTime
-                  ? {
-                      from: sasStartTime,
-                      to: sasStartTime,
-                    }
+                inputsEnabled && sasStartTime
+                  ? { from: sasStartTime, to: sasStartTime }
                   : undefined
               }
               onSelect={range => {
@@ -208,11 +208,8 @@ export default function CollectionReportEditFormFields({
             </label>
             <ModernCalendar
               date={
-                sasEndTime
-                  ? {
-                      from: sasEndTime,
-                      to: sasEndTime,
-                    }
+                inputsEnabled && sasEndTime
+                  ? { from: sasEndTime, to: sasEndTime }
                   : undefined
               }
               onSelect={range => {
@@ -474,7 +471,11 @@ export default function CollectionReportEditFormFields({
             <Button
               onClick={onAddOrUpdateEntry}
               className="flex-1 bg-blue-600 text-white"
-              disabled={(!inputsEnabled && !editingEntryId) || isProcessing}
+              disabled={
+                (!inputsEnabled && !editingEntryId) ||
+                isProcessing ||
+                (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
+              }
             >
               {isProcessing ? 'Processing...' : 'Update Entry'}
             </Button>
@@ -487,7 +488,10 @@ export default function CollectionReportEditFormFields({
                   onClick={onAddOrUpdateEntry}
                   className={`w-full text-white ${isAddMachineEnabled ? 'bg-blue-600' : 'bg-gray-400'}`}
                   disabled={
-                    !inputsEnabled || isProcessing || !isAddMachineEnabled
+                    !inputsEnabled ||
+                    isProcessing ||
+                    !isAddMachineEnabled ||
+                    (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

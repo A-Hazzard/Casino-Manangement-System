@@ -93,6 +93,9 @@ type CabinetsDetailsActivityLogTableProps = {
 export const CabinetsDetailsActivityLogTable: FC<
   CabinetsDetailsActivityLogTableProps
 > = ({ data, onFilterChange }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
     new Set()
   );
@@ -105,6 +108,9 @@ export const CabinetsDetailsActivityLogTable: FC<
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 20;
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const formatDate = (dateString: string | Date) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -119,6 +125,9 @@ export const CabinetsDetailsActivityLogTable: FC<
     });
   };
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const toggleSequence = (eventId: string) => {
     const newExpanded = new Set(expandedSequences);
     if (newExpanded.has(eventId)) {
@@ -150,6 +159,9 @@ export const CabinetsDetailsActivityLogTable: FC<
     onFilterChange?.(clearedFilters);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Get unique event types and types from data
   const uniqueEventTypes = useMemo(() => {
     const eventTypes = new Set<string>();
@@ -228,6 +240,9 @@ export const CabinetsDetailsActivityLogTable: FC<
     };
   }, [data, filters, currentPage, itemsPerPage]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <div className="w-full">

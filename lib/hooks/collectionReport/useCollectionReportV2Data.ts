@@ -45,6 +45,9 @@ export function useCollectionReportV2Data(
   selectedLicencee: string,
   locations: LocationSelectItem[]
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
   const [sessions, setSessions] = useState<V2Session[]>([]);
@@ -66,7 +69,7 @@ export function useCollectionReportV2Data(
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // ============================================================================
-  // Fetch
+  // Handlers
   // ============================================================================
 
   const fetchSessions = useCallback(async () => {
@@ -148,12 +151,16 @@ export function useCollectionReportV2Data(
     setIsRefreshing(false);
   }, [fetchSessions]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
   // ============================================================================
-  // Client-side location filter
+  // Computed
   // ============================================================================
 
   const filteredSessions = useMemo(() => {

@@ -16,9 +16,17 @@ export type CashierActivityItem = {
 };
 
 export function useCashierActivity() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [activities, setActivities] = useState<CashierActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchActivity = useCallback(
     async (isSilent = false, startDate?: string, endDate?: string) => {
@@ -141,6 +149,10 @@ export function useCashierActivity() {
     },
     []
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   useEffect(() => {
     fetchActivity(false);

@@ -38,8 +38,14 @@ export default function ActiveShiftDashboard({
   onRequestFloat,
   isVaultReconciled,
 }: ActiveShiftDashboardProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Shift Status Card */}

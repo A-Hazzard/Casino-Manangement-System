@@ -20,6 +20,9 @@ type CollectionReportDetailsMobileFieldProps = {
 export const CollectionReportDetailsMobileField: FC<
   CollectionReportDetailsMobileFieldProps
 > = ({ label, value, isCurrency = false, isBold = false, className = '' }) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div>
       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">

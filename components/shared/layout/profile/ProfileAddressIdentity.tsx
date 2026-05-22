@@ -42,6 +42,9 @@ export default function ProfileAddressIdentity({
   validationErrors,
   setValidationErrors,
 }: ProfileAddressIdentityProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleInputChangeWithValidation = (
     field: string,
     value: string,
@@ -59,6 +62,9 @@ export default function ProfileAddressIdentity({
       });
     }
   };
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Card>

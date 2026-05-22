@@ -44,7 +44,14 @@ export default function MachineStatusWidget({
   onlineLabel = 'Online',
   offlineLabel = 'Offline',
 }: MachineStatusWidgetProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const total = totalCount ?? onlineCount + offlineCount;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (isLoading) {
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">

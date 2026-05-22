@@ -21,6 +21,9 @@ export default function MovementRequestCard({
   onDelete,
   locationsMap,
 }: MovementRequestCardProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const cardRef = useRef<HTMLDivElement>(null);
   const prevPropsRef = useRef<MovementRequest | null>(null);
 
@@ -31,6 +34,9 @@ export default function MovementRequestCard({
   );
   const userEmail = currentUser?.emailAddress;
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Resolve the destination ID for location check
   const destinationLocationId =
     Object.keys(locationsMap).find(
@@ -50,6 +56,9 @@ export default function MovementRequestCard({
     isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
   const canDelete = isAdminOrDev || isCreator;
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (
       !prevPropsRef.current ||
@@ -62,6 +71,9 @@ export default function MovementRequestCard({
     }
   }, [request]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={cardRef}

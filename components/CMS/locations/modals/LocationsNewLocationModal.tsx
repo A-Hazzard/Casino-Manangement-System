@@ -39,6 +39,9 @@ export default function LocationsNewLocationModal({
   onClose,
   onCreated,
 }: NewLocationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
 
   // Remove the store dependency since we'll call API directly
@@ -99,12 +102,16 @@ export default function LocationsNewLocationModal({
   const [countriesLoading, setCountriesLoading] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isDeveloper = Array.isArray(user?.roles)
     ? user.roles.includes('developer')
     : false;
 
-
-
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (!isDeveloper && useMap) {
       setUseMap(false);
@@ -489,6 +496,9 @@ export default function LocationsNewLocationModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="mx-2 max-h-[95vh] w-full max-w-lg overflow-hidden bg-white p-0 sm:mx-4 sm:max-w-xl md:mx-0 md:max-h-[90vh] md:max-w-2xl lg:max-w-4xl">

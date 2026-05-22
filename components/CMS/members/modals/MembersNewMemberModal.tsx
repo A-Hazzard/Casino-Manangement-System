@@ -56,6 +56,9 @@ export default function MembersNewMemberModal({
   onMemberCreated,
 }: MembersNewMemberModalProps) {
 
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -110,6 +113,9 @@ export default function MembersNewMemberModal({
     Array<{ id: string; name: string; sasEnabled?: boolean }>
   >([]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Fetch locations when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -370,6 +376,9 @@ export default function MembersNewMemberModal({
     checkUniqueness();
   }, [debouncedUsername, debouncedEmail, touched.username, touched.email]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     gsap.to(modalRef.current, {
       opacity: 0,
@@ -491,6 +500,9 @@ export default function MembersNewMemberModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isOpen) return null;
 
   return (

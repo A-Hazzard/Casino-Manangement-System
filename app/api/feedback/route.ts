@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       Math.random().toString(36).substring(2, 9);
 
     // ============================================================================
-    // STEP 5b: Resolve location and licencee names
+    // STEP 6: Resolve location and licencee names
     // ============================================================================
     let resolvedLocationName: string | null = null;
     let resolvedLicenceeName: string | null = null;
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Create feedback entry
+    // STEP 7: Create feedback entry
     // ============================================================================
     const feedback = new FeedbackModel({
       _id: feedbackId,
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
     await feedback.save();
 
     // ============================================================================
-    // STEP 7: Log activity for feedback creation
+    // STEP 8: Log activity for feedback creation
     // ============================================================================
     try {
       const ipInfo = getIPInfo(request);
@@ -439,7 +439,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Fetch feedback with pagination
+    // STEP 5: Fetch feedback with pagination
     // ============================================================================
     const totalCount = await FeedbackModel.countDocuments(query);
     const feedback = await FeedbackModel.find(query)
@@ -450,7 +450,7 @@ export async function GET(request: NextRequest) {
       .exec();
 
     // ============================================================================
-    // STEP 7: Return paginated feedback list
+    // STEP 6: Return paginated feedback list
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
@@ -509,9 +509,14 @@ export async function PATCH(request: NextRequest) {
   const logUser = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check if user is admin or developer
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
       logRouteError(
@@ -527,6 +532,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Check admin/developer role
+    // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
       userRoles.includes('admin') ||
@@ -547,6 +555,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Parse request body
+    // ============================================================================
     const body = await request.json();
     const { _id, archived, status, notes } = body;
 
@@ -592,7 +603,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Pre-fetch for before-state
+    // ============================================================================
+    // STEP 5: Pre-fetch for before-state
+    // ============================================================================
     const existingFeedbackDoc = await FeedbackModel.findOne({
       _id,
     }).lean<FeedbackDocument>();
@@ -610,6 +623,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 6: Update feedback
+    // ============================================================================
     // Use updateOne for a direct MongoDB update, bypassing Mongoose document middleware if any
     const result = await FeedbackModel.collection.updateOne(
       { _id },
@@ -623,7 +639,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Log activity
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     try {
       const ipInfo = getIPInfo(request);
       const formattedIP = formatIPForDisplay(ipInfo);
@@ -672,6 +690,9 @@ export async function PATCH(request: NextRequest) {
       // Don't fail the request if logging fails
     }
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteUpdate(functionName, 'PUT', '/api/feedback', 1, logUser, duration);
 
@@ -703,9 +724,14 @@ export async function PUT(request: NextRequest) {
   const logUser = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check if user is admin or developer
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
       logRouteError(
@@ -721,6 +747,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Check admin/developer role
+    // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
       userRoles.includes('admin') ||
@@ -741,6 +770,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Parse and validate request body
+    // ============================================================================
     const body = await request.json();
     const validationResult = updateFeedbackSchema.safeParse(body);
 
@@ -758,7 +790,9 @@ export async function PUT(request: NextRequest) {
     const { _id, status, archived, notes, reviewedBy, reviewedAt } =
       validationResult.data;
 
-    // Get existing feedback
+    // ============================================================================
+    // STEP 5: Pre-fetch for before-state
+    // ============================================================================
     const existingFeedback = await FeedbackModel.findOne({
       _id,
     }).lean<FeedbackDocument>();
@@ -776,7 +810,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Build update object
+    // ============================================================================
+    // STEP 6: Build update object and execute
+    // ============================================================================
     const updateData: Record<string, unknown> = {};
     if (status !== undefined) {
       updateData.status = status;
@@ -847,7 +883,9 @@ export async function PUT(request: NextRequest) {
       archived: verifiedData.archived ?? false, // Use verified DB value
     };
 
-    // Log activity - admin updated feedback
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     try {
       const ipInfo = getIPInfo(request);
       const formattedIP = formatIPForDisplay(ipInfo);
@@ -903,6 +941,9 @@ export async function PUT(request: NextRequest) {
       // Don't fail the request if logging fails
     }
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
     return NextResponse.json(
       {
         success: true,
@@ -933,9 +974,14 @@ export async function DELETE(request: NextRequest) {
   const logUser = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
     await connectDB();
 
-    // Check if user is admin or developer
+    // ============================================================================
+    // STEP 2: Authenticate user
+    // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
       logRouteError(
@@ -951,6 +997,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Check admin/developer role
+    // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
       userRoles.includes('admin') || userRoles.includes('developer');
@@ -969,6 +1018,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Parse request body
+    // ============================================================================
     const body = await request.json();
     const validationResult = deleteFeedbackSchema.safeParse(body);
 
@@ -985,7 +1037,9 @@ export async function DELETE(request: NextRequest) {
 
     const { _id } = validationResult.data;
 
-    // Get existing feedback before deletion
+    // ============================================================================
+    // STEP 5: Pre-fetch for before-state
+    // ============================================================================
     const existingFeedback = await FeedbackModel.findOne({
       _id,
     }).lean<FeedbackDocument>();
@@ -1003,7 +1057,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete feedback
+    // ============================================================================
+    // STEP 6: Delete feedback
+    // ============================================================================
     const deletedFeedback = await FeedbackModel.findOneAndDelete({ _id });
     if (!deletedFeedback) {
       logRouteError(
@@ -1019,7 +1075,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Log activity - admin deleted feedback
+    // ============================================================================
+    // STEP 7: Log activity
+    // ============================================================================
     try {
       const ipInfo = getIPInfo(request);
       const formattedIP = formatIPForDisplay(ipInfo);
@@ -1076,6 +1134,9 @@ export async function DELETE(request: NextRequest) {
       // Don't fail the request if logging fails
     }
 
+    // ============================================================================
+    // STEP 8: Return success response
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteDelete(
       functionName,

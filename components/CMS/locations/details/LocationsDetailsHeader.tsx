@@ -80,6 +80,9 @@ export default function LocationsDetailsHeader({
   onEditLocation,
   onNewMachine,
 }: LocationsDetailsHeaderProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-4 w-full max-w-full">
       {/* Mobile Layout (below sm) */}

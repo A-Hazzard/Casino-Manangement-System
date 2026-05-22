@@ -70,9 +70,14 @@ export default function PageLayout({
   refreshing = false,
 }: PageLayoutProps) {
   // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Handle scroll events for the floating refresh button
   useEffect(() => {
     if (!onRefresh) return undefined;
@@ -87,7 +92,7 @@ export default function PageLayout({
   }, [onRefresh]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   // Use headerProps if provided, otherwise use default store values
   const headerSelectedLicencee =
@@ -100,7 +105,7 @@ export default function PageLayout({
     headerProps?.hideCurrencyFilter ?? hideCurrencyFilter;
 
   // ============================================================================
-  // Render - Layout Structure
+  // Render
   // ============================================================================
   return (
     <>

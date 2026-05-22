@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Authenticate and authorize
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
@@ -46,6 +49,9 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
 
+      // ============================================================================
+      // STEP 2: Parse and validate request body
+      // ============================================================================
       const { source, amount, denominations, notes, bankDetails, machineIds } =
         await request.json();
       if (!source || !amount || !denominations)
@@ -54,6 +60,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
 
+      // ============================================================================
+      // STEP 3: Check active vault shift and location permissions
+      // ============================================================================
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
@@ -90,6 +99,9 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
 
+      // ============================================================================
+      // STEP 4: Generate transaction and update inventory
+      // ============================================================================
       const transactionId = await generateMongoId();
       const now = new Date();
       const before =
@@ -136,6 +148,9 @@ export async function POST(request: NextRequest) {
         true
       );
 
+      // ============================================================================
+      // STEP 5: Log activity and return success
+      // ============================================================================
       await logActivity({
         userId: userPayload._id,
         username: userPayload.username,

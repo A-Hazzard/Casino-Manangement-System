@@ -50,6 +50,9 @@ export default function VaultOverviewReconcileModal({
   currentBalance,
   systemDenominations = [],
 }: VaultOverviewReconcileModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [loading, setLoading] = useState(false);
@@ -67,6 +70,9 @@ export default function VaultOverviewReconcileModal({
   const [source, setSource] = useState<string>('Periodic');
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update breakdown when licencee changes or modal opens
   useEffect(() => {
     if (open) {
@@ -79,6 +85,9 @@ export default function VaultOverviewReconcileModal({
     }
   }, [selectedLicencee, open]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = useMemo(() => {
     return Object.entries(breakdown).reduce(
       (sum, [denom, count]) => sum + Number(denom) * count,
@@ -88,6 +97,14 @@ export default function VaultOverviewReconcileModal({
 
   const variance = totalAmount - currentBalance;
 
+  const isAllTouched = denominationsList.every(d =>
+    touchedDenominations.has(Number(d))
+  );
+  const isValidCount = totalAmount > 0 || isAllTouched;
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleQuantityChange = (denom: number, value: string) => {
     const quantity = parseInt(value) || 0;
     if (quantity < 0) return;
@@ -98,11 +115,6 @@ export default function VaultOverviewReconcileModal({
       return next;
     });
   };
-
-  const isAllTouched = denominationsList.every(d =>
-    touchedDenominations.has(Number(d))
-  );
-  const isValidCount = totalAmount > 0 || isAllTouched;
 
   const getSystemQuantity = (denom: number) => {
     return (
@@ -156,6 +168,9 @@ export default function VaultOverviewReconcileModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-4xl">

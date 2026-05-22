@@ -16,7 +16,7 @@ export function useMembersNavigation(
   disableUrlSync: boolean = false
 ) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
@@ -30,7 +30,7 @@ export function useMembersNavigation(
   );
 
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   /**
@@ -76,6 +76,10 @@ export function useMembersNavigation(
       }
     }
   }, [searchParams, disableUrlSync, pathname, router]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   /**
    * All tabs are available for authenticated users

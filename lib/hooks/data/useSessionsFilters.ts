@@ -50,11 +50,19 @@ type UseSessionsFiltersReturn = {
 export function useSessionsFilters({
   onFiltersChange,
 }: UseSessionsFiltersProps = {}): UseSessionsFiltersReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('startTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -91,6 +99,10 @@ export function useSessionsFilters({
     setSortOrder('desc');
     setStatusFilter('all');
   }, []);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {

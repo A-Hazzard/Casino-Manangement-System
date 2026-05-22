@@ -28,6 +28,9 @@ export default function MembersNavigation({
   refreshing = false,
   locationName,
 }: MembersNavigationProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const getIcon = (iconName: string) => {
     switch (iconName) {
       case 'users':
@@ -41,8 +44,14 @@ export default function MembersNavigation({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const activeTabConfig = availableTabs.find(tab => tab.id === activeTab);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex flex-col gap-3 sm:gap-4">

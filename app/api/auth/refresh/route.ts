@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { refreshToken } = body;
 
-    // If no refresh token in body, try to get it from cookies
     let tokenToUse = refreshToken;
     if (!tokenToUse || tokenToUse === 'auto') {
       const cookies = request.cookies.get('refreshToken');

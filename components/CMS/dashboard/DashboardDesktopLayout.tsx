@@ -41,6 +41,9 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 export default function DashboardDesktopLayout(
   props: DashboardDesktopLayoutProps
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -57,6 +60,9 @@ export default function DashboardDesktopLayout(
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const licenceeName =
     props.selectedLicencee && props.selectedLicencee !== 'all'
       ? props.selectedLicencee
@@ -72,6 +78,9 @@ export default function DashboardDesktopLayout(
     </div>
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
       {/* ============================================================================

@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate query params
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       if (!locationId) {
@@ -45,6 +48,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch notifications and counts
+      // ============================================================================
       const [notifications, counts] = await Promise.all([
         getRecentNotifications(userPayload._id as string, locationId),
         getNotificationCounts(userPayload._id as string, locationId),
@@ -60,6 +66,9 @@ export async function GET(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 3: Return response
+      // ============================================================================
       return NextResponse.json({ success: true, notifications, ...counts });
     } catch (error: unknown) {
       const errorMessage =
@@ -90,6 +99,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate body
+      // ============================================================================
       const body = await request.json();
       const { action, notificationIds } = body;
 
@@ -107,6 +119,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Process notification action
+      // ============================================================================
       if (action === 'mark_read') {
         await markNotificationsAsRead(notificationIds);
       } else if (action === 'dismiss') {
@@ -135,6 +150,9 @@ export async function POST(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 3: Return response
+      // ============================================================================
       return NextResponse.json({ success: true });
     } catch (error: unknown) {
       const errorMessage =

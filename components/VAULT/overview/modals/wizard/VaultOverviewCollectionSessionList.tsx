@@ -49,14 +49,23 @@ export default function VaultOverviewCollectionSessionList({
   totalLabel = 'Total Collected',
   selectedMachineId,
 }: VaultOverviewCollectionSessionListProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalCollected = entries.reduce(
     (acc, curr) => acc + curr.totalAmount,
     0
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const confirmDelete = () => {
     if (itemToDelete) {
       onRemove(itemToDelete);
@@ -64,6 +73,9 @@ export default function VaultOverviewCollectionSessionList({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <div className={cn('flex h-full flex-col bg-white', containerClassName)}>

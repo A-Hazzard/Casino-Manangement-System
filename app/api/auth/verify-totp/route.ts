@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
-    // 1. Authenticate user session
+    // ============================================================================
+    // STEP 1: Authenticate user session
+    // ============================================================================
     const session = await getUserFromServer();
     if (!session || !session._id) {
       logRouteError(
@@ -50,7 +52,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    // 2. Connect to DB and fetch user
+    // ============================================================================
+    // STEP 2: Connect to DB and fetch user
+    // ============================================================================
     await connectDB();
     const foundUser = await UserModel.findOne({ _id: session._id });
 
@@ -65,7 +69,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 3. Check if user has TOTP setup and enabled
+    // ============================================================================
+    // STEP 3: Check if user has TOTP setup and enabled
+    // ============================================================================
     if (!foundUser.totpSecret || !foundUser.totpEnabled) {
       logRouteError(
         functionName,
@@ -83,7 +89,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Verify token
+    // ============================================================================
+    // STEP 4: Verify token
+    // ============================================================================
     const isValid = verifyTOTPCode(token, foundUser.totpSecret);
 
     if (isValid) {

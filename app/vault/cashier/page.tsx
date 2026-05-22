@@ -30,9 +30,6 @@ export default function CashierPage() {
     router.replace('/vault/cashier/shifts');
   }, [router]);
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <PageLayout showHeader={false}>
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">

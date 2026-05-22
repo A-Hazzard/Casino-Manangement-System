@@ -90,12 +90,22 @@ export default function CabinetsCabinetTable({
   showArchived = false,
   includeJackpot = false,
 }: CabinetsCabinetTableProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const formatCurrency = (amount: number | null | undefined) =>
     formatCurrencyWithCodeString(amount, displayCurrency);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Navigate to cabinet detail page
   const navigateToCabinet = (cabinetId: string) => {
     router.push(`/cabinets/${cabinetId}`);
@@ -135,6 +145,9 @@ export default function CabinetsCabinetTable({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full max-w-full overflow-x-auto bg-white shadow">
       <Table ref={tableRef} className="w-full">

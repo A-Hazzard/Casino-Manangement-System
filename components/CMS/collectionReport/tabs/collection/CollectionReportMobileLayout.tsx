@@ -22,6 +22,9 @@ import type { CollectionReportMobileUIProps } from '@/lib/types/components';
 export default function CollectionReportMobileLayout(
   props: CollectionReportMobileUIProps
 ) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const locationSummary = useMemo(() => {
     if (
       !props.selectedLocation ||
@@ -54,6 +57,9 @@ export default function CollectionReportMobileLayout(
     );
   }, [props.selectedLocation, props.locations]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-4">
       {/* Count Summary */}

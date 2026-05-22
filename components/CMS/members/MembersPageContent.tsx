@@ -65,6 +65,9 @@ function MembersPageContentInner() {
 
   const { activeTab, handleTabClick } = useMembersNavigation(availableTabs);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Tab content rendering
   const tabComponents: Record<MembersView, ReactElement> = {
     members: <MembersListTab />,
@@ -78,6 +81,9 @@ function MembersPageContentInner() {
     tabComponents,
   });
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   /**
    * Render the content for the active tab
    */

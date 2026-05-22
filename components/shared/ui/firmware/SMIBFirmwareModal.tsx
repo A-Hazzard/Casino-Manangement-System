@@ -1,3 +1,7 @@
+/**
+ * SMIBFirmwareModal Component
+ * Modal form for uploading a new SMIB firmware version with drag-and-drop file support.
+ */
 'use client';
 
 import { useState, useRef } from 'react';
@@ -25,6 +29,10 @@ export default function SMIBFirmwareModal({
   onClose,
   onUploadComplete,
 }: SMIBFirmwareModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [product, setProduct] = useState('');
   const [version, setVersion] = useState('');
   const [versionDetails, setVersionDetails] = useState('');
@@ -33,6 +41,10 @@ export default function SMIBFirmwareModal({
   const [dragActive, setDragActive] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -120,6 +132,10 @@ export default function SMIBFirmwareModal({
     clearForm();
     onClose();
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalClose}>

@@ -106,6 +106,9 @@ export default function ProfileCompletionModal({
 
   const { clearUser } = useUserStore();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Sync state with props when modal opens or data changes
   useEffect(() => {
     if (open) {
@@ -127,7 +130,7 @@ export default function ProfileCompletionModal({
   }, [open, currentData]);
 
   // ============================================================================
-  // Computed & Helpers
+  // Computed
   // ============================================================================
 
   const needsPassword = !!invalidFields.password;
@@ -320,7 +323,7 @@ export default function ProfileCompletionModal({
   };
 
   // ============================================================================
-  // Main Render
+  // Render
   // ============================================================================
 
   return (

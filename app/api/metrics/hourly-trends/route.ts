@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
   const user = extractUserFromRequest(req);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get('locationId');
     const locationIds = searchParams.get('locationIds');
@@ -44,6 +47,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     const db = await connectDB();
     if (!db) {
       logRouteError(
@@ -59,6 +65,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 3: Fetch hourly trends data
+    // ============================================================================
     const {
       currentPeriodRevenue,
       previousPeriodAverage,
@@ -73,6 +82,9 @@ export async function GET(req: NextRequest) {
       licencee
     );
 
+    // ============================================================================
+    // STEP 4: Process and return hourly trends data
+    // ============================================================================
     if (locationIds) {
       const locationData = processMultipleLocationsHourlyData(
         hourlyData,

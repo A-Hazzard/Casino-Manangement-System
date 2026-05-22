@@ -53,6 +53,9 @@ const TimePicker = memo<{
   label: string;
   id: string;
 }>(({ value, onChange, label, id }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Memoize options to prevent recreation on every render
   const hours = useMemo(
     () =>
@@ -80,6 +83,9 @@ const TimePicker = memo<{
   // Use ref to track internal changes instead of state to avoid extra renders
   const isInternalChangeRef = useRef(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Update local state when value prop changes (only if not an internal change)
   useEffect(() => {
     if (!isInternalChangeRef.current) {
@@ -96,6 +102,9 @@ const TimePicker = memo<{
     isInternalChangeRef.current = false;
   }, [value, selectedHour, selectedMinute]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Memoize handlers to prevent recreation
   const handleHourChange = useCallback(
     (newHour: string) => {
@@ -117,6 +126,9 @@ const TimePicker = memo<{
     [selectedHour, onChange]
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -168,6 +180,9 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   hideCancelButton = false,
   goLabel = 'Go',
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Time input states - Default to 8 AM for both start and end time
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('08:00');
@@ -175,6 +190,9 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   // Track if time was initialized to prevent unnecessary updates
   const timeInitializedRef = useRef(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Initialize time values from the date range if available (run only once per value change)
   useEffect(() => {
     if (value?.from && value?.to && !timeInitializedRef.current) {
@@ -194,6 +212,9 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
     }
   }, [value?.from, value?.to]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Memoized date range change handler
   const handleDateRangeChange = useCallback(
     (range?: DateRange) => {
@@ -300,6 +321,9 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
     [value, onChange]
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-4 rounded-b-lg bg-gray-50 px-4 py-3">
       {/* Date Range Picker */}

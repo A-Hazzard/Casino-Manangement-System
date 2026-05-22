@@ -33,6 +33,9 @@ export async function GET(req: NextRequest) {
 
   return withApiAuth(req, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters
+      // ============================================================================
       if (!requestId) {
         logRouteError(
           functionName,
@@ -47,6 +50,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate float request
+      // ============================================================================
       const floatRequest = await getFloatRequestById(requestId);
       if (!floatRequest) {
         logRouteError(
@@ -62,6 +68,9 @@ export async function GET(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Return response
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
         functionName,
@@ -109,6 +118,9 @@ export async function PUT(req: NextRequest) {
 
   return withApiAuth(req, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate parameters and body
+      // ============================================================================
       if (!requestId) {
         logRouteError(
           functionName,
@@ -138,6 +150,9 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate float request
+      // ============================================================================
       const floatRequest = await getFloatRequestById(requestId);
       if (!floatRequest) {
         logRouteError(
@@ -153,6 +168,9 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Authorize and execute update
+      // ============================================================================
       const canEdit = await canEditFloatRequest(
         userPayload as unknown as {
           _id: string;
@@ -189,6 +207,9 @@ export async function PUT(req: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Log activity and return response
+      // ============================================================================
       console.log(
         `[Float Request PUT] Updated float request ${requestId} — denom: ${previousDenom} → ${body.requestedDenom}`
       );

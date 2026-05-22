@@ -1,3 +1,7 @@
+/**
+ * ConnectionError Component
+ * Displays database connection issues with retry functionality and detailed error info.
+ */
 'use client';
 
 import { AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
@@ -39,6 +43,10 @@ export default function ConnectionError({
   showRetryButton = true,
   className = '',
 }: ConnectionErrorProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   const getErrorMessage = () => {
     if (typeof error === 'string') return error;
     if (error instanceof Error) {
@@ -70,6 +78,10 @@ export default function ConnectionError({
     }
     return <AlertTriangle className="h-8 w-8 text-orange-500" />;
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
 
   return (
     <Card className={`border-orange-200 bg-orange-50 ${className}`}>

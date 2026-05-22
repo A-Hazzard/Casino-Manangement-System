@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate request
+      // ============================================================================
       const { sessionId, locationId, vaultShiftId } = await request.json();
       if (!sessionId || !locationId || !vaultShiftId) {
         logRouteError(
@@ -41,6 +44,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch and validate session
+      // ============================================================================
       const session = await VaultCollectionSession.findOne({ _id: sessionId });
       if (!session || session.status !== 'active') {
         logRouteError(
@@ -69,6 +75,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Create transactions and soft counts
+      // ============================================================================
       const txs: Record<string, unknown>[] = [],
         scs: Record<string, unknown>[] = [];
       for (const entry of session.entries) {
@@ -117,6 +126,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ============================================================================
+      // STEP 4: Update vault inventory and mark completed
+      // ============================================================================
       const activeVaultShift = await VaultShiftModel.findOne({
         _id: vaultShiftId,
       });

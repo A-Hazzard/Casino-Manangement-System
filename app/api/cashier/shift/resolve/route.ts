@@ -186,7 +186,9 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     });
 
-    // STEP 8: Audit Activity
+    // ============================================================================
+    // STEP 7: Audit Activity
+    // ============================================================================
     await logActivity({
       userId: vaultManagerId as string,
       username: userPayload.username as string,
@@ -214,7 +216,7 @@ export async function POST(request: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 9: Update Vault Shift canClose status
+    // STEP 8: Update Vault Shift canClose status
     // ============================================================================
     await updateVaultCanClose(cashierShift.vaultShiftId);
 

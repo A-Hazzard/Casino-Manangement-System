@@ -43,7 +43,7 @@ export function useApiWithRetry<T>(
   } = options;
 
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -53,7 +53,7 @@ export function useApiWithRetry<T>(
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
   const execute = useCallback(
     async (...args: unknown[]): Promise<T | null> => {
@@ -149,9 +149,6 @@ export function useApiWithRetry<T>(
     setRetryCount(0);
   }, []);
 
-  // ============================================================================
-  // Return
-  // ============================================================================
   return {
     data,
     error,

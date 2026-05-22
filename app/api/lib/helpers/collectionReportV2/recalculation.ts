@@ -15,6 +15,9 @@
 
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Meters } from '@/app/api/lib/models/meters';
+import { generateMongoId } from '@/lib/utils/id';
+import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 
 type CascadeInput = {
   machineId: string;
@@ -28,6 +31,9 @@ type CascadeInput = {
   sasMetersOut: number | null;
   prevSasMetersIn?: number;
   prevSasMetersOut?: number;
+  ramClear?: boolean;
+  ramClearMetersIn?: number | null;
+  ramClearMetersOut?: number | null;
 };
 
 export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
@@ -59,6 +65,154 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
   const timestamp = sasEndTime ?? now;
   const prevIn = prevSasMetersIn ?? 0;
   const prevOut = prevSasMetersOut ?? 0;
+
+  if (isNoSMIBLocation) {
+    // Delete existing meters for this machine and session
+    await Meters.deleteMany({
+      machine: machineId,
+      locationSession: sessionId,
+    }).catch(deleteErr => {
+      console.error(
+        `[cascadeMachineEdit] Failed to delete existing Meters for machine ${machineId} session ${sessionId}:`,
+        deleteErr
+      );
+    });
+
+    const baseReadAt = timestamp;
+    const isRamClear =
+      input.ramClear === true &&
+      input.ramClearMetersIn !== undefined &&
+      input.ramClearMetersIn !== null &&
+      input.ramClearMetersOut !== undefined &&
+      input.ramClearMetersOut !== null;
+
+    if (isRamClear) {
+      // 1. RAM clear meter - captures drop up to reset point
+      const ramClearMeterId = await generateMongoId();
+      const ramClearMeterDoc = {
+        _id: ramClearMeterId,
+        machine: machineId,
+        location: locationId,
+        locationSession: sessionId,
+        isRamClear: true,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          totalCancelledCredits: Number(input.ramClearMetersOut) - prevOut,
+          totalHandPaidCancelledCredits: 0,
+          totalWonCredits: 0,
+          drop: Number(input.ramClearMetersIn) - prevIn,
+          jackpot: 0,
+          currentCredits: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        totalCancelledCredits: Number(input.ramClearMetersOut),
+        totalHandPaidCancelledCredits: 0,
+        totalWonCredits: 0,
+        drop: Number(input.ramClearMetersIn),
+        jackpot: 0,
+        currentCredits: 0,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
+        createdAt: new Date(),
+      };
+
+      await Meters.create(ramClearMeterDoc).catch(meterCreateError => {
+        console.error(
+          `[cascadeMachineEdit] Failed to create RAM-clear Meter for machine ${machineId}:`,
+          meterCreateError
+        );
+      });
+
+      // 2. Current meter - captures drop from 0 after reset
+      const currentMeterId = await generateMongoId();
+      const currentMeterDoc = {
+        _id: currentMeterId,
+        machine: machineId,
+        location: locationId,
+        locationSession: sessionId,
+        isRamClear: false,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          totalCancelledCredits: manualMetersOut ?? 0,
+          totalHandPaidCancelledCredits: 0,
+          totalWonCredits: 0,
+          drop: manualMetersIn ?? 0,
+          jackpot: 0,
+          currentCredits: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        totalCancelledCredits: manualMetersOut ?? null,
+        totalHandPaidCancelledCredits: 0,
+        totalWonCredits: 0,
+        drop: manualMetersIn ?? null,
+        jackpot: 0,
+        currentCredits: 0,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: baseReadAt, // exactly at collection time
+        createdAt: new Date(new Date().getTime() + 1000),
+      };
+
+      await Meters.create(currentMeterDoc).catch(meterCreateError => {
+        console.error(
+          `[cascadeMachineEdit] Failed to create post-RAM-clear Meter for machine ${machineId}:`,
+          meterCreateError
+        );
+      });
+    } else {
+      // Non-RAM-clear path: single Meter doc with the normal delta
+      const meterId = await generateMongoId();
+      const meterDoc = {
+        _id: meterId,
+        machine: machineId,
+        location: locationId,
+        locationSession: sessionId,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          totalCancelledCredits: (manualMetersOut ?? 0) - prevOut,
+          totalHandPaidCancelledCredits: 0,
+          totalWonCredits: 0,
+          drop: (manualMetersIn ?? 0) - prevIn,
+          jackpot: 0,
+          currentCredits: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        totalCancelledCredits: manualMetersOut ?? null,
+        totalHandPaidCancelledCredits: 0,
+        totalWonCredits: 0,
+        drop: manualMetersIn ?? null,
+        jackpot: 0,
+        currentCredits: 0,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: baseReadAt,
+        createdAt: new Date(),
+      };
+
+      await Meters.create(meterDoc).catch(meterCreateError => {
+        console.error(
+          `[cascadeMachineEdit] Failed to create Meter document for machine ${machineId}:`,
+          meterCreateError
+        );
+      });
+    }
+  }
 
   // ============================================================================
   // 1. Update Machine's collectionMetersHistory entry for this session
@@ -139,4 +293,58 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
       });
     }
   }
+}
+
+
+export async function propagateV2MetersToNextSession(
+  machineId: string,
+  currentSessionId: string,
+  targetMetersIn: number | null,
+  targetMetersOut: number | null,
+  sasEndTime: Date | undefined
+): Promise<void> {
+  if (!sasEndTime) return;
+
+  const nextReport = await ReportedMachine.findOne({
+    machineId,
+    sessionStatus: 'submitted',
+    sessionId: { $ne: currentSessionId },
+    sasEndTime: { $gt: sasEndTime },
+    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+  }).sort({ sasEndTime: 1 }).lean();
+
+  if (!nextReport) return;
+
+  const resolvedPrevIn = targetMetersIn ?? 0;
+  const resolvedPrevOut = targetMetersOut ?? 0;
+
+  let manualMovIn = 0;
+  let manualMovOut = 0;
+  const effectiveManualIn = nextReport.manualMetersIn ?? nextReport.sasMetersIn ?? 0;
+  const effectiveManualOut = nextReport.manualMetersOut ?? nextReport.sasMetersOut ?? 0;
+
+  if (nextReport.ramClear && nextReport.ramClearMetersIn !== undefined && nextReport.ramClearMetersOut !== undefined) {
+    manualMovIn = nextReport.ramClearMetersIn - resolvedPrevIn + effectiveManualIn;
+    manualMovOut = nextReport.ramClearMetersOut - resolvedPrevOut + effectiveManualOut;
+  } else {
+    manualMovIn = effectiveManualIn - resolvedPrevIn;
+    manualMovOut = effectiveManualOut - resolvedPrevOut;
+  }
+
+  const updatedMovement = {
+    manualMetersIn: manualMovIn,
+    manualMetersOut: manualMovOut,
+    machineGross: manualMovIn - manualMovOut,
+  };
+
+  await ReportedMachine.updateOne(
+    { _id: nextReport._id },
+    {
+      $set: {
+        prevSasMetersIn: resolvedPrevIn,
+        prevSasMetersOut: resolvedPrevOut,
+        movement: updatedMovement,
+      }
+    }
+  );
 }

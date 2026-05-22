@@ -24,6 +24,9 @@ export const useMachinesTabData = (
   overviewItemsPerBatch: number = 100,
   offlineItemsPerBatch: number = 100
 ) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { selectedLicencee, customDateRange, activeMetricsFilter } =
     useDashBoardStore();
 
@@ -54,6 +57,10 @@ export const useMachinesTabData = (
   const [offlineLoading, setOfflineLoading] = useState(false);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Stats fetching
   const fetchMachineStats = useCallback(

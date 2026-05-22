@@ -130,10 +130,13 @@ export const ReportsMachinesOffline = ({
   onEdit,
   onDelete,
 }: ReportsMachinesOfflineProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
 
   // Use independent machine stats API for all counts (independent of pagination)

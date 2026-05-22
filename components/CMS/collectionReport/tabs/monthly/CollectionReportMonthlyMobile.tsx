@@ -84,8 +84,23 @@ export default function CollectionReportMonthlyMobile({
   monthlyFirstItemIndex,
   monthlyLastItemIndex,
 }: MonthlyMobileUIProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  const totalPages = monthlyTotalPages || 1;
+  const pageItems = monthlyCurrentItems;
+  const summaryTitle =
+    Array.isArray(monthlyLocation) && monthlyLocation.length > 0
+      ? `${monthlyLocation.length} Location${monthlyLocation.length > 1 ? 's' : ''} — Summary`
+      : monthlyLocation !== 'all' && typeof monthlyLocation === 'string'
+        ? `${locations.find(loc => loc.id === monthlyLocation)?.name ?? monthlyLocation} — Summary`
+        : `All (${monthlyDetails.length}/${locations.length}) Locations — Summary`;
 
   const formatVal = (v: number | string | null | undefined): string => {
     if (v === '-' || v === undefined || v === null || v === '') return '—';
@@ -99,6 +114,12 @@ export default function CollectionReportMonthlyMobile({
     return isNaN(num) ? '' : getGrossColorClass(num);
   };
 
+  const getLocationId = (name: string) =>
+    locations.find(loc => loc.name === name)?.id ?? null;
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const copy = async (text: string, label: string) => {
     if (!text || text.trim() === '' || text === '-') {
       toast.error(`No ${label} value to copy`);
@@ -113,19 +134,6 @@ export default function CollectionReportMonthlyMobile({
       toast.error(`Failed to copy ${label}`);
     }
   };
-
-  const getLocationId = (name: string) =>
-    locations.find(loc => loc.name === name)?.id ?? null;
-
-  const totalPages = monthlyTotalPages || 1;
-  const pageItems = monthlyCurrentItems;
-
-  const summaryTitle =
-    Array.isArray(monthlyLocation) && monthlyLocation.length > 0
-      ? `${monthlyLocation.length} Location${monthlyLocation.length > 1 ? 's' : ''} — Summary`
-      : monthlyLocation !== 'all' && typeof monthlyLocation === 'string'
-        ? `${locations.find(loc => loc.id === monthlyLocation)?.name ?? monthlyLocation} — Summary`
-        : `All (${monthlyDetails.length}/${locations.length}) Locations — Summary`;
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     if (format === 'pdf') {
@@ -145,6 +153,9 @@ export default function CollectionReportMonthlyMobile({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full pb-6 md:hidden">
       {/* ── Purple filter bar ── */}

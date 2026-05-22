@@ -47,6 +47,9 @@ export async function PATCH(request: NextRequest) {
   const reportId = parts[parts.length - 2];
 
   try {
+    // ============================================================================
+    // STEP 1: Parse request body
+    // ============================================================================
     const body = (await request.json()) as UpdateHistoryPayload;
 
     if (!reportId) {

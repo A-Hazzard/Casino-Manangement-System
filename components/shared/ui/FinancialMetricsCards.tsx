@@ -64,11 +64,17 @@ export default function FinancialMetricsCards({
   className = '',
   includeJackpot = false,
 }: FinancialMetricsCardsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { selectedLicencee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
   const [resolvedCurrencyCode, setResolvedCurrencyCode] =
     useState<CurrencyCode>(displayCurrency);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     let cancelled = false;
 
@@ -154,15 +160,16 @@ export default function FinancialMetricsCards({
     };
   }, [selectedLicencee, displayCurrency]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const currencyCode = resolvedCurrencyCode || displayCurrency || 'USD';
 
-  // Show skeleton ONLY when actively loading.
-  // If loading is false but totals is null, it means fetching finished with no data,
-  // in which case we show 0 values instead of getting stuck on a skeleton.
-  if (loading) {
-    return <DashboardFinancialMetricsSkeleton count={4} />;
-  }
 
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const formatNumberOnly = (value: number): string => {
     if (Number.isNaN(value)) {
       return '--';
@@ -273,6 +280,16 @@ export default function FinancialMetricsCards({
       </PopoverContent>
     </Popover>
   ) : null;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Show skeleton ONLY when actively loading.
+  // If loading is false but totals is null, it means fetching finished with no data,
+  // in which case we show 0 values instead of getting stuck on a skeleton.
+  if (loading) {
+    return <DashboardFinancialMetricsSkeleton count={4} />;
+  }
 
   return (
     <div className={`space-y-4 ${className}`}>

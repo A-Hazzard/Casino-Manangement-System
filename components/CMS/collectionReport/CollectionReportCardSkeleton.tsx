@@ -21,6 +21,9 @@ export default function CollectionReportCardSkeleton({
   gridLayout = false,
   count = 4,
 }: CollectionReportCardSkeletonProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4 ${

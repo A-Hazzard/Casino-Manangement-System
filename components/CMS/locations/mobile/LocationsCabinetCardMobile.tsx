@@ -48,13 +48,22 @@ export default function LocationsCabinetCardMobile({
   canPermanentlyDeleteMachines = false,
   copyToClipboard,
 }: LocationsCabinetCardMobileProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const statusRef = useRef<HTMLSpanElement>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Archived machines have a deletedAt date of Jan 1st 2025 or later
   const isArchived =
     Boolean(cabinet.deletedAt) &&
     new Date(cabinet.deletedAt!) >= new Date('2025-01-01');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   /**
    * Animates online status indicator with pulsing effect.
    * Only animates when cabinet is online.
@@ -81,6 +90,9 @@ export default function LocationsCabinetCardMobile({
     return undefined;
   }, [cabinet.isOnline, isArchived]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={`rounded-lg border border-gray-200 p-4 shadow-sm transition-shadow hover:shadow-md ${isArchived ? 'border-amber-100 bg-gray-50' : 'bg-white'}`}

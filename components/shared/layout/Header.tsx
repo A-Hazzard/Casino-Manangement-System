@@ -90,6 +90,9 @@ export default function Header({
     return Array.isArray(user?.assignedLicencees) ? user.assignedLicencees : [];
   }, [user?.assignedLicencees]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const isOwner = userRoles.includes('owner');
   const isAdmin =
     userRoles.includes('admin') || userRoles.includes('developer');
@@ -131,6 +134,9 @@ export default function Header({
   >({});
   const [singleLicenceeName, setSingleLicenceeName] = useState<string>('');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     let cancelled = false;
     const loadLicencees = async () => {
@@ -220,6 +226,9 @@ export default function Header({
     }
   }, [selectedLicencee, setGameDayOffset]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const resolveLicenceeCurrency = useCallback(
     async (licenceeId: string): Promise<CurrencyCode> => {
       if (!licenceeId || licenceeId === 'all' || licenceeId === '') {
@@ -334,6 +343,9 @@ export default function Header({
     // because they have selectedLicencee in their useEffect dependencies
   };
 
+  // ============================================================================
+  // Computed (continued)
+  // ============================================================================
   // Check if the current path is related to locations
   const isLocationPath =
     pathname === '/locations' || pathname.startsWith('/locations/');
@@ -346,6 +358,9 @@ export default function Header({
   const isReportsPath =
     pathname === '/reports' || pathname.startsWith('/reports/');
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>

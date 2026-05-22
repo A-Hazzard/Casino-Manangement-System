@@ -61,6 +61,9 @@ export default function ProfilePassword({
   validateCurrentPassword,
   validateNewPassword,
 }: ProfilePasswordProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="border-none shadow-sm">
       <CardHeader className="pb-4">

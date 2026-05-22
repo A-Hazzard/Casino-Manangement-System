@@ -90,13 +90,22 @@ export default function CurrencyValueWithOverflow({
   formatCurrencyWithScalingFn,
   currencyCode = 'USD',
 }: CurrencyValueWithOverflowProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const containerRef = useRef<HTMLSpanElement>(null);
 
   // Always call hooks before any early returns
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const fullFormattedValue =
     value !== null && value !== undefined ? formatCurrencyFn(value) : '';
   const isOverflowing = useTextOverflow(fullFormattedValue, containerRef);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (value === null || value === undefined) {
     return <span className={className}>--</span>;
   }

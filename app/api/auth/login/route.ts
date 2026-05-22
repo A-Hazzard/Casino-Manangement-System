@@ -141,21 +141,17 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 7: Set secure authentication cookies
     // ============================================================================
-    // Clear any existing authentication cookies before setting new ones
-    // This ensures old tokens from previous database connections don't persist
     const clearOptions = getAuthCookieOptions(request, {
       expires: new Date(0),
     });
     response.cookies.set('token', '', clearOptions);
     response.cookies.set('refreshToken', '', clearOptions);
 
-    // Set cookies on the response
     const tokenMaxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
     const cookieOptions = getAuthCookieOptions(request, {
       maxAge: tokenMaxAge,
     });
 
-    // Set token cookie
     response.cookies.set('token', result.token!, cookieOptions);
 
     if (result.refreshToken) {

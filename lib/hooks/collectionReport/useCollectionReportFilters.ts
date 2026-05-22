@@ -60,7 +60,7 @@ export function useCollectionReportFilters({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // ==========================================================================
-  // Computed Values
+  // Computed
   // ==========================================================================
 
   /**
@@ -151,7 +151,7 @@ export function useCollectionReportFilters({
   ]);
 
   // ==========================================================================
-  // Event Handlers - Sorting
+  // Handlers
   // ==========================================================================
 
   /**
@@ -167,7 +167,7 @@ export function useCollectionReportFilters({
   };
 
   // ==========================================================================
-  // Event Handlers - Filters
+  // Handlers
   // ==========================================================================
 
   /**

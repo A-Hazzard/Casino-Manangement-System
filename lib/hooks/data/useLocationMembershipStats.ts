@@ -26,12 +26,19 @@ export function useLocationMembershipStats(
   locationId?: string,
   machineTypeFilter?: string | null
 ): UseLocationMembershipStatsReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [membershipStats, setMembershipStats] =
     useState<MembershipStats | null>(null);
   const [membershipStatsLoading, setMembershipStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const makeRequest = useAbortableRequest();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Fetch membership stats
   const fetchMembershipStatsData = useCallback(async () => {
@@ -68,6 +75,10 @@ export function useLocationMembershipStats(
   const refreshMembershipStats = useCallback(async () => {
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {

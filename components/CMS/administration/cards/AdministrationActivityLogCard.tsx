@@ -38,9 +38,15 @@ function AdministrationActivityLogCard({
   canDelete = false,
   onDelete,
 }: AdministrationActivityLogCardProps) {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Copy to clipboard function
   const copyToClipboard = async (
     text: string,
@@ -86,6 +92,9 @@ function AdministrationActivityLogCard({
     return null;
   };
 
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
   const displayUsername = getDisplayUsername();
   const displayEmail = getDisplayEmail();
   const displayUserId =
@@ -142,6 +151,9 @@ function AdministrationActivityLogCard({
   const description = log.description || log.details || 'No description';
   const isLongDescription = description.length > 100;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="w-full">
       <CardContent className="p-4">

@@ -44,6 +44,9 @@ export default function CashierShiftOpenModal({
   isVaultReconciled,
   loading = false,
 }: CashierShiftOpenModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
   const [step, setStep] = useState<'input' | 'review'>('input');
@@ -59,6 +62,10 @@ export default function CashierShiftOpenModal({
     new Set()
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Update denominations when licencee changes or modal opens
   useEffect(() => {
     if (open && step === 'input') {
@@ -72,6 +79,9 @@ export default function CashierShiftOpenModal({
     }
   }, [denomsList, open, step]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalAmount = denominations.reduce(
     (sum, d) => sum + d.denomination * d.quantity,
     0
@@ -83,6 +93,9 @@ export default function CashierShiftOpenModal({
   );
   const isValidCount = totalAmount > 0 || isAllTouched;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     setStep('input');
     setTouchedDenominations(new Set());
@@ -122,6 +135,9 @@ export default function CashierShiftOpenModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>

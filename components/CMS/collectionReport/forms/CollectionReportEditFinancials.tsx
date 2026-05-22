@@ -61,10 +61,16 @@ export default function CollectionReportEditFinancials({
   isProcessing,
   onCollectedAmountChange,
 }: EditCollectionFinancialsProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const onFinancialsChange = (updates: Partial<FinancialsData>) => {
     setFinancials({ ...financials, ...updates });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-6 border-t border-gray-300 pt-6">
       <p className="mb-4 text-center text-lg font-semibold text-gray-700">

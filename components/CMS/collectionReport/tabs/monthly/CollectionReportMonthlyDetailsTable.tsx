@@ -41,9 +41,15 @@ export default function CollectionReportMonthlyDetailsTable({
 }: CollectionReportMonthlyDetailsTableProps & {
   locations?: Array<{ id: string; name: string }>;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Helper to format financial values with dollar signs
   const formatVal = (v: number | string | null | undefined) => {
     if (v === '-' || v === undefined || v === null || v === '') return v;
@@ -58,6 +64,9 @@ export default function CollectionReportMonthlyDetailsTable({
     return isNaN(num) ? '' : getGrossColorClass(num);
   };
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string) => {
     if (!text || text.trim() === '' || text === '-') {
@@ -81,6 +90,9 @@ export default function CollectionReportMonthlyDetailsTable({
     return location?.id || null;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-0 overflow-x-auto rounded-lg bg-white shadow">
       <Table>

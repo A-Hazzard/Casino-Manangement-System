@@ -52,6 +52,9 @@ export function VariationCheckPopover({
   onClose,
   isLoading = false,
 }: VariationCheckPopoverProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -60,12 +63,18 @@ export function VariationCheckPopover({
 
   if (!mounted || !isOpen) return null;
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const machineWithVariationsCount =
     variationsData?.machines.filter(
       m => typeof m.variation === 'number' && m.variation !== 0
     ).length || 0;
   const totalMachinesCount = variationsData?.machines.length || 0;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return createPortal(
     <AnimatePresence>
       <motion.div

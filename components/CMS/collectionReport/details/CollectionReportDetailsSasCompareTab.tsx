@@ -34,7 +34,7 @@ const CollectionReportDetailsSasCompareTab: FC<
   CollectionReportDetailsSasCompareTabProps
 > = ({ reportData }) => {
   // ============================================================================
-  // SAS System Metric Computations
+  // Computed
   // ============================================================================
   const sasMetrics = reportData?.sasMetrics || {
     dropped: 0,
@@ -54,6 +54,9 @@ const CollectionReportDetailsSasCompareTab: FC<
     { label: 'SAS Gross Total', value: totalSasGross },
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       <h2 className="my-4 text-center text-xl font-bold lg:hidden">

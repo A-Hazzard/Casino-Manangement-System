@@ -52,10 +52,16 @@ function AdministrationAddLicenceeModal({
   formState,
   setFormState,
   countries,
-  countriesLoading = false,
+  countriesLoading,
 }: AdministrationAddLicenceeModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current) {
       gsap.fromTo(
@@ -66,6 +72,9 @@ function AdministrationAddLicenceeModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -89,8 +98,14 @@ function AdministrationAddLicenceeModal({
     onSave();
   };
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div

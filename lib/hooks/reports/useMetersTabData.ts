@@ -64,7 +64,7 @@ export function useMetersTabData({
   hasManuallySetGranularityRef,
 }: UseMetersTabDataProps) {
   // ============================================================================
-  // Hooks & Store
+  // State & Hooks
   // ============================================================================
   const makeMetersRequest = useAbortableRequest();
   const makeLocationsRequest = useAbortableRequest();
@@ -577,7 +577,7 @@ export function useMetersTabData({
   ]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   // Get items for current page from filtered data
   const paginatedMetersData = useMemo(() => {

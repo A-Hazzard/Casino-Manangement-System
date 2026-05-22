@@ -56,7 +56,7 @@ export function useLocationsTabData({
   chartGranularity,
 }: UseLocationsTabDataProps) {
   // ============================================================================
-  // Store & Hooks
+  // State & Hooks
   // ============================================================================
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
@@ -1032,7 +1032,7 @@ export function useLocationsTabData({
   );
 
   // ============================================================================
-  // Computed: paginatedLocations from accumulatedLocations
+  // Computed
   // ============================================================================
   const paginatedLocations = useMemo(() => {
     if (accumulatedLocations.length === 0) return [];
@@ -1041,9 +1041,7 @@ export function useLocationsTabData({
     return accumulatedLocations.slice(startIndex, endIndex);
   }, [accumulatedLocations, currentPage, itemsPerPage]);
 
-  // ============================================================================
   // Create stable date range key to prevent infinite loops
-  // ============================================================================
   const dateRangeKey = useMemo(() => {
     if (!customDateRange?.startDate || !customDateRange?.endDate) {
       return '';
@@ -1052,7 +1050,7 @@ export function useLocationsTabData({
   }, [customDateRange?.startDate, customDateRange?.endDate]);
 
   // ============================================================================
-  // Refetch when filters change
+  // Effects
   // ============================================================================
   // Track previous filter values to prevent infinite loops when callbacks change
   // Fetch location data and metrics totals when filters change

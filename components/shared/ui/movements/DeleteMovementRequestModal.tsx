@@ -12,6 +12,9 @@ export default function DeleteMovementRequestModal({
 }: {
   onDeleted: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isDeleteModalOpen, selectedMovementRequest, closeDeleteModal } =
     useMovementRequestActionsStore();
   const { user: currentUser } = useUserStore();
@@ -23,6 +26,9 @@ export default function DeleteMovementRequestModal({
 
   if (!isDeleteModalOpen || !selectedMovementRequest) return null;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleDelete = async () => {
     setLoading(true);
     try {
@@ -36,6 +42,11 @@ export default function DeleteMovementRequestModal({
       setLoading(false);
     }
   };
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  if (!isDeleteModalOpen || !selectedMovementRequest) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

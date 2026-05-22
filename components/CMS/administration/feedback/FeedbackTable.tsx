@@ -33,6 +33,9 @@ export default function FeedbackTable({
   isUpdating,
   isDeleting,
 }: FeedbackTableProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Table>
       <TableHeader>

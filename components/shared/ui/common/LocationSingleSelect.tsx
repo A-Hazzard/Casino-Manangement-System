@@ -60,10 +60,16 @@ export default function LocationSingleSelect({
   emptyMessage = 'No locations found',
   showFilterIcon = false,
 }: LocationSingleSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Autofocus search input when dropdown opens
   useEffect(() => {
     if (!isOpen) return;
@@ -75,12 +81,18 @@ export default function LocationSingleSelect({
     return () => cancelAnimationFrame(rafId);
   }, [isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSelectLocation = (locationId: string) => {
     onSelectionChange(locationId);
     setIsOpen(false);
     setSearchTerm('');
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Prepare options with "All Locations" if enabled
   const options = useMemo(
     () =>
@@ -115,6 +127,9 @@ export default function LocationSingleSelect({
     className?.match(/md:w-auto|lg:w-auto|xl:w-auto/);
   const buttonWidthClass = useAutoWidth ? 'w-auto min-w-fit' : 'w-full';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
       <Popover.Trigger asChild>

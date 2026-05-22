@@ -19,8 +19,15 @@ import type { UseDashboardScrollReturn } from '@/lib/types/dashboard';
 export function useDashboardScroll(
   initialThreshold: number = 200
 ): UseDashboardScrollReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
   const [scrollThreshold, setScrollThreshold] = useState(initialThreshold);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Handle scroll events to show/hide floating refresh button
   const handleScroll = useCallback(() => {
@@ -28,13 +35,17 @@ export function useDashboardScroll(
     setShowFloatingRefresh(scrollTop > scrollThreshold);
   }, [scrollThreshold]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   // Set up scroll event listener
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  // Reset scroll state
+  // Reset scroll state — also a handler
   const resetScrollState = useCallback(() => {
     setShowFloatingRefresh(false);
   }, []);

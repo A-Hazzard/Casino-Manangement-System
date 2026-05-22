@@ -15,7 +15,7 @@ import {
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/shared/ui/badge';
@@ -58,6 +58,9 @@ export default function VaultOverviewShiftReviewModal({
   vaultInventory = [],
   onSuccess,
 }: VaultOverviewShiftReviewModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
@@ -77,8 +80,11 @@ export default function VaultOverviewShiftReviewModal({
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Initialize state when shift changes
-  useMemo(() => {
+  useEffect(() => {
     if (shift) {
       setFinalBalance(shift.expectedBalance.toString());
       setAuditComment('');
@@ -98,6 +104,9 @@ export default function VaultOverviewShiftReviewModal({
     }
   }, [shift, selectedLicencee]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const shiftTotal = Object.entries(shiftDenominations).reduce(
     (sum, [denom, qty]) => sum + Number(denom) * qty,
     0
@@ -123,6 +132,9 @@ export default function VaultOverviewShiftReviewModal({
 
   const { hasShortage } = currentShortageCheck;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleResolve = async () => {
     if (!shift) return;
     const balance = parseFloat(
@@ -227,6 +239,9 @@ export default function VaultOverviewShiftReviewModal({
 
   const isOverlayOpen = isHistoryModalOpen || isActivityModalOpen;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!shift) return null;
 
   return (

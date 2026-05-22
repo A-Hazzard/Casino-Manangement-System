@@ -16,8 +16,6 @@ import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails
 import { logActivity, mapDeletedFieldsToChanges } from '@/app/api/lib/helpers/activityLogger';
 import {
   deleteManualMetersPerCollection,
-  removeCollectionHistoryFromMachines,
-  revertMachineCollectionMeters,
   updateCollectionReport,
 } from '@/app/api/lib/helpers/collectionReport/operations';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
@@ -557,35 +555,6 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     );
 
     // ============================================================================
-    // STEP 5: Remove collection history from machines
-    // ============================================================================
-    const historyResult =
-      await removeCollectionHistoryFromMachines(resolvedReportId);
-    if (!historyResult.success) {
-      return NextResponse.json(
-        {
-          message: historyResult.error || 'Failed to remove collection history',
-        },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Revert machine collection meters
-    // ============================================================================
-    const revertResult = await revertMachineCollectionMeters(
-      associatedCollections
-    );
-    if (!revertResult.success) {
-      return NextResponse.json(
-        {
-          message: `Failed to revert machine meters: ${revertResult.errors.join(', ')}`,
-        },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
     // STEP 7: Delete/Archive manual meters per collection
     // ============================================================================
     const deleteMetersResult =
@@ -645,6 +614,105 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         { message: `Failed to ${archive ? 'archive' : 'delete'} collection report` },
         { status: 500 }
       );
+    }
+
+    // ============================================================================
+    // STEP 9.5: Propagate deletion forward and recalculate machines
+    // ============================================================================
+    const { updateRegularAndRamClearMeters } = await import(
+      '@/app/api/lib/helpers/collectionReport/reportCreation'
+    );
+    const { recalculateMachineCollections } = await import(
+      '@/app/api/lib/helpers/collectionReport/recalculation'
+    );
+
+    for (const col of associatedCollections) {
+      if (!col.machineId) continue;
+
+      try {
+        // Find the next active collection (not deleted/archived)
+        const nextReport = await Collections.findOne({
+          machineId: col.machineId,
+          timestamp: { $gt: col.timestamp || col.collectionTime || new Date() },
+          deletedAt: { $exists: false },
+        })
+          .sort({ timestamp: 1 })
+          .lean<CollectionDocument>();
+
+        if (nextReport) {
+          console.log(
+            `[DELETE /api/collection-reports/[reportId]] Propagating deletion for machine ${col.machineId}: setting successor ${nextReport._id} prevMeters to deleted report's prevMetersIn=${col.prevIn}, prevMetersOut=${col.prevOut}`
+          );
+
+          const newPrevIn = col.prevIn || 0;
+          const newPrevOut = col.prevOut || 0;
+          const currentMetersIn = nextReport.metersIn ?? 0;
+          const currentMetersOut = nextReport.metersOut ?? 0;
+          const ramClear = !!nextReport.ramClear;
+          const ramClearMetersIn = nextReport.ramClearMetersIn;
+          const ramClearMetersOut = nextReport.ramClearMetersOut;
+
+          let movementIn = 0;
+          let movementOut = 0;
+
+          if (ramClear) {
+            if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+              movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
+              movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
+            } else {
+              movementIn = currentMetersIn;
+              movementOut = currentMetersOut;
+            }
+          } else {
+            movementIn = currentMetersIn - newPrevIn;
+            movementOut = currentMetersOut - newPrevOut;
+          }
+
+          const movement = {
+            metersIn: Number(movementIn.toFixed(2)),
+            metersOut: Number(movementOut.toFixed(2)),
+            gross: Number((movementIn - movementOut).toFixed(2)),
+          };
+
+          const collectionUpdate: Record<string, unknown> = {
+            prevIn: newPrevIn,
+            prevOut: newPrevOut,
+            movement,
+            softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+            softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+          };
+
+          if (nextReport.sasMeters) {
+            const sasMetersData = {
+              ...nextReport.sasMeters,
+              drop: movement.metersIn,
+              totalCancelledCredits: movement.metersOut,
+              gross: movement.gross,
+            };
+            collectionUpdate.sasMeters = sasMetersData;
+          }
+
+          await Collections.updateOne(
+            { _id: nextReport._id },
+            { $set: collectionUpdate }
+          );
+
+          const updatedNextReport = {
+            ...nextReport,
+            ...collectionUpdate,
+          };
+
+          await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+        }
+
+        // Re-sync machine's current meters and history from database
+        await recalculateMachineCollections(String(col.machineId), true);
+      } catch (machineError) {
+        console.error(
+          `Failed to propagate deletion/recalculate machine ${col.machineId}:`,
+          machineError
+        );
+      }
     }
 
     // ============================================================================

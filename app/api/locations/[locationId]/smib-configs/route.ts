@@ -38,12 +38,12 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 2: Connect to database
+    // STEP 1: Connect to database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 3: Find machines at location with SMIBs
+    // STEP 2: Find machines at location with SMIBs
     // ============================================================================
 
     const machines = await Machine.find({
@@ -76,10 +76,10 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Transform data to LocationSmibConfig format
+    // STEP 3: Transform data to LocationSmibConfig format
     // ============================================================================
     // ============================================================================
-    // STEP 5: Calculate online status
+    // STEP 4: Calculate online status
     // ============================================================================
     const configs = machines.map(machine => {
       const relayId = (machine.relayId || machine.smibBoard || '').toString();
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     });
 
     // ============================================================================
-    // STEP 6: Sort by online status and relayId
+    // STEP 5: Sort by online status and relayId
     // ============================================================================
     configs.sort((a, b) => {
       if (a.isOnline !== b.isOnline) {
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
     // ============================================================================
-    // STEP 7: Return configurations with summary
+    // STEP 6: Return configurations with summary
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {

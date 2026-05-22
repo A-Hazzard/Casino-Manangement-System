@@ -70,7 +70,9 @@ export default function VaultOverviewSoftCountModal({
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
 
-  // -- State --
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -95,11 +97,15 @@ export default function VaultOverviewSoftCountModal({
     'selector' | 'form' | 'summary'
   >('selector');
 
-  // -- Derivations --
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const selectedMachine = machines.find(m => m._id === selectedMachineId);
   const completedMachineIds = entries.map(e => e.machineId);
 
-  // -- Effects --
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && currentLocationId && currentVaultShiftId) {
       loadSession();
@@ -179,7 +185,9 @@ export default function VaultOverviewSoftCountModal({
     }
   };
 
-  // -- Handlers --
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleAddEntry = async (formData: {
     amount: number;
     denominations: Denomination[];
@@ -318,6 +326,9 @@ export default function VaultOverviewSoftCountModal({
     onConfirm();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog

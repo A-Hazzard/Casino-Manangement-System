@@ -38,11 +38,17 @@ function AdministrationPaymentHistoryModal({
   onClose,
   licencee,
 }: AdministrationPaymentHistoryModalProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
 
   // TODO: Replace with MongoDB data fetching
   const payments: Payment[] = [];
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (open && modalRef.current) {
       gsap.fromTo(
@@ -53,8 +59,14 @@ function AdministrationPaymentHistoryModal({
     }
   }, [open]);
 
+  // ============================================================================
+  // Computed & Guard
+  // ============================================================================
   if (!open || !licencee) return null;
 
+  // ============================================================================
+  // Helpers
+  // ============================================================================
   const getStatusDisplay = (payment: Payment) => {
     switch (payment.status) {
       case 'cancelled':
@@ -86,6 +98,9 @@ function AdministrationPaymentHistoryModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div

@@ -45,6 +45,9 @@ export default function LocationsPageFilterSection({
   selectedStatus,
   onStatusChange,
 }: LocationsPageFilterSectionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       {/* Search and Desktop Filter Bar */}

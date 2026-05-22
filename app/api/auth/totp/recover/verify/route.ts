@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
 
     console.log('[TOTP Verify] User found:', foundUser.username);
 
-    // Generate NEW secret
+    // ============================================================================
+    // STEP 1: Generate NEW secret
+    // ============================================================================
     const secret = generateTOTPSecret();
     const appName = 'Evolution One CMS';
     const uri = generateOTPAuthURI(
@@ -90,8 +92,11 @@ export async function POST(req: NextRequest) {
     );
     const qrCodeUrl = await QRCode.toDataURL(uri);
 
+    // ============================================================================
+    // STEP 2: Update totpTempSecret
     // Use totpTempSecret instead of overwriting totpSecret/totpEnabled immediately
     // This allows the user to maintain their current 2FA protection until the new one is verified
+    // ============================================================================
     const updateResult = await UserModel.findOneAndUpdate(
       { _id: foundUser._id },
       {

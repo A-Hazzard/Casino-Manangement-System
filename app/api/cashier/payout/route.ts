@@ -59,7 +59,9 @@ export async function POST(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
     // STEP 1: Authorization
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       logRouteError(
@@ -76,7 +78,9 @@ export async function POST(request: NextRequest) {
     }
     const userId = userPayload._id as string;
 
+    // ============================================================================
     // STEP 2: Parse Request
+    // ============================================================================
     const body: CreatePayoutRequest = await request.json();
     const {
       cashierShiftId,
@@ -135,7 +139,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
     // STEP 3: DB Connection & Shift Check
+    // ============================================================================
     await connectDB();
     const shift = await CashierShiftModel.findOne({
       _id: cashierShiftId,
@@ -157,7 +163,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // STEP 3.5: Check if Vault is reconciled
+    // ============================================================================
+    // STEP 4: Check if Vault is reconciled
+    // ============================================================================
     const vaultShift = await VaultShiftModel.findOne({
       _id: shift.vaultShiftId,
       status: 'active',
@@ -198,7 +206,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // STEP 3.7: Fetch Machine Serial if Hand Pay
+    // ============================================================================
+    // STEP 5: Fetch Machine Serial if Hand Pay
+    // ============================================================================
     let machineSerialNumber = '';
     if (type === 'hand_pay' && machineId) {
       const machine = await Machine.findOne(
@@ -209,7 +219,9 @@ export async function POST(request: NextRequest) {
         machine?.custom?.name || machine?.origSerialNumber || machineId;
     }
 
-    // STEP 4: Process Payout
+    // ============================================================================
+    // STEP 6: Process Payout
+    // ============================================================================
     const now = new Date();
     const payoutId = await generateMongoId();
     const transactionId = await generateMongoId();
@@ -261,7 +273,9 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     });
 
-    // STEP 5: Update Shift
+    // ============================================================================
+    // STEP 7: Update Shift
+    // ============================================================================
     shift.currentBalance -= amount;
     shift.payoutsTotal += amount;
     shift.payoutsCount += 1;
@@ -306,7 +320,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
     // STEP 1: Authorization
+    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       logRouteError(
@@ -329,14 +345,18 @@ export async function GET(request: NextRequest) {
       )
     );
 
+    // ============================================================================
     // STEP 2: Parse query parameters
+    // ============================================================================
     const { searchParams } = new URL(request.url);
     const cashierShiftId = searchParams.get('cashierShiftId');
     const limit = parseInt(searchParams.get('limit') || '20');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    // ============================================================================
     // STEP 3: Build Query
+    // ============================================================================
     await connectDB();
     const query: Record<string, unknown> = {};
 
@@ -357,7 +377,9 @@ export async function GET(request: NextRequest) {
       query.timestamp = timestampQuery;
     }
 
+    // ============================================================================
     // STEP 4: Fetch Payouts
+    // ============================================================================
     const payouts = await PayoutModel.find(query)
       .sort({ timestamp: -1 })
       .limit(limit)

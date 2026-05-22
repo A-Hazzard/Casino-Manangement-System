@@ -28,8 +28,15 @@ function CurrencyFilter({
   onCurrencyChange,
   userRoles = [],
 }: CurrencyFilterProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { displayCurrency, setDisplayCurrency } = useCurrency();
   const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleCurrencyChange = (value: string) => {
     const newCurrency = value as CurrencyCode;
@@ -39,9 +46,15 @@ function CurrencyFilter({
     onCurrencyChange?.(newCurrency);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const canShowSelector =
     !userRoles.includes('vault-manager') && !userRoles.includes('cashier');
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!canShowSelector) {
     return null;
   }

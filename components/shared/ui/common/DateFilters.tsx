@@ -46,6 +46,9 @@ export default function DateFilters({
   hideIndicator?: boolean;
   showIndicatorOnly?: boolean;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     activeMetricsFilter,
     setActiveMetricsFilter,
@@ -62,6 +65,9 @@ export default function DateFilters({
     activeMetricsFilter === 'Custom'
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
@@ -142,6 +148,9 @@ export default function DateFilters({
     }
   }, [activeMetricsFilter, gameDayOffset, setCustomDateRange]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
       const baseButtons = [
@@ -180,6 +189,9 @@ export default function DateFilters({
     }
   }, [shouldTriggerCallback, onCustomRangeGo]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleFilterClick = (filter: TimePeriod) => {
     setActiveMetricsFilter(filter);
     setActivePieChartFilter(filter); // Sync pie chart filter with main filter
@@ -195,6 +207,9 @@ export default function DateFilters({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // If only showing indicator, return early
   if (showIndicatorOnly) {
     return (

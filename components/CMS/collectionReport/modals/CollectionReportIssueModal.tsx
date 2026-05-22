@@ -95,9 +95,15 @@ export function CollectionReportIssueModal({
   onClose,
   issue,
 }: CollectionReportIssueModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const config = issueTypeConfig[issue.issueType];
   const Icon = config.icon;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'object') {
@@ -148,6 +154,9 @@ export function CollectionReportIssueModal({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">

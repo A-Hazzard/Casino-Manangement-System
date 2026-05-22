@@ -26,6 +26,9 @@ export function useGamesRevenueData({
   selectedFilters,
   selectedGames,
 }: UseGamesRevenueDataProps) {
+  // ============================================================================
+  // Computed (Memoized Data)
+  // ============================================================================
   // Re-aggregate data based on selected filters
   const aggregatedData = useMemo(() => {
     if (!allMachines.length) return initialData;
@@ -228,6 +231,9 @@ export function useGamesRevenueData({
   // Calculate width based on data length
   const minWidth = Math.max(600, filteredData.length * 60);
 
+  // ============================================================================
+  // Return
+  // ============================================================================
   return {
     aggregatedData,
     filteredData,

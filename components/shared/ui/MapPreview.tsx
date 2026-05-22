@@ -313,6 +313,9 @@ const PerformanceLegend = () => {
 };
 
 export default function MapPreview(props: MapPreviewProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isModalOpen, setIsModalOpen] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -336,59 +339,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
-  // Initialize Leaflet on client side
-  useEffect(() => {
-    import('leaflet').then(L => {
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: '/leaflet/marker-icon.png',
-        iconUrl: '/leaflet/marker-icon-image.png',
-        shadowUrl: '/leaflet/marker-shadow.png',
-      });
-      // Force iconUrl to be set on every render
-      L.Marker.prototype.options.icon = new L.Icon.Default();
-      setMapReady(true);
-    });
-  }, []);
-
-  // Ensure Leaflet popup pane has correct z-index (higher than search bar but lower than custom range filter)
-  useEffect(() => {
-    if (!mapReady) return;
-
-    const setPopupPaneZIndex = () => {
-      // Find the popup pane and set its z-index
-      const popupPane = document.querySelector('.leaflet-popup-pane');
-      if (popupPane instanceof HTMLElement) {
-        popupPane.style.zIndex = '900';
-      }
-
-      // Also set z-index on individual popups
-      const popups = document.querySelectorAll('.leaflet-popup');
-      popups.forEach(popup => {
-        if (popup instanceof HTMLElement) {
-          popup.style.zIndex = '900';
-        }
-      });
-    };
-
-    // Set z-index immediately
-    setPopupPaneZIndex();
-
-    // Use MutationObserver to catch dynamically created popups
-    const observer = new MutationObserver(() => {
-      setPopupPaneZIndex();
-    });
-
-    // Observe the document body for new popup elements
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [mapReady]);
-
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const normalizedSelected = (selectedLicencee || '').toLowerCase();
 
   const getLocationCenter = (location: Location): [number, number] | null => {
@@ -517,6 +470,62 @@ export default function MapPreview(props: MapPreviewProps) {
   const centersEqual = (a: [number, number], b: [number, number]): boolean =>
     a[0] === b[0] && a[1] === b[1];
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  // Initialize Leaflet on client side
+  useEffect(() => {
+    import('leaflet').then(L => {
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: '/leaflet/marker-icon.png',
+        iconUrl: '/leaflet/marker-icon-image.png',
+        shadowUrl: '/leaflet/marker-shadow.png',
+      });
+      // Force iconUrl to be set on every render
+      L.Marker.prototype.options.icon = new L.Icon.Default();
+      setMapReady(true);
+    });
+  }, []);
+
+  // Ensure Leaflet popup pane has correct z-index (higher than search bar but lower than custom range filter)
+  useEffect(() => {
+    if (!mapReady) return;
+
+    const setPopupPaneZIndex = () => {
+      // Find the popup pane and set its z-index
+      const popupPane = document.querySelector('.leaflet-popup-pane');
+      if (popupPane instanceof HTMLElement) {
+        popupPane.style.zIndex = '900';
+      }
+
+      // Also set z-index on individual popups
+      const popups = document.querySelectorAll('.leaflet-popup');
+      popups.forEach(popup => {
+        if (popup instanceof HTMLElement) {
+          popup.style.zIndex = '900';
+        }
+      });
+    };
+
+    // Set z-index immediately
+    setPopupPaneZIndex();
+
+    // Use MutationObserver to catch dynamically created popups
+    const observer = new MutationObserver(() => {
+      setPopupPaneZIndex();
+    });
+
+    // Observe the document body for new popup elements
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [mapReady]);
+
   // Update map center when licencee or locations change
   useEffect(() => {
     const fallbackCenter = getMapCenterByLicencee(selectedLicencee);
@@ -643,6 +652,9 @@ export default function MapPreview(props: MapPreviewProps) {
     }
   }, [isModalOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const closeModal = () => {
     if (modalRef.current) {
       try {
@@ -775,6 +787,9 @@ export default function MapPreview(props: MapPreviewProps) {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Show skeleton only while map is initializing, not while financial data loads
   if (!mapReady) {
     return <MapSkeleton />;

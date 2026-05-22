@@ -12,6 +12,10 @@ import { useCallback, useEffect, useState } from 'react';
 export function useCabinetFilters({
   onFiltersChange,
 }: UseCabinetFiltersProps = {}): UseCabinetFiltersReturn {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string[]>([]);
@@ -19,6 +23,23 @@ export function useCabinetFilters({
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedMembership, setSelectedMembership] = useState<string>('all');
   const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
+  // Check if any filters are active
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    selectedLocation.length > 0 ||
+    selectedGameType.length > 0 ||
+    selectedStatus !== 'All' ||
+    selectedMembership !== 'all' ||
+    selectedSmibStatus !== 'all';
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -29,15 +50,6 @@ export function useCabinetFilters({
     setSelectedMembership('all');
     setSelectedSmibStatus('all');
   }, []);
-
-  // Check if any filters are active
-  const hasActiveFilters =
-    searchTerm.trim() !== '' ||
-    selectedLocation.length > 0 ||
-    selectedGameType.length > 0 ||
-    selectedStatus !== 'All' ||
-    selectedMembership !== 'all' ||
-    selectedSmibStatus !== 'all';
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -68,6 +80,10 @@ export function useCabinetFilters({
   const handleSmibStatusChange = useCallback((status: string) => {
     setSelectedSmibStatus(status);
   }, []);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Notify parent of filter changes
   useEffect(() => {

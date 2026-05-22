@@ -41,10 +41,16 @@ export default function VaultOverviewInitializeModal({
   expectedDenominations,
   isInitial = false,
 }: VaultOverviewInitializeModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [loading, setLoading] = useState(false);
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async () => {
     setShowAuthenticator(true);
   };
@@ -65,6 +71,9 @@ export default function VaultOverviewInitializeModal({
     onClose();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>

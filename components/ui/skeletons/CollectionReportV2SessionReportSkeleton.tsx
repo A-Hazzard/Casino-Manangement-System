@@ -1,3 +1,11 @@
+/**
+ * Collection Report V2 Session Report Skeleton Loader
+ *
+ * Matches the exact layout of the CollectionReportV2SessionReport page.
+ * Shown while machine list and session summary data are loading.
+ *
+ * @module components/ui/skeletons/CollectionReportV2SessionReportSkeleton
+ */
 'use client';
 
 import { Skeleton } from '@/components/shared/ui/skeleton';

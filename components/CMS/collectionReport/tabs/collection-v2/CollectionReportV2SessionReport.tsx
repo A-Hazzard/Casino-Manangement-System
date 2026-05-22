@@ -73,12 +73,15 @@ export default function CollectionReportV2SessionReport({
   onEdit,
   onBack,
 }: ReportProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [activeTab, setActiveTab] = useState<'machines' | 'summary'>(
     'machines'
   );
 
   // ============================================================================
-  // Format
+  // Handlers
   // ============================================================================
 
   const formatDate = (dateStr: string) => {
@@ -97,7 +100,7 @@ export default function CollectionReportV2SessionReport({
     session.machinesCaptured - session.machinesConfirmed;
 
   // ============================================================================
-  // Tabs
+  // Computed
   // ============================================================================
 
   const tabs = [

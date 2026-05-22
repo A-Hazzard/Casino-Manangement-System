@@ -39,6 +39,9 @@ export default function VaultInventoryCard({
   denominations,
   isLoading = false,
 }: VaultInventoryCardProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
@@ -58,11 +61,17 @@ export default function VaultInventoryCard({
     return result;
   }, [denominations, selectedLicencee]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalBills = normalizedDenoms.reduce(
     (acc, curr) => acc + curr.quantity,
     0
   );
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card className="w-full rounded-lg bg-container shadow-md">
       <CardHeader className="flex flex-row items-center justify-between pb-2">

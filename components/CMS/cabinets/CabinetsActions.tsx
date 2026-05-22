@@ -45,6 +45,9 @@ export const CabinetsActions = ({
     );
   }, [user]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleNewCabinet = useCallback(() => {
     // If selectedLocation is an array, pick the first one for pre-filling the modal
     const locationId = Array.isArray(selectedLocation)
@@ -61,6 +64,9 @@ export const CabinetsActions = ({
     onMovementRequestClick();
   }, [onMovementRequestClick]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   /**
    * Renders action buttons
    * Responsive: smaller on mobile, full size on desktop

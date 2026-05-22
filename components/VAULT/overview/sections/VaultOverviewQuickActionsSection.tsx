@@ -52,6 +52,9 @@ export default function VaultOverviewQuickActionsSection({
   isStaleShift = false,
   isAdminOrDev = false,
 }: VaultOverviewQuickActionsSectionProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Operational buttons are disabled if shift is not active, not reconciled, OR stale
   const operationalDisabled = !isShiftActive || !isReconciled || isStaleShift;
   const disabledClasses = operationalDisabled

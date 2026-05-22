@@ -27,6 +27,9 @@ import { useFeedbackData } from '@/lib/hooks/administration/useFeedbackData';
  * Administration Feedback Management
  */
 export default function AdministrationFeedbackManagement() {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [emailFilter, setEmailFilter] = useState('');
   const [debouncedEmailFilter, setDebouncedEmailFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -69,6 +72,9 @@ export default function AdministrationFeedbackManagement() {
     pagesPerBatch,
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Handle debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -86,6 +92,9 @@ export default function AdministrationFeedbackManagement() {
       window.removeEventListener('refreshFeedback', handleRefreshEvent);
   }, [fetchInitialBatch]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleUpdateLocal = (updated: Feedback) => {
     setAllFeedback(prev =>
       prev.map(f => (f._id === updated._id ? updated : f))
@@ -178,6 +187,9 @@ export default function AdministrationFeedbackManagement() {
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       {/* Filters */}

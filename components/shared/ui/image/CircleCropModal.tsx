@@ -1,3 +1,8 @@
+/**
+ * CircleCropModal Component
+ * Premium image cropping modal that forces a circular 1:1 aspect ratio.
+ * Used for profile pictures and circular avatars.
+ */
 'use client';
 
 import { SyntheticEvent } from 'react';
@@ -63,6 +68,10 @@ export default function CircleCropModal({
   imageSrc,
   onCropped,
 }: CircleCropModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();

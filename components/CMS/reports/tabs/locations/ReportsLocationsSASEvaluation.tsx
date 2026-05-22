@@ -135,12 +135,18 @@ export default function ReportsLocationsSASEvaluation({
   showGranularitySelector,
   itemsPerPage,
 }: ReportsLocationsSASEvaluationProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
   const formatCurrency = (val: number | null | undefined) =>
     formatAmount(val || 0);
   const { activeMetricsFilter } = useDashBoardStore();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Calculate display totals from selected locations
   const displayTotals = useMemo(() => {
     if (selectedSasLocations.length === 0) {
@@ -187,6 +193,9 @@ export default function ReportsLocationsSASEvaluation({
       }));
   }, [allLocationsForDropdown]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header with Export Buttons */}

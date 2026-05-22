@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
   const logUser = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Connect to DB and authenticate
+    // ============================================================================
     await connectDB();
     const userId = await getUserIdFromServer();
     if (!userId) {
@@ -47,11 +50,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 2: Parse request
+    // ============================================================================
     const { password, type } = await request.json();
     if (!password) {
       return NextResponse.json({ success: true, isMatch: false });
     }
 
+    // ============================================================================
+    // STEP 3: Fetch user with password data
+    // ============================================================================
     const trimmedPassword = password.trim();
     const user = await UserModel.findOne({ _id: userId }).select(
       '+password previousPasswords'
@@ -72,6 +81,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ============================================================================
+    // STEP 4: Handle verify check
+    // ============================================================================
     if (type === 'verify') {
       const isMatch = await comparePassword(
         trimmedPassword,
@@ -86,6 +98,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, isMatch });
     }
 
+    // ============================================================================
+    // STEP 5: Handle reuse check
+    // ============================================================================
     if (type === 'reuse') {
       // Check current
       const isSameAsCurrent = await comparePassword(
@@ -116,6 +131,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, isReuse: false });
     }
 
+    // ============================================================================
+    // STEP 6: Handle invalid type
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
       functionName,

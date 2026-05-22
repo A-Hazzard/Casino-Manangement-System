@@ -45,8 +45,7 @@ export default function VaultTransactionsMobileCards({
   getTransactionTypeBadge,
 }: VaultTransactionsMobileCardsProps) {
   // ============================================================================
-
-  // Hooks
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [selectedTxDenominations, setSelectedTxDenominations] = useState<{

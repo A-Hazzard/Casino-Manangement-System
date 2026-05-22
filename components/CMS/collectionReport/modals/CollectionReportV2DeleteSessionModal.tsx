@@ -31,13 +31,16 @@ export default function CollectionReportV2DeleteSessionModal({
   onArchive,
   onDelete,
 }: Props) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [step, setStep] = useState<ModalStep>('choose');
   const [loading, setLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
-  // Animation + reset on open
+  // Effects
   // ============================================================================
 
   useEffect(() => {

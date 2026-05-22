@@ -50,6 +50,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   onRefresh,
   locations: propLocations,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [locations, setLocations] = useState<
     { id: string; name: string; licenceeId?: string }[]
   >([]);
@@ -85,6 +88,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     ['admin', 'developer'].includes(role)
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Use prop locations or fetch if not provided
   useEffect(() => {
     if (propLocations && propLocations.length > 0) {
@@ -184,6 +190,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     }
   }, [fromLocation, movementType, availableSmibs, loadingSmibs]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const validate = () => {
     const errs: { [key: string]: string } = {};
     if (!movementType) errs.movementType = 'Movement type is required.';
@@ -290,6 +299,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Derive location options for SearchableSelect
   const locationOptions = locations
     .filter(loc => {
@@ -336,6 +348,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     return hasRole && hasLocation;
   });
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="flex max-h-[95vh] flex-col overflow-hidden border-none bg-white p-0 shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-4xl">

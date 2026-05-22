@@ -32,6 +32,9 @@ import type {
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate location
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       if (!locationId)
@@ -40,6 +43,9 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
 
+      // ============================================================================
+      // STEP 2: Enforce permissions
+      // ============================================================================
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
         undefined,
@@ -57,6 +63,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Process time range
+      // ============================================================================
       const locationInfo = await GamingLocations.findOne(
         { _id: locationId },
         { gameDayOffset: 1 }
@@ -73,6 +82,9 @@ export async function GET(request: NextRequest) {
         endDateParam ? new Date(endDateParam) : undefined
       );
 
+      // ============================================================================
+      // STEP 4: Fetch metrics data
+      // ============================================================================
       const [transactions, activeCashiersData, machineMeters] =
         await Promise.all([
           VaultTransactionModel.find({
@@ -99,6 +111,9 @@ export async function GET(request: NextRequest) {
           ]),
         ]);
 
+      // ============================================================================
+      // STEP 5: Calculate base metrics
+      // ============================================================================
       let totalCashIn = 0,
         totalCashOut = 0,
         payouts = 0,
@@ -134,7 +149,7 @@ export async function GET(request: NextRequest) {
       };
 
       // ============================================================================
-      // Reviewer Multiplier Scaling
+      // STEP 6: Apply reviewer scaling
       // ============================================================================
       const moneyInScale = getMoneyInScale(
         userPayload as {
@@ -162,6 +177,9 @@ export async function GET(request: NextRequest) {
         metrics.expenses *= moneyOutScale;
       }
 
+      // ============================================================================
+      // STEP 7: Return metrics
+      // ============================================================================
       return NextResponse.json({
         success: true,
         metrics,

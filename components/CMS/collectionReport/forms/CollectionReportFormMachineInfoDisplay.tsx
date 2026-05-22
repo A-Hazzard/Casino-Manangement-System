@@ -26,6 +26,9 @@ export default function CollectionReportFormMachineInfoDisplay({
   showExternalLink = true,
   className = '',
 }: MachineInfoDisplayProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`relative rounded-lg bg-gray-100 p-3 ${className}`}>
       <div className="flex items-center justify-between">

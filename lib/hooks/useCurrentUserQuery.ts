@@ -81,6 +81,10 @@ const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
  * Updates the user store when data changes
  */
 export function useCurrentUserQuery() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { user: storeUser, setUser, clearUser } = useUserStore();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -98,6 +102,10 @@ export function useCurrentUserQuery() {
     },
     retryDelay: 1000,
   });
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Sync React Query data with Zustand store
   useEffect(() => {

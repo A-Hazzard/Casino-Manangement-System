@@ -18,6 +18,9 @@ const getStatus = (smib: SmibDevice): 'online' | 'offline' =>
     : 'offline';
 
 export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
+  // ============================================================================
+  // State
+  // ============================================================================
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -35,6 +38,9 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
   const onlineCount = smibs.filter(s => getStatus(s) === 'online').length;
   const offlineCount = smibs.length - onlineCount;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-4">
       {/* Summary + Search */}

@@ -42,7 +42,7 @@ export default function VaultTransfersMobileCards({
   showActions = false,
 }: VaultTransfersMobileCardsProps) {
   // ============================================================================
-  // Hooks
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 

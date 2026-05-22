@@ -23,8 +23,14 @@ type DateRangeIndicatorProps = {
 export default function DateRangeIndicator({
   className = '',
 }: DateRangeIndicatorProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const getDateRangeText = () => {
     switch (activeMetricsFilter) {
       case 'Today':
@@ -144,6 +150,9 @@ export default function DateRangeIndicator({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={`text-sm text-gray-600 ${className}`}>
       <div className="font-medium text-gray-800">{getDateRangeText()}</div>

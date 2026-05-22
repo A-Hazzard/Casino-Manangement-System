@@ -53,6 +53,9 @@ type MembersListTabProps = {
 export default function MembersListTab({
   forcedLocationId,
 }: MembersListTabProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     selectedMember,
     isEditModalOpen,
@@ -111,6 +114,9 @@ export default function MembersListTab({
     [pagesPerBatch]
   );
 
+  // ============================================================================
+  // Fetching & Callbacks
+  // ============================================================================
   // Fetch members data with backend pagination
   const fetchMembers = useCallback(
     async (
@@ -228,6 +234,9 @@ export default function MembersListTab({
     }
   }, [forcedLocationId]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Fetch locations on mount
   useEffect(() => {
     fetchLocations();
@@ -324,6 +333,9 @@ export default function MembersListTab({
     locationFilter,
   ]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Sorting functionality - now handled by backend
   const handleSort = useCallback(
     (column: MemberSortOption) => {
@@ -336,6 +348,9 @@ export default function MembersListTab({
     [sortOption, sortOrder]
   );
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter by location and search term (frontend filtering)
   const filteredMembers = useMemo(() => {
     let filtered = allMembers;
@@ -433,6 +448,9 @@ export default function MembersListTab({
     return sortedMembers.slice(startIndex, endIndex);
   }, [sortedMembers, currentPage, itemsPerPage]);
 
+  // ============================================================================
+  // Handlers (Continued)
+  // ============================================================================
   const handleMemberClick = (memberId: string) => {
     router.push(`/members/${memberId}`);
   };
@@ -552,6 +570,9 @@ export default function MembersListTab({
 
   // Date formatting helpers were used for exports only; keep here if needed in future.
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   // Render summary cards (similar to summary report)
   const renderSummaryCards = () => {
     if (!summaryStats) return null;
@@ -600,6 +621,9 @@ export default function MembersListTab({
     );
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Mobile: Search */}

@@ -17,6 +17,9 @@ type MembersMemberTableSkeletonProps = {
 export default function MembersMemberTableSkeleton({
   hideLocationColumn = false,
 }: MembersMemberTableSkeletonProps) {
+  // ============================================================================
+  // Render - Skeleton
+  // ============================================================================
   return (
     <div className="w-full overflow-x-auto rounded-lg bg-white shadow">
       <table className="w-full table-fixed">

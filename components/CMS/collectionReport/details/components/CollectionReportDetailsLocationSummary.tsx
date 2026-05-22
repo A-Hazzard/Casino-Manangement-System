@@ -26,6 +26,9 @@ type CollectionReportDetailsLocationSummaryProps = {
 export const CollectionReportDetailsLocationSummary: FC<
   CollectionReportDetailsLocationSummaryProps
 > = ({ data, isMobile = false }) => {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const { droppedCancelled, metersGross, sasGross, variation } = data;
 
   const rows = [
@@ -47,6 +50,9 @@ export const CollectionReportDetailsLocationSummary: FC<
     },
   ];
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (isMobile) {
     return (
       <div className="overflow-hidden rounded-lg bg-white shadow-md">

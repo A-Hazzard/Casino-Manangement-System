@@ -33,6 +33,9 @@ export function VariationsCollapsibleSection({
   onExpandChange,
   onMachineClick,
 }: VariationsCollapsibleSectionProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const variationCount = machines.filter(
     m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
   ).length;
@@ -41,6 +44,9 @@ export function VariationsCollapsibleSection({
     return null;
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-4">
       {/* Header */}

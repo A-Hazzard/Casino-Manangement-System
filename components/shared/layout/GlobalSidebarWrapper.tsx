@@ -36,13 +36,13 @@ export default function GlobalSidebarWrapper({
   navConfig,
 }: GlobalSidebarWrapperProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const pathname = usePathname();
   const { user } = useUserStore();
 
   // ============================================================================
-  // Effects - Initialize Interceptors
+  // Effects
   // ============================================================================
   // Initialize axios interceptors for database mismatch detection
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function GlobalSidebarWrapper({
   }, []);
 
   // ============================================================================
-  // Computed Values - Navigation Selection
+  // Computed
   // ============================================================================
   // Determine effective navigation config based on user roles and route
   const effectiveNavConfig = useMemo(() => {
@@ -70,7 +70,7 @@ export default function GlobalSidebarWrapper({
   }, [pathname, navConfig, user?.roles]);
 
   // ============================================================================
-  // Render - Conditional Sidebar
+  // Render
   // ============================================================================
   if (pathname === '/login') return null;
   return (

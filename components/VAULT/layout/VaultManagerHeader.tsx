@@ -49,6 +49,9 @@ export default function VaultManagerHeader({
   showNotificationBell = true,
   vaultInventory: initialInventory,
 }: VaultManagerHeaderProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } =
     useUserStore();
   const isAdminOrDev = user?.roles?.some(r =>
@@ -58,6 +61,10 @@ export default function VaultManagerHeader({
   const [vaultInventory, setVaultInventory] = useState<Denomination[]>(
     initialInventory || []
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Sync prop with local state when it changes
   useEffect(() => {
@@ -73,6 +80,10 @@ export default function VaultManagerHeader({
     refresh,
     dismissNotification,
   } = useNotifications(showNotificationBell ? locationId : undefined);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Fetch vault inventory for float request verification
   const fetchInventory = useCallback(async () => {
@@ -183,6 +194,10 @@ export default function VaultManagerHeader({
     [refresh, onFloatActionComplete]
   );
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // Map notifications to NotificationItem format
   const bellNotifications = notifications.map(n => ({
     id: n._id,
@@ -257,6 +272,9 @@ export default function VaultManagerHeader({
     }
   }, [activeStep, refresh, fetchInventory]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mb-6 border-b pb-4">
       {/* First Row: Back Button, Title/Description, and Notification Bell */}

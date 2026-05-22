@@ -1,3 +1,11 @@
+/**
+ * Vault Authenticator Setup Component
+ *
+ * Guides vault users through TOTP authenticator app setup.
+ * Displays QR code and manual secret for scanning, then confirms with a code.
+ *
+ * @module components/VAULT/shared/VaultAuthenticatorSetup
+ */
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import { Copy, Loader2 } from 'lucide-react';
@@ -15,6 +23,9 @@ export default function VaultAuthenticatorSetup({
   onConfirmed,
   onCancel,
 }: VaultAuthenticatorSetupProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [data, setData] = useState<{
     qrCodeUrl: string;
     secret: string;
@@ -24,10 +35,16 @@ export default function VaultAuthenticatorSetup({
   const [confirming, setConfirming] = useState(false);
   const [code, setCode] = useState('');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchSetup();
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const fetchSetup = async () => {
     setLoading(true);
     try {
@@ -79,6 +96,10 @@ export default function VaultAuthenticatorSetup({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+  // Guard: Show loading state while fetching setup data
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-8">

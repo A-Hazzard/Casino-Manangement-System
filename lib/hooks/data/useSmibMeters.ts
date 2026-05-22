@@ -7,13 +7,13 @@ import { toast } from 'sonner';
  */
 export function useSmibMeters() {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [isRequestingMeters, setIsRequestingMeters] = useState(false);
   const [isResettingMeters, setIsResettingMeters] = useState(false);
 
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   /**

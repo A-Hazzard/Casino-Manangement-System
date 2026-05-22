@@ -26,6 +26,9 @@ export default function LocationsDeleteLocationModal({
 }: {
   onDelete: () => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { isDeleteModalOpen, closeDeleteModal, selectedLocation } =
     useLocationsActionsStore();
   const { user } = useUserStore();
@@ -34,6 +37,9 @@ export default function LocationsDeleteLocationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const canPermanentlyDelete = useMemo(() => {
     const roles = user?.roles || [];
     return ['developer', 'owner', 'admin', 'location admin'].some(r =>
@@ -41,30 +47,12 @@ export default function LocationsDeleteLocationModal({
     );
   }, [user]);
 
-  useEffect(() => {
-    if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
-      gsap.fromTo(
-        modalRef.current,
-        { y: 100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
-      );
-      gsap.fromTo(
-        backdropRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.3, ease: 'power2.out' }
-      );
-      setLoading(false);
+  const locationName = (selectedLocation as Record<string, unknown>)
+    ?.locationName as string;
 
-      const isArchived = Boolean((selectedLocation as { deletedAt?: string | Date })?.deletedAt);
-      if (isArchived) {
-        setStep('confirmDelete');
-      } else if (canPermanentlyDelete) {
-        setStep('choose');
-      } else {
-        setStep('confirmArchive');
-      }
-    }
-  }, [isDeleteModalOpen, canPermanentlyDelete, selectedLocation]);
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleArchive = async () => {
     const location = selectedLocation as Record<string, unknown>;
@@ -101,10 +89,38 @@ export default function LocationsDeleteLocationModal({
     }
   };
 
-  if (!isDeleteModalOpen || !selectedLocation) return null;
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  useEffect(() => {
+    if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
+      gsap.fromTo(
+        modalRef.current,
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+      );
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+      );
+      setLoading(false);
 
-  const locationName = (selectedLocation as Record<string, unknown>)
-    ?.locationName as string;
+      const isArchived = Boolean((selectedLocation as { deletedAt?: string | Date })?.deletedAt);
+      if (isArchived) {
+        setStep('confirmDelete');
+      } else if (canPermanentlyDelete) {
+        setStep('choose');
+      } else {
+        setStep('confirmArchive');
+      }
+    }
+  }, [isDeleteModalOpen, canPermanentlyDelete, selectedLocation]);
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  if (!isDeleteModalOpen || !selectedLocation) return null;
 
   return (
     <div className="fixed inset-0 z-[100000]">

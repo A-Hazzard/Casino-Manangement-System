@@ -58,6 +58,9 @@ export default function TopPerformingCabinetModal({
   onClose,
   onNavigate,
 }: TopPerformingCabinetModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [machineData, setMachineData] = useState<MachineMetricsData | null>(
@@ -71,14 +74,17 @@ export default function TopPerformingCabinetModal({
   const { activePieChartFilter, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
-  // Use activeMetricsFilter if available (from cabinet detail page), otherwise fall back to activePieChartFilter (from dashboard)
-  const effectiveTimePeriod =
-    activeMetricsFilter || activePieChartFilter || 'Today';
-
   // Chart granularity state - initialize after store values are available
   const [chartGranularity, setChartGranularity] = useState<
     'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
   >('hourly');
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  // Use activeMetricsFilter if available (from cabinet detail page), otherwise fall back to activePieChartFilter (from dashboard)
+  const effectiveTimePeriod =
+    activeMetricsFilter || activePieChartFilter || 'Today';
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format
@@ -122,6 +128,9 @@ export default function TopPerformingCabinetModal({
     return false;
   }, [effectiveTimePeriod, customDateRange]);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Recalculate default granularity when date filters change
   // For "Today", also recalculate periodically as time passes
   // For 7d and 30d, always use 'hourly' (which displays as daily format in Chart component)
@@ -272,12 +281,18 @@ export default function TopPerformingCabinetModal({
 
   if (!open) return null;
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const formattedMachineName = formatMachineDisplayName({
     serialNumber: machineName,
     game: game || machineData?.game,
     custom: { name: machineName },
   });
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleNavigate = () => {
     // Navigate to cabinet details page
     if (machineId) {
@@ -287,6 +302,9 @@ export default function TopPerformingCabinetModal({
     onClose();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       ref={backdropRef}

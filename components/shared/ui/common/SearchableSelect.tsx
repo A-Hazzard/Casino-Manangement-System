@@ -33,11 +33,17 @@ export default function SearchableSelect({
   emptyMessage = 'No options found',
   error = false,
 }: SearchableSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,12 +63,18 @@ export default function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);
     setIsOpen(false);
     setSearchTerm('');
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredOptions = options.filter(
     option =>
       (option.label || '')
@@ -80,6 +92,9 @@ export default function SearchableSelect({
   const selectedOption = options.find(option => option.value === value);
   const displayText = selectedOption?.label || placeholder;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={cn('relative w-full', className)} ref={dropdownRef}>
       <Button

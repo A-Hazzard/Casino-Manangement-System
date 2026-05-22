@@ -1,3 +1,7 @@
+/**
+ * SMIBFirmwareTable Component
+ * Desktop table view for SMIB firmware entries with GSAP row animations.
+ */
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -18,9 +22,17 @@ export default function SMIBFirmwareTable({
   loading = false,
   onRefresh,
 }: SMIBFirmwareTableProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const tableRef = useRef<HTMLTableElement>(null);
   const prevFirmwaresRef = useRef<Firmware[]>([]);
   const { openDeleteModal, openDownloadModal } = useFirmwareActionsStore();
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Animate table rows on data change
   useEffect(() => {
@@ -47,6 +59,11 @@ export default function SMIBFirmwareTable({
     }
   }, [firmwares]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show loading skeleton
   if (loading) {
     return (
       <div className="overflow-x-auto">

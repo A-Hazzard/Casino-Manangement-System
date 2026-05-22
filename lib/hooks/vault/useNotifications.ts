@@ -31,11 +31,19 @@ export type VaultNotification = {
 };
 
 export function useNotifications(locationId?: string, enabled: boolean = true) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const [notifications, setNotifications] = useState<VaultNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingFloatRequests, setPendingFloatRequests] = useState(0);
   const [pendingShiftReviews, setPendingShiftReviews] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchNotifications = useCallback(async () => {
     if (!locationId) return;
@@ -58,6 +66,10 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
       console.error('Failed to fetch notifications', error);
     }
   }, [locationId]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Initial fetch and polling
   useEffect(() => {

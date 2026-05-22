@@ -59,6 +59,9 @@ type SummaryTabProps = {
 export default function CollectionReportV2SessionReportSummaryTab({
   session,
 }: SummaryTabProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const withPhotos = session.machines.filter(m => m.imageData).length;
   const withoutPhotos = session.machinesTotal - withPhotos;
 
@@ -98,6 +101,9 @@ export default function CollectionReportV2SessionReportSummaryTab({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       <h2 className="mb-4 text-center text-xl font-bold lg:hidden">
@@ -202,6 +208,9 @@ export default function CollectionReportV2SessionReportSummaryTab({
 }
 
 function GrossSummary({ session }: { session: SessionDetail }) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalMachineGross = session.machines.reduce(
     (sum, m) => sum + (m.machineGross ?? 0),
     0
@@ -212,6 +221,9 @@ function GrossSummary({ session }: { session: SessionDetail }) {
   );
   const totalDifference = totalMachineGross === 0 ? 0 : (totalMachineGross - totalSasGross);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="rounded-lg bg-white p-5 shadow">
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">

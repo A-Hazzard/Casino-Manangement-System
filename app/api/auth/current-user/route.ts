@@ -80,12 +80,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Note: Permission validation is handled by sessionVersion checking in getUserFromServer()
-    // The sessionVersion is incremented whenever permissions change, which automatically
-    // invalidates the JWT token. This endpoint doesn't need to double-check permissions
-    // because getUserFromServer() already validates sessionVersion and hydrates permissions
-    // from the database if they're missing from the JWT.
-
     // ============================================================================
     // STEP 4: Validate profile fields
     // ============================================================================

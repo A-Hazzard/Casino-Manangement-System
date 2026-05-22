@@ -75,6 +75,9 @@ interface AuditTrailEntry {
 }
 
 export default function AuditTrailViewer() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const { user } = useUserStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,6 +92,9 @@ export default function AuditTrailViewer() {
   const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [totalEntries, setTotalEntries] = useState(0);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     fetchData();
   }, [user?.assignedLocations, typeFilter, statusFilter, dateRange]);
@@ -118,6 +124,9 @@ export default function AuditTrailViewer() {
     }
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -135,6 +144,9 @@ export default function AuditTrailViewer() {
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header */}

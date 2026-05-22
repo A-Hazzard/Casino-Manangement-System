@@ -59,6 +59,9 @@ export default function MultiSelectDropdown({
   showSelectAll = true,
   maxHeight = 'max-h-60',
 }: MultiSelectDropdownProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -71,6 +74,9 @@ export default function MultiSelectDropdown({
   } | null>(null);
   const [position, setPosition] = useState<'bottom' | 'top'>('bottom');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Handle hydration
   useEffect(() => {
     setMounted(true);
@@ -105,6 +111,9 @@ export default function MultiSelectDropdown({
     };
   }, [isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Positioning logic
   const updatePosition = useCallback(() => {
     if (triggerRef.current && isOpen) {
@@ -138,6 +147,9 @@ export default function MultiSelectDropdown({
     };
   }, [isOpen, updatePosition]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredOptions = options.filter(option =>
     (option.label || '')
       .toLowerCase()
@@ -177,6 +189,9 @@ export default function MultiSelectDropdown({
         ? `All ${label || 'items'} (${options.length})`
         : `${selectedOptions.length} selected`;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="relative w-full">
       {/* Trigger Button */}

@@ -19,14 +19,14 @@ type UseSmibDiscoveryReturn = {
 
 export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [allSmibs, setAllSmibs] = useState<SmibDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // ============================================================================
-  // Methods
+  // Handlers
   // ============================================================================
 
   /**

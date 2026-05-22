@@ -63,7 +63,9 @@ export async function POST() {
       );
     }
 
-    // Find Vault Managers at this location
+    // ============================================================================
+    // STEP 1: Find Vault Managers at this location
+    // ============================================================================
     const vaultManagers = await UserModel.find({
       roles: 'vault-manager',
       assignedLocations: locationId,
@@ -91,7 +93,9 @@ export async function POST() {
       `${foundUser.profile?.firstName || ''} ${foundUser.profile?.lastName || ''}`.trim() ||
       foundUser.username;
 
-    // Send notifications to all VMs
+    // ============================================================================
+    // STEP 2: Send notifications to all VMs
+    // ============================================================================
     for (const vm of vaultManagers) {
       await create2FARecoveryNotification(
         locationId,

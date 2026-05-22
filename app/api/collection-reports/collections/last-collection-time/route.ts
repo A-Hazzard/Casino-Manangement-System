@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
   const user = extractUserFromRequest(request);
 
   try {
+    // ============================================================================
+    // STEP 1: Parse request parameters
+    // ============================================================================
     const { searchParams } = request.nextUrl;
     const machineId = searchParams.get('machineId');
 
@@ -49,8 +52,14 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('machineId query parameter is required', 400);
     }
 
+    // ============================================================================
+    // STEP 2: Connect to database
+    // ============================================================================
     await connectDB();
 
+    // ============================================================================
+    // STEP 3: Find most recent completed collection
+    // ============================================================================
     // Find the most recent completed collection for this machine,
     // ordered by collectionTime descending so we get the latest gaming period end.
     const lastCollection = await Collections.findOne(
@@ -60,11 +69,23 @@ export async function GET(request: NextRequest) {
       .sort({ collectionTime: -1 })
       .lean<CollectionDocument | null>();
 
+    // Also find the oldest collection to establish chronological boundaries
+    const firstCollection = await Collections.findOne(
+      { machineId, isCompleted: true },
+      { collectionTime: 1 }
+    )
+      .sort({ collectionTime: 1 })
+      .lean<CollectionDocument | null>();
+
     let collectionTime: Date | null = lastCollection?.collectionTime ?? null;
+    let firstCollectionTime: Date | null = firstCollection?.collectionTime ?? null;
     let metersIn: number | null = lastCollection?.metersIn ?? null;
     let metersOut: number | null = lastCollection?.metersOut ?? null;
     const hasPreviousCollection = !!lastCollection;
 
+    // ============================================================================
+    // STEP 4: Fallback to machine collectionMeters if no collection found
+    // ============================================================================
     if (!lastCollection) {
       const { Machine } = await import('@/app/api/lib/models/machines');
       const machine = await Machine.findOne({ _id: machineId })
@@ -72,11 +93,15 @@ export async function GET(request: NextRequest) {
         .lean<{ collectionTime?: Date; collectionMeters?: { metersIn?: number; metersOut?: number } }>();
       if (machine) {
         collectionTime = machine.collectionTime ?? null;
+        firstCollectionTime = machine.collectionTime ?? null;
         metersIn = machine.collectionMeters?.metersIn ?? null;
         metersOut = machine.collectionMeters?.metersOut ?? null;
       }
     }
 
+    // ============================================================================
+    // STEP 5: Return response
+    // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
       functionName,
@@ -90,6 +115,7 @@ export async function GET(request: NextRequest) {
     return createSuccessResponse(
       {
         collectionTime,
+        firstCollectionTime,
         metersIn,
         metersOut,
         hasPreviousCollection,

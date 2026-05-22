@@ -79,6 +79,10 @@ export const useCabinetData = ({
   selectedSmibStatus,
   displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   // Debounce search term to reduce API calls
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -133,6 +137,10 @@ export const useCabinetData = ({
   // AbortController for canceling previous requests
   const makeRequest = useAbortableRequest();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation (for backward compatibility)
   // Note: This is now only used for table display, metrics cards use metricsTotals from API
   const financialTotals = useMemo(() => {
@@ -142,6 +150,10 @@ export const useCabinetData = ({
     }
     return calculateCabinetFinancialTotals(allCabinets);
   }, [allCabinets, metricsTotals]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
@@ -466,6 +478,10 @@ export const useCabinetData = ({
       makeRequest,
     ]
   );
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Ref to store the latest loadCabinets function to avoid dependency issues in useEffect
   const loadCabinetsRef = useRef(loadCabinets);

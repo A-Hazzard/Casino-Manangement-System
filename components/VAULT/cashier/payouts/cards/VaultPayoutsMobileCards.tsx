@@ -45,7 +45,7 @@ export default function VaultPayoutsMobileCards({
   payouts,
 }: VaultPayoutsMobileCardsProps) {
   // ============================================================================
-  // Hooks
+  // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 

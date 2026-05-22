@@ -1,3 +1,7 @@
+/**
+ * NetworkError Component
+ * Displays when there are API failures, network issues, or server errors.
+ */
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
@@ -12,10 +16,6 @@ type NetworkErrorProps = {
   errorDetails?: string;
 };
 
-/**
- * Network Error Component
- * Displays when there are API failures, network issues, or server errors
- */
 export default function NetworkError({
   title = 'Connection Error',
   message = 'Unable to connect to the server. Please check your internet connection and try again.',
@@ -24,6 +24,10 @@ export default function NetworkError({
   isRetrying = false,
   errorDetails,
 }: NetworkErrorProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
+
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen items-center justify-center bg-white p-6">
       <motion.div

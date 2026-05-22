@@ -76,6 +76,9 @@ export default function CollectionReportModals({
   onRefresh,
   onRefreshLocations,
 }: CollectionReportModalsProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Only render one modal at a time to prevent shared store state conflicts
   // Edit modal takes priority over new collection modal
   const showNewCollection =
@@ -87,6 +90,9 @@ export default function CollectionReportModals({
   );
   const locationName = report ? report.location : 'Report';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {showNewCollection && showNewCollectionMobile && (

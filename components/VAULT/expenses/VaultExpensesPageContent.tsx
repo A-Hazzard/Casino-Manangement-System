@@ -90,11 +90,13 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
 // ============================================================================
 export default function VaultExpensesPageContent() {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } =
     useUserStore();
   const locationId = user?.assignedLocations?.[0] || '';
+  const { vaultBalance } = useVaultShift();
+  
   const [expenses, setExpenses] = useState<VaultTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -118,7 +120,7 @@ export default function VaultExpensesPageContent() {
   });
 
   // ============================================================================
-  // Data Fetching
+  // Handlers
   // ============================================================================
   const fetchExpenses = useCallback(async () => {
     try {
@@ -253,8 +255,6 @@ export default function VaultExpensesPageContent() {
     setDateRange(undefined);
     setCategory('all');
   };
-
-  const { vaultBalance } = useVaultShift();
 
   // ============================================================================
   // Render

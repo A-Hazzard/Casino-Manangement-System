@@ -65,6 +65,9 @@ export default function CollectionReportMobileEditMachineList({
   onBack,
   sortMachines,
 }: MobileEditMachineListProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter machines based on search term
   const filteredMachines = machines.filter(machine => {
     if (!searchTerm) return true;
@@ -80,6 +83,9 @@ export default function CollectionReportMobileEditMachineList({
 
   const sortedMachines = sortMachines(filteredMachines);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex items-center justify-between">

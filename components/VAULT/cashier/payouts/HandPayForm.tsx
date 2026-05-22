@@ -1,3 +1,14 @@
+/**
+ * Hand Pay Form Component
+ *
+ * Form for processing hand pay payouts. Requires TOTP authentication
+ * before submission. Shows a shortfall warning and float request option
+ * if the payout amount exceeds the cashier's current balance.
+ *
+ * @module components/VAULT/cashier/payouts/HandPayForm
+ */
+'use client';
+
 import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
@@ -25,6 +36,9 @@ export default function HandPayForm({
   onRequestCash,
   loading = false,
 }: HandPayFormProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const [selectedMachine, setSelectedMachine] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
@@ -38,6 +52,9 @@ export default function HandPayForm({
     machineId: string;
   } | null>(null);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -58,6 +75,9 @@ export default function HandPayForm({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full">
       <form onSubmit={handleSubmit} className="space-y-5">

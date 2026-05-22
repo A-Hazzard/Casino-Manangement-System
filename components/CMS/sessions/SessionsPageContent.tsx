@@ -22,6 +22,9 @@ import { useState } from 'react';
 import { SessionsTable } from './SessionsTable';
 
 export default function SessionsPageContent() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Use the useSessions hook which exposes data and filter controls
   const {
     sessions,
@@ -51,6 +54,9 @@ export default function SessionsPageContent() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRefresh = async () => {
     setRefreshing(true);
     if (refreshSessions) {
@@ -66,6 +72,9 @@ export default function SessionsPageContent() {
     setSortOrder(newSortOrder);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <PageLayout
       headerProps={{

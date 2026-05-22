@@ -51,9 +51,15 @@ function AdministrationLicenceeTable({
   onPaymentHistory,
   onTogglePaymentStatus,
 }: AdministrationLicenceeTableProps) {
+  // ============================================================================
+  // State & Refs
+  // ============================================================================
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -70,6 +76,9 @@ function AdministrationLicenceeTable({
     };
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div ref={tableRef} className="hidden lg:block">
       <Table className="rounded-lg bg-white shadow-md">

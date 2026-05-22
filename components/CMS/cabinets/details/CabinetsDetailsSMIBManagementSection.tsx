@@ -145,6 +145,9 @@ export default function CabinetsDetailsSMIBManagementSection({
   onSaveAll,
   smibHook,
 }: CabinetsDetailsSMIBManagementSectionProps) {
+  // ============================================================================
+  // Guard & Render
+  // ============================================================================
   // Don't render if user doesn't have access to SMIB configuration
   if (!canAccessSmibConfig) return null;
 

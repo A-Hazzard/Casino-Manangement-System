@@ -20,6 +20,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { UserRole } from '../../constants/roles';
 
 export function useLoginPageData() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: authLoading } = useAuth();
@@ -46,6 +49,10 @@ export function useLoginPageData() {
   // Stores the plain-text password typed at login (for "currentPassword" in the modal)
   const loginPasswordRef = useRef<string>('');
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
   // Derived: is this a cashier changing their temp password?
   const isCashierTempChange =
     pendingUserRef.current?.roles?.includes('cashier') &&
@@ -55,6 +62,10 @@ export function useLoginPageData() {
   // Forced if it's a cashier's temp password OR if it's a weak password detected at login
   const isForced =
     isCashierTempChange || !!pendingUserRef.current?.requiresPasswordUpdate;
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // === Login Handler ===
   const handleLogin = useCallback(
@@ -190,6 +201,10 @@ export function useLoginPageData() {
       setMessageType('info');
     }
   }, [clearUser]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // URL Parameter Handling
   useEffect(() => {

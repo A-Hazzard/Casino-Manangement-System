@@ -57,6 +57,9 @@ export default function ReportsManufacturerPerformanceChart({
   data: initialData,
   allMachines = [],
 }: ReportsManufacturerPerformanceChartProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -98,8 +101,38 @@ export default function ReportsManufacturerPerformanceChart({
     totalMachinesCount: number;
   } | null>(null);
 
-  // Initialize selected manufacturers only on initial data load
   const hasInitialized = useRef(false);
+  const prevFiltersRef = useRef<string[]>(selectedFilters);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  // Use custom hook for data processing
+  const { aggregatedData, filteredData, chartData, minWidth } =
+    useManufacturerPerformanceData({
+      initialData,
+      allMachines,
+      selectedFilters,
+      selectedManufacturers,
+    });
+
+  // Search suggestions - only from filtered data
+  const manufacturerSuggestions = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    const searchLower = searchTerm.toLowerCase().trim();
+    return filteredData
+      .map((item, index) => ({
+        manufacturer: item.manufacturer,
+        index,
+      }))
+      .filter(item => item.manufacturer.toLowerCase().includes(searchLower))
+      .slice(0, 10);
+  }, [filteredData, searchTerm]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+  // Initialize selected manufacturers only on initial data load
   useEffect(() => {
     if (
       initialData.length > 0 &&
@@ -110,35 +143,6 @@ export default function ReportsManufacturerPerformanceChart({
       hasInitialized.current = true;
     }
   }, [initialData, selectedManufacturers.length]);
-
-  // Handle filter button toggles
-  const handleFilterToggle = (filter: string) => {
-    setSelectedFilters(prev => {
-      if (filter === 'all-manufacturers') {
-        return ['all-manufacturers'];
-      }
-
-      const newFilters = prev.filter(f => f !== 'all-manufacturers');
-      if (newFilters.includes(filter)) {
-        const filtered = newFilters.filter(f => f !== filter);
-        return filtered.length === 0 ? ['all-manufacturers'] : filtered;
-      } else {
-        return [...newFilters, filter];
-      }
-    });
-  };
-
-  // Use custom hook for data processing
-  const { aggregatedData, filteredData, chartData, minWidth } =
-    useManufacturerPerformanceData({
-      initialData,
-      allMachines,
-      selectedFilters,
-      selectedManufacturers,
-    });
-
-  // Track previous filter state to detect filter changes
-  const prevFiltersRef = useRef<string[]>(selectedFilters);
 
   // Sync selected manufacturers when filters change
   useEffect(() => {
@@ -178,18 +182,45 @@ export default function ReportsManufacturerPerformanceChart({
     }
   }, [aggregatedData, selectedFilters, selectedManufacturers]);
 
-  // Search suggestions - only from filtered data
-  const manufacturerSuggestions = useMemo(() => {
-    if (!searchTerm.trim()) return [];
-    const searchLower = searchTerm.toLowerCase().trim();
-    return filteredData
-      .map((item, index) => ({
-        manufacturer: item.manufacturer,
-        index,
-      }))
-      .filter(item => item.manufacturer.toLowerCase().includes(searchLower))
-      .slice(0, 10);
-  }, [filteredData, searchTerm]);
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSuggestions]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Handle filter button toggles
+  const handleFilterToggle = (filter: string) => {
+    setSelectedFilters(prev => {
+      if (filter === 'all-manufacturers') {
+        return ['all-manufacturers'];
+      }
+
+      const newFilters = prev.filter(f => f !== 'all-manufacturers');
+      if (newFilters.includes(filter)) {
+        const filtered = newFilters.filter(f => f !== filter);
+        return filtered.length === 0 ? ['all-manufacturers'] : filtered;
+      } else {
+        return [...newFilters, filter];
+      }
+    });
+  };
 
   const handleSelectAll = () => {
     const allSelected =
@@ -236,26 +267,9 @@ export default function ReportsManufacturerPerformanceChart({
     setShowSuggestions(false);
   };
 
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-
-    if (showSuggestions) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSuggestions]);
-
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!initialData || initialData.length === 0) {
     return (
       <Card>

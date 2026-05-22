@@ -25,6 +25,9 @@ type CollectionReportDetailsSasGrossCellProps = {
 export const CollectionReportDetailsSasGrossCell: FC<
   CollectionReportDetailsSasGrossCellProps
 > = ({ metric, useNetGross }) => {
+  // ============================================================================
+  // Computed & Render
+  // ============================================================================
   // "No SMIB for this Machine" is a sentinel string for machines without a relayId.
   if (metric.sasGross === 'No SMIB for this Machine') {
     return (

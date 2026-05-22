@@ -405,7 +405,7 @@ export function useEditCollectionModal({
   }, [show, userId]);
 
   // ==========================================================================
-  // Computed Values
+  // Computed
   // ==========================================================================
 
   /**
@@ -626,7 +626,7 @@ export function useEditCollectionModal({
   } | null>(null);
 
   // ==========================================================================
-  // Event Handlers - Modal Close
+  // Handlers
   // ============================================================================
 
   /**
@@ -703,7 +703,7 @@ export function useEditCollectionModal({
   ]);
 
   // ==========================================================================
-  // Event Handlers - Form Validation
+  // Handlers
   // ============================================================================
 
   /**
@@ -719,7 +719,7 @@ export function useEditCollectionModal({
   }, [machineForDataEntry]);
 
   // ==========================================================================
-  // Event Handlers - Entry Editing
+  // Handlers
   // ============================================================================
 
   /**
@@ -836,7 +836,7 @@ export function useEditCollectionModal({
   );
 
   // ==========================================================================
-  // Event Handlers - Entry Cancellation
+  // Handlers
   // ============================================================================
 
   /**
@@ -887,7 +887,7 @@ export function useEditCollectionModal({
   ]);
 
   // ==========================================================================
-  // Event Handlers - Rollover Warning
+  // Handlers
   // ============================================================================
 
   /**
@@ -911,7 +911,7 @@ export function useEditCollectionModal({
   }, []);
 
   // ==========================================================================
-  // Event Handlers - Add/Update Entry
+  // Handlers
   // ============================================================================
 
   /**
@@ -1005,6 +1005,21 @@ export function useEditCollectionModal({
                 : 'not in advanced mode',
           }
         );
+
+        // Guard: validate SAS time ordering before hitting the API
+        if (capturedSasStartTime && capturedSasEndTime) {
+          const sasStart = new Date(capturedSasStartTime as string | Date);
+          const sasEnd = new Date(capturedSasEndTime as string | Date);
+          if (sasStart >= sasEnd) {
+            toast.error('SAS start time must be before end time', {
+              description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
+              duration: 7000,
+              position: 'top-left',
+            });
+            setIsProcessing(false);
+            return;
+          }
+        }
 
         const result = await updateCollection(capturedEditingEntryId, {
           metersIn: capturedMetersIn,
@@ -1298,6 +1313,21 @@ export function useEditCollectionModal({
               : {}),
           };
 
+          // Guard: validate SAS time ordering before hitting the API
+          if (collectionPayload.sasStartTime && collectionPayload.sasEndTime) {
+            const sasStart = new Date(collectionPayload.sasStartTime as string | Date);
+            const sasEnd = new Date(collectionPayload.sasEndTime as string | Date);
+            if (sasStart >= sasEnd) {
+              toast.error('SAS start time must be before end time', {
+                description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
+                duration: 7000,
+                position: 'top-left',
+              });
+              setIsProcessing(false);
+              return;
+            }
+          }
+
           const response = await axios.post(
             '/api/collection-reports/collections',
             collectionPayload
@@ -1369,14 +1399,20 @@ export function useEditCollectionModal({
           }
         } catch (error) {
           console.error('Error saving collection to database:', error);
-          toast.error('Failed to save machine to database. Please try again.', {
+          const apiMessage = (error as { response?: { data?: { error?: string } } })
+            ?.response?.data?.error;
+          toast.error(apiMessage ?? 'Failed to save machine to database. Please try again.', {
             position: 'top-left',
+            duration: 7000,
           });
         }
       }
-    } catch {
-      toast.error('Failed to update machine. Please try again.', {
+    } catch (error) {
+      const apiMessage = (error as { response?: { data?: { error?: string } } })
+        ?.response?.data?.error;
+      toast.error(apiMessage ?? 'Failed to update machine. Please try again.', {
         position: 'top-left',
+        duration: 7000,
       });
     } finally {
       setIsProcessing(false);
@@ -1508,7 +1544,7 @@ export function useEditCollectionModal({
   ]);
 
   // ==========================================================================
-  // Event Handlers - Entry Deletion
+  // Handlers
   // ============================================================================
 
   /**
@@ -1588,7 +1624,7 @@ export function useEditCollectionModal({
   }, [entryToDelete, reportId, onRefresh]);
 
   // ==========================================================================
-  // Event Handlers - Report Operations
+  // Handlers
   // ============================================================================
 
   /**
@@ -1917,7 +1953,7 @@ export function useEditCollectionModal({
   );
 
   // ==========================================================================
-  // Event Handlers - Bulk Operations
+  // Handlers
   // ============================================================================
 
   /**

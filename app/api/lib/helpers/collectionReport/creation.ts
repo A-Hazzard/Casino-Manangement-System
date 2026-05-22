@@ -624,7 +624,7 @@ export async function updateRegularAndRamClearMeters(
   if (ramClearMeterId) {
     const result = await Meters.findOneAndUpdate(
       { _id: ramClearMeterId },
-      { $set: { readAt: readAtDate, updatedAt: new Date() } }
+      { $set: { readAt: new Date(readAtDate.getTime() - 1000), updatedAt: new Date() } }
     );
     console.log(
       `[updateRegularAndRamClearMeters] ramClearMeter ${ramClearMeterId}:`,

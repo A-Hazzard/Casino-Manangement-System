@@ -45,9 +45,15 @@ export const ConfirmationDialog = ({
   showFooterWarning = true,
   confirmButtonVariant = 'destructive',
 }: ConfirmationDialogProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen) {
       gsap.fromTo(
@@ -63,6 +69,9 @@ export const ConfirmationDialog = ({
     }
   }, [isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     if (isLoading) return;
 
@@ -86,6 +95,9 @@ export const ConfirmationDialog = ({
     onConfirm();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isOpen) return null;
 
   return createPortal(

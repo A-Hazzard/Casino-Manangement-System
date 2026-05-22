@@ -1,3 +1,7 @@
+/**
+ * DeleteFirmwareModal Component
+ * Confirmation modal for deleting a firmware entry.
+ */
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,17 +18,29 @@ export const DeleteFirmwareModal = ({
 }: {
   onDeleteComplete: () => void;
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const { isDeleteModalOpen, selectedFirmware, closeDeleteModal } =
     useFirmwareActionsStore();
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   useEffect(() => {
     if (isDeleteModalOpen) {
       // Only use Tailwind classes for responsive rendering. Remove all JS device detection logic.
     }
   }, [isDeleteModalOpen]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleClose = () => {
     closeDeleteModal();
@@ -52,6 +68,11 @@ export const DeleteFirmwareModal = ({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: modal not open or no firmware selected
   if (!isDeleteModalOpen || !selectedFirmware) return null;
 
   // Desktop View

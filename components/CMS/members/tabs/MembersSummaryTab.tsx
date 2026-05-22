@@ -32,6 +32,9 @@ export default function MembersSummaryTab({
   selectedLicencee,
   forcedLocationId,
 }: MembersSummaryTabProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
@@ -53,6 +56,9 @@ export default function MembersSummaryTab({
     limit: itemsPerPage,
   });
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Fetch locations for the filter dropdown (membership-enabled only)
   useEffect(() => {
     const fetchLocations = async () => {
@@ -79,6 +85,9 @@ export default function MembersSummaryTab({
     }
   }, [forcedLocationId]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRefresh = () => {
     void refreshData();
   };
@@ -91,13 +100,22 @@ export default function MembersSummaryTab({
     setCurrentPage(page);
   };
 
+  // ============================================================================
+  // Effects (Continued)
+  // ============================================================================
   // Reset to first page when search or location filter changes
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, locationFilter]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const totalPages = summaryData?.pagination?.totalPages || 0;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div>
       <div className="flex items-center justify-between">

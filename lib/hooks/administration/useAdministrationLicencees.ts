@@ -41,7 +41,7 @@ export function useAdministrationLicencees({
   const { user } = useUserStore();
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [allLicencees, setAllLicencees] = useState<Licencee[]>([]);
   const [isLicenceesLoading, setIsLicenceesLoading] = useState(true);
@@ -78,7 +78,7 @@ export function useAdministrationLicencees({
   ] = useState<Licencee | null>(null);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const countryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -281,7 +281,7 @@ export function useAdministrationLicencees({
   ]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   const handleOpenAddLicencee = useCallback(() => {
     setLicenceeForm({});

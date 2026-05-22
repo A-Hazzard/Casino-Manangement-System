@@ -23,6 +23,9 @@ type MonthYearPickerProps = {
 export const CollectionReportMonthlyMonthYearPicker: FC<
   MonthYearPickerProps
 > = ({ value, onChange, onSetLastMonth, disabled = false }) => {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Current selections
   const selectedMonth = value?.from
     ? value.from.getMonth().toString()
@@ -31,6 +34,9 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     ? value.from.getFullYear().toString()
     : new Date().getFullYear().toString();
 
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   // Options for months
   const monthOptions = useMemo(
     () => [
@@ -60,6 +66,9 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     return years;
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleMonthChange = (month: string) => {
     const monthIdx = parseInt(month);
     const baseDate = value?.from || new Date();
@@ -82,6 +91,9 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button

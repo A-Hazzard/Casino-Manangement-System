@@ -33,11 +33,20 @@ export default function VaultOverviewDenominationModal({
   denominations,
   totalAmount,
 }: VaultOverviewDenominationModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Filter out zero quantities for cleaner view
   const activeDenoms = denominations.filter(d => d.quantity > 0);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-md">

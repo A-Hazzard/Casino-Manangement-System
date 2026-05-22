@@ -38,6 +38,9 @@ export function VariationsConfirmationDialog({
   onConfirm,
   onCancel,
 }: VariationsConfirmationDialogProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,6 +49,9 @@ export function VariationsConfirmationDialog({
 
   if (!mounted) return null;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return createPortal(
     <AnimatePresence>
       {isOpen && (

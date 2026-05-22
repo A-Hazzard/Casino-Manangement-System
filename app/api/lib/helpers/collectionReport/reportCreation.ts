@@ -735,157 +735,216 @@ export async function updateRegularAndRamClearMeters(
     }
   );
 
-  if (collectionDocument.ramClearMeterId || collectionDocument.meterId) {
-    try {
-      const operations = [];
-      let ramClearMovementData = {};
+  try {
+    console.log('[updateRegularAndRamClearMeters] Check RAM clear:', {
+      hasRamClearMeterId: !!collectionDocument.ramClearMeterId,
+      hasMeterId: !!collectionDocument.meterId,
+      ramClear: collectionDocument.ramClear,
+      ramClearMetersIn: collectionDocument.ramClearMetersIn,
+      ramClearMetersOut: collectionDocument.ramClearMetersOut,
+    });
 
-      console.log('[updateRegularAndRamClearMeters] Check RAM clear:', {
-        hasRamClearMeterId: !!collectionDocument.ramClearMeterId,
-        hasMeterId: !!collectionDocument.meterId,
-        ramClearMetersIn: collectionDocument.ramClearMetersIn,
-        hasBoth: !!(
-          collectionDocument.ramClearMetersIn &&
-          collectionDocument.ramClearMetersOut
-        ),
-      });
+    const newReadAtVal =
+      collectionDocument.sasMeters?.sasEndTime ??
+      collectionDocument.collectionTime ??
+      collectionDocument.timestamp ??
+      new Date();
+    const newReadAt =
+      typeof newReadAtVal === 'string'
+        ? new Date(newReadAtVal)
+        : newReadAtVal;
+    const now = new Date();
 
-      if (
-        collectionDocument.ramClearMetersIn &&
-        collectionDocument.ramClearMetersOut
-      ) {
-        const prevInVal = collectionDocument.prevIn || 0;
-        const prevOutVal = collectionDocument.prevOut || 0;
-
-        // Validate RAM clear meters are not less than previous values
-        if (collectionDocument.ramClearMetersIn < prevInVal) {
-          console.warn(
-            `[updateRegularAndRamClearMeters] WARNING: RAM clear metersIn (${collectionDocument.ramClearMetersIn}) is less than previous value (${prevInVal})`
-          );
-        }
-        if (collectionDocument.ramClearMetersOut < prevOutVal) {
-          console.warn(
-            `[updateRegularAndRamClearMeters] WARNING: RAM clear metersOut (${collectionDocument.ramClearMetersOut}) is less than previous value (${prevOutVal})`
-          );
-        }
-
-        ramClearMovementData = {
-          'movement.drop': collectionDocument.ramClearMetersIn - prevInVal,
-          'movement.totalCancelledCredits':
-            collectionDocument.ramClearMetersOut - prevOutVal,
-          drop: collectionDocument.ramClearMetersIn,
-          totalCancelledCredits: collectionDocument.ramClearMetersOut,
-        };
-        console.log(
-          '[updateRegularAndRamClearMeters] RAM clear movement:',
-          ramClearMovementData
-        );
-      }
-
-      const regularPrevIn = collectionDocument.ramClear ? 0 : (collectionDocument.prevIn || 0);
-      const regularPrevOut = collectionDocument.ramClear ? 0 : (collectionDocument.prevOut || 0);
-      const movementData = {
-        'movement.drop': collectionDocument.metersIn - regularPrevIn,
-        'movement.totalCancelledCredits':
-          collectionDocument.metersOut - regularPrevOut,
-        drop: collectionDocument.metersIn,
-        totalCancelledCredits: collectionDocument.metersOut,
-      };
-      console.log(
-        '[updateRegularAndRamClearMeters] Regular movement:',
-        movementData
-      );
-
-      const newReadAtVal =
-        collectionDocument.sasMeters?.sasEndTime ??
-        collectionDocument.timestamp ??
-        new Date();
-      const newReadAt =
-        typeof newReadAtVal === 'string'
-          ? new Date(newReadAtVal)
-          : newReadAtVal;
-      const now = new Date();
-
-      console.log(
-        `[updateRegularAndRamClearMeters] Setting readAt → ${newReadAt.toISOString()}, updatedAt → ${now.toISOString()}`
-      );
-
-      if (collectionDocument.ramClearMeterId) {
-        console.log(
-          '[updateRegularAndRamClearMeters] Adding RAM clear update filter:',
-          { _id: collectionDocument.ramClearMeterId }
-        );
-        operations.push({
-          updateOne: {
-            filter: { _id: collectionDocument.ramClearMeterId },
-            update: {
-              $set: {
-                ...ramClearMovementData,
-                readAt: newReadAt,
-                updatedAt: now,
-              },
-            },
-          },
-        });
-      }
-
-      if (collectionDocument.meterId) {
-        console.log(
-          '[updateRegularAndRamClearMeters] Adding regular update filter:',
-          { _id: collectionDocument.meterId }
-        );
-
-        // Debug: Check if these meters exist
-        const ramCheck = await Meters.findOne({
-          _id: collectionDocument.ramClearMeterId,
-        }).lean();
-        const regCheck = await Meters.findOne({
-          _id: collectionDocument.meterId,
-        }).lean();
-        console.log('[updateRegularAndRamClearMeters] Meter lookup:', {
-          ramExists: !!ramCheck,
-          regExists: !!regCheck,
-          ramId: collectionDocument.ramClearMeterId,
-          regId: collectionDocument.meterId,
-        });
-
-        operations.push({
-          updateOne: {
-            filter: { _id: collectionDocument.meterId },
-            update: {
-              $set: {
-                ...movementData,
-                readAt: newReadAt,
-                updatedAt: now,
-              },
-            },
-          },
-        });
-      }
-
-      console.log(
-        '[updateRegularAndRamClearMeters] Operations:',
-        operations.length
-      );
-
-      if (operations.length > 0) {
-        const result = await Meters.bulkWrite(operations);
-        console.log('[updateRegularAndRamClearMeters] BulkWrite result:', {
-          matchedCount: result.matchedCount,
-          modifiedCount: result.modifiedCount,
-        });
-      }
-    } catch (e) {
-      console.error(
-        '[updateRegularAndRamClearMeters] Error:',
-        e instanceof Error ? e.message : 'Unknown error'
-      );
-      return { success: false };
-    }
-  } else {
-    console.warn(
-      '[updateRegularAndRamClearMeters] No meter IDs on collection - skipping'
+    console.log(
+      `[updateRegularAndRamClearMeters] Setting readAt → ${newReadAt.toISOString()}, updatedAt → ${now.toISOString()}`
     );
+
+    let locationId = '';
+    if (collectionDocument.machineId) {
+      const machineDoc = await Machine.findOne({
+        _id: collectionDocument.machineId,
+      }).lean<GamingMachine>();
+      if (machineDoc?.gamingLocation) {
+        locationId = String(machineDoc.gamingLocation);
+      }
+    }
+
+    const isRamClear = !!collectionDocument.ramClear;
+
+
+    // Determine meter IDs — prefer IDs already stored on the collection document
+    // so that we never change what the collection points to unless there truly is none.
+    let ramClearMeterId = collectionDocument.ramClearMeterId;
+    let meterId = collectionDocument.meterId;
+
+    let newRamClearMeterIdGenerated = false;
+    let newMeterIdGenerated = false;
+
+    // Generate IDs only when the collection has none stored
+    if (isRamClear && !ramClearMeterId) {
+      ramClearMeterId = await generateMongoId();
+      newRamClearMeterIdGenerated = true;
+    }
+    if (!meterId) {
+      meterId = await generateMongoId();
+      newMeterIdGenerated = true;
+    }
+
+    // ============================================================================
+    // Build upsert operations for ALL meters using replaceOne with upsert:true
+    // This handles three cases in one atomic operation:
+    //   a) Meter never existed  → inserts it
+    //   b) Meter was hard-deleted → inserts it (same _id)
+    //   c) Meter was soft-deleted → replaces it (clears deletedAt, updates fields)
+    // We bypass the Mongoose pre-hook soft-delete filter by using bulkWrite with
+    // raw filter { _id } — bulkWrite does NOT trigger find/findOne pre-hooks.
+    // ============================================================================
+    const upsertOperations: Parameters<typeof Meters.bulkWrite>[0] = [];
+
+    // 1. RAM clear meter (only when this collection is a RAM clear)
+    if (isRamClear && ramClearMeterId) {
+      const prevInVal = collectionDocument.prevIn || 0;
+      const prevOutVal = collectionDocument.prevOut || 0;
+      const ramClearMetersIn = collectionDocument.ramClearMetersIn || 0;
+      const ramClearMetersOut = collectionDocument.ramClearMetersOut || 0;
+      const ramClearMovementIn = ramClearMetersIn - prevInVal;
+      const ramClearMovementOut = ramClearMetersOut - prevOutVal;
+
+      console.log(
+        `[updateRegularAndRamClearMeters] Upserting RAM clear meter ${ramClearMeterId}`
+      );
+
+      upsertOperations.push({
+        replaceOne: {
+          filter: { _id: ramClearMeterId },
+          replacement: {
+            _id: ramClearMeterId,
+            machine: collectionDocument.machineId,
+            location: locationId,
+            movement: {
+              coinIn: 0,
+              coinOut: 0,
+              jackpot: 0,
+              totalHandPaidCancelledCredits: 0,
+              totalCancelledCredits: ramClearMovementOut,
+              gamesPlayed: 0,
+              gamesWon: 0,
+              currentCredits: 0,
+              totalWonCredits: 0,
+              drop: ramClearMovementIn,
+            },
+            coinIn: 0,
+            coinOut: 0,
+            jackpot: 0,
+            totalHandPaidCancelledCredits: 0,
+            totalCancelledCredits: ramClearMetersOut,
+            gamesPlayed: 0,
+            gamesWon: 0,
+            currentCredits: 0,
+            totalWonCredits: 0,
+            drop: ramClearMetersIn,
+            meterSource: 'COLLECTION_REPORT' as const,
+            isRamClear: true,
+            // RAM clear meter reads at exactly the collection time
+            readAt: newReadAt,
+            createdAt: now,
+            updatedAt: now,
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    // 2. Regular (current) meter — always present
+    if (meterId) {
+      const regularPrevIn = isRamClear ? 0 : (collectionDocument.prevIn || 0);
+      const regularPrevOut = isRamClear ? 0 : (collectionDocument.prevOut || 0);
+      const currentMetersIn = collectionDocument.metersIn || 0;
+      const currentMetersOut = collectionDocument.metersOut || 0;
+      const movementIn = currentMetersIn - regularPrevIn;
+      const movementOut = currentMetersOut - regularPrevOut;
+
+      console.log(
+        `[updateRegularAndRamClearMeters] Upserting regular meter ${meterId}`
+      );
+
+      upsertOperations.push({
+        replaceOne: {
+          filter: { _id: meterId },
+          replacement: {
+            _id: meterId,
+            machine: collectionDocument.machineId,
+            location: locationId,
+            movement: {
+              coinIn: 0,
+              coinOut: 0,
+              jackpot: 0,
+              totalHandPaidCancelledCredits: 0,
+              totalCancelledCredits: movementOut,
+              gamesPlayed: 0,
+              gamesWon: 0,
+              currentCredits: 0,
+              totalWonCredits: 0,
+              drop: movementIn,
+            },
+            coinIn: 0,
+            coinOut: 0,
+            jackpot: 0,
+            totalHandPaidCancelledCredits: 0,
+            totalCancelledCredits: currentMetersOut,
+            gamesPlayed: 0,
+            gamesWon: 0,
+            currentCredits: 0,
+            totalWonCredits: 0,
+            drop: currentMetersIn,
+            meterSource: 'COLLECTION_REPORT' as const,
+            // Current meter reads 1 second AFTER collection time for RAM clear,
+            // or exactly at collection time for a regular (non-RAM clear) collection
+            readAt: isRamClear ? new Date(newReadAt.getTime() + 1000) : newReadAt,
+            createdAt: now,
+            updatedAt: now,
+          },
+          upsert: true,
+        },
+      });
+    }
+
+    // Execute all upserts atomically
+    if (upsertOperations.length > 0) {
+      const result = await Meters.bulkWrite(upsertOperations);
+      console.log('[updateRegularAndRamClearMeters] BulkWrite upsert result:', {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+        upsertedCount: result.upsertedCount,
+        upsertedIds: result.upsertedIds,
+      });
+    }
+
+    // Update collection doc with newly generated meter IDs (only if we had to generate them)
+    const collectionUpdate: Record<string, unknown> = {};
+    if (newRamClearMeterIdGenerated) {
+      collectionUpdate.ramClearMeterId = ramClearMeterId;
+    }
+    if (newMeterIdGenerated) {
+      collectionUpdate.meterId = meterId;
+    }
+    if (Object.keys(collectionUpdate).length > 0) {
+      await Collections.updateOne(
+        { _id: collectionDocument._id },
+        { $set: collectionUpdate }
+      );
+      Object.assign(collectionDocument, collectionUpdate);
+      console.log(
+        `[updateRegularAndRamClearMeters] Linked new meter IDs to collection ${collectionDocument._id}:`,
+        collectionUpdate
+      );
+    }
+  } catch (error) {
+    console.error(
+      '[updateRegularAndRamClearMeters] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return { success: false };
   }
 
   return { success: true };
@@ -1157,3 +1216,116 @@ export async function createCollectionReport(
     return { success: false, error: errorMessage };
   }
 }
+
+/**
+ * Propagates the updated meters of a collection report forward to the immediate next report.
+ * Finds the chronologically next report for the machine, updates its prevIn/prevOut,
+ * and recalculates its movement (updating its Meter collection documents).
+ */
+export async function propagateMetersToNextReport(
+  machineId: string,
+  locationId: string,
+  currentTimestamp: Date,
+  newMetersIn: number,
+  newMetersOut: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { Collections } = await import('@/app/api/lib/models/collections');
+
+    // Find the immediate next report for this machine at this location
+    const nextReport = await Collections.findOne({
+      machineId,
+      timestamp: { $gt: currentTimestamp },
+    })
+      .sort({ timestamp: 1 })
+      .lean();
+
+    if (!nextReport) {
+      // No subsequent report exists, nothing to propagate
+      return { success: true };
+    }
+
+    console.log(
+      `[propagateMetersToNextReport] Propagating meters from ${currentTimestamp.toISOString()} forward to next report ${nextReport._id} at ${new Date(nextReport.timestamp).toISOString()}`
+    );
+
+    // Update the next report's previous meters and movement
+    const currentMetersIn = nextReport.metersIn ?? 0;
+    const currentMetersOut = nextReport.metersOut ?? 0;
+    const ramClear = !!nextReport.ramClear;
+    const ramClearMetersIn = nextReport.ramClearMetersIn;
+    const ramClearMetersOut = nextReport.ramClearMetersOut;
+
+    let movementIn = 0;
+    let movementOut = 0;
+
+    if (ramClear) {
+      if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+        movementIn = ramClearMetersIn - newMetersIn + currentMetersIn;
+        movementOut = ramClearMetersOut - newMetersOut + currentMetersOut;
+      } else {
+        movementIn = currentMetersIn;
+        movementOut = currentMetersOut;
+      }
+    } else {
+      movementIn = currentMetersIn - newMetersIn;
+      movementOut = currentMetersOut - newMetersOut;
+    }
+
+    const movement = {
+      metersIn: Number(movementIn.toFixed(2)),
+      metersOut: Number(movementOut.toFixed(2)),
+      gross: Number((movementIn - movementOut).toFixed(2)),
+    };
+
+    const collectionUpdate: Record<string, unknown> = {
+      prevIn: newMetersIn,
+      prevOut: newMetersOut,
+      movement,
+      softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+      softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+    };
+
+    if (nextReport.sasMeters) {
+      const sasMetersData = {
+        ...nextReport.sasMeters,
+        drop: movement.metersIn,
+        totalCancelledCredits: movement.metersOut,
+        gross: movement.gross,
+      };
+      collectionUpdate.sasMeters = sasMetersData;
+    }
+
+    await Collections.updateOne(
+      { _id: nextReport._id },
+      { $set: collectionUpdate }
+    );
+
+    // Apply the updated previous meters and movement to our in-memory document so we can trigger Meter recreation
+    const updatedNextReport = {
+      ...nextReport,
+      ...collectionUpdate,
+    };
+
+    // Recreate/update the actual Meter documents for the next report
+    // This will calculate the new movement (nextReport.metersIn - our new prevIn)
+    const updateResult = await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+
+    if (!updateResult.success) {
+      console.error(
+        `[propagateMetersToNextReport] Failed to update Meters collection for report ${nextReport._id}`
+      );
+      return { success: false, error: 'Failed to update next report meters' };
+    }
+
+    console.log(
+      `✅ [propagateMetersToNextReport] Successfully propagated meters to report ${nextReport._id}`
+    );
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[propagateMetersToNextReport] Error:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+

@@ -24,6 +24,9 @@ export default function CollectionReportManagerScheduleCards({
   onDelete,
   showActions = false,
 }: CollectionReportManagerScheduleCardsProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 lg:hidden">

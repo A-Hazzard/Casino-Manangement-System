@@ -20,8 +20,14 @@ type PieChartLabelRendererProps = {
 export const PieChartLabelRenderer = ({
   props,
 }: PieChartLabelRendererProps) => {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const labelData = calculatePieChartLabelData(props);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <text
       x={labelData.x}

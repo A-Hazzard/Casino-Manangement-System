@@ -42,6 +42,9 @@ export default function VaultOverviewHeader({
   onCloseDay,
   isShiftActive,
 }: VaultOverviewHeaderProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>

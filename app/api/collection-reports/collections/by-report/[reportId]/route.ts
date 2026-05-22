@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // ============================================================================
-    // STEP 2: Validate report ID
+    // STEP 1: Validate report ID
     // ============================================================================
     if (!reportId) {
       logRouteError(
@@ -57,12 +57,12 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Connect to database
+    // STEP 2: Connect to database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 4: Find collection report
+    // STEP 3: Find collection report
     // ============================================================================
     const collectionReport = await CollectionReport.findOne({
       locationReportId: reportId,
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Try to find collections by locationReportId
+    // STEP 4: Try to find collections by locationReportId
     // ============================================================================
     let collections = await Collections.find({
       locationReportId: reportId,
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Return collections
+    // STEP 5: Return collections
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(

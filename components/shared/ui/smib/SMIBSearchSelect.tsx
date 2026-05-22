@@ -61,6 +61,9 @@ export function SMIBSearchSelect({
   emptyMessage = 'No SMIBs found',
   statusOverrides,
 }: SMIBSearchSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -68,31 +71,9 @@ export function SMIBSearchSelect({
   const contentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter SMIBs based on search term
-  const filteredSmibs = useMemo(() => {
-    if (!searchTerm) return smibs;
-
-    const term = searchTerm.toLowerCase();
-    return smibs.filter(smib => {
-      return (
-        smib.relayId.toLowerCase().includes(term) ||
-        smib.serialNumber?.toLowerCase().includes(term) ||
-        smib.game?.toLowerCase().includes(term) ||
-        smib.locationName?.toLowerCase().includes(term)
-      );
-    });
-  }, [smibs, searchTerm]);
-
-  // Find selected SMIB
-  const selectedSmib = smibs.find(smib => smib.relayId === value);
-  const selectedStatusOverride =
-    value && statusOverrides ? statusOverrides[value] : undefined;
-  const selectedStatus = selectedStatusOverride
-    ? selectedStatusOverride
-    : selectedSmib
-      ? getSmibStatus(selectedSmib)
-      : null;
-
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -122,6 +103,9 @@ export function SMIBSearchSelect({
     return undefined;
   }, [isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle keyboard navigation
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!isOpen) {
@@ -163,10 +147,41 @@ export function SMIBSearchSelect({
     setFocusedIndex(-1);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  // Filter SMIBs based on search term
+  const filteredSmibs = useMemo(() => {
+    if (!searchTerm) return smibs;
+
+    const term = searchTerm.toLowerCase();
+    return smibs.filter(smib => {
+      return (
+        smib.relayId.toLowerCase().includes(term) ||
+        smib.serialNumber?.toLowerCase().includes(term) ||
+        smib.game?.toLowerCase().includes(term) ||
+        smib.locationName?.toLowerCase().includes(term)
+      );
+    });
+  }, [smibs, searchTerm]);
+
+  // Find selected SMIB
+  const selectedSmib = smibs.find(smib => smib.relayId === value);
+  const selectedStatusOverride =
+    value && statusOverrides ? statusOverrides[value] : undefined;
+  const selectedStatus = selectedStatusOverride
+    ? selectedStatusOverride
+    : selectedSmib
+      ? getSmibStatus(selectedSmib)
+      : null;
+
   const displayText = selectedSmib
     ? `${selectedSmib.relayId}${selectedSmib.serialNumber ? ` - ${selectedSmib.serialNumber}` : ''}${selectedSmib.locationName ? ` (${selectedSmib.locationName})` : ''}`
     : placeholder;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className={cn('relative w-full', className)}>
       {/* Trigger Button */}

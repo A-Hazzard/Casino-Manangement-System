@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Validate permissions
+      // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
@@ -52,6 +55,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const { reason, amount, denominations, notes } = await request.json();
       if (!reason || !amount || !denominations) {
         logRouteError(
@@ -67,6 +73,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 3: Validate vault shift
+      // ============================================================================
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
@@ -85,6 +94,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Validate location access
+      // ============================================================================
       const allowedLocationIds = await getUserLocationFilter(
         userPayload.assignedLicencees || [],
         undefined,
@@ -112,6 +124,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Validate denomination totals
+      // ============================================================================
       if (!validateDenominationTotal(amount, denominations)) {
         logRouteError(
           functionName,
@@ -126,6 +141,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 6: Process removal and transaction
+      // ============================================================================
       const transactionId = await generateMongoId();
       const now = new Date();
       const before =
@@ -151,6 +169,10 @@ export async function POST(request: NextRequest) {
       });
 
       await vaultTransaction.save();
+
+      // ============================================================================
+      // STEP 7: Update inventory and return
+      // ============================================================================
       await updateVaultShiftInventory(
         activeVaultShift,
         amount,

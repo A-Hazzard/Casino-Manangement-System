@@ -110,6 +110,9 @@ export default function NotificationBell({
   trigger,
   unreadCount: propUnreadCount,
 }: NotificationBellProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [isOpen, setIsOpen] = useState(false);
   const [isRefreshingInventory, setIsRefreshingInventory] = useState(false);
@@ -127,6 +130,9 @@ export default function NotificationBell({
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset editing state when modal closes or changes
   useEffect(() => {
     if (!viewDetails) {
@@ -147,6 +153,9 @@ export default function NotificationBell({
     }
   }, [viewDetails]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredNotifications = useMemo(() => {
     let list = [...notifications];
     if (unreadOnly) {
@@ -167,6 +176,9 @@ export default function NotificationBell({
   const unreadCount =
     propUnreadCount ?? notifications.filter(n => n.status === 'unread').length;
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const getStatusColor = (status: NotificationStatus) => {
     switch (status) {
       case 'read':
@@ -217,6 +229,9 @@ export default function NotificationBell({
     }
   };
 
+  // ============================================================================
+  // Computed (continued)
+  // ============================================================================
   // Calculated shortage based on current state (viewing vs editing)
   const currentShortageCheck = useMemo(() => {
     if (!viewDetails) return { hasShortage: false, shortages: [] };
@@ -251,6 +266,9 @@ export default function NotificationBell({
     );
   }, [editedDenominations]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   const NotificationListContent = (
     <>
       <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b bg-white px-4 py-3">

@@ -102,3 +102,18 @@ The created meter document must strictly follow the schema below.
 ---
 
 **Note:** Always ensure the `isSasCreated` flag is set to `false` for manual entries to distinguish them from auto-generated SAS data in fiscal audits.
+
+---
+
+## 7. RAM Clear (V1 & V2)
+
+When a machine's meters are reset (RAM cleared) between collections, the spec above is amended as follows for no-SMIB locations:
+
+1. The `Collections` doc (V1) / `ReportedMachine` doc (V2) carries `ramClear: true` plus `ramClearMetersIn` and `ramClearMetersOut` — the pre-reset peak readings.
+2. **Two** `Meters` docs are created instead of one:
+   - **Meter 1 (RAM clear)**: `isRamClear: true`, top-level `drop = ramClearMetersIn`, `movement.drop = ramClearMetersIn - prevIn`. Same shape for `totalCancelledCredits`.
+   - **Meter 2 (post-reset)**: top-level `drop = metersIn`, `movement.drop = metersIn` (previous treated as 0 after the reset). `readAt` is `+1000ms` after the RAM clear meter.
+3. Aggregation invariant: `SUM(movement.drop)` across the two docs equals the V1 single-doc result for the same period, so all downstream financials are unaffected by the split.
+4. Editing a session and toggling RAM clear off: the V2 submit route uses `Meters.deleteMany({ machine, locationSession })` to remove both docs before creating a single replacement doc.
+
+The same toggle is exposed in the V2 capture wizard regardless of `metersMatch` or SMIB status; manual meter creation continues to occur only at no-SMIB locations.

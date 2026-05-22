@@ -25,6 +25,9 @@ type CollectionReportDetailsPaginationProps = {
 export const CollectionReportDetailsPagination: FC<
   CollectionReportDetailsPaginationProps
 > = ({ currentPage, totalPages, onPageChange }) => {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex items-center justify-center gap-2 py-4">
       <Button

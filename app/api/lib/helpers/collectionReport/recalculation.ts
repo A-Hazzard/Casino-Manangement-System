@@ -82,6 +82,20 @@ export async function recalculateMachineCollections(
   }).lean<CollectionSnapshot[]>();
 
   if (!collections.length) {
+    await Machine.findOneAndUpdate(
+      { _id: machineId },
+      {
+        $set: {
+          'collectionMeters.metersIn': 0,
+          'collectionMeters.metersOut': 0,
+          collectionMetersHistory: [],
+          collectionTime: null,
+          previousCollectionTime: null,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
     return;
   }
 
@@ -124,14 +138,25 @@ export async function recalculateMachineCollections(
   }
 
   const lastCol = sorted[sorted.length - 1];
+  const secondLastCol = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+
   const finalMetersIn = lastCol ? Number(lastCol.metersIn ?? 0) : 0;
   const finalMetersOut = lastCol ? Number(lastCol.metersOut ?? 0) : 0;
+
+  const collectionTime = lastCol
+    ? ((lastCol.collectionTime as Date | undefined) ?? (lastCol.timestamp as Date | undefined) ?? null)
+    : null;
+  const previousCollectionTime = secondLastCol
+    ? ((secondLastCol.collectionTime as Date | undefined) ?? (secondLastCol.timestamp as Date | undefined) ?? null)
+    : null;
 
   // Prepare update operations
   const machineSetUpdate: Record<string, unknown> = {
     'collectionMeters.metersIn': finalMetersIn,
     'collectionMeters.metersOut': finalMetersOut,
     collectionMetersHistory: historyEntries,
+    collectionTime,
+    previousCollectionTime,
     updatedAt: new Date(),
   };
 

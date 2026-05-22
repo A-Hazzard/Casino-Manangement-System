@@ -36,7 +36,7 @@ export default function LoginForm({
   handleLogin,
 }: LoginFormProps) {
   // ============================================================================
-  // Render - Login Form UI
+  // Render
   // ============================================================================
   return (
     <>

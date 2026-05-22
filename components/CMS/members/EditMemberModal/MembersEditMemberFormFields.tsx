@@ -52,6 +52,9 @@ export default function MembersEditMemberFormFields({
   onLocationChange,
   onFieldTouch,
 }: MembersEditMemberFormFieldsProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="flex-1 space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

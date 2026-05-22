@@ -2,8 +2,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { CollectionView, CollectionTab } from '@/lib/types/collection';
 
 export function useCollectionNavigation(tabs: CollectionTab[]) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   // state is kept local in page, so this hook only provides helpers
   const ensureValidView = (view: string | null): CollectionView => {

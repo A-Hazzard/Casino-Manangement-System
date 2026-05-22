@@ -26,8 +26,14 @@ export default function VaultOverviewCollectionMachineHistory({
   machineName,
   containerClassName,
 }: VaultOverviewCollectionMachineHistoryProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { formatAmount } = useCurrencyFormat();
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div
       className={cn(

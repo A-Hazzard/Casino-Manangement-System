@@ -576,7 +576,7 @@ export function useMobileCollectionModal({
   }, [pushNavigation]);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
 
   const inputsEnabled = useMemo(() => {

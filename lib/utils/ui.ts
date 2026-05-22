@@ -1,4 +1,7 @@
-// UI-related utility functions
+/**
+ * @module lib/utils/ui
+ * UI-related utility functions for cabinet sorting, GSAP animations, and display helpers in the Evolution One CMS.
+ */
 
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { gsap } from 'gsap';

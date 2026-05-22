@@ -20,6 +20,9 @@ type CollectionSettingsContentProps = {
 export const CollectionSettingsContent: FC<CollectionSettingsContentProps> = ({
   cabinet,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isEditCollection, setIsEditCollection] = useState(false);
   const [isUpdatingCollection, setIsUpdatingCollection] = useState(false);
   const [collectionMetersIn, setCollectionMetersIn] = useState<string>('0');
@@ -28,6 +31,9 @@ export const CollectionSettingsContent: FC<CollectionSettingsContentProps> = ({
   const [collectorDenomination, setCollectorDenomination] =
     useState<string>('1');
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Initialize collection settings from cabinet data
   useEffect(() => {
     if (cabinet.collectionMeters) {
@@ -43,6 +49,9 @@ export const CollectionSettingsContent: FC<CollectionSettingsContentProps> = ({
     }
   }, [cabinet]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Handle collection settings save
   const handleSaveCollectionSettings = async () => {
     if (!isEditCollection) {
@@ -90,6 +99,9 @@ export const CollectionSettingsContent: FC<CollectionSettingsContentProps> = ({
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mx-auto w-full max-w-4xl">
       <div className="rounded-lg border border-gray-200 bg-white p-6">

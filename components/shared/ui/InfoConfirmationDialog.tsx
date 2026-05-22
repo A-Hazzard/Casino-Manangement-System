@@ -54,9 +54,15 @@ export const InfoConfirmationDialog = ({
   cancelText = 'Cancel',
   isLoading = false,
 }: InfoConfirmationDialogProps) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen) {
       gsap.fromTo(
@@ -72,6 +78,9 @@ export const InfoConfirmationDialog = ({
     }
   }, [isOpen]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleClose = () => {
     if (isLoading) return;
 
@@ -95,6 +104,9 @@ export const InfoConfirmationDialog = ({
     onConfirm();
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (!isOpen) return null;
 
   return createPortal(

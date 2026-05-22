@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Basic email validation
+    // ============================================================================
+    // STEP 1: Basic email validation
+    // ============================================================================
     const emailRegex = /\S+@\S+\.\S+/;
     if (!emailRegex.test(newEmail)) {
       logRouteError(
@@ -72,7 +74,9 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    // Fetch user with password
+    // ============================================================================
+    // STEP 2: Fetch user with password
+    // ============================================================================
     const dbUser = await UserModel.findOne({ _id: session._id }).select(
       '+password'
     );
@@ -87,7 +91,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify password
+    // ============================================================================
+    // STEP 3: Verify password
+    // ============================================================================
     const isPasswordCorrect = await comparePassword(password, dbUser.password);
     if (!isPasswordCorrect) {
       logRouteError(
@@ -103,7 +109,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if email is already in use
+    // ============================================================================
+    // STEP 4: Check if email is already in use
+    // ============================================================================
     const existingUser = await UserModel.findOne({
       emailAddress: newEmail,
       _id: { $ne: session._id },
@@ -122,7 +130,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update email
+    // ============================================================================
+    // STEP 5: Update email
+    // ============================================================================
     dbUser.emailAddress = newEmail;
     await dbUser.save();
 

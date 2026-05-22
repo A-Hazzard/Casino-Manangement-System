@@ -35,10 +35,16 @@ export function ReportsGameMultiSelect({
   onSelectionChange,
   placeholder = 'Select games...',
 }: ReportsGameMultiSelectProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -56,6 +62,9 @@ export function ReportsGameMultiSelect({
     };
   }, []);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleToggleGame = (gameId: string) => {
     if (selectedGames.includes(gameId)) {
       onSelectionChange(selectedGames.filter(id => id !== gameId));
@@ -68,6 +77,9 @@ export function ReportsGameMultiSelect({
     onSelectionChange([]);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const filteredOptions = games.filter(option => {
     const name = option.name || '';
     return name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -93,6 +105,9 @@ export function ReportsGameMultiSelect({
         } selected`
       : placeholder;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <Button

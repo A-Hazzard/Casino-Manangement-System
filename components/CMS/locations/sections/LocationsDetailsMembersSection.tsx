@@ -33,8 +33,14 @@ export default function LocationsDetailsMembersSection({
   handleTabClick,
   onRefreshReady,
 }: LocationsDetailsMembersSectionProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Expose refresh handler to parent component
   useEffect(() => {
     if (onRefreshReady) {
@@ -42,6 +48,9 @@ export default function LocationsDetailsMembersSection({
     }
   }, [onRefresh, onRefreshReady]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="w-full">
       {/* Members Navigation */}

@@ -20,8 +20,14 @@ export default function ReportsNavigation({
   activeView,
   onTabChange,
 }: ReportsNavigationProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const visibleTabs = availableTabs;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mb-6 rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop Navigation */}

@@ -51,6 +51,9 @@ export function ReportsMetersHourlyCharts({
   data,
   loading = false,
 }: ReportsMetersHourlyChartsProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const gamesScrollRef = useRef<HTMLDivElement>(null);
   const coinInScrollRef = useRef<HTMLDivElement>(null);
   const coinOutScrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,9 @@ export function ReportsMetersHourlyCharts({
   // Detect mobile viewport (client-side only)
   const [isMobile, setIsMobile] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768); // md breakpoint
@@ -71,6 +77,9 @@ export function ReportsMetersHourlyCharts({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   // Format data for charts - combine day and hour for x-axis
   // Sort by day and hour to ensure proper ordering
   const sortedData = useMemo(() => {
@@ -168,6 +177,9 @@ export function ReportsMetersHourlyCharts({
     return '100%';
   }, [isMobile, chartData.length, chartWidthNumeric]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   // Format time for display - shorter on mobile, 12-hour format
   const formatTimeLabel = (timeStr: string) => {
     try {
@@ -193,6 +205,9 @@ export function ReportsMetersHourlyCharts({
     }
   };
 
+  // ============================================================================
+  // Computed (continued)
+  // ============================================================================
   // Check if each metric has data
   const hasGamesPlayedData = useMemo(() => {
     return chartData.some(item => item.gamesPlayed > 0);
@@ -206,6 +221,9 @@ export function ReportsMetersHourlyCharts({
     return chartData.some(item => item.coinOut > 0);
   }, [chartData]);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   // Early returns after all hooks
   if (loading) {
     return (

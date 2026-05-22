@@ -39,7 +39,7 @@ export default function ApplicationSelection({
   onSelect,
 }: ApplicationSelectionProps) {
   // ============================================================================
-  // Hooks & State
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
@@ -75,7 +75,7 @@ export default function ApplicationSelection({
   }, [user, router, onSelect]);
 
   // ============================================================================
-  // Event Handlers
+  // Handlers
   // ============================================================================
   const handleSelect = (application: 'CMS' | 'VAULT') => {
     if (isSelecting) return;

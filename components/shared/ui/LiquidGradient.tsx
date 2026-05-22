@@ -55,8 +55,14 @@ const colorPool: RGBAColor[] = BlobConfig.colors.map(hex =>
 );
 
 export default function LiquidGradient() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
@@ -168,6 +174,9 @@ export default function LiquidGradient() {
     };
   }, []);
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <canvas
       ref={canvasRef}

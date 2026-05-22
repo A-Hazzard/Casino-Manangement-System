@@ -75,6 +75,9 @@ export default function CollectionReportMobileNewCollectionModal({
   locations: propLocations = [],
   onRefresh,
 }: CollectionReportMobileNewCollectionModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const {
     locations,
     isLoadingLocations,
@@ -148,6 +151,9 @@ export default function CollectionReportMobileNewCollectionModal({
     useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(false);
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   // Reset variation check when modal opens/closes
   useEffect(() => {
     if (!show) {
@@ -166,6 +172,9 @@ export default function CollectionReportMobileNewCollectionModal({
     }
   }, [show, resetCollectionModalStore]);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleStartSubmit = async () => {
     if (collectedMachines.length === 0 || modalState.isProcessing) return;
 
@@ -204,6 +213,9 @@ export default function CollectionReportMobileNewCollectionModal({
     checkVariations(locationIdToUse, machinesForCheck);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       <Dialog

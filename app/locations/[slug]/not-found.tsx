@@ -6,6 +6,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { usePathname } from 'next/navigation';
 
 export default function LocationDetailNotFound() {
+  // ============================================================================
+  // Hooks & State
+  // ============================================================================
   const pathname = usePathname();
   const slug = pathname.split('/')[2] || ''; // Get the location slug
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();

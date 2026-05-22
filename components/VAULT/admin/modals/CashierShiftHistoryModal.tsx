@@ -65,6 +65,9 @@ export default function CashierShiftHistoryModal({
   onBack,
   cashier,
 }: CashierShiftHistoryModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
 
@@ -78,6 +81,10 @@ export default function CashierShiftHistoryModal({
 
   const locationId = user?.assignedLocations?.[0];
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  // Note: fetchShifts is declared before Effects since useEffect depends on it.
   const fetchShifts = async (page = 0) => {
     if (!cashier || !locationId) return;
 
@@ -114,6 +121,9 @@ export default function CashierShiftHistoryModal({
     }
   };
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
   useEffect(() => {
     if (isOpen && cashier) {
       fetchShifts(0);
@@ -127,6 +137,11 @@ export default function CashierShiftHistoryModal({
     }
   }, [currentPage]);
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
+
+  // Guard: cashier must be present
   if (!cashier) return null;
 
   const cashierName = cashier.profile
@@ -160,6 +175,9 @@ export default function CashierShiftHistoryModal({
     return `${diffHours}h ${diffMinutes}m`;
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent

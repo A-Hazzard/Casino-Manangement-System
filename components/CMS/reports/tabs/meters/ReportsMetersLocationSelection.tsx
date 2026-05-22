@@ -95,11 +95,22 @@ export default function ReportsMetersLocationSelection({
   chartGranularity,
   onGranularityChange,
 }: ReportsMetersLocationSelectionProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
+  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const formatCurrency = (amount: number | null | undefined) =>
     formatCurrencyWithCodeString(amount, displayCurrency);
-  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   // Determine layout:
   // - If ALL locations are selected, keep pie chart below (not on right)
@@ -112,6 +123,9 @@ export default function ReportsMetersLocationSelection({
   const shouldShowChartOnRight =
     individualLocationsSelected && moreThan10Locations;
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Card>
       <CardHeader>

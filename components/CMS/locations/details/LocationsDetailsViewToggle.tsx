@@ -15,6 +15,9 @@ export default function LocationsDetailsViewToggle({
   showMembersTab,
   onViewChange,
 }: LocationsDetailsViewToggleProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="mb-6 flex w-full border-b border-gray-200">
       <button

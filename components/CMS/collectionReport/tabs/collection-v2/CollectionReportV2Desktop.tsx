@@ -97,6 +97,9 @@ function SessionRow({
     return formatAmount(value);
   };
 
+  // ============================================================================
+  // Computed
+  // ============================================================================
   const displayVariation =
     session.totalMachineGross === 0 ? 0 : session.totalGrossDifference;
 
@@ -104,6 +107,9 @@ function SessionRow({
     ? formatDistanceToNow(new Date(session.deletedAt), { addSuffix: true })
     : '';
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <TableRow
       className={
@@ -303,6 +309,9 @@ export default function CollectionReportV2Desktop({
   onSort,
   isRefreshing,
 }: V2DesktopProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if ((loading && sessions.length === 0) || isRefreshing) {
     return <CollectionReportV2SessionsSkeleton />;
   }

@@ -14,6 +14,10 @@ import { VaultBalance } from '@/shared/types/vault';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useVaultShift() {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+
   const {
     user,
     setHasActiveVaultShift,
@@ -25,6 +29,10 @@ export function useVaultShift() {
   const [refreshing, setRefreshing] = useState(false);
 
   const locationId = user?.assignedLocations?.[0];
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const fetchBalance = useCallback(
     async (isSilent = false) => {
@@ -63,9 +71,17 @@ export function useVaultShift() {
     [locationId, setHasActiveVaultShift, setIsVaultReconciled, setGlobalIsStale]
   );
 
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
   useEffect(() => {
     fetchBalance();
   }, [fetchBalance]);
+
+  // ============================================================================
+  // Computed
+  // ============================================================================
 
   const isStaleShift = useMemo(() => {
     return vaultBalance?.isStale ?? isShiftStale(vaultBalance?.openedAt);

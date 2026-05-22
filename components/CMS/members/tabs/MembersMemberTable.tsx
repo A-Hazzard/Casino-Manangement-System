@@ -76,12 +76,21 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
   hideLocationColumn = false,
   canEdit = false,
 }) => {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const tableRef = useRef<HTMLTableElement>(null);
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleRowClick = (memberId: string) => {
     onMemberClick(memberId);
   };
 
+  // ============================================================================
+  // Render Helper Functions
+  // ============================================================================
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
     try {
@@ -133,6 +142,9 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
     }).format(amount);
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <>
       {/* Pull up table to touch the purple summary container on the page */}

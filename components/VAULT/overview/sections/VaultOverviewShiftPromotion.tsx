@@ -19,6 +19,9 @@ export default function VaultOverviewShiftPromotion({
   activeShiftId,
   onStartShift,
 }: VaultOverviewShiftPromotionProps) {
+  // ============================================================================
+  // Render
+  // ============================================================================
   if (activeShiftId) return null;
 
   return (

@@ -57,7 +57,7 @@ const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export default function ReportsMachinesTab() {
   // ============================================================================
-  // Hooks & Context
+  // State & Hooks
   // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
@@ -67,9 +67,7 @@ export default function ReportsMachinesTab() {
   const { selectedLicencee, customDateRange, activeMetricsFilter } =
     useDashBoardStore();
 
-  // ============================================================================
-  // State: Tab & Filters
-  // ============================================================================
+  // Tab & Filters
   const [activeTab, setActiveTab] = useState<string>(
     searchParams?.get('mtab') || 'overview'
   );
@@ -94,9 +92,7 @@ export default function ReportsMachinesTab() {
     useState<string>('all');
   const debouncedOfflineSearchTerm = useDebounce(offlineSearchTerm, 500);
 
-  // ============================================================================
-  // State: Sorting & Pagination
-  // ============================================================================
+  // Sorting & Pagination
   const [sortConfig, setSortConfig] = useState<{
     key: MachineSortKey;
     direction: 'asc' | 'desc';
@@ -113,9 +109,7 @@ export default function ReportsMachinesTab() {
     useState<TopMachinesCriteria>('netWin');
   const [bottomMachinesSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // ============================================================================
   // Data Fetching Hook
-  // ============================================================================
   // Pass batch size for API requests
   const {
     machineStats,
@@ -182,8 +176,9 @@ export default function ReportsMachinesTab() {
       : 'all';
 
   // ============================================================================
-  // Computed Values: Evaluation
+  // Computed
   // ============================================================================
+  // Evaluation
 
   const evaluationData = useMemo((): MachineEvaluationData[] => {
     return allMachines.map(machine => {
@@ -457,9 +452,7 @@ export default function ReportsMachinesTab() {
     bottomMachinesSortDirection,
   ]);
 
-  // ============================================================================
-  // Computed Values: Overview & Offline
-  // ============================================================================
+  // Overview & Offline
 
   const paginatedOverviewMachines = useMemo(() => {
     const startIndex = overviewCurrentPage * ITEMS_PER_PAGE;

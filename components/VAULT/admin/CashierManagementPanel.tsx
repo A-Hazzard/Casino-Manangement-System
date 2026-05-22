@@ -97,6 +97,9 @@ export default function CashierManagementPanel({
   onLoadingChange?: (loading: boolean) => void;
   onRefresh?: (fn: () => void) => void;
 }) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } =
     useUserStore();
   const isAdminOrDev = user?.roles?.some(r =>
@@ -182,6 +185,9 @@ export default function CashierManagementPanel({
     0
   );
 
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const checkVaultStatus = (actionKey?: string) => {
     if (!hasActiveVaultShift && actionKey === 'create') {
       toast.error('Operation Blocked', {
@@ -315,6 +321,10 @@ export default function CashierManagementPanel({
       setLoading(false);
     }
   };
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
 
   // Fetch cashiers on mount and page change
   useEffect(() => {
@@ -630,10 +640,16 @@ export default function CashierManagementPanel({
     toast.success('Password copied to clipboard');
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // Guard: show skeleton during initial load
   if (loading && cashiers.length === 0) {
     return <CashierManagementSkeleton />;
   }
 
+  // Guard: show error state
   if (error) {
     return (
       <div className="flex items-center justify-center py-12">

@@ -42,7 +42,7 @@ export function useLocationsPageData() {
   const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
-  // State Management
+  // State & Hooks
   // ============================================================================
   const [selectedFilters, setSelectedFilters] = useState<LocationFilter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -114,7 +114,7 @@ export function useLocationsPageData() {
     useLocationMembershipStats(undefined, machineTypeFilterString);
 
   // ============================================================================
-  // Computed Values
+  // Computed
   // ============================================================================
   const financialTotals = useMemo(
     () => calculateLocationFinancialTotals(locationData),

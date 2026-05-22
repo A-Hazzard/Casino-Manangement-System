@@ -36,6 +36,9 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async () => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate query parameters
+      // ============================================================================
       const { searchParams } = new URL(request.url);
       const vShiftId = searchParams.get('vaultShiftId'),
         locId = searchParams.get('locationId'),
@@ -57,6 +60,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Fetch collection session
+      // ============================================================================
       const query: Record<string, unknown> = {
         locationId: locId,
         vaultShiftId: vShiftId,
@@ -122,6 +128,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
+      // ============================================================================
+      // STEP 1: Parse and validate request body
+      // ============================================================================
       const {
         action,
         locationId,
@@ -147,6 +156,9 @@ export async function POST(request: NextRequest) {
       }
 
       let session;
+      // ============================================================================
+      // STEP 2: Handle "start" action
+      // ============================================================================
       if (action === 'start') {
         const existing = await VaultCollectionSession.findOne({
           locationId,
@@ -191,6 +203,9 @@ export async function POST(request: NextRequest) {
           duration
         );
       } else if (action === 'addEntry') {
+        // ============================================================================
+        // STEP 3: Handle "addEntry" action
+        // ============================================================================
         if (!sessionId || !entryData) {
           logRouteError(
             functionName,
@@ -255,6 +270,9 @@ export async function POST(request: NextRequest) {
           duration
         );
       } else if (action === 'removeEntry') {
+        // ============================================================================
+        // STEP 4: Handle "removeEntry" action
+        // ============================================================================
         if (!sessionId || !machineId) {
           logRouteError(
             functionName,
@@ -301,6 +319,9 @@ export async function POST(request: NextRequest) {
           duration
         );
       } else if (action === 'cancel') {
+        // ============================================================================
+        // STEP 5: Handle "cancel" action
+        // ============================================================================
         if (!sessionId) {
           logRouteError(
             functionName,

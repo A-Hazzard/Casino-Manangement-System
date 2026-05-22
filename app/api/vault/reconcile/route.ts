@@ -32,6 +32,9 @@ export async function POST(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
+      // ============================================================================
+      // STEP 1: Check permissions
+      // ============================================================================
       const hasVaultAccess = userRoles
         .map(r => String(r).toLowerCase())
         .some(role =>
@@ -51,10 +54,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 2: Parse and validate body
+      // ============================================================================
       const { vaultShiftId, newBalance, denominations, reason, comment } =
         await request.json();
       const finalDesc = (reason || comment || '').trim();
 
+      // ============================================================================
+      // STEP 3: Validate denominations
+      // ============================================================================
       const validation = validateDenominations(denominations);
       if (!validation.valid) {
         logRouteError(
@@ -90,6 +99,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 4: Validate vault shift
+      // ============================================================================
       const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
       if (!vaultShift) {
         logRouteError(
@@ -118,6 +130,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 5: Validate location access
+      // ============================================================================
       const allowedLocIds = await getUserLocationFilter(
         payload.assignedLicencees || [],
         undefined,
@@ -141,6 +156,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ============================================================================
+      // STEP 6: Update vault shift
+      // ============================================================================
       const prevBalance =
         vaultShift.reconciliations.length > 0
           ? vaultShift.reconciliations[vaultShift.reconciliations.length - 1]
@@ -161,6 +179,9 @@ export async function POST(request: NextRequest) {
       vaultShift.updatedAt = now;
       await vaultShift.save();
 
+      // ============================================================================
+      // STEP 7: Create transaction and log activity
+      // ============================================================================
       const txId = await generateMongoId(),
         adj = newBalance - prevBalance;
       const transaction = await VaultTransactionModel.create({
@@ -207,6 +228,9 @@ export async function POST(request: NextRequest) {
         duration
       );
 
+      // ============================================================================
+      // STEP 8: Return response
+      // ============================================================================
       return NextResponse.json({
         success: true,
         vaultShift: vaultShift.toObject(),

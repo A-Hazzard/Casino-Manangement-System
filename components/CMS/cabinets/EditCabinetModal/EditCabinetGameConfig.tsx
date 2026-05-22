@@ -28,6 +28,9 @@ export default function EditCabinetGameConfig({
   cabinetDataLoading,
   onFormDataChange,
 }: EditCabinetGameConfigProps) {
+  // ============================================================================
+  // Handlers
+  // ============================================================================
   const handleConfigChange = (field: string, value: string) => {
     onFormDataChange({
       gameConfig: {
@@ -37,6 +40,9 @@ export default function EditCabinetGameConfig({
     });
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <div className="space-y-4">
       <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
