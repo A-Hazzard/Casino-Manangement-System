@@ -54,7 +54,7 @@ import {
   calculateMovement,
 } from '@/lib/utils/movement';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -249,45 +249,23 @@ export function useEditCollectionModal({
   // ==========================================================================
   // Form Data Setters
   // ==========================================================================
-  const setCurrentMetersIn = useCallback(
-    (val: string) => setStoreFormData({ metersIn: val }),
-    [setStoreFormData]
-  );
-  const setCurrentMetersOut = useCallback(
-    (val: string) => setStoreFormData({ metersOut: val }),
-    [setStoreFormData]
-  );
-  const setCurrentRamClearMetersIn = useCallback(
-    (val: string) => setStoreFormData({ ramClearMetersIn: val }),
-    [setStoreFormData]
-  );
-  const setCurrentRamClearMetersOut = useCallback(
-    (val: string) => setStoreFormData({ ramClearMetersOut: val }),
-    [setStoreFormData]
-  );
-  const setCurrentMachineNotes = useCallback(
-    (val: string) => setStoreFormData({ notes: val }),
-    [setStoreFormData]
-  );
-  const setCurrentRamClear = useCallback(
-    (val: boolean) => setStoreFormData({ ramClear: val }),
-    [setStoreFormData]
-  );
-  const setCurrentCollectionTime = useCallback(
-    (val: Date | string) =>
+  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
+  const setCurrentCollectionTime = (val: Date | string) =>
       setStoreFormData({
         collectionTime: typeof val === 'string' ? new Date(val) : val,
-      }),
-    [setStoreFormData]
-  );
+      });
   const setSelectedMachineId = (id: string) =>
     setStoreMachineId(id || undefined);
 
   /**
    * Toggle advanced SAS mode and set default times if needed
    */
-  const setShowAdvancedSas = useCallback(
-    (val: boolean | ((p: boolean) => boolean)) => {
+  const setShowAdvancedSas = (val: boolean | ((p: boolean) => boolean)) => {
       const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
       const updates: Partial<typeof storeFormData> = {
         showAdvancedSas: newVal,
@@ -328,51 +306,27 @@ export function useEditCollectionModal({
       }
 
       setStoreFormData(updates);
-    },
-    [
-      showAdvancedSas,
-      selectedLocationId,
-      locations,
-      sasStartTime,
-      sasEndTime,
-      currentCollectionTime,
-      setStoreFormData,
-      selectedMachineId,
-      collectedMachineEntries,
-    ]
-  );
+    };
 
-  const setSasStartTime = useCallback(
-    (val: Date | string | null) =>
+  const setSasStartTime = (val: Date | string | null) =>
       setStoreFormData({
         sasStartTime:
           val === null ? null : typeof val === 'string' ? new Date(val) : val,
-      }),
-    [setStoreFormData]
-  );
-  const setSasEndTime = useCallback(
-    (val: Date | string | null) =>
+      });
+  const setSasEndTime = (val: Date | string | null) =>
       setStoreFormData({
         sasEndTime:
           val === null ? null : typeof val === 'string' ? new Date(val) : val,
-      }),
-    [setStoreFormData]
-  );
+      });
 
   const prevIn =
     storeFormData.prevIn !== '' ? Number(storeFormData.prevIn) : null;
   const prevOut =
     storeFormData.prevOut !== '' ? Number(storeFormData.prevOut) : null;
-  const setPrevIn = useCallback(
-    (val: string | number | null) =>
-      setStoreFormData({ prevIn: val?.toString() || '' }),
-    [setStoreFormData]
-  );
-  const setPrevOut = useCallback(
-    (val: string | number | null) =>
-      setStoreFormData({ prevOut: val?.toString() || '' }),
-    [setStoreFormData]
-  );
+  const setPrevIn = (val: string | number | null) =>
+      setStoreFormData({ prevIn: val?.toString() || '' });
+  const setPrevOut = (val: string | number | null) =>
+      setStoreFormData({ prevOut: val?.toString() || '' });
 
   // ==========================================================================
   // Refs
@@ -411,32 +365,22 @@ export function useEditCollectionModal({
   /**
    * Selected location object from locations array
    */
-  const selectedLocation = useMemo(
-    () =>
-      locations.find(location => String(location._id) === selectedLocationId),
-    [locations, selectedLocationId]
-  );
+  const selectedLocation = locations.find(location => String(location._id) === selectedLocationId);
 
   /**
    * Location's collection balance for calculations
    */
-  const locationCollectionBalance = useMemo(
-    () => selectedLocation?.collectionBalance ?? 0,
-    [selectedLocation?.collectionBalance]
-  );
+  const locationCollectionBalance = selectedLocation?.collectionBalance ?? 0;
 
   /**
    * Location's profit share percentage
    */
-  const locationProfitShare = useMemo(
-    () => selectedLocation?.profitShare ?? 50,
-    [selectedLocation?.profitShare]
-  );
+  const locationProfitShare = selectedLocation?.profitShare ?? 50;
 
   /**
    * Machine being edited or added
    */
-  const machineForDataEntry = useMemo(() => {
+  const machineForDataEntry = (() => {
     let found = machinesOfSelectedLocation.find(
       m => String(m._id) === selectedMachineId
     );
@@ -465,12 +409,12 @@ export function useEditCollectionModal({
     }
 
     return found;
-  }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
+  })();
 
   /**
    * Filter machines based on search term
    */
-  const filteredMachines = useMemo(() => {
+  const filteredMachines = (() => {
     let result = machinesOfSelectedLocation;
 
     if (machineSearchTerm.trim()) {
@@ -487,12 +431,12 @@ export function useEditCollectionModal({
     }
 
     return sortMachinesAlphabetically(result);
-  }, [machinesOfSelectedLocation, machineSearchTerm]);
+  })();
 
   /**
    * Whether update report button should be enabled
    */
-  const isUpdateReportEnabled = useMemo(() => {
+  const isUpdateReportEnabled = (() => {
     return (
       collectedMachineEntries.length > 0 &&
       financials.variance !== '' &&
@@ -501,7 +445,7 @@ export function useEditCollectionModal({
       financials.previousBalance !== '' &&
       financials.collectedAmount !== ''
     );
-  }, [collectedMachineEntries, financials]);
+  })();
 
   // ==========================================================================
   // Validation
@@ -510,7 +454,7 @@ export function useEditCollectionModal({
   /**
    * Real-time validation for meter inputs
    */
-  const validateMeterInputs = useCallback(() => {
+  const validateMeterInputs = () => {
     if (!machineForDataEntry || !currentMetersIn || !currentMetersOut) {
       return;
     }
@@ -538,18 +482,7 @@ export function useEditCollectionModal({
         'Please enter last meters before Ram clear (or rollover)'
       );
     }
-  }, [
-    selectedMachineId,
-    machineForDataEntry,
-    currentMetersIn,
-    currentMetersOut,
-    currentRamClearMetersIn,
-    currentRamClearMetersOut,
-    userId,
-    currentRamClear,
-    prevIn,
-    prevOut,
-  ]);
+  };
 
   // ==========================================================================
   // Debounced Values
@@ -632,7 +565,7 @@ export function useEditCollectionModal({
   /**
    * Close modal with unsaved changes warning check
    */
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     // Check if there are unsaved edits
     if (hasUnsavedEdits) {
       setShowUnsavedChangesWarning(true);
@@ -687,20 +620,7 @@ export function useEditCollectionModal({
     resetStoreState();
     onClose();
     return true;
-  }, [
-    hasChanges,
-    onRefresh,
-    onClose,
-    resetStoreState,
-    hasUnsavedEdits,
-    editingEntryId,
-    selectedMachineId,
-    currentMetersIn,
-    currentMetersOut,
-    currentMachineNotes,
-    machineForDataEntry?.name,
-    machineForDataEntry?.serialNumber,
-  ]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -709,14 +629,14 @@ export function useEditCollectionModal({
   /**
    * Show warning when clicking disabled field
    */
-  const handleDisabledFieldClick = useCallback(() => {
+  const handleDisabledFieldClick = () => {
     if (!machineForDataEntry) {
       toast.warning('Please select a machine first', {
         duration: 3000,
         position: 'top-left',
       });
     }
-  }, [machineForDataEntry]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -725,8 +645,7 @@ export function useEditCollectionModal({
   /**
    * Start editing an existing entry
    */
-  const handleEditEntry = useCallback(
-    async (entryId: string) => {
+  const handleEditEntry = async (entryId: string) => {
       if (isProcessing) return;
 
       const entryToEdit = collectedMachineEntries.find(
@@ -815,25 +734,7 @@ export function useEditCollectionModal({
           { position: 'top-left' }
         );
       }
-    },
-    [
-      isProcessing,
-      collectedMachineEntries,
-      machinesOfSelectedLocation,
-      setEditingEntryId,
-      setSelectedMachineId,
-      setCurrentMetersIn,
-      setCurrentMetersOut,
-      setCurrentMachineNotes,
-      setCurrentRamClear,
-      setCurrentRamClearMetersIn,
-      setCurrentRamClearMetersOut,
-      setCurrentCollectionTime,
-      setShowAdvancedSas,
-      setPrevIn,
-      setPrevOut,
-    ]
-  );
+    };
 
   // ==========================================================================
   // Handlers
@@ -842,7 +743,7 @@ export function useEditCollectionModal({
   /**
    * Cancel editing and reset form
    */
-  const handleCancelEdit = useCallback(() => {
+  const handleCancelEdit = () => {
     // Reset editing state
     setEditingEntryId(null);
     // CRITICAL: Also clear the selected machine — without this, selectedMachineId remains set
@@ -867,24 +768,7 @@ export function useEditCollectionModal({
     setShowAdvancedSas(showAdvancedSas);
 
     toast.info('Edit cancelled', { position: 'top-left' });
-  }, [
-    setSasStartTime,
-    setSasEndTime,
-    setShowAdvancedSas,
-    setEditingEntryId,
-    setSelectedMachineId,
-    setCurrentMetersIn,
-    setCurrentMetersOut,
-    setCurrentMachineNotes,
-    setCurrentRamClear,
-    setCurrentRamClearMetersIn,
-    setCurrentRamClearMetersOut,
-    setPrevIn,
-    setPrevOut,
-    showAdvancedSas,
-    sasStartTime,
-    sasEndTime,
-  ]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -893,22 +777,22 @@ export function useEditCollectionModal({
   /**
    * Confirm machine rollover warning
    */
-  const handleConfirmMachineRollover = useCallback(() => {
+  const handleConfirmMachineRollover = () => {
     if (pendingMachineSubmission) {
       pendingMachineSubmission();
       setPendingMachineSubmission(null);
     }
     setShowMachineRolloverWarning(false);
-  }, [pendingMachineSubmission]);
+  };
 
   /**
    * Cancel machine rollover warning
    */
-  const handleCancelMachineRollover = useCallback(() => {
+  const handleCancelMachineRollover = () => {
     setPendingMachineSubmission(null);
     setShowMachineRolloverWarning(false);
     setIsProcessing(false);
-  }, []);
+  };
 
   // ==========================================================================
   // Handlers
@@ -917,7 +801,7 @@ export function useEditCollectionModal({
   /**
    * Execute add or update entry operation
    */
-  const executeAddOrUpdateEntry = useCallback(async () => {
+  const executeAddOrUpdateEntry = async () => {
     setIsProcessing(true);
 
     // Capture form values synchronously BEFORE any awaits so they are never stale
@@ -1417,44 +1301,12 @@ export function useEditCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [
-    editingEntryId,
-    collectedMachineEntries,
-    currentMetersIn,
-    currentMetersOut,
-    currentMachineNotes,
-    currentRamClear,
-    currentRamClearMetersIn,
-    currentRamClearMetersOut,
-    currentCollectionTime,
-    prevIn,
-    prevOut,
-    reportId,
-    showAdvancedSas,
-    sasStartTime,
-    sasEndTime,
-    selectedMachineId,
-    machineForDataEntry,
-    selectedLocationName,
-    userId,
-    setCollectedMachineEntries,
-    setHasChanges,
-    setEditingEntryId,
-    setSelectedMachineId,
-    setCurrentMetersIn,
-    setCurrentMetersOut,
-    setCurrentMachineNotes,
-    setCurrentRamClear,
-    setCurrentRamClearMetersIn,
-    setCurrentRamClearMetersOut,
-    setPrevIn,
-    setPrevOut,
-  ]);
+  };
 
   /**
    * Validate and confirm add/update entry
    */
-  const confirmAddOrUpdateEntry = useCallback(async () => {
+  const confirmAddOrUpdateEntry = async () => {
     if (isProcessing) return;
 
     // Validation logic here (same as existing validation)
@@ -1500,35 +1352,20 @@ export function useEditCollectionModal({
     }
 
     onConfirm();
-  }, [
-    isProcessing,
-    selectedMachineId,
-    machineForDataEntry,
-    currentMetersIn,
-    currentMetersOut,
-    userId,
-    currentRamClear,
-    prevIn,
-    prevOut,
-    currentRamClearMetersIn,
-    currentRamClearMetersOut,
-    editingEntryId,
-    currentCollectionTime,
-    executeAddOrUpdateEntry,
-  ]);
+  };
 
   /**
    * Confirm entry update after rollover check
    */
-  const confirmUpdateEntry = useCallback(() => {
+  const confirmUpdateEntry = () => {
     setShowUpdateConfirmation(false);
     confirmAddOrUpdateEntry();
-  }, [confirmAddOrUpdateEntry]);
+  };
 
   /**
    * Handle add or update entry based on editing state
    */
-  const handleAddOrUpdateEntry = useCallback(async () => {
+  const handleAddOrUpdateEntry = async () => {
     if (isProcessing) return;
 
     // Always go directly to confirmAddOrUpdateEntry — the confirmation dialog
@@ -1536,12 +1373,7 @@ export function useEditCollectionModal({
     if (editingEntryId || machineForDataEntry) {
       confirmAddOrUpdateEntry();
     }
-  }, [
-    isProcessing,
-    editingEntryId,
-    machineForDataEntry,
-    confirmAddOrUpdateEntry,
-  ]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -1550,8 +1382,7 @@ export function useEditCollectionModal({
   /**
    * Start delete confirmation for an entry
    */
-  const handleDeleteEntry = useCallback(
-    (entryId: string) => {
+  const handleDeleteEntry = (entryId: string) => {
       if (isProcessing) return;
 
       // Check if this is the last collection
@@ -1568,14 +1399,12 @@ export function useEditCollectionModal({
 
       setEntryToDelete(entryId);
       setShowDeleteConfirmation(true);
-    },
-    [isProcessing, collectedMachineEntries.length]
-  );
+    };
 
   /**
    * Execute entry deletion
    */
-  const confirmDeleteEntry = useCallback(async () => {
+  const confirmDeleteEntry = async () => {
     if (!entryToDelete) return;
 
     setIsProcessing(true);
@@ -1621,7 +1450,7 @@ export function useEditCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [entryToDelete, reportId, onRefresh]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -1630,8 +1459,7 @@ export function useEditCollectionModal({
   /**
    * Update the collection report with all changes
    */
-  const handleUpdateReport = useCallback(
-    async (reconciliationData?: VariationsCheckResponse) => {
+  const handleUpdateReport = async (reconciliationData?: VariationsCheckResponse) => {
       if (isProcessing || !userId || !reportData) {
         toast.error('Missing required data.', { position: 'top-left' });
         return;
@@ -1932,25 +1760,7 @@ export function useEditCollectionModal({
       } finally {
         setIsProcessing(false);
       }
-    },
-    [
-      isProcessing,
-      userId,
-      reportData,
-      financials,
-      reportId,
-      collectedMachineEntries,
-      originalCollections,
-      onClose,
-      onRefresh,
-      editingEntryId,
-      machineForDataEntry,
-      currentMetersIn,
-      currentMetersOut,
-      currentMachineNotes,
-      selectedMachineId,
-    ]
-  );
+    };
 
   // ==========================================================================
   // Handlers
@@ -1959,7 +1769,7 @@ export function useEditCollectionModal({
   /**
    * Apply SAS dates to all collected machines
    */
-  const handleApplyAllDates = useCallback(async () => {
+  const handleApplyAllDates = async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
     if (collectedMachineEntries.length < 2) return;
     try {
@@ -2020,12 +1830,7 @@ export function useEditCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [
-    updateAllSasStartDate,
-    updateAllSasEndDate,
-    collectedMachineEntries,
-    setCollectedMachineEntries,
-  ]);
+  };
 
   // ==========================================================================
   // Effects
@@ -2604,9 +2409,9 @@ export function useEditCollectionModal({
   ]);
 
   // Function to clear unsaved edits synchronously (for use before submission)
-  const clearUnsavedEdits = useCallback(() => {
+  const clearUnsavedEdits = () => {
     setHasUnsavedEdits(false);
-  }, [setHasUnsavedEdits]);
+  };
 
   return {
     // State

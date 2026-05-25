@@ -8,7 +8,7 @@ import { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type MachineSearchSelectProps = {
   value: string; // Selected machineId
@@ -45,7 +45,7 @@ export function MachineSearchSelect({
   // ============================================================================
 
   // Filter Machines based on search term
-  const filteredMachines = useMemo(() => {
+  const filteredMachines = (() => {
     if (!searchTerm) return machines;
 
     const term = searchTerm.toLowerCase();
@@ -59,7 +59,7 @@ export function MachineSearchSelect({
         machine.game?.toLowerCase().includes(term)
       );
     });
-  }, [machines, searchTerm]);
+  })();
 
   // Find selected Machine
   const selectedMachine = machines.find(m => m._id === value);

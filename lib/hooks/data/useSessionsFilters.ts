@@ -16,7 +16,7 @@
  */
 
 import { ReactNode } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 type UseSessionsFiltersProps = {
   onFiltersChange?: (filters: {
     searchTerm: string;
@@ -65,66 +65,60 @@ export function useSessionsFilters({
   // ============================================================================
 
   // Handle search term changes
-  const handleSearchTermChange = useCallback((term: string) => {
+  const handleSearchTermChange = (term: string) => {
     setSearchTerm(term);
-  }, []);
+  };
 
   // Handle sort field changes
-  const handleSortByChange = useCallback((field: string) => {
+  const handleSortByChange = (field: string) => {
     setSortBy(field);
-  }, []);
+  };
 
   // Handle sort order changes
-  const handleSortOrderChange = useCallback((order: 'asc' | 'desc') => {
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
     setSortOrder(order);
-  }, []);
+  };
 
   // Handle sort toggle (toggle between asc/desc for same field)
-  const handleSort = useCallback(
-    (field: string) => {
+  const handleSort = (field: string) => {
       if (sortBy === field) {
         setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
       } else {
         setSortBy(field);
         setSortOrder('desc');
       }
-    },
-    [sortBy]
-  );
+    };
 
   // Clear all filters
-  const clearFilters = useCallback(() => {
+  const clearFilters = () => {
     setSearchTerm('');
     setSortBy('startTime');
     setSortOrder('desc');
     setStatusFilter('all');
-  }, []);
+  };
 
   // ============================================================================
   // Computed
   // ============================================================================
 
   // Check if any filters are active
-  const hasActiveFilters = useMemo(() => {
+  const hasActiveFilters = (() => {
     return (
       searchTerm.trim() !== '' ||
       sortBy !== 'startTime' ||
       sortOrder !== 'desc' ||
       statusFilter !== 'all'
     );
-  }, [searchTerm, sortBy, sortOrder, statusFilter]);
+  })();
 
   // Get sort icon for a field
-  const getSortIcon = useCallback(
-    (field: string) => {
+  const getSortIcon = (field: string) => {
       if (sortBy !== field) return '↕';
       return sortOrder === 'asc' ? '↑' : '↓';
-    },
-    [sortBy, sortOrder]
-  );
+    };
 
   // Notify parent of filter changes
-  useMemo(() => {
+  (() => {
     if (onFiltersChange) {
       onFiltersChange({
         searchTerm,
@@ -133,7 +127,7 @@ export function useSessionsFilters({
         status: statusFilter,
       });
     }
-  }, [searchTerm, sortBy, sortOrder, statusFilter, onFiltersChange]);
+  })();
 
   return {
     searchTerm,

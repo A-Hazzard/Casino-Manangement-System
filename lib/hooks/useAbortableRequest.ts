@@ -24,7 +24,7 @@
  * ```
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useAbortableRequest() {
   // ============================================================================
@@ -60,8 +60,7 @@ export function useAbortableRequest() {
    * @param requestFn - Async function that accepts an AbortSignal
    * @returns Promise that resolves when request completes or rejects with non-abort errors
    */
-  const makeRequest = useCallback(
-    async <T = void>(
+  const makeRequest = async <T = void>(
       requestFn: (signal: AbortSignal) => Promise<T>,
       key: string = 'default'
     ): Promise<T | null> => {
@@ -109,9 +108,7 @@ export function useAbortableRequest() {
         // Re-throw other errors so they can be handled by the caller
         throw error;
       }
-    },
-    []
-  );
+    };
 
   return makeRequest;
 }

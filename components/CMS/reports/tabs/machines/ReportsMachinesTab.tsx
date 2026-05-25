@@ -11,7 +11,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
@@ -151,9 +151,9 @@ export default function ReportsMachinesTab() {
     new Set([1])
   );
 
-  const calculateBatchNumber = useCallback((page: number) => {
+  const calculateBatchNumber = (page: number) => {
     return Math.floor(page / PAGES_PER_BATCH) + 1;
-  }, []);
+  };
 
   // Get machine stats for offline tab - pass locationId(s) when specific locations are selected
   const effectiveLocationIdForStats =
@@ -180,7 +180,7 @@ export default function ReportsMachinesTab() {
   // ============================================================================
   // Evaluation
 
-  const evaluationData = useMemo((): MachineEvaluationData[] => {
+  const evaluationData = ((): MachineEvaluationData[] => {
     return allMachines.map(machine => {
       const theoreticalHold = machine.theoreticalHold || 0;
       const actualHold = machine.actualHold || 0;
@@ -212,18 +212,18 @@ export default function ReportsMachinesTab() {
             : 0,
       };
     });
-  }, [allMachines]);
+  })();
 
-  const filteredEvaluationData = useMemo(() => {
+  const filteredEvaluationData = (() => {
     return evaluationData.filter(machine => {
       return (
         evaluationSelectedLocations.length === 0 ||
         evaluationSelectedLocations.includes(machine.locationId)
       );
     });
-  }, [evaluationData, evaluationSelectedLocations]);
+  })();
 
-  const summaryCalculations = useMemo(() => {
+  const summaryCalculations = (() => {
     const totalHandle = filteredEvaluationData.reduce(
       (sum, m) => sum + (m.coinIn || 0),
       0
@@ -264,10 +264,10 @@ export default function ReportsMachinesTab() {
       winDetails: winResult.details,
       gamesPlayedDetails: gamesPlayedResult.details,
     };
-  }, [filteredEvaluationData]);
+  })();
 
   // Chart data calculations
-  const manufacturerData = useMemo(() => {
+  const manufacturerData = (() => {
     if (!filteredEvaluationData.length) return [];
 
     const activeMachinesNumber = filteredEvaluationData.length;
@@ -340,9 +340,9 @@ export default function ReportsMachinesTab() {
             : 0,
       };
     });
-  }, [filteredEvaluationData]);
+  })();
 
-  const gamesData = useMemo(() => {
+  const gamesData = (() => {
     if (!filteredEvaluationData.length) return [];
 
     const activeMachinesNumber = filteredEvaluationData.length;
@@ -415,10 +415,10 @@ export default function ReportsMachinesTab() {
             : 0,
       };
     });
-  }, [filteredEvaluationData]);
+  })();
 
   // Top and Bottom machines
-  const topMachines = useMemo(() => {
+  const topMachines = (() => {
     return [...filteredEvaluationData]
       .sort((a, b) => {
         const aVal = a[
@@ -430,9 +430,9 @@ export default function ReportsMachinesTab() {
         return topMachinesSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
       })
       .slice(0, 5);
-  }, [filteredEvaluationData, topMachinesSortKey, topMachinesSortDirection]);
+  })();
 
-  const bottomMachines = useMemo(() => {
+  const bottomMachines = (() => {
     return [...filteredEvaluationData]
       .sort((a, b) => {
         const aVal = a[
@@ -446,25 +446,21 @@ export default function ReportsMachinesTab() {
           : bVal - aVal;
       })
       .slice(0, 5);
-  }, [
-    filteredEvaluationData,
-    bottomMachinesSortKey,
-    bottomMachinesSortDirection,
-  ]);
+  })();
 
   // Overview & Offline
 
-  const paginatedOverviewMachines = useMemo(() => {
+  const paginatedOverviewMachines = (() => {
     const startIndex = overviewCurrentPage * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return allOverviewMachines.slice(startIndex, endIndex);
-  }, [allOverviewMachines, overviewCurrentPage]);
+  })();
 
-  const overviewTotalPages = useMemo(() => {
+  const overviewTotalPages = (() => {
     return Math.max(1, Math.ceil(overviewTotalCount / ITEMS_PER_PAGE));
-  }, [overviewTotalCount]);
+  })();
 
-  const paginatedOfflineMachines = useMemo(() => {
+  const paginatedOfflineMachines = (() => {
     // Clone and sort first
     const sorted = [...allOfflineMachines].sort((a, b) => {
       const { key, direction } = sortConfig;
@@ -494,18 +490,18 @@ export default function ReportsMachinesTab() {
     const startIndex = offlineCurrentPage * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return sorted.slice(startIndex, endIndex);
-  }, [allOfflineMachines, offlineCurrentPage, sortConfig]);
+  })();
 
-  const offlineTotalPages = useMemo(() => {
+  const offlineTotalPages = (() => {
     return Math.max(1, Math.ceil(offlineTotalCount / ITEMS_PER_PAGE));
-  }, [offlineTotalCount]);
+  })();
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
   // Helper function to convert MachineData to partial GamingMachine for modals
-  const machineToGamingMachine = useCallback((machine: MachineData) => {
+  const machineToGamingMachine = (machine: MachineData) => {
     return {
       _id: machine.machineId,
       machineId: machine.machineId,
@@ -524,24 +520,18 @@ export default function ReportsMachinesTab() {
       online: machine.isOnline,
       loggedIn: machine.isOnline,
     } as Parameters<typeof openEditModal>[0];
-  }, []);
+  };
 
   // Wrapper functions to convert MachineData to GamingMachine for modals
-  const handleEdit = useCallback(
-    (machine: MachineData) => {
+  const handleEdit = (machine: MachineData) => {
       openEditModal(machineToGamingMachine(machine));
-    },
-    [openEditModal, machineToGamingMachine]
-  );
+    };
 
-  const handleDelete = useCallback(
-    (machine: MachineData) => {
+  const handleDelete = (machine: MachineData) => {
       openDeleteModal(machineToGamingMachine(machine));
-    },
-    [openDeleteModal, machineToGamingMachine]
-  );
+    };
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     setStatsLoading(true);
     setOverviewLoading(true);
     setEvaluationLoading(true);
@@ -580,27 +570,7 @@ export default function ReportsMachinesTab() {
       setEvaluationLoading(false);
       setOfflineLoading(false);
     }
-  }, [
-    setStatsLoading,
-    setOverviewLoading,
-    setEvaluationLoading,
-    setOfflineLoading,
-    fetchMachineStats,
-    refreshLocationMachineStats,
-    fetchOverviewMachines,
-    fetchAllMachines,
-    fetchOfflineMachines,
-    searchTerm,
-    overviewSelectedLocation,
-    overviewLocationForStats,
-    evaluationLocationForStats,
-    onlineStatusFilter,
-    evaluationSelectedLocations,
-    offlineSearchTerm,
-    offlineSelectedLocations,
-    setAllOfflineMachines,
-    activeTab,
-  ]);
+  };
 
   // Listen for global refresh events from parent PageLayout
   useEffect(() => {
@@ -612,8 +582,7 @@ export default function ReportsMachinesTab() {
       window.removeEventListener('refreshReports', handleGlobalRefresh);
   }, [handleRefresh]);
 
-  const handleExport = useCallback(
-    async (format: 'pdf' | 'excel') => {
+  const handleExport = async (format: 'pdf' | 'excel') => {
       if (activeTab === 'evaluation') {
         const { handleExportMachinesEvaluation } =
           await import('@/lib/helpers/reports');
@@ -644,31 +613,15 @@ export default function ReportsMachinesTab() {
           toast
         );
       }
-    },
-    [
-      activeTab,
-      allOverviewMachines,
-      allOfflineMachines,
-      activeMetricsFilter,
-      customDateRange,
-      manufacturerData,
-      gamesData,
-      topMachines,
-      bottomMachines,
-      summaryCalculations,
-    ]
-  );
+    };
 
-  const handleTabChange = useCallback(
-    (tab: string) => {
+  const handleTabChange = (tab: string) => {
       setActiveTab(tab);
       const sp = new URLSearchParams(searchParams?.toString() || '');
       sp.set('mtab', tab);
       sp.set('section', 'machines');
       router.replace(`${pathname}?${sp.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
+    };
 
   // ============================================================================
   // Effects

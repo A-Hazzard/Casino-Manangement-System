@@ -12,7 +12,7 @@
 import axios from 'axios';
 import { ChevronDown, ChevronUp, History, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
@@ -90,8 +90,6 @@ export function SessionsEventsPageContent({
   const router = useRouter();
   const makeRequest = useAbortableRequest();
   const {
-    activeMetricsFilter,
-    customDateRange,
     selectedLicencee,
     setSelectedLicencee,
   } = useDashBoardStore();
@@ -115,63 +113,60 @@ export function SessionsEventsPageContent({
   // Handlers
   // ============================================================================
 
-  const fetchData = useCallback(
-    async (page = 1, isRefresh = false) => {
-      if (isRefresh) {
-        setLoading(true);
-        setError(null);
-      }
+  const fetchData = async (page = 1, isRefresh = false) => {
+    if (isRefresh) {
+      setLoading(true);
+      setError(null);
+    }
 
-      try {
-        await makeRequest(async signal => {
-          // Build query params for filters
-          // Sync activeMetricsFilter and customDateRange from DashboardStore
-          const params: Record<string, string> = {
-            page: page.toString(),
-            limit: '10',
-          };
+    try {
+      await makeRequest(async signal => {
+        // Build query params for filters
+        // Sync activeMetricsFilter and customDateRange from DashboardStore
+        const params: Record<string, string> = {
+          page: page.toString(),
+          limit: '10',
+        };
 
-          // Fetch session info and events in parallel
-          const [sessionRes, eventsRes] = await Promise.all([
-            axios.get(`/api/sessions/${sessionId}`, { signal }),
-            axios.get(`/api/sessions/${sessionId}/${machineId}/events`, {
-              params,
-              signal,
-            }),
-          ]);
+        // Fetch session info and events in parallel
+        const [sessionRes, eventsRes] = await Promise.all([
+          axios.get(`/api/sessions/${sessionId}`, { signal }),
+          axios.get(`/api/sessions/${sessionId}/${machineId}/events`, {
+            params,
+            signal,
+          }),
+        ]);
 
-          // Extract session data from nested response structure
-          if (sessionRes.data.success) {
-            setSession(sessionRes.data.data);
-          }
-
-          // Extract events, pagination, and filters from nested response structure
-          if (eventsRes.data.success && eventsRes.data.data) {
-            const { events: eventsData, pagination: paginationData } =
-              eventsRes.data.data;
-            setEvents(eventsData || []);
-            setPagination(paginationData || null);
-          }
-        });
-      } catch (err: unknown) {
-        if ((err as Error).name !== 'AbortError' && !axios.isCancel(err)) {
-          console.error('Failed to fetch session events:', err);
-          setError('Failed to load events. Please try again.');
-          toast.error('Failed to load session details');
+        // Extract session data from nested response structure
+        if (sessionRes.data.success) {
+          setSession(sessionRes.data.data);
         }
-      } finally {
-        setLoading(false);
+
+        // Extract events, pagination, and filters from nested response structure
+        if (eventsRes.data.success && eventsRes.data.data) {
+          const { events: eventsData, pagination: paginationData } =
+            eventsRes.data.data;
+          setEvents(eventsData || []);
+          setPagination(paginationData || null);
+        }
+      });
+    } catch (err: unknown) {
+      if ((err as Error).name !== 'AbortError' && !axios.isCancel(err)) {
+        console.error('Failed to fetch session events:', err);
+        setError('Failed to load events. Please try again.');
+        toast.error('Failed to load session details');
       }
-    },
-    [sessionId, machineId, makeRequest, activeMetricsFilter, customDateRange]
-  );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ============================================================================
   // Effects
   // ============================================================================
   useEffect(() => {
     fetchData(1);
-  }, [fetchData]);
+  }, []);
 
   // ============================================================================
   // Handlers (continued)

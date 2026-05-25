@@ -7,7 +7,7 @@ import {
   GamingMachine as CabinetDetail,
   SmibConfig,
 } from '@/shared/types/entities';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type SSEMessage = {
   type:
@@ -254,12 +254,11 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
   // Handlers
   // ============================================================================
 
-  const toggleSmibConfig = useCallback(() => {
+  const toggleSmibConfig = () => {
     setSmibConfigExpanded(!smibConfigExpanded);
-  }, [smibConfigExpanded]);
+  };
 
-  const setEditMode = useCallback(
-    (edit: boolean) => {
+  const setEditMode = (edit: boolean) => {
       console.warn('🔍 [HOOK] setEditMode called with:', edit);
       setIsEditMode(edit);
       if (!edit) {
@@ -270,25 +269,22 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         );
         setFormData(originalData);
       }
-    },
-    [originalData]
-  );
+    };
 
-  const updateFormData = useCallback((field: string, value: string) => {
+  const updateFormData = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value,
     }));
-  }, []);
+  };
 
-  const resetFormData = useCallback(() => {
+  const resetFormData = () => {
     setFormData(originalData);
     setIsEditMode(false);
-  }, [originalData]);
+  };
 
   // Fetch MQTT configuration from API
-  const fetchMqttConfig = useCallback(
-    async (cabinetId: string): Promise<void> => {
+  const fetchMqttConfig = async (cabinetId: string): Promise<void> => {
       if (!cabinetId) return;
 
       // If SMIB is currently online with live data, don't overwrite with API data
@@ -351,11 +347,9 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       } finally {
         setIsLoadingMqttConfig(false);
       }
-    },
-    []
-  );
+    };
 
-  const setCommunicationModeFromData = useCallback((data: CabinetDetail) => {
+  const setCommunicationModeFromData = (data: CabinetDetail) => {
     if (
       typeof data === 'object' &&
       data !== null &&
@@ -371,9 +365,9 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         setOriginalData(prev => ({ ...prev, communicationMode: modeString }));
       }
     }
-  }, []);
+  };
 
-  const setFirmwareVersionFromData = useCallback((data: CabinetDetail) => {
+  const setFirmwareVersionFromData = (data: CabinetDetail) => {
     console.warn(
       '🔍 [HOOK] setFirmwareVersionFromData called with data:',
       data
@@ -550,10 +544,9 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         console.warn('🔍 [HOOK] No COMS config found in data');
       }
     }
-  }, []);
+  };
 
-  const saveConfiguration = useCallback(
-    async (cabinetId: string, machineControl?: string): Promise<boolean> => {
+  const saveConfiguration = async (cabinetId: string, machineControl?: string): Promise<boolean> => {
       try {
         // Convert form data to SMIB config format
         const smibConfig: SmibConfig = {
@@ -618,13 +611,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         console.error('Error updating SMIB configuration:', error);
         return false;
       }
-    },
-    [formData]
-  );
+    };
 
   // Establish SSE connection for live updates
-  const connectToConfigStream = useCallback(
-    (relayId: string) => {
+  const connectToConfigStream = (relayId: string) => {
       console.warn(
         `🔗 [HOOK] connectToConfigStream called with relayId: ${relayId}`
       );
@@ -958,33 +948,20 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         console.error('❌ [HOOK] EventSource error:', error);
         setIsConnectedToMqtt(false);
       };
-    },
-    [
-      setFormData,
-      setIsConnectedToMqtt,
-      setHasReceivedRealSmibData,
-      setCommunicationMode,
-      setIsSSEConnected,
-      lastHeartbeatRef,
-      messageSubscribersRef,
-    ]
-  );
+    };
 
   // Subscribe to SSE messages - allows multiple components to listen
-  const subscribeToMessages = useCallback(
-    (callback: (message: SSEMessage) => void) => {
+  const subscribeToMessages = (callback: (message: SSEMessage) => void) => {
       messageSubscribersRef.current.add(callback);
 
       // Return unsubscribe function
       return () => {
         messageSubscribersRef.current.delete(callback);
       };
-    },
-    []
-  );
+    };
 
   // Disconnect from SSE stream
-  const disconnectFromConfigStream = useCallback(() => {
+  const disconnectFromConfigStream = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -993,11 +970,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     setIsSSEConnected(false);
     setIsConnectedToMqtt(false);
     setHasReceivedRealSmibData(false);
-  }, []);
+  };
 
   // Request current config via MQTT
-  const requestLiveConfig = useCallback(
-    async (relayId: string, component: string): Promise<void> => {
+  const requestLiveConfig = async (relayId: string, component: string): Promise<void> => {
       try {
         const response = await fetch('/api/mqtt/config/request', {
           method: 'POST',
@@ -1016,13 +992,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         console.error('❌ [HOOK] Error requesting live config:', error);
         throw error;
       }
-    },
-    []
-  );
+    };
 
   // Manually fetch SMIB configuration
-  const fetchSmibConfiguration = useCallback(
-    async (relayId: string) => {
+  const fetchSmibConfiguration = async (relayId: string) => {
       console.warn(
         `🔍 [HOOK] Manually fetching SMIB configuration for relayId: ${relayId}`
       );
@@ -1076,13 +1049,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       } finally {
         setIsManuallyFetching(false);
       }
-    },
-    [connectToConfigStream, requestLiveConfig, hasReceivedRealSmibData]
-  );
+    };
 
   // Publish config update via MQTT
-  const publishConfigUpdate = useCallback(
-    async (relayId: string, config: object): Promise<void> => {
+  const publishConfigUpdate = async (relayId: string, config: object): Promise<void> => {
       try {
         const response = await fetch('/api/mqtt/config/publish', {
           method: 'POST',
@@ -1101,13 +1071,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
         console.error('Error publishing config update:', error);
         throw error;
       }
-    },
-    []
-  );
+    };
 
   // Update network configuration
-  const updateNetworkConfig = useCallback(
-    async (
+  const updateNetworkConfig = async (
       relayId: string,
       networkData: {
         netStaSSID?: string;
@@ -1125,13 +1092,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
       console.warn(`📡 [HOOK] Network data:`, networkData);
       console.warn(`📡 [HOOK] Final config:`, config);
       await publishConfigUpdate(relayId, config);
-    },
-    [publishConfigUpdate]
-  );
+    };
 
   // Update MQTT configuration
-  const updateMqttConfig = useCallback(
-    async (
+  const updateMqttConfig = async (
       relayId: string,
       mqttData: {
         mqttSecure?: number;
@@ -1153,13 +1117,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
       console.warn(`📡 [HOOK] Updating MQTT config:`, config);
       await publishConfigUpdate(relayId, config);
-    },
-    [publishConfigUpdate]
-  );
+    };
 
   // Update COMS configuration
-  const updateComsConfig = useCallback(
-    async (
+  const updateComsConfig = async (
       relayId: string,
       comsData: {
         comsMode?: number;
@@ -1177,13 +1138,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
       console.warn(`📡 [HOOK] Updating COMS config:`, config);
       await publishConfigUpdate(relayId, config);
-    },
-    [publishConfigUpdate]
-  );
+    };
 
   // Update OTA configuration
-  const updateOtaConfig = useCallback(
-    async (
+  const updateOtaConfig = async (
       relayId: string,
       otaData: {
         otaURL?: string;
@@ -1197,13 +1155,10 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
       console.warn(`📡 [HOOK] Updating OTA config:`, config);
       await publishConfigUpdate(relayId, config);
-    },
-    [publishConfigUpdate]
-  );
+    };
 
   // Update App configuration
-  const updateAppConfig = useCallback(
-    async (
+  const updateAppConfig = async (
       relayId: string,
       appData: Record<string, unknown>
     ): Promise<void> => {
@@ -1215,9 +1170,7 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
 
       console.warn(`📡 [HOOK] Updating App config:`, config);
       await publishConfigUpdate(relayId, config);
-    },
-    [publishConfigUpdate]
-  );
+    };
 
   // ============================================================================
   // Effects

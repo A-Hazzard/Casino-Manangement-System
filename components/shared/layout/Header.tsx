@@ -51,7 +51,7 @@ import { ExitIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Header({
   selectedLicencee,
@@ -86,9 +86,9 @@ export default function Header({
   const userRoles = user?.roles || [];
 
   // Get user's licencee assignments (memoized to prevent unnecessary re-renders)
-  const userLicencees = useMemo(() => {
+  const userLicencees = (() => {
     return Array.isArray(user?.assignedLicencees) ? user.assignedLicencees : [];
-  }, [user?.assignedLicencees]);
+  })();
 
   // ============================================================================
   // Computed
@@ -229,8 +229,7 @@ export default function Header({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const resolveLicenceeCurrency = useCallback(
-    async (licenceeId: string): Promise<CurrencyCode> => {
+  const resolveLicenceeCurrency = async (licenceeId: string): Promise<CurrencyCode> => {
       if (!licenceeId || licenceeId === 'all' || licenceeId === '') {
         return 'USD';
       }
@@ -280,9 +279,7 @@ export default function Header({
       }
 
       return getLicenceeCurrency(licenceeId);
-    },
-    [licenceeCurrencyMap]
-  );
+    };
 
   // Wrapper function to handle licencee changes
   const handleLicenceeChange = async (newLicencee: string) => {

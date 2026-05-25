@@ -13,7 +13,7 @@
  */
 'use client';
 
-import { HTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, Ref } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
@@ -28,12 +28,9 @@ const DropdownMenu = DropdownMenuPrimitive.Root;
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
-const DropdownMenuSubTrigger = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+const DropdownMenuSubTrigger = ({ ref,  className, inset, children, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean;
-  }
->(({ className, inset, children, ...props }, ref) => (
+  } & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.SubTrigger>> }) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
@@ -46,14 +43,11 @@ const DropdownMenuSubTrigger = forwardRef<
     {children}
     <ChevronRight className="ml-auto h-4 w-4" />
   </DropdownMenuPrimitive.SubTrigger>
-));
+);
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
-const DropdownMenuSubContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.SubContent>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+const DropdownMenuSubContent = ({ ref,  className, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent> & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.SubContent>> }) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
@@ -62,14 +56,11 @@ const DropdownMenuSubContent = forwardRef<
     )}
     {...props}
   />
-));
+);
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-const DropdownMenuContent = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+const DropdownMenuContent = ({ ref,  className, sideOffset = 4, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.Content>> }) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
@@ -81,15 +72,12 @@ const DropdownMenuContent = forwardRef<
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
-));
+);
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-const DropdownMenuItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Item>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+const DropdownMenuItem = ({ ref,  className, inset, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
-  }
->(({ className, inset, ...props }, ref) => (
+  } & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.Item>> }) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
@@ -99,13 +87,10 @@ const DropdownMenuItem = forwardRef<
     )}
     {...props}
   />
-));
+);
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
-const DropdownMenuCheckboxItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
+const DropdownMenuCheckboxItem = ({ ref,  className, children, checked, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>> }) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
@@ -122,14 +107,11 @@ const DropdownMenuCheckboxItem = forwardRef<
     </span>
     {children}
   </DropdownMenuPrimitive.CheckboxItem>
-));
+);
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
 
-const DropdownMenuRadioItem = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
+const DropdownMenuRadioItem = ({ ref,  className, children, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.RadioItem>> }) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
@@ -145,15 +127,12 @@ const DropdownMenuRadioItem = forwardRef<
     </span>
     {children}
   </DropdownMenuPrimitive.RadioItem>
-));
+);
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-const DropdownMenuLabel = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Label>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+const DropdownMenuLabel = ({ ref,  className, inset, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
     inset?: boolean;
-  }
->(({ className, inset, ...props }, ref) => (
+  } & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.Label>> }) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
@@ -163,19 +142,16 @@ const DropdownMenuLabel = forwardRef<
     )}
     {...props}
   />
-));
+);
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
-const DropdownMenuSeparator = forwardRef<
-  ElementRef<typeof DropdownMenuPrimitive.Separator>,
-  ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
->(({ className, ...props }, ref) => (
+const DropdownMenuSeparator = ({ ref,  className, ...props }: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator> & { ref?: Ref<ElementRef<typeof DropdownMenuPrimitive.Separator>> }) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
     className={cn('-mx-1 my-1 h-px bg-muted', className)}
     {...props}
   />
-));
+);
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
 const DropdownMenuShortcut = ({

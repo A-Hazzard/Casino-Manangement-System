@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo } from 'react';
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
@@ -136,10 +136,10 @@ export default function ProfileCompletionModal({
   const needsPassword = !!invalidFields.password;
 
   // Calculate password strength for visual feedback
-  const passwordStrength = useMemo(() => {
+  const passwordStrength = (() => {
     if (!formData.newPassword) return null;
     return validatePasswordStrength(formData.newPassword);
-  }, [formData.newPassword]);
+  })();
 
   const hasPersonalErrors =
     invalidFields.username ||

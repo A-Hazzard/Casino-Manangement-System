@@ -26,7 +26,7 @@ import type {
   MetersReportResponse,
 } from '@/shared/types/meters';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type HourlyChartData = Array<{
@@ -102,19 +102,19 @@ export function useMetersTabData({
   // ============================================================================
   // Location Admin Logic
   // ============================================================================
-  const isLocationAdmin = useMemo(() => {
+  const isLocationAdmin = (() => {
     const userRoles = user?.roles || [];
     return userRoles.some(
       role =>
         typeof role === 'string' && role.toLowerCase() === 'location admin'
     );
-  }, [user?.roles]);
+  })();
 
   const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<
     string[]
   >([]);
 
-  const locationAdminLocations = useMemo(() => {
+  const locationAdminLocations = (() => {
     if (!isLocationAdmin) return [];
     let jwtLocations: string[] = [];
     if (
@@ -124,22 +124,19 @@ export function useMetersTabData({
       jwtLocations = user.assignedLocations.map(id => String(id));
     }
     return jwtLocations.length > 0 ? jwtLocations : fetchedLocationPermissions;
-  }, [isLocationAdmin, user?.assignedLocations, fetchedLocationPermissions]);
+  })();
 
   // ============================================================================
   // Helper Functions
   // ============================================================================
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
+  const calculateBatchNumber = (page: number) => {
       return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+    };
 
   // ============================================================================
   // Data Fetching Functions
   // ============================================================================
-  const fetchUserPermissions = useCallback(async () => {
+  const fetchUserPermissions = async () => {
     if (!isLocationAdmin || !user?._id) return;
 
     let jwtLocations: string[] = [];
@@ -176,9 +173,9 @@ export function useMetersTabData({
     } else {
       setLocationsLoading(false);
     }
-  }, [isLocationAdmin, user?._id, user?.assignedLocations]);
+  };
 
-  const fetchLocations = useCallback(async () => {
+  const fetchLocations = async () => {
     await makeLocationsRequest(async signal => {
       try {
         setLocationsLoading(true);
@@ -236,16 +233,9 @@ export function useMetersTabData({
         setLocationsLoading(false);
       }
     });
-  }, [
-    isLocationAdmin,
-    selectedLicencee,
-    locationAdminLocations,
-    fetchUserPermissions,
-    makeLocationsRequest,
-  ]);
+  };
 
-  const fetchMetersData = useCallback(
-    async (batch: number = 1) => {
+  const fetchMetersData = async (batch: number = 1) => {
       if (selectedLocations.length === 0) {
         setAllMetersData([]);
         setHasData(false);
@@ -372,19 +362,7 @@ export function useMetersTabData({
           setReportsLoading(false);
         }
       });
-    },
-    [
-      selectedLocations,
-      activeMetricsFilter,
-      customDateRange,
-      selectedLicencee,
-      displayCurrency,
-      chartGranularity,
-      itemsPerBatch,
-      setReportsLoading,
-      makeMetersRequest,
-    ]
-  );
+    };
 
   // ============================================================================
   // Effects
@@ -463,9 +441,9 @@ export function useMetersTabData({
   ]);
 
   // Filter meters data based on search term
-  const filteredMetersData = useMemo(() => {
+  const filteredMetersData = (() => {
     return filterMetersData(allMetersData, debouncedSearchTerm);
-  }, [allMetersData, debouncedSearchTerm]);
+  })();
 
   // Fetch hourly chart data for filtered machines when search changes
   useEffect(() => {
@@ -580,19 +558,19 @@ export function useMetersTabData({
   // Computed
   // ============================================================================
   // Get items for current page from filtered data
-  const paginatedMetersData = useMemo(() => {
+  const paginatedMetersData = (() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     return filteredMetersData.slice(startIndex, endIndex);
-  }, [filteredMetersData, currentPage, itemsPerPage, pagesPerBatch]);
+  })();
 
   // Calculate total pages based on filtered data
-  const totalPages = useMemo(() => {
+  const totalPages = (() => {
     const totalItems = filteredMetersData.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [filteredMetersData.length, itemsPerPage]);
+  })();
 
   // Update hasData
   useEffect(() => {

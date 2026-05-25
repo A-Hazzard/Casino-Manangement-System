@@ -21,7 +21,7 @@ import PasswordUpdateModal from '@/components/shared/ui/PasswordUpdateModal';
 import { logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 
 export default function TempPasswordGate() {
   // ============================================================================
@@ -50,8 +50,7 @@ export default function TempPasswordGate() {
    * Calls /api/profile to update the password then refreshes current-user.
    * Returns null on success, or an error message string on failure.
    */
-  const handlePasswordUpdate = useCallback(
-    async (
+  const handlePasswordUpdate = async (
       currentPassword: string,
       newPassword: string,
       phone?: string
@@ -99,18 +98,16 @@ export default function TempPasswordGate() {
       } finally {
         setLoading(false);
       }
-    },
-    [user, setUser]
-  );
+    };
 
-  const handleLogout = useCallback(async () => {
+  const handleLogout = async () => {
     try {
       await logoutUser();
     } finally {
       clearUser();
       window.location.href = '/login';
     }
-  }, [clearUser]);
+  };
 
   // ============================================================================
   // Render

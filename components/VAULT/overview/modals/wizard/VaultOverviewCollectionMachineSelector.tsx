@@ -18,8 +18,6 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
-import { useMemo } from 'react';
-
 interface VaultOverviewCollectionMachineSelectorProps {
   machines: GamingMachine[];
   selectedMachineId: string | null;
@@ -42,7 +40,7 @@ export default function VaultOverviewCollectionMachineSelector({
   // ============================================================================
   // Computed
   // ============================================================================
-  const filteredMachines = useMemo(() => {
+  const filteredMachines = (() => {
     // Sort machines by most moneyIn (descending)
     const sortedMachines = [...machines].sort(
       (a, b) => (b.moneyIn || 0) - (a.moneyIn || 0)
@@ -59,7 +57,7 @@ export default function VaultOverviewCollectionMachineSelector({
         m.assetNumber?.toLowerCase().includes(lowerTerm) ||
         m.locationName?.toLowerCase().includes(lowerTerm)
     );
-  }, [machines, searchTerm]);
+  })();
 
   const collectedCount = collectedMachineIds.length;
   const totalCount = machines.length;

@@ -51,7 +51,7 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
@@ -90,10 +90,7 @@ export default function VaultOverviewRecordExpenseModal({
     new Set()
   );
 
-  const denomsList = useMemo(
-    () => getDenominationValues(selectedLicencee),
-    [selectedLicencee]
-  );
+  const denomsList = getDenominationValues(selectedLicencee);
 
   // Update denominations when licencee changes or modal opens
   useEffect(() => {
@@ -207,10 +204,7 @@ export default function VaultOverviewRecordExpenseModal({
   /**
    * Check if form is valid for submission
    */
-  const isAllTouched = useMemo(
-    () => denomsList.every(d => touchedDenominations.has(Number(d))),
-    [denomsList, touchedDenominations]
-  );
+  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
   const isValid = category !== '' && (amountNum > 0 || isAllTouched);
 
   // ============================================================================

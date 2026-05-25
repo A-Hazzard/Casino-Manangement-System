@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/shared/ui/dialog';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import ReactCrop, {
   Crop,
   PixelCrop,
@@ -96,8 +96,7 @@ export default function CircleCropModal({
   /**
    * Generates the final circular cropped image as a data URL
    */
-  const getCroppedImg = useCallback(
-    (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
+  const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
@@ -146,9 +145,7 @@ export default function CircleCropModal({
 
       const dataUrl = circleCanvas.toDataURL('image/png', 1.0);
       return Promise.resolve({ url: dataUrl });
-    },
-    []
-  );
+    };
 
   const handleApply = async () => {
     if (!imgRef.current || !completedCrop) return;

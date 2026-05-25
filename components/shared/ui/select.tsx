@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { forwardRef } from 'react';
+import { Ref } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import { CheckIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import * as SelectPrimitive from '@radix-ui/react-select';
@@ -27,10 +27,7 @@ const Select = SelectPrimitive.Root;
 
 const SelectValue = SelectPrimitive.Value;
 
-const SelectTrigger = forwardRef<
-  ElementRef<typeof SelectPrimitive.Trigger>,
-  ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+const SelectTrigger = ({ ref,  className, children, ...props }: ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & { ref?: Ref<ElementRef<typeof SelectPrimitive.Trigger>> }) => (
   <SelectPrimitive.Trigger
     ref={ref}
     suppressHydrationWarning
@@ -45,13 +42,10 @@ const SelectTrigger = forwardRef<
       <ChevronDownIcon className="h-4 w-4 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
-));
+);
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
-const SelectContent = forwardRef<
-  ElementRef<typeof SelectPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = 'popper', ...props }, ref) => (
+const SelectContent = ({ ref,  className, children, position = 'popper', ...props }: ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & { ref?: Ref<ElementRef<typeof SelectPrimitive.Content>> }) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
@@ -76,13 +70,10 @@ const SelectContent = forwardRef<
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
-));
+);
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
-const SelectItem = forwardRef<
-  ElementRef<typeof SelectPrimitive.Item>,
-  ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
+const SelectItem = ({ ref,  className, children, ...props }: ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & { ref?: Ref<ElementRef<typeof SelectPrimitive.Item>> }) => (
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
@@ -98,7 +89,7 @@ const SelectItem = forwardRef<
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
-));
+);
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
 export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };

@@ -5,7 +5,7 @@
 
 import { mapToCabinetProps } from '@/lib/utils/cabinet';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 
 export type CabinetSortOption =
   | 'assetNumber'
@@ -85,7 +85,7 @@ export const useCabinetSorting = ({
   // ============================================================================
 
   // Sort toggle handler
-  const handleSortToggle = useCallback(() => {
+  const handleSortToggle = () => {
     console.warn(
       'Toggling sort order from',
       sortOrder,
@@ -93,11 +93,10 @@ export const useCabinetSorting = ({
       sortOrder === 'desc' ? 'asc' : 'desc'
     );
     setSortOrder(previousOrder => (previousOrder === 'desc' ? 'asc' : 'desc'));
-  }, [sortOrder]);
+  };
 
   // Column sort handler
-  const handleColumnSort = useCallback(
-    (column: CabinetSortOption) => {
+  const handleColumnSort = (column: CabinetSortOption) => {
       console.warn('Sorting by column:', column, 'current option:', sortOption);
 
       if (sortOption === column) {
@@ -107,16 +106,14 @@ export const useCabinetSorting = ({
         setSortOrder('desc');
         console.warn('New sort option:', column, 'order: desc');
       }
-    },
-    [sortOption, handleSortToggle]
-  );
+    };
 
   // ============================================================================
   // Computed
   // ============================================================================
 
   // Sort cabinets based on current sort option and order
-  const sortedCabinets = useMemo(() => {
+  const sortedCabinets = (() => {
     console.warn('Sorting cabinets:', {
       totalCabinets: filteredCabinets.length,
       sortOption,
@@ -219,10 +216,10 @@ export const useCabinetSorting = ({
 
     console.warn('Sorted cabinets result:', sorted.length);
     return sorted;
-  }, [filteredCabinets, sortOption, sortOrder]);
+  })();
 
   // Paginate sorted cabinets - slice from the current batch (100 items)
-  const paginatedCabinets = useMemo(() => {
+  const paginatedCabinets = (() => {
     if (useBatchPagination) {
       // Batch mode: 100-item batches, 5 pages per batch (used by cabinets page)
       const pagesPerBatch = 5; // 100 items / 20 items per page = 5 pages
@@ -259,10 +256,10 @@ export const useCabinetSorting = ({
     });
 
     return paginated;
-  }, [sortedCabinets, currentPage, itemsPerPage, useBatchPagination]);
+  })();
 
   // Calculate total pages
-  const totalPages = useMemo(() => {
+  const totalPages = (() => {
     if (totalCount !== undefined) {
       // If we have a backend totalCount, use it for global total pages
       const total = Math.max(1, Math.ceil(totalCount / itemsPerPage));
@@ -301,15 +298,15 @@ export const useCabinetSorting = ({
       'items'
     );
     return total;
-  }, [sortedCabinets.length, itemsPerPage, useBatchPagination]);
+  })();
 
   // Cabinet transformation function
-  const transformCabinet = useMemo(() => {
+  const transformCabinet = (() => {
     return (cabinet: Cabinet) => {
       console.warn('Transforming cabinet for display:', cabinet._id);
       return mapToCabinetProps(cabinet);
     };
-  }, []);
+  })();
 
   return {
     // Sort state

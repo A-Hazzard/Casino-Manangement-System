@@ -16,7 +16,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
@@ -212,7 +212,7 @@ export default function LocationsDetailsPageContent() {
   };
 
   // Refresh handler
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     // If members view is active, trigger members refresh handler
     if (activeView === 'members' && membersRefreshHandlerRef.current) {
       membersRefreshHandlerRef.current();
@@ -232,13 +232,7 @@ export default function LocationsDetailsPageContent() {
     await cabinetsData.refreshCabinets();
     // Refresh chart data
     chartDataHook.refreshChart();
-  }, [
-    activeView,
-    refreshMachineStats,
-    refreshMembershipStats,
-    cabinetsData,
-    chartDataHook,
-  ]);
+  };
 
   // Refresh machine stats when date filters change
   useEffect(() => {

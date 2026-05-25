@@ -4,8 +4,6 @@ import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { endOfMonth, setMonth, setYear, startOfMonth } from 'date-fns';
-import { useMemo } from 'react';
-
 import { DateRange as RDPDateRange } from 'react-day-picker';
 
 type MonthYearPickerProps = {
@@ -38,8 +36,7 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
   // State & Hooks
   // ============================================================================
   // Options for months
-  const monthOptions = useMemo(
-    () => [
+  const monthOptions = [
       { value: '0', label: 'January' },
       { value: '1', label: 'February' },
       { value: '2', label: 'March' },
@@ -52,19 +49,17 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
       { value: '9', label: 'October' },
       { value: '10', label: 'November' },
       { value: '11', label: 'December' },
-    ],
-    []
-  );
+    ];
 
   // Options for years (from 2020 to current year)
-  const yearOptions = useMemo(() => {
+  const yearOptions = (() => {
     const currentYear = new Date().getFullYear();
     const years = [];
     for (let y = currentYear; y >= 2020; y--) {
       years.push({ value: y.toString(), label: y.toString() });
     }
     return years;
-  }, []);
+  })();
 
   // ============================================================================
   // Handlers

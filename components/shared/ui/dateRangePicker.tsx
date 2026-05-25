@@ -14,14 +14,7 @@
  * @param disabled - Whether the picker is disabled
  */
 
-import {
-  Component,
-  FC,
-  ReactNode,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react';
+import { Component, FC, ReactNode, useState } from 'react';
 import { ErrorInfo } from 'react';
 import { format } from 'date-fns';
 import {
@@ -105,7 +98,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const safeValue: RDPDateRange = useMemo(() => {
+  const safeValue: RDPDateRange = (() => {
     if (!value) {
       return { from: undefined, to: undefined };
     }
@@ -131,10 +124,9 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
 
     // If neither is valid, return empty range
     return { from: undefined, to: undefined };
-  }, [value]);
+  })();
 
-  const handleSelect: SelectRangeEventHandler = useCallback(
-    (range: RDPDateRange | undefined) => {
+  const handleSelect: SelectRangeEventHandler = (range: RDPDateRange | undefined) => {
       if (onChange) {
         onChange(range);
       }
@@ -143,11 +135,9 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
         setIsOpen(false);
       }
       // Keep popover open if only one date is selected (user needs to select second date)
-    },
-    [onChange]
-  );
+    };
 
-  const displayValue = useMemo(() => {
+  const displayValue = (() => {
     try {
       if (safeValue.from && safeValue.to) {
         // Validate dates before formatting
@@ -175,7 +165,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
       console.warn('Error formatting date range:', error);
       return placeholder;
     }
-  }, [safeValue, placeholder]);
+  })();
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>

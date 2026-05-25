@@ -25,7 +25,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
 import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
@@ -178,7 +178,7 @@ export default function CabinetsEditCabinetModal({
   };
 
   // Fetch locations data
-  const fetchLocations = useCallback(async () => {
+  const fetchLocations = async () => {
     try {
       setLocationsLoading(true);
       const response = await axios.get('/api/locations');
@@ -199,10 +199,10 @@ export default function CabinetsEditCabinetModal({
     } finally {
       setLocationsLoading(false);
     }
-  }, []);
+  };
 
   // Fetch manufacturers data
-  const fetchManufacturersData = useCallback(async () => {
+  const fetchManufacturersData = async () => {
     try {
       setManufacturersLoading(true);
       const fetchedManufacturers = await fetchManufacturers();
@@ -214,7 +214,7 @@ export default function CabinetsEditCabinetModal({
     } finally {
       setManufacturersLoading(false);
     }
-  }, []);
+  };
 
   type CollectionSettingsForm = {
     multiplier?: string;

@@ -21,8 +21,6 @@ import { Label } from '@/components/shared/ui/label';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { User } from '@/lib/types/administration';
 import type { Licencee } from '@/lib/types/common';
-import { useMemo } from 'react';
-
 type ProfileAssignmentsProps = {
   userData: User;
   isEditMode: boolean;
@@ -96,7 +94,7 @@ export default function ProfileAssignments({
   // ============================================================================
   // Computed
   // ============================================================================
-  const displayRows = useMemo(() => {
+  const displayRows = (() => {
     // If "All Locations" (the master global flag) is checked or if 'all' is in selectedLocationIds
     const isActuallyAllSelected =
       allLocationsSelected || selectedLocationIds.includes('all');
@@ -196,13 +194,7 @@ export default function ProfileAssignments({
     });
 
     return rows.sort((a, b) => a.locationName.localeCompare(b.locationName));
-  }, [
-    allLocationsSelected,
-    selectedLocationIds,
-    locations,
-    licencees,
-    missingLocationNames,
-  ]);
+  })();
 
   // Only admins and developers can edit assigned locations and licencees
   const canEditAssignments = userData.roles?.some(role =>

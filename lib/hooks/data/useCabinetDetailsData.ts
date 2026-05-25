@@ -10,7 +10,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { isAbortError } from '@/lib/utils/errors';
 import { differenceInMinutes } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { dateRange } from '@/lib/types/index';
 
@@ -62,7 +62,7 @@ export function useCabinetDetailsData({
   // Data Fetching
   // ============================================================================
 
-  const fetchCabinetDetailsData = useCallback(async () => {
+  const fetchCabinetDetailsData = async () => {
     setError(null);
     setErrorType('unknown');
     setMetricsLoading(true);
@@ -226,24 +226,12 @@ export function useCabinetDetailsData({
         setMetricsLoading(false);
       }
     }
-  }, [
-    slug,
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    displayCurrency,
-    makeRequest,
-    // Include specific date values to ensure reference changes are caught
-    customDateRange?.startDate?.getTime(),
-    customDateRange?.endDate?.getTime(),
-    customDateRange?.from?.getTime(),
-    customDateRange?.to?.getTime(),
-  ]);
+  };
 
   // Callback function to refresh cabinet data after updates
-  const handleCabinetUpdated = useCallback(() => {
+  const handleCabinetUpdated = () => {
     fetchCabinetDetailsData();
-  }, [fetchCabinetDetailsData]);
+  };
 
   // ============================================================================
   // Effects

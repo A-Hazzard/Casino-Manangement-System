@@ -22,7 +22,7 @@ import { isAbortError } from '@/lib/utils/errors';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Banknote, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TimePeriod } from '@/shared/types/common';
 
 import { toast } from 'sonner';
@@ -86,8 +86,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
     customDateRangeRef.current = customDateRange;
   }, [customDateRange]);
 
-  const setCustomDateRange = useCallback(
-    (dateRange: DateRange | undefined) => {
+  const setCustomDateRange = (dateRange: DateRange | undefined) => {
       setCustomDateRangeLocal(dateRange);
       if (dateRange?.from && dateRange?.to) {
         setBillValidatorDateRange(machineId, {
@@ -97,9 +96,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
       } else {
         setBillValidatorDateRange(machineId, undefined);
       }
-    },
-    [machineId, setBillValidatorDateRange]
-  );
+    };
 
   const timeFrames = [
     { time: 'Today', value: 'Today' as TimePeriod },
@@ -113,7 +110,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
   // ============================================================================
   // Helpers & Handlers
   // ============================================================================
-  const fetchBillValidatorData = useCallback(async () => {
+  const fetchBillValidatorData = async () => {
     if (!machineId) return;
 
     setLoading(true);
@@ -152,7 +149,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
     }, 'bill-validator');
 
     if (result !== null) setLoading(false);
-  }, [machineId, timePeriod, makeBillValidatorRequest]);
+  };
 
   useEffect(() => {
     fetchBillValidatorData();

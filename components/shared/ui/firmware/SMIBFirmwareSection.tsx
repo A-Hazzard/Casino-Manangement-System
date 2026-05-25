@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/shared/ui/button';
 import { Plus } from 'lucide-react';
@@ -32,7 +32,7 @@ export default function SMIBFirmwareSection({
   // Handlers
   // ============================================================================
 
-  const fetchFirmwares = useCallback(async () => {
+  const fetchFirmwares = async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/firmwares');
@@ -46,7 +46,7 @@ export default function SMIBFirmwareSection({
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   const handleUploadComplete = () => {
     fetchFirmwares(); // Refresh the list after upload

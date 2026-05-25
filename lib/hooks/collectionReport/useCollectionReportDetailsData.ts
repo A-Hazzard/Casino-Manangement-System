@@ -23,7 +23,7 @@ import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { validateCollectionReportData } from '@/lib/utils/validation';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -129,7 +129,7 @@ export function useCollectionReportDetailsData() {
   /**
    * Data sorted by the selected field, with special handling for machine names
    */
-  const filteredAndSortedData = useMemo(() => {
+  const filteredAndSortedData = (() => {
     const metricsData = reportData?.machineMetrics || [];
     let sorted = [...metricsData];
 
@@ -158,12 +158,12 @@ export function useCollectionReportDetailsData() {
     }
 
     return sorted;
-  }, [reportData?.machineMetrics, sortField, sortDirection]);
+  })();
 
   /**
    * Data filtered by search term across multiple fields
    */
-  const filteredSortedAndSearchedData = useMemo(() => {
+  const filteredSortedAndSearchedData = (() => {
     let data = filteredAndSortedData;
 
     if (searchTerm.trim()) {
@@ -180,26 +180,26 @@ export function useCollectionReportDetailsData() {
     }
 
     return data;
-  }, [filteredAndSortedData, searchTerm]);
+  })();
 
   /**
    * Total pages for machine metrics pagination
    */
-  const machineTotalPages = useMemo(() => {
+  const machineTotalPages = (() => {
     const total = Math.ceil(
       filteredSortedAndSearchedData.length / ITEMS_PER_PAGE
     );
     return total > 0 ? total : 1;
-  }, [filteredSortedAndSearchedData.length]);
+  })();
 
   /**
    * Current page slice of machine metrics
    */
-  const paginatedMetricsData = useMemo(() => {
+  const paginatedMetricsData = (() => {
     const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return filteredSortedAndSearchedData.slice(startIndex, endIndex);
-  }, [filteredSortedAndSearchedData, machinePage]);
+  })();
 
   // ==========================================================================
   // Handlers
@@ -246,7 +246,7 @@ export function useCollectionReportDetailsData() {
   /**
    * Refresh report and collections data
    */
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     setLoading(true);
     try {
       const data = await fetchCollectionReportById(reportId);
@@ -262,7 +262,7 @@ export function useCollectionReportDetailsData() {
     } finally {
       setLoading(false);
     }
-  }, [reportId]);
+  };
 
   // ==========================================================================
   // Effects

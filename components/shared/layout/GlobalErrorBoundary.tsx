@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback, ErrorInfo } from 'react';
+import { useState, useEffect, ErrorInfo } from 'react';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 import ErrorBoundary from '@/components/shared/ui/errors/ErrorBoundary';
@@ -221,7 +221,7 @@ export default function GlobalErrorBoundary({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleWindowError = useCallback((event: ErrorEvent) => {
+  const handleWindowError = (event: ErrorEvent) => {
     const error = event.error as Error | null;
     if (!error) return;
 
@@ -243,10 +243,9 @@ export default function GlobalErrorBoundary({
     );
     sendErrorToServer(error, undefined, 'window');
     setErrorDetails({ error });
-  }, []);
+  };
 
-  const handleUnhandledRejection = useCallback(
-    (event: PromiseRejectionEvent) => {
+  const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
       if (reason && typeof reason === 'object') {
         const name = (reason as Error).name;
@@ -271,9 +270,7 @@ export default function GlobalErrorBoundary({
       );
       sendErrorToServer(error, undefined, 'promise');
       setErrorDetails({ error });
-    },
-    []
-  );
+    };
 
   // ============================================================================
   // Effects
@@ -299,7 +296,7 @@ export default function GlobalErrorBoundary({
   // ============================================================================
   // Handlers (continued)
   // ============================================================================
-  const handleReactError = useCallback((error: Error, info: ErrorInfo) => {
+  const handleReactError = (error: Error, info: ErrorInfo) => {
     const componentStack = info.componentStack ?? undefined;
     console.error(
       '[GlobalErrorBoundary] React component error:',
@@ -311,12 +308,12 @@ export default function GlobalErrorBoundary({
     );
     sendErrorToServer(error, componentStack, 'react');
     setErrorDetails({ error, componentStack });
-  }, []);
+  };
 
-  const retry = useCallback(() => {
+  const retry = () => {
     setErrorDetails(null);
     window.location.reload();
-  }, []);
+  };
 
   // ============================================================================
   // Render

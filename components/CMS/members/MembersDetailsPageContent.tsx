@@ -19,7 +19,7 @@ import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import axios from 'axios';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import MembersFilterControlsSkeleton from '@/components/CMS/members/MembersFilterControlsSkeleton';
 import MembersPlayerHeader from '@/components/CMS/members/MembersPlayerHeader';
@@ -96,7 +96,7 @@ export default function MembersDetailsPageContent() {
   // ============================================================================
   // Data Fetching Functions
   // ============================================================================
-  const fetchMemberData = useCallback(async () => {
+  const fetchMemberData = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -155,7 +155,7 @@ export default function MembersDetailsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [memberId, currentPage, activeMetricsFilter, customDateRange]);
+  };
 
   // ============================================================================
   // Effects - Data Fetching

@@ -12,8 +12,6 @@
  */
 
 'use client';
-
-import { useMemo } from 'react';
 import CollectionReportFilters from './CollectionReportFilters';
 import CollectionReportCards from './CollectionReportCards';
 import Link from 'next/link';
@@ -25,7 +23,7 @@ export default function CollectionReportMobileLayout(
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const locationSummary = useMemo(() => {
+  const locationSummary = (() => {
     if (
       !props.selectedLocation ||
       props.selectedLocation === 'all' ||
@@ -55,7 +53,7 @@ export default function CollectionReportMobileLayout(
     ) : (
       loc?.name || 'Selected Location'
     );
-  }, [props.selectedLocation, props.locations]);
+  })();
 
   // ============================================================================
   // Render

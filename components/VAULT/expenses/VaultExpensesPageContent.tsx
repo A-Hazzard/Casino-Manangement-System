@@ -61,7 +61,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -122,7 +122,7 @@ export default function VaultExpensesPageContent() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -156,7 +156,7 @@ export default function VaultExpensesPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [locationId, dateRange, category]);
+  };
 
   /**
    * Calculate summary totals from expenses

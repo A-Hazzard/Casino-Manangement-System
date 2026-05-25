@@ -11,7 +11,7 @@ import type {
   UnbalancedShiftInfo,
   VaultBalance,
 } from '@/shared/types/vault';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 export type CloseDayStep = 'softCount' | null;
@@ -33,7 +33,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
   // Handlers
   // ============================================================================
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = async () => {
     if (!locationId) return;
     setLoading(true);
     try {
@@ -55,9 +55,9 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
     } finally {
       setLoading(false);
     }
-  }, [locationId]);
+  };
 
-  const startCloseDay = useCallback(async () => {
+  const startCloseDay = async () => {
     if (!locationId) return;
 
     setLoading(true);
@@ -108,18 +108,17 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
     } finally {
       setLoading(false);
     }
-  }, [locationId, username]);
+  };
 
-  const handleNextStep = useCallback(() => {
+  const handleNextStep = () => {
     setActiveStep(null);
-  }, []);
+  };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setActiveStep(null);
-  }, []);
+  };
 
-  const handleConfirm = useCallback(
-    async (type: string) => {
+  const handleConfirm = async (type: string) => {
       if (type === 'softCount') {
         // 1. Fetch latest balance to ensure we close with correct data
         setLoading(true);
@@ -155,9 +154,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
           setLoading(false);
         }
       }
-    },
-    [locationId, vaultBalance, fetchStatus]
-  );
+    };
 
   return {
     activeStep,

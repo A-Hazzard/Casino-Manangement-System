@@ -12,8 +12,6 @@
  */
 
 'use client';
-
-import { useMemo } from 'react';
 import type { CollectionReportDesktopUIProps } from '@/lib/types/components';
 import CollectionReportFilters from './CollectionReportFilters';
 import CollectionReportTable from './CollectionReportTable';
@@ -25,7 +23,7 @@ export default function CollectionReportDesktopLayout(
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const locationSummary = useMemo(() => {
+  const locationSummary = (() => {
     if (
       !props.selectedLocation ||
       props.selectedLocation === 'all' ||
@@ -55,7 +53,7 @@ export default function CollectionReportDesktopLayout(
     ) : (
       loc?.name || 'Selected Location'
     );
-  }, [props.selectedLocation, props.locations]);
+  })();
 
   // ============================================================================
   // Render

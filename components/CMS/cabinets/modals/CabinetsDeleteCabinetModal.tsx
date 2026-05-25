@@ -10,7 +10,7 @@
  */
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import axios from 'axios';
@@ -40,14 +40,14 @@ export default function CabinetsDeleteCabinetModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const isDeveloper = useMemo(() => {
+  const isDeveloper = (() => {
     const roles = user?.roles || [];
     return roles.map((r: string) => r.toLowerCase()).includes('developer');
-  }, [user]);
+  })();
 
-  const canPermanentlyDelete = useMemo(() => {
+  const canPermanentlyDelete = (() => {
     return isDeveloper;
-  }, [isDeveloper]);
+  })();
 
   // ============================================================================
   // Effects

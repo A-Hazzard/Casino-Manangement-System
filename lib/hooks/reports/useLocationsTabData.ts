@@ -30,7 +30,7 @@ import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
 import { LocationTrendsResponse } from '@/shared/types/reports';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseLocationsTabDataProps = {
@@ -128,17 +128,14 @@ export function useLocationsTabData({
   /**
    * Calculate which batch we need based on current page
    */
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
+  const calculateBatchNumber = (page: number) => {
       return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+    };
 
   /**
    * Convert activeMetricsFilter to TimePeriod
    */
-  const getTimePeriod = useCallback((): TimePeriod => {
+  const getTimePeriod = (): TimePeriod => {
     if (activeMetricsFilter === 'Today') return 'Today';
     if (activeMetricsFilter === 'Yesterday') return 'Yesterday';
     if (activeMetricsFilter === 'last7days' || activeMetricsFilter === '7d')
@@ -149,13 +146,12 @@ export function useLocationsTabData({
     if (activeMetricsFilter === 'All Time') return 'All Time';
     if (activeMetricsFilter === 'Custom') return 'Custom';
     return 'Today';
-  }, [activeMetricsFilter]);
+  };
 
   /**
    * Build time period params for API calls
    */
-  const buildTimePeriodParams = useCallback(
-    (params: Record<string, string | string[]>) => {
+  const buildTimePeriodParams = (params: Record<string, string | string[]>) => {
       if (activeMetricsFilter === 'Today') {
         params.timePeriod = 'Today';
       } else if (activeMetricsFilter === 'Yesterday') {
@@ -193,9 +189,7 @@ export function useLocationsTabData({
       } else {
         params.timePeriod = 'Today';
       }
-    },
-    [activeMetricsFilter, customDateRange]
-  );
+    };
 
   // ============================================================================
   // Data Fetching Functions
@@ -204,7 +198,7 @@ export function useLocationsTabData({
   /**
    * Fast fetch for gaming locations (Phase 1)
    */
-  const fetchGamingLocationsAsync = useCallback(async () => {
+  const fetchGamingLocationsAsync = async () => {
     await makeGamingLocationsRequest(async signal => {
       setGamingLocationsLoading(true);
       try {
@@ -236,12 +230,12 @@ export function useLocationsTabData({
         setGamingLocationsLoading(false);
       }
     });
-  }, [selectedLicencee, makeGamingLocationsRequest]);
+  };
 
   /**
    * Fetch location aggregation data for map (same API as dashboard)
    */
-  const fetchLocationAggregationAsync = useCallback(async () => {
+  const fetchLocationAggregationAsync = async () => {
     await makeLocationAggregationRequest(async signal => {
       setLocationAggregatesLoading(true);
       try {
@@ -342,19 +336,12 @@ export function useLocationsTabData({
         setLocationAggregatesLoading(false);
       }
     });
-  }, [
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    displayCurrency,
-    makeLocationAggregationRequest,
-  ]);
+  };
 
   /**
    * Fetch a specific batch of locations
    */
-  const fetchBatch = useCallback(
-    async (page: number = 1, limit: number = 50, signal?: AbortSignal) => {
+  const fetchBatch = async (page: number = 1, limit: number = 50, signal?: AbortSignal) => {
       const effectiveLicencee =
         selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
 
@@ -401,23 +388,12 @@ export function useLocationsTabData({
         signal,
         locationsToFetch
       );
-    },
-    [
-      activeMetricsFilter,
-      customDateRange,
-      displayCurrency,
-      selectedLicencee,
-      activeTab,
-      selectedSasLocations,
-      selectedRevenueLocations,
-      getTimePeriod,
-    ]
-  );
+    };
 
   /**
    * Fetch metrics totals from dashboard API
    */
-  const fetchMetricsTotals = useCallback(async () => {
+  const fetchMetricsTotals = async () => {
     setMetricsTotalsLoading(true);
     try {
       await fetchDashboardTotals(
@@ -441,13 +417,12 @@ export function useLocationsTabData({
       console.error('Error fetching metrics totals:', error);
       setMetricsTotalsLoading(false);
     }
-  }, [activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency]);
+  };
 
   /**
    * Simplified data fetching for locations with batch loading
    */
-  const fetchLocationDataAsync = useCallback(
-    async (specificLocations?: string[]) => {
+  const fetchLocationDataAsync = async (specificLocations?: string[]) => {
       const result = await makeLocationDataRequest(async signal => {
         setGamingLocationsLoading(true);
         setLocationsLoading(true);
@@ -758,27 +733,12 @@ export function useLocationsTabData({
 
         return null;
       }
-    },
-    [
-      selectedLicencee,
-      activeTab,
-      fetchGamingLocationsAsync,
-      selectedSasLocations,
-      selectedRevenueLocations,
-      displayCurrency,
-      setLoading,
-      fetchBatch,
-      itemsPerBatch,
-      itemsPerPage,
-      makeLocationDataRequest,
-      buildTimePeriodParams,
-    ]
-  );
+    };
 
   /**
    * Function to fetch top machines data
    */
-  const fetchTopMachines = useCallback(async () => {
+  const fetchTopMachines = async () => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
@@ -853,19 +813,12 @@ export function useLocationsTabData({
         // Don't set global loading - use specific topMachinesLoading state
       }
     });
-  }, [
-    selectedSasLocations,
-    selectedRevenueLocations,
-    activeTab,
-    selectedLicencee,
-    buildTimePeriodParams,
-    makeTopMachinesRequest,
-  ]);
+  };
 
   /**
    * Function to fetch bottom machines data (least performing)
    */
-  const fetchBottomMachines = useCallback(async () => {
+  const fetchBottomMachines = async () => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
@@ -943,20 +896,12 @@ export function useLocationsTabData({
         // Don't set global loading - use specific bottomMachinesLoading state
       }
     });
-  }, [
-    selectedSasLocations,
-    selectedRevenueLocations,
-    activeTab,
-    selectedLicencee,
-    buildTimePeriodParams,
-    makeBottomMachinesRequest,
-  ]);
+  };
 
   /**
    * Function to fetch location trend data (daily or hourly based on time period)
    */
-  const fetchLocationTrendData = useCallback(
-    async (overrideLocationIds?: string[]) => {
+  const fetchLocationTrendData = async (overrideLocationIds?: string[]) => {
       const currentSelectedLocations =
         activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
           ? selectedSasLocations
@@ -1018,36 +963,25 @@ export function useLocationsTabData({
           setLocationTrendLoading(false);
         }
       });
-    },
-    [
-      selectedSasLocations,
-      selectedRevenueLocations,
-      activeTab,
-      selectedLicencee,
-      displayCurrency,
-      chartGranularity,
-      makeTrendDataRequest,
-      buildTimePeriodParams,
-    ]
-  );
+    };
 
   // ============================================================================
   // Computed
   // ============================================================================
-  const paginatedLocations = useMemo(() => {
+  const paginatedLocations = (() => {
     if (accumulatedLocations.length === 0) return [];
     const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return accumulatedLocations.slice(startIndex, endIndex);
-  }, [accumulatedLocations, currentPage, itemsPerPage]);
+  })();
 
   // Create stable date range key to prevent infinite loops
-  const dateRangeKey = useMemo(() => {
+  const dateRangeKey = (() => {
     if (!customDateRange?.startDate || !customDateRange?.endDate) {
       return '';
     }
     return `${customDateRange.startDate.getTime()}-${customDateRange.endDate.getTime()}`;
-  }, [customDateRange?.startDate, customDateRange?.endDate]);
+  })();
 
   // ============================================================================
   // Effects

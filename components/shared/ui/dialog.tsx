@@ -12,7 +12,7 @@
  */
 'use client';
 
-import { HTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, Ref } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
@@ -29,10 +29,7 @@ const DialogPortal = DialogPrimitive.Portal;
 
 const DialogClose = DialogPrimitive.Close;
 
-const DialogOverlay = forwardRef<
-  ElementRef<typeof DialogPrimitive.Overlay>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+const DialogOverlay = ({ ref,  className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & { ref?: Ref<ElementRef<typeof DialogPrimitive.Overlay>> }) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
@@ -41,28 +38,21 @@ const DialogOverlay = forwardRef<
     )}
     {...props}
   />
-));
+);
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DialogContent = forwardRef<
-  ElementRef<typeof DialogPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    backdropClassName?: string;
-    showCloseButton?: boolean;
-    isMobileFullScreen?: boolean;
-  }
->(
-  (
-    {
+const DialogContent = ({ ref, 
       className,
       children,
       backdropClassName,
       showCloseButton = true,
       isMobileFullScreen = true,
       ...props
-    },
-    ref
-  ) => (
+    }: ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    backdropClassName?: string;
+    showCloseButton?: boolean;
+    isMobileFullScreen?: boolean;
+  } & { ref?: Ref<ElementRef<typeof DialogPrimitive.Content>> }) => (
     <DialogPortal>
       <DialogOverlay className={backdropClassName} />
       <DialogPrimitive.Content
@@ -86,8 +76,7 @@ const DialogContent = forwardRef<
         )}
       </DialogPrimitive.Content>
     </DialogPortal>
-  )
-);
+  );
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({
@@ -118,10 +107,7 @@ const DialogFooter = ({
 );
 DialogFooter.displayName = 'DialogFooter';
 
-const DialogTitle = forwardRef<
-  ElementRef<typeof DialogPrimitive.Title>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
+const DialogTitle = ({ ref,  className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Title> & { ref?: Ref<ElementRef<typeof DialogPrimitive.Title>> }) => (
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
@@ -130,19 +116,16 @@ const DialogTitle = forwardRef<
     )}
     {...props}
   />
-));
+);
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
-const DialogDescription = forwardRef<
-  ElementRef<typeof DialogPrimitive.Description>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
+const DialogDescription = ({ ref,  className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Description> & { ref?: Ref<ElementRef<typeof DialogPrimitive.Description>> }) => (
   <DialogPrimitive.Description
     ref={ref}
     className={cn('text-sm text-muted-foreground', className)}
     {...props}
   />
-));
+);
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 const DialogTrigger = DialogPrimitive.Trigger;

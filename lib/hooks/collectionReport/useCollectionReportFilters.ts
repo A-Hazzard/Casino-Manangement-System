@@ -19,7 +19,7 @@ import { filterCollectionReports } from '@/lib/helpers/collectionReport';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { dateRange as DashboardDateRange } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 // ============================================================================
 // Type Definitions
@@ -69,7 +69,7 @@ export function useCollectionReportFilters({
    * - Applies SMIB-specific filters
    * - Sorts by selected field with search relevance
    */
-  const filteredReports = useMemo(() => {
+  const filteredReports = (() => {
     const rdpDateRange = dateRange
       ? {
           from: dateRange.from || dateRange.startDate || dateRange.start,
@@ -137,18 +137,7 @@ export function useCollectionReportFilters({
 
       return 0;
     });
-  }, [
-    allReports,
-    selectedLocation,
-    showUncollectedOnly,
-    locations,
-    selectedFilters,
-    sortField,
-    sortDirection,
-    searchTerm,
-    timePeriod,
-    dateRange,
-  ]);
+  })();
 
   // ==========================================================================
   // Handlers

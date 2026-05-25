@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type BlindCloseModalProps = {
@@ -54,10 +54,7 @@ export default function BlindCloseModal({
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
 
-  const denomsList = useMemo(
-    () => getDenominationValues(effectiveLicenceeId),
-    [effectiveLicenceeId]
-  );
+  const denomsList = getDenominationValues(effectiveLicenceeId);
 
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(

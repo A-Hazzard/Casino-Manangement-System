@@ -21,8 +21,6 @@ import type {
   UseDashboardRefreshReturn,
 } from '@/lib/types/dashboard';
 import { TimePeriod } from '@/shared/types/common';
-import { useCallback } from 'react';
-
 export function useDashboardRefresh({
   selectedLicencee,
   activeMetricsFilter,
@@ -58,7 +56,7 @@ export function useDashboardRefresh({
   // ============================================================================
 
   // Handle refresh functionality
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     // Don't refresh if no filter is selected
     if (!canRefresh) return;
 
@@ -78,23 +76,7 @@ export function useDashboardRefresh({
       (data: TopPerformingData) => setTopPerformingData(data),
       displayCurrency
     );
-  }, [
-    canRefresh,
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    activeTab,
-    activePieChartFilter,
-    displayCurrency, // Include currency in dependencies
-    setRefreshing,
-    setLoadingChartData,
-    setLoadingTopPerforming,
-    setTotals,
-    setChartData,
-    setActiveFilters,
-    setShowDatePicker,
-    setTopPerformingData,
-  ]);
+  };
 
   return {
     refreshing,

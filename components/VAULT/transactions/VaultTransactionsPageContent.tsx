@@ -45,7 +45,7 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
 import type { TransactionSortOption } from './tables/VaultTransactionsTable';
@@ -76,8 +76,7 @@ export default function VaultTransactionsPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch transactions
-  const fetchData = useCallback(
-    async (isSilent = false) => {
+  const fetchData = async (isSilent = false) => {
       // If Admin/Dev, allow global fetch without specific location
       if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
         setLoading(false);
@@ -106,17 +105,7 @@ export default function VaultTransactionsPageContent() {
       } finally {
         setLoading(false);
       }
-    },
-    [
-      user?.assignedLocations,
-      user?.roles,
-      currentPage,
-      selectedType,
-      selectedStatus,
-      searchTerm,
-      isAdminOrDev,
-    ]
-  );
+    };
 
   // ============================================================================
   // Effects
@@ -151,7 +140,7 @@ export default function VaultTransactionsPageContent() {
    * Sort transactions for the current page
    * (Filtering is now handled server-side)
    */
-  const filteredAndSortedTransactions = useMemo(() => {
+  const filteredAndSortedTransactions = (() => {
     // Only sort the current page data
     return [...transactions].sort((a, b) => {
       const getField = (obj: ExtendedVaultTransaction, field: string) => {
@@ -185,12 +174,12 @@ export default function VaultTransactionsPageContent() {
       if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [sortOption, sortOrder, transactions]);
+  })();
 
   /**
    * Calculate summary metrics from all transactions
    */
-  const summaryMetrics = useMemo(() => {
+  const summaryMetrics = (() => {
     const totalTransactions = totalItems;
     const totalInflow = transactions
       .filter(tx => tx.to?.type === 'vault' && !tx.isVoid)
@@ -208,7 +197,7 @@ export default function VaultTransactionsPageContent() {
       totalOutflow,
       totalExpenses,
     };
-  }, [transactions, totalItems]);
+  })();
 
   /**
    * Get badge component for transaction type

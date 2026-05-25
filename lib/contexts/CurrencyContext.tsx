@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, use } from 'react';
 import { fetchLicenceeById } from '@/lib/helpers/client';
 import {
   convertCurrency,
@@ -13,14 +13,7 @@ import type {
   CurrencyCode,
   CurrencyContextType,
 } from '@/shared/types/currency';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useEffect, useRef, useState } from 'react';
 
 type CurrencyProviderProps = {
   children: ReactNode;
@@ -73,8 +66,7 @@ export function CurrencyProvider({
   const isAllLicencee =
     !selectedLicencee || selectedLicencee === 'all' || selectedLicencee === '';
 
-  const handleSetDisplayCurrency = useCallback(
-    (currency: CurrencyCode) => {
+  const handleSetDisplayCurrency = (currency: CurrencyCode) => {
       setDisplayCurrency(currency);
       setDashboardCurrency(currency); // Sync with DashboardStore
 
@@ -82,23 +74,15 @@ export function CurrencyProvider({
       if (typeof window !== 'undefined') {
         localStorage.setItem('evolution-currency', currency);
       }
-    },
-    [setDashboardCurrency]
-  );
+    };
 
-  const formatAmountWithCurrency = useCallback(
-    (amount: number, currency?: CurrencyCode) => {
+  const formatAmountWithCurrency = (amount: number, currency?: CurrencyCode) => {
       return formatAmount(amount, currency || displayCurrency);
-    },
-    [displayCurrency]
-  );
+    };
 
-  const convertAmountWithCurrency = useCallback(
-    (amount: number, from: CurrencyCode, to: CurrencyCode) => {
+  const convertAmountWithCurrency = (amount: number, from: CurrencyCode, to: CurrencyCode) => {
       return convertCurrency(amount, from, to);
-    },
-    []
-  );
+    };
 
   // Auto-set currency for users with single licencee (non-admin/developer)
   // This runs whenever user data changes to ensure single-licencee users always get their currency
@@ -323,7 +307,7 @@ export function CurrencyProvider({
 }
 
 export function useCurrency(): CurrencyContextType {
-  const context = useContext(CurrencyContext);
+  const context = use(CurrencyContext);
   if (context === undefined) {
     throw new Error('useCurrency must be used within a CurrencyProvider');
   }

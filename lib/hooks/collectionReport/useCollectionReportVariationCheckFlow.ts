@@ -12,7 +12,7 @@
  * 5. Show final confirmation before submitting with variations
  */
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   useCollectionReportVariationCheck,
   type CheckVariationsMachine,
@@ -60,22 +60,19 @@ export function useCollectionReportVariationCheckFlow(
   /**
    * Start the variation check flow
    */
-  const startVariationCheck = useCallback(
-    async (
+  const startVariationCheck = async (
       locationId: string,
       machines: CheckVariationsMachine[],
       includeJackpot?: boolean
     ) => {
       setFlowState('checking');
       await performCheck(locationId, machines, includeJackpot);
-    },
-    [performCheck]
-  );
+    };
 
   /**
    * Handle check completion - determine next state
    */
-  const handleCheckComplete = useCallback(() => {
+  const handleCheckComplete = () => {
     if (error) {
       setFlowState('error');
     } else if (!hasVariations) {
@@ -83,57 +80,54 @@ export function useCollectionReportVariationCheckFlow(
     } else {
       setFlowState('with-variations');
     }
-  }, [error, hasVariations]);
+  };
 
   /**
    * User minimized the variations modal
    */
-  const handleMinimizeVariations = useCallback(() => {
+  const handleMinimizeVariations = () => {
     toggleMinimize();
     setFlowState('minimized');
-  }, [toggleMinimize]);
+  };
 
   /**
    * User clicked submit after reviewing/minimizing variations
    */
-  const handleSubmitWithVariations = useCallback(() => {
+  const handleSubmitWithVariations = () => {
     setShowConfirmationWithVariations(true);
-  }, []);
+  };
 
   /**
    * User confirmed submission with variations
    */
-  const handleConfirmSubmitWithVariations = useCallback(() => {
+  const handleConfirmSubmitWithVariations = () => {
     setShowConfirmationWithVariations(false);
     setFlowState('idle');
     reset();
     // Return signal to proceed with actual submission
     return true;
-  }, [reset]);
+  };
 
   /**
    * Cancel the variation check flow
    */
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     setFlowState('idle');
     setShowConfirmationWithVariations(false);
     reset();
-  }, [reset]);
+  };
 
   /**
    * Retry variation check
    */
-  const handleRetry = useCallback(
-    async (
+  const handleRetry = async (
       locationId: string,
       machines: CheckVariationsMachine[],
       includeJackpot?: boolean
     ) => {
       setFlowState('checking');
       await performCheck(locationId, machines, includeJackpot);
-    },
-    [performCheck]
-  );
+    };
 
   return {
     // State

@@ -8,7 +8,7 @@
 'use client';
 
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type ActivityLogEntry = {
@@ -65,7 +65,7 @@ export function useMembersActivityLog({
   // Handlers
   // ============================================================================
 
-  const fetchActivityLogs = useCallback(async () => {
+  const fetchActivityLogs = async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -95,7 +95,7 @@ export function useMembersActivityLog({
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, search, actionFilter, startDate, endDate]);
+  };
 
   // ============================================================================
   // Effects

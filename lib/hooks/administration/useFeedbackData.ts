@@ -2,7 +2,7 @@
  * Hook for managing feedback data fetching with batching and filtering.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Feedback,
@@ -41,15 +41,12 @@ export function useFeedbackData({
   // ============================================================================
 
   // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
+  const calculateBatchNumber = (page: number) => {
       return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+    };
 
   // Fetch feedback - initial batch and when filters change
-  const fetchInitialBatch = useCallback(async () => {
+  const fetchInitialBatch = async () => {
     setLoading(true);
     setAllFeedback([]);
     setLoadedBatches(new Set([1]));
@@ -92,7 +89,7 @@ export function useFeedbackData({
     } finally {
       setLoading(false);
     }
-  }, [debouncedEmailFilter, categoryFilter, statusFilter, itemsPerBatch]);
+  };
 
   // ============================================================================
   // Effects
@@ -181,17 +178,17 @@ export function useFeedbackData({
   // ============================================================================
 
   // Memoized current page of feedback
-  const feedback = useMemo(() => {
+  const feedback = (() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     return allFeedback.slice(startIndex, endIndex);
-  }, [allFeedback, currentPage, itemsPerPage, pagesPerBatch]);
+  })();
 
   // Calculate total pages based on server data
-  const totalPages = useMemo(() => {
+  const totalPages = (() => {
     return serverTotalPages > 0 ? serverTotalPages : 1;
-  }, [serverTotalPages]);
+  })();
 
   return {
     feedback,

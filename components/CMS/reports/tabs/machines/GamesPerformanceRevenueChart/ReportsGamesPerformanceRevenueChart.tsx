@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/ui/select';
 import { Separator } from '@/components/shared/ui/separator';
 import { Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -114,7 +114,7 @@ export default function ReportsGamesPerformanceRevenueChart({
     });
 
   // Search suggestions - only from filtered data
-  const gameSuggestions = useMemo(() => {
+  const gameSuggestions = (() => {
     if (!searchTerm.trim()) return [];
     const searchLower = searchTerm.toLowerCase().trim();
     return filteredData
@@ -124,7 +124,7 @@ export default function ReportsGamesPerformanceRevenueChart({
       }))
       .filter(item => item.gameName.toLowerCase().includes(searchLower))
       .slice(0, 10);
-  }, [filteredData, searchTerm]);
+  })();
 
   // ============================================================================
   // Effects

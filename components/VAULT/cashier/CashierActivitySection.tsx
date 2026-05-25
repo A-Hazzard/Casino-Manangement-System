@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function CashierActivitySection() {
@@ -97,8 +97,7 @@ export default function CashierActivitySection() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleCancel = useCallback(
-    async (requestId: string) => {
+  const handleCancel = async (requestId: string) => {
       try {
         const res = await fetch('/api/vault/float-request/cancel', {
           method: 'POST',
@@ -116,9 +115,7 @@ export default function CashierActivitySection() {
       } catch {
         toast.error('Network error - could not cancel request');
       }
-    },
-    [refresh]
-  );
+    };
 
   // ============================================================================
   // Render

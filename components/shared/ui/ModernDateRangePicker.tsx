@@ -28,7 +28,7 @@ import {
   type DateRange,
 } from '@/components/shared/ui/dateRangePicker';
 import { Label } from '@/components/shared/ui/label';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ============================================================================
 // Types & Helper Components
@@ -57,23 +57,15 @@ const TimePicker = memo<{
   // State & Hooks
   // ============================================================================
   // Memoize options to prevent recreation on every render
-  const hours = useMemo(
-    () =>
-      Array.from({ length: 24 }, (_, i) => ({
+  const hours = Array.from({ length: 24 }, (_, i) => ({
         value: i.toString().padStart(2, '0'),
         label: i.toString().padStart(2, '0'),
-      })),
-    []
-  );
+      }));
 
-  const minutes = useMemo(
-    () =>
-      Array.from({ length: 60 }, (_, i) => ({
+  const minutes = Array.from({ length: 60 }, (_, i) => ({
         value: i.toString().padStart(2, '0'),
         label: i.toString().padStart(2, '0'),
-      })),
-    []
-  );
+      }));
 
   const [selectedHour, setSelectedHour] = useState(value.split(':')[0] || '00');
   const [selectedMinute, setSelectedMinute] = useState(
@@ -106,25 +98,19 @@ const TimePicker = memo<{
   // Handlers
   // ============================================================================
   // Memoize handlers to prevent recreation
-  const handleHourChange = useCallback(
-    (newHour: string) => {
+  const handleHourChange = (newHour: string) => {
       setSelectedHour(newHour);
       isInternalChangeRef.current = true;
       const newTime = `${newHour}:${selectedMinute}`;
       onChange(newTime);
-    },
-    [selectedMinute, onChange]
-  );
+    };
 
-  const handleMinuteChange = useCallback(
-    (newMinute: string) => {
+  const handleMinuteChange = (newMinute: string) => {
       setSelectedMinute(newMinute);
       isInternalChangeRef.current = true;
       const newTime = `${selectedHour}:${newMinute}`;
       onChange(newTime);
-    },
-    [selectedHour, onChange]
-  );
+    };
 
   // ============================================================================
   // Render
@@ -216,8 +202,7 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   // Handlers
   // ============================================================================
   // Memoized date range change handler
-  const handleDateRangeChange = useCallback(
-    (range?: DateRange) => {
+  const handleDateRangeChange = (range?: DateRange) => {
       if (range?.from && range?.to) {
         // Determine times based on whether time inputs are enabled
         const startH = enableTimeInputs ? parseInt(startTime.split(':')[0]) : 0;
@@ -267,13 +252,10 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
         // No date selected, clear the range
         onChange(range);
       }
-    },
-    [startTime, endTime, onChange, enableTimeInputs]
-  );
+    };
 
   // Memoized time change handler
-  const handleTimeChange = useCallback(
-    (timeType: 'start' | 'end', time: string) => {
+  const handleTimeChange = (timeType: 'start' | 'end', time: string) => {
       // Only process time changes if we have valid dates
       if (!value?.from || !value?.to) {
         return;
@@ -317,9 +299,7 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
           to: newToDate,
         });
       }
-    },
-    [value, onChange]
-  );
+    };
 
   // ============================================================================
   // Render

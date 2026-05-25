@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 /**
  * Debounces a value
@@ -53,17 +53,14 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
     callbackRef.current = callback;
   }, [callback]);
 
-  const debouncedCallback = useCallback(
-    (...args: Parameters<T>) => {
+  const debouncedCallback = (...args: Parameters<T>) => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = setTimeout(() => {
         callbackRef.current(...args);
       }, delay);
-    },
-    [delay]
-  );
+    };
 
   // Cleanup on unmount
   useEffect(() => {

@@ -60,7 +60,7 @@ import {
   ExternalLink,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
 import AdministrationActivityLogCard from '../cards/AdministrationActivityLogCard';
@@ -172,12 +172,9 @@ function AdministrationActivityLogsTable({
   };
 
   // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
+  const calculateBatchNumber = (page: number) => {
       return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+    };
 
   // Debounce search term
   useEffect(() => {
@@ -194,7 +191,7 @@ function AdministrationActivityLogsTable({
   }, [searchTerm, debouncedSearchTerm]);
 
   // Fetch activity logs - initial batch and when filters change
-  const fetchInitialBatch = useCallback(async () => {
+  const fetchInitialBatch = async () => {
     setLoading(true);
     setAllLogs([]);
     setLoadedBatches(new Set([1]));
@@ -252,16 +249,7 @@ function AdministrationActivityLogsTable({
     } finally {
       setLoading(false);
     }
-  }, [
-    debouncedSearchTerm,
-    searchMode,
-    actionFilter,
-    resourceFilter,
-    dateFilter,
-    sortBy,
-    sortOrder,
-    itemsPerBatch,
-  ]);
+  };
 
   // Fetch next batch when crossing batch boundaries
   useEffect(() => {
@@ -408,17 +396,17 @@ function AdministrationActivityLogsTable({
   }, [fetchInitialBatch]);
 
   // Get items for current page from the current batch
-  const logs = useMemo(() => {
+  const logs = (() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     return allLogs.slice(startIndex, endIndex);
-  }, [allLogs, currentPage, itemsPerPage, pagesPerBatch]);
+  })();
 
   // Calculate total pages based on server data
-  const totalPages = useMemo(() => {
+  const totalPages = (() => {
     return serverTotalPages > 0 ? serverTotalPages : 1;
-  }, [serverTotalPages]);
+  })();
 
   // Handle sort
   const handleSort = (column: string) => {

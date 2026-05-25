@@ -1,13 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactNode, use } from 'react';
+import { createContext, useState } from 'react';
 
 type MembersHandlersContextType = {
   onRefresh?: () => void;
@@ -37,29 +31,26 @@ export function MembersHandlersProvider({ children }: { children: ReactNode }) {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const setOnRefresh = useCallback((handler: (() => void) | undefined) => {
+  const setOnRefresh = (handler: (() => void) | undefined) => {
     setRefreshHandler(() => handler);
-  }, []);
+  };
 
-  const setOnNewMember = useCallback((handler: (() => void) | undefined) => {
+  const setOnNewMember = (handler: (() => void) | undefined) => {
     setNewMemberHandler(() => handler);
-  }, []);
+  };
 
   // ============================================================================
   // Computed
   // ============================================================================
   // Memoize context value to prevent unnecessary re-renders
-  const contextValue = useMemo(
-    () => ({
+  const contextValue = ({
       onRefresh: refreshHandler,
       onNewMember: newMemberHandler,
       refreshing,
       setOnRefresh,
       setOnNewMember,
       setRefreshing,
-    }),
-    [refreshing, refreshHandler, newMemberHandler, setOnRefresh, setOnNewMember]
-  );
+    });
 
   // ============================================================================
   // Render
@@ -72,7 +63,7 @@ export function MembersHandlersProvider({ children }: { children: ReactNode }) {
 }
 
 export function useMembersHandlers() {
-  const context = useContext(MembersHandlersContext);
+  const context = use(MembersHandlersContext);
   if (context === undefined) {
     throw new Error(
       'useMembersHandlers must be used within a MembersHandlersProvider'

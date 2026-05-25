@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type ReportedMachineMovement = {
@@ -93,7 +93,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
   // Computed
   // ============================================================================
 
-  const filtered = useMemo(() => {
+  const filtered = (() => {
     if (!searchTerm.trim()) return machines;
 
     const term = searchTerm.toLowerCase();
@@ -106,9 +106,9 @@ export default function CollectionReportV2SessionReportMachinesTab({
       const serial = (machine.serialNumber || '').toLowerCase();
       return name.includes(term) || serial.includes(term);
     });
-  }, [machines, searchTerm]);
+  })();
 
-  const sorted = useMemo(() => {
+  const sorted = (() => {
     const list = [...filtered];
     list.sort((a, b) => {
       let cmp = 0;
@@ -168,23 +168,20 @@ export default function CollectionReportV2SessionReportMachinesTab({
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return list;
-  }, [filtered, sortField, sortDirection]);
+  })();
 
-  const totalPages = useMemo(
-    () => Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1,
-    [sorted.length]
-  );
+  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1;
 
-  const paginated = useMemo(() => {
+  const paginated = (() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sorted.slice(start, start + ITEMS_PER_PAGE);
-  }, [sorted, currentPage]);
+  })();
 
-  useMemo(() => {
+  (() => {
     if (currentPage > Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1) {
       setCurrentPage(1);
     }
-  }, [filtered.length]);
+  })();
 
   // ============================================================================
   // Helpers

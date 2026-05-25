@@ -16,8 +16,6 @@ import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSke
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { PlusCircle } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
-
 type CabinetsActionsProps = {
   activeSection: string;
   selectedLocation: string | string[];
@@ -38,17 +36,17 @@ export const CabinetsActions = ({
   const { openCabinetModal } = useNewCabinetStore();
   const user = useUserStore(state => state.user);
 
-  const canCreateCabinet = useMemo(() => {
+  const canCreateCabinet = (() => {
     const roles = user?.roles ?? [];
     return ['developer', 'admin', 'technician'].some(role =>
       roles.includes(role)
     );
-  }, [user]);
+  })();
 
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleNewCabinet = useCallback(() => {
+  const handleNewCabinet = () => {
     // If selectedLocation is an array, pick the first one for pre-filling the modal
     const locationId = Array.isArray(selectedLocation)
       ? selectedLocation.length > 0 && selectedLocation[0] !== 'all'
@@ -58,11 +56,11 @@ export const CabinetsActions = ({
         ? selectedLocation
         : undefined;
     openCabinetModal(locationId);
-  }, [selectedLocation, openCabinetModal]);
+  };
 
-  const handleNewMovementRequest = useCallback(() => {
+  const handleNewMovementRequest = () => {
     onMovementRequestClick();
-  }, [onMovementRequestClick]);
+  };
 
   // ============================================================================
   // Render

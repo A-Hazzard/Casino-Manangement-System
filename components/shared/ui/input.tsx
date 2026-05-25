@@ -10,12 +10,11 @@
  * - Responsive text sizing
  */
 
-import { forwardRef } from 'react';
+import { Ref } from 'react';
 import { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
-const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(
-  ({ className, type, ...props }, ref) => {
+const Input = ({ ref,  className, type, ...props }: ComponentProps<'input'> & { ref?: Ref<HTMLInputElement> }) => {
     return (
       <input
         type={type}
@@ -27,8 +26,7 @@ const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(
         {...props}
       />
     );
-  }
-);
+  };
 Input.displayName = 'Input';
 
 export { Input };

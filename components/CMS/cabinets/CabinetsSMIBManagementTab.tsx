@@ -29,7 +29,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw, Server } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { CabinetsDetailsSMIBComsConfig } from './smibManagement/CabinetsDetailsSMIBComsConfig';
 import { CabinetsDetailsSMIBMeterData } from './smibManagement/CabinetsDetailsSMIBMeterData';
@@ -82,8 +82,7 @@ export default function CabinetsSMIBManagementTab({
   }, [searchParams, selectedRelayId]);
 
   // Update URL when SMIB selection changes (but only if different from URL)
-  const handleSmibSelection = useCallback(
-    (relayId: string) => {
+  const handleSmibSelection = (relayId: string) => {
       const currentSmibInUrl = searchParams?.get('smib');
 
       // Only update if the relayId is different from what's in the URL
@@ -104,9 +103,7 @@ export default function CabinetsSMIBManagementTab({
         // If URL matches but state doesn't, just sync state
         setSelectedRelayId(relayId);
       }
-    },
-    [searchParams, router, selectedRelayId]
-  );
+    };
 
   // Store smibConfig functions in refs to avoid dependency issues
   const connectToConfigStreamRef = useRef(smibConfig.connectToConfigStream);
@@ -368,7 +365,7 @@ export default function CabinetsSMIBManagementTab({
   }, [smibConfig.requestLiveConfig]);
 
   // Refresh SMIB data (re-request config and reload machine data)
-  const handleRefreshSmibData = useCallback(async () => {
+  const handleRefreshSmibData = async () => {
     if (!selectedRelayId) return;
 
     setIsInitialLoading(true);
@@ -398,13 +395,7 @@ export default function CabinetsSMIBManagementTab({
         console.error('Failed to reload machine data:', err);
       }
     }
-  }, [
-    selectedRelayId,
-    selectedMachineId,
-    refreshSmibs,
-    setIsInitialLoading,
-    setMachineData,
-  ]);
+  };
 
   // Refresh when trigger changes from parent
   useEffect(() => {
@@ -414,7 +405,7 @@ export default function CabinetsSMIBManagementTab({
   }, [refreshTrigger, handleRefreshSmibData]);
 
   // Get unique locations from available SMIBs (including unassigned)
-  const uniqueLocations = useMemo(() => {
+  const uniqueLocations = (() => {
     const locationMap = new Map<string, string>();
     availableSmibs.forEach(smib => {
       // Include all locations, even unassigned ones
@@ -429,19 +420,19 @@ export default function CabinetsSMIBManagementTab({
       id,
       name,
     }));
-  }, [availableSmibs]);
+  })();
 
   // Filter SMIBs by selected locations
-  const filteredSmibs = useMemo(() => {
+  const filteredSmibs = (() => {
     if (selectedLocationIds.length === 0) {
       return availableSmibs;
     }
     return availableSmibs.filter(
       smib => smib.locationId && selectedLocationIds.includes(smib.locationId)
     );
-  }, [availableSmibs, selectedLocationIds]);
+  })();
 
-  const dropdownStatusOverrides = useMemo(() => {
+  const dropdownStatusOverrides = (() => {
     if (!selectedRelayId) {
       return undefined;
     }
@@ -449,10 +440,10 @@ export default function CabinetsSMIBManagementTab({
     return {
       [selectedRelayId]: smibConfig.isConnectedToMqtt ? 'online' : 'offline',
     } as const;
-  }, [selectedRelayId, smibConfig.isConnectedToMqtt]);
+  })();
 
   // Get selected location names for restart all dialog
-  const selectedLocationNames = useMemo(() => {
+  const selectedLocationNames = (() => {
     if (selectedLocationIds.length === 0) return '';
     if (selectedLocationIds.length === 1) {
       return (
@@ -461,7 +452,7 @@ export default function CabinetsSMIBManagementTab({
       );
     }
     return `${selectedLocationIds.length} locations`;
-  }, [uniqueLocations, selectedLocationIds]);
+  })();
 
   // Handle restart all SMIBs for selected locations
   const handleRestartAllSmibs = async () => {

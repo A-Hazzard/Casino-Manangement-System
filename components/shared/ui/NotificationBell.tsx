@@ -45,7 +45,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export type NotificationType =
   | 'shift_review'
@@ -156,7 +156,7 @@ export default function NotificationBell({
   // ============================================================================
   // Computed
   // ============================================================================
-  const filteredNotifications = useMemo(() => {
+  const filteredNotifications = (() => {
     let list = [...notifications];
     if (unreadOnly) {
       list = list.filter(n => n.status === 'unread');
@@ -171,7 +171,7 @@ export default function NotificationBell({
       // If same status (both read or both unread), sort by time
       return b.timestamp.getTime() - a.timestamp.getTime();
     });
-  }, [notifications, unreadOnly]);
+  })();
 
   const unreadCount =
     propUnreadCount ?? notifications.filter(n => n.status === 'unread').length;
@@ -233,7 +233,7 @@ export default function NotificationBell({
   // Computed (continued)
   // ============================================================================
   // Calculated shortage based on current state (viewing vs editing)
-  const currentShortageCheck = useMemo(() => {
+  const currentShortageCheck = (() => {
     if (!viewDetails) return { hasShortage: false, shortages: [] };
 
     // STEP: Skip stock verification for Float Returns (Decrease)
@@ -256,15 +256,15 @@ export default function NotificationBell({
     });
 
     return { hasShortage: shortages.length > 0, shortages };
-  }, [viewDetails, isEditing, editedDenominations, vaultInventory]);
+  })();
 
   // Helper to calculate total of edited denominations
-  const editedTotal = useMemo(() => {
+  const editedTotal = (() => {
     return editedDenominations.reduce(
       (sum, d) => sum + d.denomination * d.quantity,
       0
     );
-  }, [editedDenominations]);
+  })();
 
   // ============================================================================
   // Render

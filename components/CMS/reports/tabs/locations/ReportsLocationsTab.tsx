@@ -17,7 +17,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -96,7 +96,7 @@ export default function ReportsLocationsTab() {
   // Computed
   // ============================================================================
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
-  const showGranularitySelector = useMemo(() => {
+  const showGranularitySelector = (() => {
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -129,7 +129,7 @@ export default function ReportsLocationsTab() {
       }
     }
     return false;
-  }, [activeMetricsFilter, customDateRange]);
+  })();
 
   // ============================================================================
   // Effects
@@ -226,8 +226,7 @@ export default function ReportsLocationsTab() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleLocationsTabChange = useCallback(
-    (tab: string) => {
+  const handleLocationsTabChange = (tab: string) => {
       setActiveTab(tab);
       try {
         const sp = new URLSearchParams(searchParams?.toString() || '');
@@ -237,9 +236,7 @@ export default function ReportsLocationsTab() {
       } catch {
         // Ignore URL update errors
       }
-    },
-    [searchParams, pathname, router]
-  );
+    };
 
   // ============================================================================
   // Effects (Continued)
@@ -370,8 +367,7 @@ export default function ReportsLocationsTab() {
   // ============================================================================
   // Tab-Specific Selection Orchestration
   // ============================================================================
-  const setCurrentSelectedLocations = useCallback(
-    (locs: string[]) => {
+  const setCurrentSelectedLocations = (locs: string[]) => {
       if (
         activeTab === 'sas-evaluation' ||
         activeTab === 'location-evaluation'
@@ -380,14 +376,12 @@ export default function ReportsLocationsTab() {
       } else {
         setSelectedRevenueLocations(locs);
       }
-    },
-    [activeTab]
-  );
+    };
 
   // ============================================================================
   // Bulk Data Refresh & Invalidation
   // ============================================================================
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     const currentSelectedLocations =
       activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
         ? selectedSasLocations
@@ -434,28 +428,7 @@ export default function ReportsLocationsTab() {
       setMetricsTotalsLoading(false);
       setLoading(false);
     }
-  }, [
-    activeTab,
-    selectedSasLocations,
-    selectedRevenueLocations,
-    setMetricsTotalsLoading,
-    setPaginationLoading,
-    setLocationsLoading,
-    setMetricsLoading,
-    setTopMachinesLoading,
-    setLoading,
-    setAccumulatedLocations,
-    setLoadedBatches,
-    setCurrentPage,
-    fetchLocationDataAsync,
-    fetchTopMachines,
-    fetchBottomMachines,
-    fetchLocationTrendData,
-    fetchMetricsTotals,
-    setTopMachinesData,
-    setBottomMachinesData,
-    setLocationTrendData,
-  ]);
+  };
 
   // Listen for global refresh events from parent PageLayout
   useEffect(() => {
@@ -470,8 +443,7 @@ export default function ReportsLocationsTab() {
   // ============================================================================
   // Multi-Format Export Pipelines
   // ============================================================================
-  const handleExportLocationOverviewWrapper = useCallback(
-    async (format: 'pdf' | 'excel') => {
+  const handleExportLocationOverviewWrapper = async (format: 'pdf' | 'excel') => {
       const locationsToExport =
         allLocationsForDropdown.length > 0
           ? allLocationsForDropdown
@@ -486,19 +458,9 @@ export default function ReportsLocationsTab() {
         shouldShowCurrency,
         toast,
       });
-    },
-    [
-      allLocationsForDropdown,
-      accumulatedLocations,
-      metricsOverview,
-      activeMetricsFilter,
-      formatAmount,
-      shouldShowCurrency,
-    ]
-  );
+    };
 
-  const handleExportSASEvaluationWrapper = useCallback(
-    async (format: 'pdf' | 'excel') => {
+  const handleExportSASEvaluationWrapper = async (format: 'pdf' | 'excel') => {
       const currentSelectedLocations =
         activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
           ? selectedSasLocations
@@ -513,20 +475,9 @@ export default function ReportsLocationsTab() {
         format,
         toast,
       });
-    },
-    [
-      activeTab,
-      selectedSasLocations,
-      selectedRevenueLocations,
-      allLocationsForDropdown,
-      topLocations,
-      selectedDateRange,
-      activeMetricsFilter,
-    ]
-  );
+    };
 
-  const handleExportRevenueAnalysisWrapper = useCallback(
-    async (format: 'pdf' | 'excel') => {
+  const handleExportRevenueAnalysisWrapper = async (format: 'pdf' | 'excel') => {
       const currentSelectedLocations =
         activeTab === 'sas-evaluation' || activeTab === 'location-evaluation'
           ? selectedSasLocations
@@ -542,31 +493,17 @@ export default function ReportsLocationsTab() {
         shouldShowCurrency,
         toast,
       });
-    },
-    [
-      activeTab,
-      selectedSasLocations,
-      selectedRevenueLocations,
-      allLocationsForDropdown,
-      topLocations,
-      activeMetricsFilter,
-      formatAmount,
-      shouldShowCurrency,
-    ]
-  );
+    };
 
   // ============================================================================
   // Performance Analysis Granularity Handlers
   // ============================================================================
-  const handleGranularityChange = useCallback(
-    (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => {
+  const handleGranularityChange = (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => {
       setChartGranularity(granularity);
       hasManuallySetGranularityRef.current = true;
       setLocationTrendData(null);
       setLocationTrendLoading(true);
-    },
-    [setLocationTrendData, setLocationTrendLoading]
-  );
+    };
   // ============================================================================
   // Render
   // ============================================================================

@@ -9,7 +9,7 @@
 
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import CameraOverlay from './CameraOverlay';
 import CollectionReportV2SessionDetailSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionDetailSkeleton';
@@ -189,8 +189,7 @@ export default function CollectionReportV2SessionDetail({
   // Effects
   // ============================================================================
 
-  const fetchSession = useCallback(
-    async (background = false) => {
+  const fetchSession = async (background = false) => {
       if (!sessionId) return;
       if (!background) setLoading(true);
       if (!background) setError(null);
@@ -209,9 +208,7 @@ export default function CollectionReportV2SessionDetail({
       } finally {
         if (!background) setLoading(false);
       }
-    },
-    [sessionId]
-  );
+    };
 
   useEffect(() => {
     fetchSession();
@@ -228,8 +225,7 @@ export default function CollectionReportV2SessionDetail({
   // Reset capture state when current index changes
   const currentMachine = session?.machines[currentIndex];
 
-  const getInitialCaptureStateForMachine = useCallback(
-    (
+  const getInitialCaptureStateForMachine = (
       machine: SessionMachine | undefined | null,
       isNoSMIB: boolean
     ): CaptureState => {
@@ -265,9 +261,7 @@ export default function CollectionReportV2SessionDetail({
             ? String(machine.ramClearMetersOut)
             : '',
       };
-    },
-    []
-  );
+    };
 
   // Pre-fill capture state from existing data (server returns Drive URL or tempImageData).
   useEffect(() => {
@@ -423,7 +417,7 @@ export default function CollectionReportV2SessionDetail({
     setShowCamera(false);
   };
 
-  const handlePaste = useCallback((e: ClipboardEvent) => {
+  const handlePaste = (e: ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -442,7 +436,7 @@ export default function CollectionReportV2SessionDetail({
         break;
       }
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (mode !== 'capture' || showCamera) return;

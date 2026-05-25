@@ -28,7 +28,7 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import axios, { type AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseMobileCollectionModalProps = {
@@ -217,25 +217,25 @@ export function useMobileCollectionModal({
   /**
    * Find which location a machine belongs to using the location name from the collection
    */
-  const getLocationIdFromMachine = useCallback((locationName: string) => {
+  const getLocationIdFromMachine = (locationName: string) => {
     const matchingLoc = locationsRef.current.find(
       location => location.name === locationName
     );
     return matchingLoc ? String(matchingLoc._id) : null;
-  }, []);
+  };
 
   // ============================================================================
   // Navigation Helpers
   // ============================================================================
 
-  const pushNavigation = useCallback((panel: string) => {
+  const pushNavigation = (panel: string) => {
     setModalState(prev => ({
       ...prev,
       navigationStack: [...prev.navigationStack, panel],
     }));
-  }, []);
+  };
 
-  const popNavigation = useCallback(() => {
+  const popNavigation = () => {
     setModalState(prev => {
       const newStack = [...prev.navigationStack];
       newStack.pop();
@@ -253,7 +253,7 @@ export function useMobileCollectionModal({
         navigationStack: newStack,
       };
     });
-  }, []);
+  };
 
   // ============================================================================
   // Collection Discovery & Initialization
@@ -262,8 +262,7 @@ export function useMobileCollectionModal({
   /**
    * Fetch existing incomplete collections when modal opens
    */
-  const fetchExistingCollections = useCallback(
-    async (locationId?: string) => {
+  const fetchExistingCollections = async (locationId?: string) => {
       setModalState(prev => ({ ...prev, isLoadingCollections: true }));
       try {
         let url = '/api/collection-reports/collections';
@@ -331,15 +330,7 @@ export function useMobileCollectionModal({
       } finally {
         setModalState(prev => ({ ...prev, isLoadingCollections: false }));
       }
-    },
-    [
-      setStoreCollectedMachines,
-      setStoreSelectedLocation,
-      setStoreLockedLocation,
-      getLocationIdFromMachine,
-      user?._id,
-    ]
-  );
+    };
 
   // Fetch existing collections when modal opens
   useEffect(() => {
@@ -364,8 +355,7 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   // Location change handler
-  const handleLocationChange = useCallback(
-    (locationId: string) => {
+  const handleLocationChange = (locationId: string) => {
       // Find the location to get its name
       const location = locationsRef.current.find(
         loc => String(loc._id) === locationId
@@ -393,14 +383,7 @@ export function useMobileCollectionModal({
       // Reset selected machine when location changes
       setStoreSelectedMachine(undefined);
       setStoreSelectedMachineData(null);
-    },
-    [
-      setStoreSelectedLocation,
-      setStoreFinancials,
-      setStoreSelectedMachine,
-      setStoreSelectedMachineData,
-    ]
-  );
+    };
 
   // Fetch machines when location changes
   useEffect(() => {
@@ -473,7 +456,7 @@ export function useMobileCollectionModal({
   /**
    * Calculate amount to collect based on machine entries and financial inputs
    */
-  const calculateAmountToCollect = useCallback(() => {
+  const calculateAmountToCollect = () => {
     if (modalState.collectedMachines.length === 0) {
       setStoreFinancials({ amountToCollect: '0' });
       return;
@@ -530,19 +513,7 @@ export function useMobileCollectionModal({
       amountToCollect: amountToCollect.toFixed(2),
       previousBalance: (collectedAmount - amountToCollect).toFixed(2),
     });
-  }, [
-    modalState.collectedMachines,
-    modalState.isLoadingCollections,
-    financials.taxes,
-    financials.variance,
-    financials.advance,
-    financials.balanceCorrection,
-    financials.collectedAmount,
-    locations,
-    lockedLocationId,
-    selectedLocation,
-    setStoreFinancials,
-  ]);
+  };
 
   // Trigger calculation when relevant state changes
   useEffect(() => {
@@ -553,7 +524,7 @@ export function useMobileCollectionModal({
   // View Handlers
   // ============================================================================
 
-  const handleViewForm = useCallback(() => {
+  const handleViewForm = () => {
     pushNavigation('list');
     setModalState(prev => ({
       ...prev,
@@ -562,9 +533,9 @@ export function useMobileCollectionModal({
       isCollectedListVisible: true,
       isViewingFinancialForm: true,
     }));
-  }, [pushNavigation]);
+  };
 
-  const handleViewCollectedMachines = useCallback(() => {
+  const handleViewCollectedMachines = () => {
     pushNavigation('list');
     setModalState(prev => ({
       ...prev,
@@ -573,17 +544,17 @@ export function useMobileCollectionModal({
       isMachineListVisible: false,
       isViewingFinancialForm: false,
     }));
-  }, [pushNavigation]);
+  };
 
   // ============================================================================
   // Computed
   // ============================================================================
 
-  const inputsEnabled = useMemo(() => {
+  const inputsEnabled = (() => {
     return !!selectedMachine && !!selectedMachineData;
-  }, [selectedMachine, selectedMachineData]);
+  })();
 
-  const isAddMachineEnabled = useMemo(() => {
+  const isAddMachineEnabled = (() => {
     // Must have a machine selected
     if (!selectedMachineData) return false;
 
@@ -624,19 +595,9 @@ export function useMobileCollectionModal({
     }
 
     return true;
-  }, [
-    selectedMachineData,
-    modalState.formData.metersIn,
-    modalState.formData.metersOut,
-    modalState.formData.ramClear,
-    modalState.formData.ramClearMetersIn,
-    modalState.formData.ramClearMetersOut,
-    modalState.formData.showAdvancedSas,
-    modalState.formData.sasStartTime,
-    modalState.formData.sasEndTime,
-  ]);
+  })();
 
-  const isCreateReportsEnabled = useMemo(() => {
+  const isCreateReportsEnabled = (() => {
     // Must have machines in the list
     if (modalState.collectedMachines.length === 0) return false;
 
@@ -664,7 +625,7 @@ export function useMobileCollectionModal({
       financials.balanceCorrection.toString().trim() !== '';
 
     return amountToCollectHasValue && balanceCorrectionHasValue;
-  }, [modalState.collectedMachines, financials]);
+  })();
 
   // ============================================================================
   // Machine Collection Operations
@@ -673,7 +634,7 @@ export function useMobileCollectionModal({
   /**
    * Add or update machine in collection list
    */
-  const addMachineToList = useCallback(async () => {
+  const addMachineToList = async () => {
     if (!selectedMachineData || modalState.isProcessing) return;
 
     const isEditing = !!modalState.editingEntryId;
@@ -1010,23 +971,12 @@ export function useMobileCollectionModal({
     } finally {
       setModalState(prev => ({ ...prev, isProcessing: false }));
     }
-  }, [
-    selectedMachineData,
-    modalState,
-    user,
-    selectedLocationName,
-    selectedLocation,
-    setStoreCollectedMachines,
-    setStoreLockedLocation,
-    setStoreSelectedMachine,
-    setStoreSelectedMachineData,
-  ]);
+  };
 
   /**
    * Edit machine in list
    */
-  const editMachineInList = useCallback(
-    (entry: CollectionDocument) => {
+  const editMachineInList = (entry: CollectionDocument) => {
       // First check if machine is already in availableMachines
       let machine = availableMachines.find(
         m => String(m._id) === entry.machineId
@@ -1085,21 +1035,12 @@ export function useMobileCollectionModal({
 
       setStoreSelectedMachine(String(machine._id));
       setStoreSelectedMachineData(machine);
-    },
-    [
-      availableMachines,
-      setStoreAvailableMachines,
-      setStoreSelectedLocation,
-      setStoreSelectedMachine,
-      setStoreSelectedMachineData,
-    ]
-  );
+    };
 
   /**
    * Delete machine from list
    */
-  const deleteMachineFromList = useCallback(
-    async (entryId: string) => {
+  const deleteMachineFromList = async (entryId: string) => {
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
@@ -1152,13 +1093,7 @@ export function useMobileCollectionModal({
         setModalState(prev => ({ ...prev, isProcessing: false }));
         toast.error('Failed to remove collection. Please try again.');
       }
-    },
-    [
-      modalState.collectedMachines,
-      setStoreCollectedMachines,
-      setStoreLockedLocation,
-    ]
-  );
+    };
 
   // ============================================================================
   // Report Creation
@@ -1167,8 +1102,7 @@ export function useMobileCollectionModal({
   /**
    * Create collection report
    */
-  const createCollectionReport = useCallback(
-    async (reconciliationData?: unknown) => {
+  const createCollectionReport = async (reconciliationData?: unknown) => {
       const machinesForReport = modalState.collectedMachines;
 
       if (machinesForReport.length === 0) {
@@ -1308,17 +1242,7 @@ export function useMobileCollectionModal({
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
       }
-    },
-    [
-      modalState.collectedMachines,
-      selectedLocation,
-      selectedLocationName,
-      financials,
-      user,
-      onRefresh,
-      onClose,
-    ]
-  );
+    };
 
   // ============================================================================
   // State Synchronization

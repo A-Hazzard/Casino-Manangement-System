@@ -51,8 +51,6 @@ import {
   FileText,
   RefreshCw,
 } from 'lucide-react';
-import { useMemo } from 'react';
-
 type ReportsLocationsOverviewProps = {
   // Data
   metricsTotals: DashboardTotals | null;
@@ -112,7 +110,7 @@ export default function ReportsLocationsOverview({
   // Computed
   // ============================================================================
   // Check if any location has includeJackpot and compute total jackpot
-  const { anyIncludeJackpot, totalJackpot } = useMemo(() => {
+  const { anyIncludeJackpot, totalJackpot } = (() => {
     const dataSource =
       (locationAggregates as AggregatedLocation[]).length > 0
         ? (locationAggregates as AggregatedLocation[])
@@ -123,10 +121,10 @@ export default function ReportsLocationsOverview({
       0
     );
     return { anyIncludeJackpot: any, totalJackpot: jackpot };
-  }, [locationAggregates, allLocationsForDropdown]);
+  })();
 
   // Calculate online machines totals - use locationAggregates if available, otherwise fallback to allLocationsForDropdown
-  const onlineMachinesData = useMemo(() => {
+  const onlineMachinesData = (() => {
     const dataSource =
       (locationAggregates as AggregatedLocation[]).length > 0
         ? (locationAggregates as AggregatedLocation[])
@@ -145,7 +143,7 @@ export default function ReportsLocationsOverview({
       total,
       percentage: total > 0 ? (online / total) * 100 : 0,
     };
-  }, [locationAggregates, allLocationsForDropdown]);
+  })();
 
   // ============================================================================
   // Render
@@ -243,7 +241,7 @@ export default function ReportsLocationsOverview({
       {/* Interactive Map */}
       <ReportsLocationsMap
         key={`map-overview-${gamingLocations.length}-${locationAggregates.length}`}
-        locations={useMemo(() => {
+        locations={(() => {
           // Map all gaming locations to LocationData format
           // Use locationAggregation data (same as dashboard) for financial metrics
           return gamingLocations
@@ -376,7 +374,7 @@ export default function ReportsLocationsOverview({
               };
             })
             .filter((loc): loc is NonNullable<typeof loc> => loc !== null);
-        }, [gamingLocations, locationAggregates])}
+        })()}
         financialDataLoading={
           metricsLoading ||
           locationsLoading ||

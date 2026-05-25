@@ -15,7 +15,7 @@ import type {
   MachineStatsApiResponse,
 } from '@/shared/types/machines';
 import axios from 'axios';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 export const useMachinesTabData = (
@@ -63,8 +63,7 @@ export const useMachinesTabData = (
   // ============================================================================
 
   // Stats fetching
-  const fetchMachineStats = useCallback(
-    async (locationId: string = 'all') => {
+  const fetchMachineStats = async (locationId: string = 'all') => {
       setStatsLoading(true);
       const params: Record<string, string> = {
         type: 'stats',
@@ -110,19 +109,10 @@ export const useMachinesTabData = (
         toast.error('Failed to load machine statistics');
         setStatsLoading(false);
       }
-    },
-    [
-      selectedLicencee,
-      customDateRange,
-      activeMetricsFilter,
-      displayCurrency,
-      makeStatsRequest,
-    ]
-  );
+    };
 
   // Overview fetching
-  const fetchOverviewMachines = useCallback(
-    async (
+  const fetchOverviewMachines = async (
       page: number = 1,
       search: string = '',
       locationId: string = 'all',
@@ -182,20 +172,10 @@ export const useMachinesTabData = (
       } finally {
         setOverviewLoading(false);
       }
-    },
-    [
-      selectedLicencee,
-      customDateRange,
-      activeMetricsFilter,
-      displayCurrency,
-      overviewItemsPerBatch,
-      makeOverviewRequest,
-    ]
-  );
+    };
 
   // Offline fetching
-  const fetchOfflineMachines = useCallback(
-    async (
+  const fetchOfflineMachines = async (
       batch: number = 1,
       search?: string,
       locationId: string = 'all',
@@ -252,19 +232,10 @@ export const useMachinesTabData = (
       } finally {
         setOfflineLoading(false);
       }
-    },
-    [
-      selectedLicencee,
-      customDateRange,
-      activeMetricsFilter,
-      offlineItemsPerBatch,
-      makeOfflineRequest,
-    ]
-  );
+    };
 
   // All machines (for evaluation) fetching
-  const fetchAllMachines = useCallback(
-    async (selectedLocations: string[] = []) => {
+  const fetchAllMachines = async (selectedLocations: string[] = []) => {
       setEvaluationLoading(true);
       try {
         await makeEvaluationRequest(async signal => {
@@ -299,18 +270,10 @@ export const useMachinesTabData = (
       } finally {
         setEvaluationLoading(false);
       }
-    },
-    [
-      selectedLicencee,
-      customDateRange,
-      activeMetricsFilter,
-      displayCurrency,
-      makeEvaluationRequest,
-    ]
-  );
+    };
 
   // Locations fetching
-  const fetchLocationsData = useCallback(async () => {
+  const fetchLocationsData = async () => {
     try {
       const params: Record<string, string> = {};
       if (selectedLicencee && selectedLicencee !== 'all') {
@@ -344,7 +307,7 @@ export const useMachinesTabData = (
       console.error('Failed to fetch locations:', error);
       setLocations([]);
     }
-  }, [selectedLicencee]);
+  };
 
   return {
     machineStats,

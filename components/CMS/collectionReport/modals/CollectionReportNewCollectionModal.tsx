@@ -58,7 +58,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import { formatDate } from '@/lib/utils/formatting';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -107,18 +107,17 @@ export default function CollectionReportNewCollectionModal({
   // Handlers
   // ============================================================================
   // Helper function to get proper user display name for activity logging
-  const getUserDisplayNameCallback = useCallback(() => {
+  const getUserDisplayNameCallback = () => {
     if (!user) return 'Unknown User';
     return getUserDisplayName({
       profile: user.profile,
       username: user.username,
       emailAddress: user.emailAddress,
     });
-  }, [user]);
+  };
 
   // Activity logging function wrapper
-  const logActivityCallback = useCallback(
-    async (
+  const logActivityCallback = async (
       action: string,
       resource: string,
       resourceId: string,
@@ -138,9 +137,7 @@ export default function CollectionReportNewCollectionModal({
         previousData,
         newData
       );
-    },
-    [user, getUserDisplayNameCallback]
-  );
+    };
 
   const {
     locations,

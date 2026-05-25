@@ -15,7 +15,7 @@ import {
   Stack,
   styled,
 } from '@mui/material';
-import { useMemo, useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { isWithinInterval, isSameDay, startOfDay, endOfDay } from 'date-fns';
 
 // === Types ===
@@ -296,17 +296,13 @@ export function MuiDateCalendar({
   // ============================================================================
   // Computed
   // ============================================================================
-  const theme = useMemo(
-    () =>
-      createTheme({
+  const theme = createTheme({
         palette: {
           primary: { main: '#1a73e8', light: '#e8f0fe' },
           secondary: { main: '#757575' },
         },
         typography: { fontFamily: 'inherit' },
-      }),
-    []
-  );
+      });
 
   // ============================================================================
   // Handlers

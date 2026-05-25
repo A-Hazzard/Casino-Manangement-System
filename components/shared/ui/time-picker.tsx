@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import {
@@ -93,11 +93,11 @@ export function TimePicker({
   // Computed
   // ============================================================================
   // Format display string
-  const formattedTime = useMemo(() => {
+  const formattedTime = (() => {
     if (!time) return placeholder;
     const { hours, minutes, period } = timeState;
     return `${hours}:${minutes} ${period}`;
-  }, [time, timeState, placeholder]);
+  })();
 
   // ============================================================================
   // Render

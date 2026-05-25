@@ -30,7 +30,7 @@ import { KeyboardEvent } from 'react';
 import type { CustomSelectProps, SelectOption } from '@/lib/types/components';
 import { cn } from '@/lib/utils';
 import { Check, ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
@@ -166,20 +166,16 @@ export function CustomSelect({
     }
   }, [isOpen, searchable]);
 
-  const handleSelect = useCallback(
-    (selectedValue: string) => {
+  const handleSelect = (selectedValue: string) => {
       onValueChange?.(selectedValue);
       setIsOpen(false);
       setSearchTerm('');
       setFocusedIndex(-1);
       triggerRef.current?.focus();
-    },
-    [onValueChange]
-  );
+    };
 
   // Handle keyboard navigation
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
       if (!isOpen) {
         if (
           event.key === 'Enter' ||
@@ -223,18 +219,16 @@ export function CustomSelect({
           }
           break;
       }
-    },
-    [isOpen, filteredOptions, focusedIndex, handleSelect]
-  );
+    };
 
-  const handleTriggerClick = useCallback(() => {
+  const handleTriggerClick = () => {
     if (!disabled) {
       setIsOpen(!isOpen);
       if (!isOpen) {
         setFocusedIndex(0);
       }
     }
-  }, [disabled, isOpen]);
+  };
 
   return (
     <div className={cn('relative', className)}>

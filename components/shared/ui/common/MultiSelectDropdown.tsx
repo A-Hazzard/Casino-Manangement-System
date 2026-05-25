@@ -26,7 +26,7 @@ import { MouseEvent, ReactNode } from 'react';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export type MultiSelectOption = {
@@ -115,7 +115,7 @@ export default function MultiSelectDropdown({
   // Handlers
   // ============================================================================
   // Positioning logic
-  const updatePosition = useCallback(() => {
+  const updatePosition = () => {
     if (triggerRef.current && isOpen) {
       const rect = triggerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -133,7 +133,7 @@ export default function MultiSelectDropdown({
         width: rect.width,
       });
     }
-  }, [isOpen]);
+  };
 
   useEffect(() => {
     if (isOpen) {

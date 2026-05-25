@@ -8,8 +8,6 @@ import {
   type MachineEvaluationData,
   type ManufacturerPerformanceData,
 } from '@/shared/types/reports';
-import { useMemo } from 'react';
-
 type UseManufacturerPerformanceDataProps = {
   initialData: ManufacturerPerformanceData[];
   allMachines: MachineEvaluationData[];
@@ -30,7 +28,7 @@ export function useManufacturerPerformanceData({
   // Computed (Memoized Data)
   // ============================================================================
   // Re-aggregate data based on selected filters
-  const aggregatedData = useMemo(() => {
+  const aggregatedData = (() => {
     if (!allMachines.length) return initialData;
 
     let filteredMachines = allMachines;
@@ -207,17 +205,17 @@ export function useManufacturerPerformanceData({
         totalMachinesCount: activeMachinesNumber,
       };
     });
-  }, [allMachines, selectedFilters, initialData]);
+  })();
 
   // Filter by selected manufacturers
-  const filteredData = useMemo(() => {
+  const filteredData = (() => {
     return aggregatedData.filter(d =>
       selectedManufacturers.includes(d.manufacturer)
     );
-  }, [aggregatedData, selectedManufacturers]);
+  })();
 
   // Transform data for the chart
-  const chartData = useMemo(() => {
+  const chartData = (() => {
     return filteredData.map(item => {
       const maxLength = 15;
       const displayName =
@@ -241,7 +239,7 @@ export function useManufacturerPerformanceData({
         totalMachinesCount: item.totalMachinesCount,
       };
     });
-  }, [filteredData]);
+  })();
 
   // Calculate width based on data length
   const minWidth = Math.max(600, filteredData.length * 60);

@@ -25,7 +25,7 @@ import {
 import { useSmibMeters } from '@/lib/hooks/data/useSmibMeters';
 import { parseSasPyd } from '@/lib/utils/sas/parsePyd';
 import { AlertTriangle, BarChart3, RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type SSEMessage = {
   type:
@@ -172,7 +172,7 @@ export function CabinetsDetailsSMIBMeterData({
   };
 
   // Message handler for processing SSE messages
-  const handleSSEMessage = useCallback((msg: SSEMessage) => {
+  const handleSSEMessage = (msg: SSEMessage) => {
     try {
       // Mark as ready when callback is actually registered
       if (msg.type === 'callback_ready') {
@@ -274,7 +274,7 @@ export function CabinetsDetailsSMIBMeterData({
     } catch {
       // ignore malformed
     }
-  }, []);
+  };
 
   // Track subscription to prevent infinite loops
   const unsubscribeRef = useRef<(() => void) | null>(null);

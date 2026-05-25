@@ -25,7 +25,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TimePeriod } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
 const ITEMS_PER_BATCH = 40;
@@ -76,9 +76,9 @@ export function useCabinetsPageData() {
   const [batchResetCounter, setBatchResetCounter] = useState(0);
 
   // Helper to calculate which batch a page belongs to
-  const calculateBatchNumber = useCallback((page: number) => {
+  const calculateBatchNumber = (page: number) => {
     return Math.floor(page / PAGES_PER_BATCH) + 1;
-  }, []);
+  };
 
   const {
     allCabinets,
@@ -118,7 +118,7 @@ export function useCabinetsPageData() {
     currentPage: currentPage,
   });
 
-  const isDataMissingForPage = useMemo(() => {
+  const isDataMissingForPage = (() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     // We only need more data if our startIndex for the current page
     // has exceeded what we've loaded in allCabinets, AND
@@ -130,11 +130,11 @@ export function useCabinetsPageData() {
       startIndex >= allCabinets.length &&
       allCabinets.length < totalCount
     );
-  }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
+  })();
 
   // effectiveTotalPages is based on the client-visible filtered count.
   // Adds +1 trigger page only if server has more raw data not yet fetched.
-  const effectiveTotalPages = useMemo(() => {
+  const effectiveTotalPages = (() => {
     const displayedPages =
       Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
@@ -144,11 +144,10 @@ export function useCabinetsPageData() {
     }
 
     return displayedPages;
-  }, [filteredCabinets.length, allCabinets.length, totalCount]);
+  })();
 
   // Custom column sort handler that triggers fresh fetch
-  const handleColumnSort = useCallback(
-    (column: CabinetSortOption) => {
+  const handleColumnSort = (column: CabinetSortOption) => {
       if (sortOption === column) {
         setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
       } else {
@@ -156,9 +155,7 @@ export function useCabinetsPageData() {
         setSortOrder('desc');
       }
       setCurrentPage(0);
-    },
-    [sortOption]
-  );
+    };
 
   // ============================================================================
   // Stats & Machine Logic
@@ -179,7 +176,7 @@ export function useCabinetsPageData() {
   );
 
   // Fallback machine stats logic if API returns zero
-  const machineStats = useMemo(() => {
+  const machineStats = (() => {
     const hasCabinets = filteredCabinets.length > 0;
     const apiReturnsZero = apiMachineStats?.totalMachines === 0;
 
@@ -208,7 +205,7 @@ export function useCabinetsPageData() {
     }
 
     return apiMachineStats;
-  }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
+  })();
 
   // includeJackpot is configured at the Licencee level
   const [includeJackpot, setIncludeJackpot] = useState(false);
@@ -275,7 +272,7 @@ export function useCabinetsPageData() {
     customDateRange?.endDate,
   ]);
 
-  const fetchChartData = useCallback(async () => {
+  const fetchChartData = async () => {
     if (!activeMetricsFilter) return;
     setLoadingChart(true);
     try {
@@ -333,18 +330,7 @@ export function useCabinetsPageData() {
     } finally {
       setLoadingChart(false);
     }
-  }, [
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    displayCurrency,
-    chartGranularity,
-    selectedLocation,
-    selectedGameType,
-    selectedStatus,
-    debouncedSearchTerm,
-    makeRequest,
-  ]);
+  };
 
   // ============================================================================
   // Handlers
@@ -406,54 +392,45 @@ export function useCabinetsPageData() {
   ]);
 
   // Wrapped setters
-  const handleSetSelectedStatus = useCallback((status: string) => {
+  const handleSetSelectedStatus = (status: string) => {
     setIsFilterResetting(true);
     setSelectedStatus(status);
     setCurrentPage(0);
-  }, []);
+  };
 
-  const handleSetSelectedMembership = useCallback((membership: string) => {
+  const handleSetSelectedMembership = (membership: string) => {
     setIsFilterResetting(true);
     setSelectedMembership(membership);
     setCurrentPage(0);
-  }, []);
+  };
 
-  const handleSetSelectedSmibStatus = useCallback((smibStatus: string) => {
+  const handleSetSelectedSmibStatus = (smibStatus: string) => {
     setIsFilterResetting(true);
     setSelectedSmibStatus(smibStatus);
     setCurrentPage(0);
-  }, []);
+  };
 
-  const handleSetSelectedLocation = useCallback(
-    (location: string | string[]) => {
+  const handleSetSelectedLocation = (location: string | string[]) => {
       setIsFilterResetting(true);
       const locationArray = Array.isArray(location) ? location : [location];
       setSelectedLocation(locationArray);
       setCurrentPage(0);
-    },
-    []
-  );
+    };
 
-  const handleSetSelectedGameType = useCallback(
-    (gameType: string | string[]) => {
+  const handleSetSelectedGameType = (gameType: string | string[]) => {
       setIsFilterResetting(true);
       const gameTypeArray = Array.isArray(gameType) ? gameType : [gameType];
       setSelectedGameType(gameTypeArray);
       setCurrentPage(0);
-    },
-    []
-  );
+    };
 
-  const handleSetSearchTerm = useCallback(
-    (term: string) => {
+  const handleSetSearchTerm = (term: string) => {
       if (term.trim() !== searchTerm.trim()) {
         setIsFilterResetting(true);
         setSearchTerm(term);
         setCurrentPage(0);
       }
-    },
-    [searchTerm]
-  );
+    };
 
   const [isNewMovementOpen, setIsNewMovementOpen] = useState(false);
   const [isUploadSmibOpen, setIsUploadSmibOpen] = useState(false);

@@ -11,8 +11,6 @@
  * - Transition state tracking
  * - Animation props generation
  */
-
-import { useCallback, useMemo } from 'react';
 import {
   UseMembersTabContentProps,
   UseMembersTabContentReturn,
@@ -29,7 +27,7 @@ export function useMembersTabContent({
   // ============================================================================
 
   // Get animation props for current tab
-  const getTabAnimationProps = useCallback((): TabAnimationProps => {
+  const getTabAnimationProps = (): TabAnimationProps => {
     return {
       key: activeTab,
       variants: animations.tabVariants,
@@ -39,22 +37,22 @@ export function useMembersTabContent({
       transition: { duration: 0.2 },
       className: 'h-full',
     };
-  }, [activeTab, animations.tabVariants]);
+  };
 
   // ============================================================================
   // Computed
   // ============================================================================
 
   // Check if tab is transitioning (for loading states)
-  const isTabTransitioning = useMemo(() => {
+  const isTabTransitioning = (() => {
     // This could be enhanced with actual transition state tracking
     return false;
-  }, []);
+  })();
 
   // Get current tab component
-  const currentTabComponent = useMemo(() => {
+  const currentTabComponent = (() => {
     return tabComponents[activeTab];
-  }, [activeTab, tabComponents]);
+  })();
 
   // ============================================================================
   // Return

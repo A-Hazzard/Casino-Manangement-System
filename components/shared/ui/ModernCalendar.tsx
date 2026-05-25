@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 
 /**
  * Props for the ModernCalendar component.
@@ -543,7 +543,7 @@ export function ModernCalendar({
    * Computes the header text showing current selection.
    * Includes time when enableTimeInputs is true.
    */
-  const headerText = useMemo(() => {
+  const headerText = (() => {
     if (!date?.from)
       return mode === 'range' ? 'Pick a date range' : 'Pick a date';
 
@@ -564,7 +564,7 @@ export function ModernCalendar({
       date.from,
       enableTimeInputs ? 'MMM dd, yyyy h:mm aa' : 'MMM dd, yyyy'
     );
-  }, [date, mode, enableTimeInputs]);
+  })();
 
   // ============================================================================
   // Render

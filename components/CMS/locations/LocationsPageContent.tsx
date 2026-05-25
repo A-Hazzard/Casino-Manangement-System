@@ -26,7 +26,7 @@ import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import LocationsLocationCard from './LocationsLocationCard';
 import LocationsLocationSkeleton from './LocationsLocationSkeleton';
@@ -82,19 +82,19 @@ export default function LocationsPageContent() {
    * Check if the current user can manage (create/edit/delete) locations.
    * Only developers, admins, managers, and location admins can manage locations.
    */
-  const canManageLocations = useMemo(() => {
+  const canManageLocations = (() => {
     const roles = user?.roles || [];
     return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(
       r => roles.includes(r)
     );
-  }, [user]);
+  })();
 
-  const canPermanentlyDelete = useMemo(() => {
+  const canPermanentlyDelete = (() => {
     const roles = user?.roles || [];
     return ['developer', 'owner', 'admin', 'location admin'].some(r =>
       roles.map((x: string) => x.toLowerCase()).includes(r)
     );
-  }, [user]);
+  })();
 
   // ============================================================================
   // Handlers

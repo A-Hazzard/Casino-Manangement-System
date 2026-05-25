@@ -11,7 +11,7 @@ import { ChangeEvent, FC } from 'react';
 import { LocationPickerMapProps, PlaceSuggestion } from '@/lib/types/location';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { Globe, MapPin, Search, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const libraries: 'places'[] = ['places'];
 
@@ -61,7 +61,7 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
   // ============================================================================
 
   // Memoized map options - only create when google is loaded
-  const mapOptions = useMemo(() => {
+  const mapOptions = (() => {
     if (!isLoaded || !window.google) return {};
 
     return {
@@ -78,14 +78,13 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
         position: window.google.maps.ControlPosition.TOP_RIGHT,
       },
     };
-  }, [mapType, isLoaded]);
+  })();
 
   // ============================================================================
   // Handlers
   // ============================================================================
   // Handle map load
-  const onMapLoad = useCallback(
-    (mapInstance: google.maps.Map) => {
+  const onMapLoad = (mapInstance: google.maps.Map) => {
       if (!isLoaded || !window.google) return;
 
       setMap(mapInstance);
@@ -95,13 +94,10 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
         mapInstance
       );
       geocoderRef.current = new window.google.maps.Geocoder();
-    },
-    [isLoaded]
-  );
+    };
 
   // Update location from coordinates
-  const updateLocationFromCoords = useCallback(
-    (lat: number, lng: number) => {
+  const updateLocationFromCoords = (lat: number, lng: number) => {
       if (!geocoderRef.current || !isLoaded || !window.google) return;
 
       geocoderRef.current.geocode(
@@ -141,39 +137,30 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
           }
         }
       );
-    },
-    [onLocationSelect, isLoaded]
-  );
+    };
 
   // Handle map click
-  const onMapClick = useCallback(
-    (event: google.maps.MapMouseEvent) => {
+  const onMapClick = (event: google.maps.MapMouseEvent) => {
       if (event.latLng) {
         const lat = event.latLng.lat();
         const lng = event.latLng.lng();
         setCenter({ lat, lng });
         updateLocationFromCoords(lat, lng);
       }
-    },
-    [updateLocationFromCoords]
-  );
+    };
 
   // Handle marker drag end
-  const onMarkerDragEnd = useCallback(
-    (event: google.maps.MapMouseEvent) => {
+  const onMarkerDragEnd = (event: google.maps.MapMouseEvent) => {
       if (event.latLng) {
         const lat = event.latLng.lat();
         const lng = event.latLng.lng();
         setCenter({ lat, lng });
         updateLocationFromCoords(lat, lng);
       }
-    },
-    [updateLocationFromCoords]
-  );
+    };
 
   // Search places with debouncing
-  const searchPlaces = useCallback(
-    async (query: string) => {
+  const searchPlaces = async (query: string) => {
       if (
         !query.trim() ||
         query.length < 2 ||
@@ -235,13 +222,10 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
         setSuggestions([]);
         setIsSearching(false);
       }
-    },
-    [isLoaded]
-  );
+    };
 
   // Handle search input change with debouncing
-  const handleSearchChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
       const query = e.target.value;
       setSearchQuery(query);
 
@@ -259,13 +243,10 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
         setSuggestions([]);
         setShowSuggestions(false);
       }
-    },
-    [searchPlaces]
-  );
+    };
 
   // Handle suggestion selection
-  const handleSuggestionSelect = useCallback(
-    (suggestion: PlaceSuggestion) => {
+  const handleSuggestionSelect = (suggestion: PlaceSuggestion) => {
       setSearchQuery(suggestion.name);
       setShowSuggestions(false);
       setCenter({ lat: suggestion.lat, lng: suggestion.lng });
@@ -295,12 +276,10 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
         city,
         country,
       });
-    },
-    [map, onLocationSelect]
-  );
+    };
 
   // Clear search
-  const clearSearch = useCallback(() => {
+  const clearSearch = () => {
     setSearchQuery('');
     setSuggestions([]);
     setShowSuggestions(false);
@@ -309,7 +288,7 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
       clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = null;
     }
-  }, []);
+  };
 
   // ============================================================================
   // Effects

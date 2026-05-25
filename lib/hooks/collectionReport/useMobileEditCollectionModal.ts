@@ -21,7 +21,7 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import axios, { type AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 
@@ -225,7 +225,7 @@ export function useMobileEditCollectionModal({
   /**
    * Calculate amount to collect based on machine entries and financial inputs
    */
-  const calculateAmountToCollect = useCallback(() => {
+  const calculateAmountToCollect = () => {
     if (
       modalState.collectedMachines.length === 0 ||
       modalState.isLoadingCollections
@@ -284,17 +284,7 @@ export function useMobileEditCollectionModal({
         amountToCollect: amountToCollect.toFixed(2),
       },
     }));
-  }, [
-    modalState.collectedMachines,
-    modalState.isLoadingCollections,
-    modalState.financials.taxes,
-    modalState.financials.variance,
-    modalState.financials.advance,
-    modalState.financials.previousBalance,
-    lockedLocationId,
-    selectedLocationId,
-    modalState.selectedLocation,
-  ]);
+  };
 
   // Trigger calculation when relevant state changes
   useEffect(() => {
@@ -329,14 +319,14 @@ export function useMobileEditCollectionModal({
   // ============================================================================
 
   // Navigation helper functions
-  const pushNavigation = useCallback((screen: string) => {
+  const pushNavigation = (screen: string) => {
     setModalState(prev => ({
       ...prev,
       navigationStack: [...prev.navigationStack, screen],
     }));
-  }, []);
+  };
 
-  const popNavigation = useCallback(() => {
+  const popNavigation = () => {
     setModalState(prev => {
       const newStack = [...prev.navigationStack];
       newStack.pop();
@@ -354,7 +344,7 @@ export function useMobileEditCollectionModal({
         navigationStack: newStack,
       };
     });
-  }, []);
+  };
 
   // State transitions
   const transitions = {
@@ -456,12 +446,12 @@ export function useMobileEditCollectionModal({
   const debouncedFormDataNotes = useDebounce(modalState.formData.notes, 1500);
 
   // Inputs enabled logic
-  const inputsEnabled = useMemo(() => {
+  const inputsEnabled = (() => {
     return !!modalState.selectedMachineData || !!modalState.selectedMachine;
-  }, [modalState.selectedMachineData, modalState.selectedMachine]);
+  })();
 
   // Validation for "Add Machine" button
-  const isAddMachineEnabled = useMemo(() => {
+  const isAddMachineEnabled = (() => {
     // Must have a machine selected
     if (!modalState.selectedMachineData) return false;
 
@@ -505,40 +495,27 @@ export function useMobileEditCollectionModal({
     }
 
     return true;
-  }, [
-    modalState.selectedMachineData,
-    modalState.formData.metersIn,
-    modalState.formData.metersOut,
-    modalState.formData.ramClear,
-    modalState.formData.ramClearMetersIn,
-    modalState.formData.ramClearMetersOut,
-    modalState.formData.showAdvancedSas,
-    modalState.formData.sasStartTime,
-    modalState.formData.sasEndTime,
-  ]);
+  })();
 
   // Submit button always enabled - validation happens on submit
-  const isCreateReportsEnabled = useMemo(() => {
+  const isCreateReportsEnabled = (() => {
     // Must have at least one machine
     if (modalState.collectedMachines.length === 0) return false;
     return true;
-  }, [modalState.collectedMachines]);
+  })();
 
   /**
    * Find location ID for a given machine using the location name from the collection
    */
-  const getLocationIdFromMachine = useCallback(
-    (locationName: string) => {
+  const getLocationIdFromMachine = (locationName: string) => {
       const matchingLoc = locations.find(
         location => location.name === locationName
       );
       return matchingLoc ? String(matchingLoc._id) : null;
-    },
-    [locations]
-  );
+    };
 
   // Add or update machine in collection list
-  const addMachineToList = useCallback(async () => {
+  const addMachineToList = async () => {
     console.log('[addMachineToList] Called:', {
       selectedMachineData: !!modalState.selectedMachineData,
       isProcessing: modalState.isProcessing,
@@ -902,21 +879,10 @@ export function useMobileEditCollectionModal({
     } finally {
       setModalState(prev => ({ ...prev, isProcessing: false }));
     }
-  }, [
-    modalState.selectedMachineData,
-    modalState.formData,
-    selectedLocationName,
-    modalState.isProcessing,
-    modalState.editingEntryId,
-    modalState.collectedMachines,
-    user,
-    setStoreCollectedMachines,
-    setStoreLockedLocation,
-  ]);
+  };
 
   // Delete machine from collection list
-  const deleteMachineFromList = useCallback(
-    async (entryId: string) => {
+  const deleteMachineFromList = async (entryId: string) => {
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
@@ -948,18 +914,10 @@ export function useMobileEditCollectionModal({
         setModalState(prev => ({ ...prev, isProcessing: false }));
         toast.error('Failed to remove collection. Please try again.');
       }
-    },
-    [
-      modalState.collectedMachines,
-      modalState.lockedLocationId,
-      setStoreCollectedMachines,
-      setStoreLockedLocation,
-    ]
-  );
+    };
 
   // Edit machine in collection list
-  const editMachineInList = useCallback(
-    async (entry: CollectionDocument) => {
+  const editMachineInList = async (entry: CollectionDocument) => {
       let machine = modalState.availableMachines.find(
         m => m._id === entry.machineId
       );
@@ -1015,14 +973,7 @@ export function useMobileEditCollectionModal({
           prevOut: entry.prevOut?.toString() || '',
         },
       }));
-    },
-    [
-      modalState.availableMachines,
-      locations,
-      setStoreAvailableMachines,
-      setStoreSelectedLocation,
-    ]
-  );
+    };
 
   // Sync mobile state with Zustand store
   useEffect(() => {
@@ -1043,8 +994,7 @@ export function useMobileEditCollectionModal({
   ]);
 
   // Update collection report handler
-  const updateCollectionReportHandler = useCallback(
-    async (reconciliationData?: VariationsCheckResponse) => {
+  const updateCollectionReportHandler = async (reconciliationData?: VariationsCheckResponse) => {
       if (
         collectedMachines.length === 0 ||
         !selectedLocationId ||
@@ -1332,22 +1282,7 @@ export function useMobileEditCollectionModal({
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
       }
-    },
-    [
-      collectedMachines,
-      selectedLocationId,
-      selectedLocationName,
-      modalState.financials,
-      modalState.originalCollections,
-      modalState.editingEntryId,
-      modalState.selectedMachineData,
-      modalState.formData,
-      user,
-      onRefresh,
-      onClose,
-      reportId,
-    ]
-  );
+    };
 
   // Load existing report data for edit mode
   useEffect(() => {
@@ -1584,18 +1519,18 @@ export function useMobileEditCollectionModal({
   }, [show]);
 
   // Function to clear unsaved edits (exposed for parent components)
-  const clearUnsavedEdits = useCallback(() => {
+  const clearUnsavedEdits = () => {
     setModalState(prev => ({ ...prev, hasUnsavedEdits: false }));
-  }, [setModalState]);
+  };
 
   // Compute IDs of newly added machines (not in original collections)
-  const newMachineIds = useMemo(() => {
+  const newMachineIds = (() => {
     const originalIds = new Set(modalState.originalCollections.map(o => o._id));
     return collectedMachines
       .filter(m => !originalIds.has(m._id))
       .map(m => m._id)
       .filter(Boolean);
-  }, [collectedMachines, modalState.originalCollections]);
+  })();
 
   return {
     // State
@@ -1627,7 +1562,7 @@ export function useMobileEditCollectionModal({
     // Navigation
     pushNavigation,
     popNavigation,
-    handleViewCollectedMachines: useCallback(() => {
+    handleViewCollectedMachines: () => {
       setModalState(prev => ({
         ...prev,
         isCollectedListVisible: true,
@@ -1635,7 +1570,7 @@ export function useMobileEditCollectionModal({
         isMachineListVisible: false,
       }));
       pushNavigation('list');
-    }, [pushNavigation]),
+    },
     transitions,
 
     // Validation

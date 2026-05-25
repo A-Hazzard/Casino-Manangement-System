@@ -30,7 +30,7 @@ import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
 import { parse } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useCollectionReportFilters } from './useCollectionReportFilters';
 
@@ -125,9 +125,9 @@ export function useCollectionReportPageData() {
     dateRange: customDateRange,
   });
 
-  const filteredReports = useMemo(() => {
+  const filteredReports = (() => {
     return filters.filteredReports;
-  }, [filters.filteredReports]);
+  })();
 
   // ==========================================================================
   // Computed
@@ -136,27 +136,27 @@ export function useCollectionReportPageData() {
   /**
    * Paginated reports from filtered results
    */
-  const paginatedReports = useMemo(() => {
+  const paginatedReports = (() => {
     const start = currentPage * ITEMS_PER_PAGE;
     return filteredReports.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredReports, currentPage]);
+  })();
 
   /**
    * Whether we need to fetch more data for current page
    */
-  const isDataMissingForPage = useMemo(() => {
+  const isDataMissingForPage = (() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     const isAtEndOfLoaded = filteredReports.length <= startIndex;
     const hasMoreOnServer = allReports.length < totalReports;
 
     return isAtEndOfLoaded && hasMoreOnServer;
-  }, [filteredReports.length, allReports.length, currentPage, totalReports]);
+  })();
 
   /**
    * Total pages based on displayed (client-side filtered) reports
    * Prevents empty pages when date/location filters reduce visible count
    */
-  const totalPages = useMemo(() => {
+  const totalPages = (() => {
     const displayedCount = filteredReports.length;
     const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
 
@@ -190,14 +190,7 @@ export function useCollectionReportPageData() {
     }
 
     return displayedPages;
-  }, [
-    filteredReports.length,
-    allReports.length,
-    totalReports,
-    filters.selectedLocation,
-    filters.showUncollectedOnly,
-    filters.selectedFilters.length,
-  ]);
+  })();
 
   // ==========================================================================
   // Computed
@@ -208,7 +201,7 @@ export function useCollectionReportPageData() {
    * - Developers can edit everything
    * - Owners, Admins, Managers can edit only the two most recent reports per location
    */
-  const editableReportIds = useMemo(() => {
+  const editableReportIds = (() => {
     if (!user || !user.roles) return new Set<string>();
 
     const userRoles = (user.roles || []) as string[];
@@ -260,7 +253,7 @@ export function useCollectionReportPageData() {
     }
 
     return new Set<string>();
-  }, [allReports, user]);
+  })();
 
   // ==========================================================================
   // Handlers
@@ -269,14 +262,11 @@ export function useCollectionReportPageData() {
   /**
    * Handle tab change and sync with URL
    */
-  const handleTabChange = useCallback(
-    (tab: string) => {
+  const handleTabChange = (tab: string) => {
       const newTab = tab as CollectionView;
       setActiveTab(newTab);
       pushToUrl(newTab);
-    },
-    [pushToUrl]
-  );
+    };
 
   // ==========================================================================
   // Handlers
@@ -285,15 +275,14 @@ export function useCollectionReportPageData() {
   /**
    * Calculate batch number for pagination
    */
-  const calculateBatchNumber = useCallback((page: number) => {
+  const calculateBatchNumber = (page: number) => {
     return Math.floor(page / PAGES_PER_BATCH) + 1;
-  }, []);
+  };
 
   /**
    * Fetch reports batch from API
    */
-  const fetchReports = useCallback(
-    async (batch: number = 1) => {
+  const fetchReports = async (batch: number = 1) => {
       if (activeTab !== 'collection' && activeTab !== 'collection-v2') {
         setLoading(false);
         if (!hasReceivedFirstResponseRef.current) {
@@ -363,20 +352,12 @@ export function useCollectionReportPageData() {
           }
         }
       }
-    },
-    [
-      activeTab,
-      selectedLicencee,
-      activeMetricsFilter,
-      customDateRange,
-      debouncedSearch,
-    ]
-  );
+    };
 
   /**
    * Refresh reports by resetting state and fetching first batch
    */
-  const refreshReports = useCallback(async () => {
+  const refreshReports = async () => {
     setRefreshing(true);
     setAllReports([]);
     setTotalReports(0);
@@ -384,7 +365,7 @@ export function useCollectionReportPageData() {
     setCurrentPage(0);
     await fetchReports(1);
     setRefreshing(false);
-  }, [fetchReports]);
+  };
 
   // ==========================================================================
   // Handlers
@@ -458,8 +439,7 @@ export function useCollectionReportPageData() {
   /**
    * Handle search term change with state reset
    */
-  const handleSetSearchTerm = useCallback(
-    (term: string) => {
+  const handleSetSearchTerm = (term: string) => {
       if (term.trim() !== searchTerm.trim()) {
         setSearchTerm(term);
         setAllReports([]);
@@ -467,9 +447,7 @@ export function useCollectionReportPageData() {
         setLoadedBatches(new Set());
         setCurrentPage(0);
       }
-    },
-    [searchTerm]
-  );
+    };
 
   // ==========================================================================
   // Effects
@@ -613,9 +591,9 @@ return {
        editableReportIds,
        // Tab Handlers
        handleTabChange,
-       handleRefresh: useCallback(async () => {
+       handleRefresh: async () => {
          await refreshReports();
-       }, [refreshReports]),
+       },
        // CRUD Handlers
        handleCreate,
        handleEdit,
@@ -632,7 +610,7 @@ return {
        setShowDeleteConfirmation,
        setEditingReportId,
        // Data Refresh
-       onRefreshLocations: useCallback(async () => {
+       onRefreshLocations: async () => {
          const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
          const formatted = locs.map(loc => ({
            _id: String(loc.id),
@@ -640,6 +618,6 @@ return {
          }));
          setLocations(formatted);
          setLocationsWithMachines([]);
-       }, [selectedLicencee]),
+       },
      };
 }

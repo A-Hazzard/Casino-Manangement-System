@@ -26,7 +26,7 @@ import { setupAxiosInterceptors } from '@/lib/utils/axiosInterceptor';
 import { useUserStore } from '@/lib/store/userStore';
 import { hasCmsAccess, isCashierOnly } from '@/lib/utils/permissions/client';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
 type GlobalSidebarWrapperProps = {
   navConfig?: NavigationConfig;
@@ -53,7 +53,7 @@ export default function GlobalSidebarWrapper({
   // Computed
   // ============================================================================
   // Determine effective navigation config based on user roles and route
-  const effectiveNavConfig = useMemo(() => {
+  const effectiveNavConfig = (() => {
     // CMS users (developer, admin, manager, location admin) always get CMS navigation
     // which includes both CMS links and vault/cashier links grouped in toggle sections
     if (hasCmsAccess(user?.roles)) {
@@ -67,7 +67,7 @@ export default function GlobalSidebarWrapper({
 
     // Otherwise use the provided navigation config
     return navConfig;
-  }, [pathname, navConfig, user?.roles]);
+  })();
 
   // ============================================================================
   // Render

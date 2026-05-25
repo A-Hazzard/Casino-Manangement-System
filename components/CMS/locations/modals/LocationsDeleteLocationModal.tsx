@@ -10,7 +10,7 @@
  */
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import axios from 'axios';
@@ -40,12 +40,12 @@ export default function LocationsDeleteLocationModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const canPermanentlyDelete = useMemo(() => {
+  const canPermanentlyDelete = (() => {
     const roles = user?.roles || [];
     return ['developer', 'owner', 'admin', 'location admin'].some(r =>
       roles.map((x: string) => x.toLowerCase()).includes(r)
     );
-  }, [user]);
+  })();
 
   const locationName = (selectedLocation as Record<string, unknown>)
     ?.locationName as string;

@@ -12,9 +12,9 @@
  */
 'use client';
 
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, use } from 'react';
 import { cn } from '@/lib/utils';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
 
 // ============================================================================
 // Types & Context
@@ -131,16 +131,13 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   /**
    * Memoized context value containing sidebar state and control functions
    */
-  const value = useMemo(
-    () => ({
+  const value = ({
       isOpen,
       setIsOpen,
       toggle: () => setIsOpen(prev => !prev),
       collapsed,
       toggleCollapsed: () => setCollapsed(prev => !prev),
-    }),
-    [isOpen, collapsed]
-  );
+    });
 
   // ============================================================================
   // Render
@@ -166,7 +163,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
  * @throws Error if used outside SidebarProvider
  */
 export function useSidebar() {
-  const ctx = useContext(SidebarContext);
+  const ctx = use(SidebarContext);
   if (!ctx) {
     throw new Error('useSidebar must be used within a SidebarProvider');
   }

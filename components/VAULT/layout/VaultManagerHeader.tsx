@@ -25,7 +25,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { Denomination } from '@/shared/types/vault';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type VaultManagerHeaderProps = {
@@ -86,7 +86,7 @@ export default function VaultManagerHeader({
   // ============================================================================
 
   // Fetch vault inventory for float request verification
-  const fetchInventory = useCallback(async () => {
+  const fetchInventory = async () => {
     if (!locationId) return;
 
     // If we have a prop, we might rely on parent, but manual refresh should still work
@@ -94,7 +94,7 @@ export default function VaultManagerHeader({
     if (balance?.denominations) {
       setVaultInventory(balance.denominations);
     }
-  }, [locationId]);
+  };
 
   // Initial fetch of inventory
   useEffect(() => {
@@ -114,8 +114,7 @@ export default function VaultManagerHeader({
   }, [locationId, refresh, fetchInventory, showNotificationBell]);
 
   // Handle float request approval
-  const handleFloatApprove = useCallback(
-    async (requestId: string, approvedDenominations?: Denomination[]) => {
+  const handleFloatApprove = async (requestId: string, approvedDenominations?: Denomination[]) => {
       try {
         const status = approvedDenominations ? 'edited' : 'approved';
         let data:
@@ -148,13 +147,10 @@ export default function VaultManagerHeader({
         console.error('Error approving float:', error);
         toast.error('An error occurred while approving the request');
       }
-    },
-    [refresh, fetchInventory, onFloatActionComplete]
-  );
+    };
 
   // Handle float request denial
-  const handleFloatDeny = useCallback(
-    async (requestId: string, reason?: string) => {
+  const handleFloatDeny = async (requestId: string, reason?: string) => {
       try {
         const result = await handleFloatAction(requestId, 'denied', {
           vmNotes: reason,
@@ -170,13 +166,10 @@ export default function VaultManagerHeader({
         console.error('Error denying float:', error);
         toast.error('An error occurred while denying the request');
       }
-    },
-    [refresh, onFloatActionComplete]
-  );
+    };
 
   // Handle float receipt confirmation (for returns)
-  const handleFloatReceiptConfirm = useCallback(
-    async (requestId: string) => {
+  const handleFloatReceiptConfirm = async (requestId: string) => {
       try {
         const result = await handleFloatConfirm(requestId);
         if (result.success) {
@@ -190,9 +183,7 @@ export default function VaultManagerHeader({
         console.error('Error confirming receipt:', error);
         toast.error('An error occurred while confirming receipt');
       }
-    },
-    [refresh, onFloatActionComplete]
-  );
+    };
 
   // ============================================================================
   // Computed
@@ -220,14 +211,14 @@ export default function VaultManagerHeader({
     state => state.clearNotifications
   );
 
-  const handleMarkAllRead = useCallback(() => {
+  const handleMarkAllRead = () => {
     const unreadIds = notifications
       .filter(n => n.status === 'unread')
       .map(n => n._id);
     if (unreadIds.length > 0) {
       markAsRead(unreadIds);
     }
-  }, [notifications, markAsRead]);
+  };
 
   useEffect(() => {
     setNotifications(bellNotifications, unreadCount);

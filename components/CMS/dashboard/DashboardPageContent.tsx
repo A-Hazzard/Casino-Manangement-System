@@ -33,7 +33,7 @@ import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Dashboard Page Content Component
@@ -49,9 +49,7 @@ export default function DashboardPageContent() {
   const makeMetricsRequest = useAbortableRequest();
   const makeTopPerformingRequest = useAbortableRequest();
 
-  const stableHandleApiCallWithRetry = useCallback(handleApiCallWithRetry, [
-    handleApiCallWithRetry,
-  ]);
+  const stableHandleApiCallWithRetry = handleApiCallWithRetry;
 
   const {
     loadingChartData,
@@ -163,7 +161,7 @@ export default function DashboardPageContent() {
   // ============================================================================
   // Computed
   // ============================================================================
-  const showGranularitySelector = useMemo(() => {
+  const showGranularitySelector = (() => {
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -196,19 +194,15 @@ export default function DashboardPageContent() {
       return true;
     }
     return false;
-  }, [activeMetricsFilter, customDateRange]);
+  })();
 
-  const isAdminUser = useMemo(
-    () =>
-      Boolean(
+  const isAdminUser = Boolean(
         user?.roles?.some(role => role === 'admin' || role === 'developer')
-      ),
-    [user]
-  );
+      );
 
   const { gameDayOffset } = useDashBoardStore();
 
-  const effectiveDateRange = useMemo(() => {
+  const effectiveDateRange = (() => {
     if (customDateRange?.startDate && customDateRange?.endDate) {
       return {
         startDate: customDateRange.startDate,
@@ -227,13 +221,9 @@ export default function DashboardPageContent() {
       startDate,
       endDate,
     };
-  }, [customDateRange, gameDayOffset]);
+  })();
 
-  const dateRangeKey = useMemo(
-    () =>
-      `${effectiveDateRange.startDate.getTime()}-${effectiveDateRange.endDate.getTime()}`,
-    [effectiveDateRange]
-  );
+  const dateRangeKey = `${effectiveDateRange.startDate.getTime()}-${effectiveDateRange.endDate.getTime()}`;
 
   // ============================================================================
   // Effects
@@ -440,10 +430,7 @@ export default function DashboardPageContent() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const renderCustomizedLabel = useCallback(
-    (props: CustomizedLabelProps) => <PieChartLabelRenderer props={props} />,
-    []
-  );
+  const renderCustomizedLabel = (props: CustomizedLabelProps) => <PieChartLabelRenderer props={props} />;
 
   // ============================================================================
   // Render

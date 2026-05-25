@@ -32,7 +32,7 @@ import type {
 } from '@/shared/types/vault';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Clock, Eye, FileText } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 export type TransactionSortOption =
   | 'date'
@@ -82,11 +82,11 @@ export default function VaultTransactionsTable({
 
   const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
-  const pagedTransactions = useMemo(() => {
+  const pagedTransactions = (() => {
     if (disablePagination) return transactions;
     const start = currentPage * itemsPerPage;
     return transactions.slice(start, start + itemsPerPage);
-  }, [transactions, currentPage, itemsPerPage, disablePagination]);
+  })();
 
   // ============================================================================
   // Render

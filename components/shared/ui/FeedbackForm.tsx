@@ -25,7 +25,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import profaneWords from 'profane-words';
 import { ADDITIONAL_BAD_WORDS } from '@/lib/constants';
@@ -91,12 +91,12 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   // Computed
   // ============================================================================
   // Combine profane-words library with custom bad words list
-  const badWordsSet = useMemo(() => {
+  const badWordsSet = (() => {
     const allWords = new Set<string>();
     profaneWords.forEach(word => allWords.add(word.toLowerCase()));
     ADDITIONAL_BAD_WORDS.forEach(word => allWords.add(word.toLowerCase()));
     return allWords;
-  }, []);
+  })();
 
   // ============================================================================
   // Handlers

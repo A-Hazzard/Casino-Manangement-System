@@ -10,15 +10,12 @@
  */
 'use client';
 
-import { forwardRef } from 'react';
+import { Ref } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as ProgressPrimitive from '@radix-ui/react-progress';
 import { cn } from '@/lib/utils';
 
-const Progress = forwardRef<
-  ElementRef<typeof ProgressPrimitive.Root>,
-  ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
+const Progress = ({ ref,  className, value, ...props }: ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & { ref?: Ref<ElementRef<typeof ProgressPrimitive.Root>> }) => (
   <ProgressPrimitive.Root
     ref={ref}
     className={cn(
@@ -32,7 +29,7 @@ const Progress = forwardRef<
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     />
   </ProgressPrimitive.Root>
-));
+);
 Progress.displayName = ProgressPrimitive.Root.displayName;
 
 export { Progress };

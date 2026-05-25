@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from '@/components/shared/ui/card';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -82,16 +82,16 @@ export function ReportsMetersHourlyCharts({
   // ============================================================================
   // Format data for charts - combine day and hour for x-axis
   // Sort by day and hour to ensure proper ordering
-  const sortedData = useMemo(() => {
+  const sortedData = (() => {
     if (!data || data.length === 0) return [];
     return [...data].sort((a, b) => {
       const dateA = new Date(`${a.day}T${a.hour}:00Z`);
       const dateB = new Date(`${b.day}T${b.hour}:00Z`);
       return dateA.getTime() - dateB.getTime();
     });
-  }, [data]);
+  })();
 
-  const chartData = useMemo(() => {
+  const chartData = (() => {
     // Filter data to only show times with actual data (no zero-value periods)
     // For currency values (coinIn, coinOut), filter out $0 but keep cents (e.g., $0.30)
     // For gamesPlayed, filter out 0
@@ -149,33 +149,33 @@ export function ReportsMetersHourlyCharts({
     }
 
     return mapped;
-  }, [sortedData]);
+  })();
 
   // Calculate interval for X-axis labels - fewer labels on mobile
-  const xAxisInterval = useMemo(() => {
+  const xAxisInterval = (() => {
     if (isMobile) {
       // On mobile, show fewer labels (every 3rd-4th label depending on data length)
       return chartData.length <= 12 ? 1 : Math.floor(chartData.length / 6);
     }
     return chartData.length <= 24 ? 1 : Math.floor(chartData.length / 12);
-  }, [chartData.length, isMobile]);
+  })();
 
   // Calculate chart width for mobile (wider for horizontal scroll)
-  const chartWidthNumeric = useMemo(() => {
+  const chartWidthNumeric = (() => {
     if (chartData.length > 8) {
       return Math.max(700, chartData.length * 60);
     }
     return 700;
-  }, [chartData.length]);
+  })();
 
-  const chartWidth = useMemo(() => {
+  const chartWidth = (() => {
     if (isMobile && chartData.length > 8) {
       // On mobile, make chart wider to enable horizontal scroll
       // Minimum 100% width, but expand based on data points
       return chartWidthNumeric;
     }
     return '100%';
-  }, [isMobile, chartData.length, chartWidthNumeric]);
+  })();
 
   // ============================================================================
   // Handlers
@@ -209,17 +209,17 @@ export function ReportsMetersHourlyCharts({
   // Computed (continued)
   // ============================================================================
   // Check if each metric has data
-  const hasGamesPlayedData = useMemo(() => {
+  const hasGamesPlayedData = (() => {
     return chartData.some(item => item.gamesPlayed > 0);
-  }, [chartData]);
+  })();
 
-  const hasCoinInData = useMemo(() => {
+  const hasCoinInData = (() => {
     return chartData.some(item => item.coinIn > 0);
-  }, [chartData]);
+  })();
 
-  const hasCoinOutData = useMemo(() => {
+  const hasCoinOutData = (() => {
     return chartData.some(item => item.coinOut > 0);
-  }, [chartData]);
+  })();
 
   // ============================================================================
   // Render

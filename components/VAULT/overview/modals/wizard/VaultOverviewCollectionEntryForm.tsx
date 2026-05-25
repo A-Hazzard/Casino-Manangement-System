@@ -30,7 +30,7 @@ import {
   RefreshCw,
   Save,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 interface VaultOverviewCollectionEntryFormProps {
@@ -84,10 +84,7 @@ export default function VaultOverviewCollectionEntryForm({
   const [expectedDrop, setExpectedDrop] = useState<string>('');
   const [showHistory, setShowHistory] = useState(defaultShowHistory);
 
-  const denomsList = useMemo(
-    () => getDenominationValues(selectedLicencee),
-    [selectedLicencee]
-  );
+  const denomsList = getDenominationValues(selectedLicencee);
 
   // ============================================================================
   // Effects

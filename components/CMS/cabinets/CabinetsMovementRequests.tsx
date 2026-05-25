@@ -24,7 +24,7 @@ import { fetchMovementRequests } from '@/lib/helpers/movementRequests';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
 import { MovementRequest } from '@/shared/types/movement';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -69,7 +69,7 @@ export default function CabinetsMovementRequests({
     loadLocationsMap();
   }, []);
 
-  const loadRequests = useCallback(async () => {
+  const loadRequests = async () => {
     setLoading(true);
     try {
       const data = await fetchMovementRequests();
@@ -79,7 +79,7 @@ export default function CabinetsMovementRequests({
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     loadRequests();

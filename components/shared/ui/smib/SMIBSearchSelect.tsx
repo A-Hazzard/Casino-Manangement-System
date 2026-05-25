@@ -4,7 +4,7 @@ import { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { SmibDevice } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type SmibStatus = 'online' | 'offline';
 
@@ -151,7 +151,7 @@ export function SMIBSearchSelect({
   // Computed
   // ============================================================================
   // Filter SMIBs based on search term
-  const filteredSmibs = useMemo(() => {
+  const filteredSmibs = (() => {
     if (!searchTerm) return smibs;
 
     const term = searchTerm.toLowerCase();
@@ -163,7 +163,7 @@ export function SMIBSearchSelect({
         smib.locationName?.toLowerCase().includes(term)
       );
     });
-  }, [smibs, searchTerm]);
+  })();
 
   // Find selected SMIB
   const selectedSmib = smibs.find(smib => smib.relayId === value);

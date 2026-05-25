@@ -48,7 +48,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
@@ -105,7 +105,7 @@ export default function AdministrationAddUserModal({
     !isOwner;
 
   // Filter available roles based on creator's permissions
-  const availableRoles = useMemo(() => {
+  const availableRoles = (() => {
     if (isDeveloper) {
       return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
     } else if (isOwner) {
@@ -130,25 +130,17 @@ export default function AdministrationAddUserModal({
       );
     }
     return [];
-  }, [isDeveloper, isOwner, isAdmin, isManager, isLocationAdmin]);
+  })();
 
-  const currentUserLicenceeIds = useMemo(
-    () =>
-      (Array.isArray(currentUser?.assignedLicencees)
+  const currentUserLicenceeIds = (Array.isArray(currentUser?.assignedLicencees)
         ? currentUser.assignedLicencees
         : []
-      ).map(id => String(id)),
-    [currentUser?.assignedLicencees]
-  );
+      ).map(id => String(id));
 
-  const currentUserLocationPermissions = useMemo(
-    () =>
-      (Array.isArray(currentUser?.assignedLocations)
+  const currentUserLocationPermissions = (Array.isArray(currentUser?.assignedLocations)
         ? currentUser.assignedLocations
         : []
-      ).map(id => String(id)),
-    [currentUser?.assignedLocations]
-  );
+      ).map(id => String(id));
 
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -774,7 +766,7 @@ export default function AdministrationAddUserModal({
   };
 
   // Filter locations based on selected licencees
-  const availableLocations = useMemo(() => {
+  const availableLocations = (() => {
     if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
       return locations.filter(loc =>
         currentUserLocationPermissions.includes(loc._id)
@@ -789,13 +781,7 @@ export default function AdministrationAddUserModal({
               loc.licenceeId && selectedLicenceeIds.includes(loc.licenceeId)
           )
         : [];
-  }, [
-    isLocationAdmin,
-    currentUserLocationPermissions,
-    locations,
-    allLicenceesSelected,
-    selectedLicenceeIds,
-  ]);
+  })();
 
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
   useEffect(() => {

@@ -34,7 +34,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import FeedbackForm from './FeedbackForm';
 
@@ -114,7 +114,7 @@ export default function AdminFeedbackPanel({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const fetchFeedback = useCallback(async () => {
+  const fetchFeedback = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/feedback?status=pending&limit=50&page=1');
@@ -125,7 +125,7 @@ export default function AdminFeedbackPanel({
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   // ============================================================================
   // Effects

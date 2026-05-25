@@ -33,7 +33,7 @@ import axios from 'axios';
 import gsap from 'gsap';
 import { ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type TopPerformingLocationModalProps = {
   open: boolean;
@@ -95,7 +95,7 @@ export default function TopPerformingLocationModal({
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format
-  const showGranularitySelector = useMemo(() => {
+  const showGranularitySelector = (() => {
     const timePeriod = effectiveTimePeriod as TimePeriod;
 
     // Never show granularity selector for 7d and 30d
@@ -133,7 +133,7 @@ export default function TopPerformingLocationModal({
       }
     }
     return false;
-  }, [effectiveTimePeriod, customDateRange]);
+  })();
 
   // ============================================================================
   // Effects

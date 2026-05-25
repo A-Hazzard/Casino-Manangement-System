@@ -26,7 +26,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CabinetsCabinetCard from './CabinetsCabinetCard';
 import CabinetsCabinetCardSkeleton from './CabinetsCabinetCardSkeleton';
 import CabinetsCabinetTable from './CabinetsCabinetTable';
@@ -118,7 +118,7 @@ export const CabinetsCabinetContentDisplay = ({
    * Determines if the user can edit machines.
    * Technicians can edit but not delete, collectors cannot edit or delete.
    */
-  const canEditMachines = useMemo(() => {
+  const canEditMachines = (() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
     // Collectors cannot edit machines
@@ -134,14 +134,14 @@ export const CabinetsCabinetContentDisplay = ({
       'location admin',
       'technician',
     ].some(role => userRoles.includes(role));
-  }, [user]);
+  })();
 
   /**
    * Determines if the user can delete machines.
    * Only managers, admins, developers, owners, and location admins can delete.
    * Only collectors cannot delete.
    */
-  const canDeleteMachines = useMemo(() => {
+  const canDeleteMachines = (() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
     // Collectors cannot delete machines
@@ -157,23 +157,23 @@ export const CabinetsCabinetContentDisplay = ({
       'location admin',
       'technician',
     ].some(role => userRoles.includes(role));
-  }, [user]);
+  })();
 
   /**
    * Determines if the user can permanently delete machines.
    * Only developers can permanently delete machines.
    */
-  const canPermanentlyDeleteMachines = useMemo(() => {
+  const canPermanentlyDeleteMachines = (() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
     return ['developer', 'owner', 'admin'].some(role =>
       userRoles.includes(role)
     );
-  }, [user]);
+  })();
 
-  const shouldHideFinancials = useMemo(() => {
+  const shouldHideFinancials = (() => {
     return false;
-  }, []);
+  })();
 
   const [licenceeNames, setLicenceeNames] = useState<string[]>([]);
 

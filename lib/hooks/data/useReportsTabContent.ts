@@ -2,8 +2,6 @@
  * Custom hook for managing reports tab content rendering and state
  * Handles tab switching, content rendering, and animation states
  */
-
-import { useCallback, useMemo } from 'react';
 import {
   UseReportsTabContentProps,
   UseReportsTabContentReturn,
@@ -20,7 +18,7 @@ export function useReportsTabContent({
   // ============================================================================
 
   // Get animation props for current tab
-  const getTabAnimationProps = useCallback((): TabAnimationProps => {
+  const getTabAnimationProps = (): TabAnimationProps => {
     return {
       key: activeView,
       variants: animations.tabVariants,
@@ -30,22 +28,22 @@ export function useReportsTabContent({
       transition: { duration: 0.2 },
       className: 'w-full h-full',
     };
-  }, [activeView, animations.tabVariants]);
+  };
 
   // ============================================================================
   // Computed
   // ============================================================================
 
   // Check if tab is transitioning (for loading states)
-  const isTabTransitioning = useMemo(() => {
+  const isTabTransitioning = (() => {
     // This could be enhanced with actual transition state tracking
     return false;
-  }, []);
+  })();
 
   // Get current tab component
-  const currentTabComponent = useMemo(() => {
+  const currentTabComponent = (() => {
     return tabComponents[activeView] || tabComponents.locations;
-  }, [activeView, tabComponents]);
+  })();
 
   // ============================================================================
   // Return

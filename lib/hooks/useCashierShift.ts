@@ -16,7 +16,7 @@ import type {
   Denomination,
   OpenCashierShiftRequest,
 } from '@/shared/types/vault';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './useAuth';
 
@@ -63,15 +63,15 @@ export function useCashierShift() {
   // Computed
   // ============================================================================
 
-  const isStaleShift = useMemo(() => {
+  const isStaleShift = (() => {
     return isStaleFromApi || isShiftStale(shift?.openedAt);
-  }, [isStaleFromApi, shift?.openedAt]);
+  })();
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
-  const fetchCurrentShift = useCallback(async (isSilent = false) => {
+  const fetchCurrentShift = async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true);
       else setRefreshing(true);
@@ -106,7 +106,7 @@ export function useCashierShift() {
       if (!isSilent) setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  };
 
   // ============================================================================
   // Effects

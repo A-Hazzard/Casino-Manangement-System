@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/shared/ui/table';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Import SVG icons for pre-rendering
 import { Badge } from '@/components/shared/ui/badge';
@@ -116,11 +116,11 @@ export default function CollectionReportTable({
     : false;
 
   // Check if user can edit/delete reports
-  const canEditDelete = useMemo(() => {
+  const canEditDelete = (() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles as UserRole[];
     return hasManagerAccess(userRoles);
-  }, [user]);
+  })();
 
   // ============================================================================
   // Render

@@ -8,7 +8,7 @@
 'use client';
 
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseMembersSummaryDataProps = {
@@ -77,7 +77,7 @@ export function useMembersSummaryData({
   // Handlers
   // ============================================================================
 
-  const fetchSummaryData = useCallback(async () => {
+  const fetchSummaryData = async () => {
     setIsLoading(true);
     let hasError = false;
     const errors: string[] = [];
@@ -186,7 +186,7 @@ export function useMembersSummaryData({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedLicencee, search, locationFilter, page, limit]);
+  };
 
   // ============================================================================
   // Effects

@@ -38,7 +38,7 @@ import {
   Plus,
   RefreshCw,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 type SoftCountFormProps = {
@@ -83,10 +83,7 @@ export default function SoftCountForm({
   const [expectedDrop, setExpectedDrop] = useState<string>('');
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
-  const denomsList = useMemo(
-    () => getDenominationValues(selectedLicencee),
-    [selectedLicencee]
-  );
+  const denomsList = getDenominationValues(selectedLicencee);
 
   // ============================================================================
   // Effects

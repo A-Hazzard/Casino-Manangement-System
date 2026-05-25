@@ -18,7 +18,7 @@ import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { FloatRequestSortOption } from './tables/VaultFloatRequestsTable';
@@ -294,14 +294,8 @@ export default function VaultFloatRequestsPageContent() {
     });
   };
 
-  const sortedPendingRequests = useMemo(
-    () => sortData(pendingRequests, pendingSortOption, pendingSortOrder),
-    [pendingRequests, pendingSortOption, pendingSortOrder]
-  );
-  const sortedRequestHistory = useMemo(
-    () => sortData(requestHistory, historySortOption, historySortOrder),
-    [requestHistory, historySortOption, historySortOrder]
-  );
+  const sortedPendingRequests = sortData(pendingRequests, pendingSortOption, pendingSortOrder);
+  const sortedRequestHistory = sortData(requestHistory, historySortOption, historySortOrder);
 
   const handlePendingSort = (column: FloatRequestSortOption) => {
     if (pendingSortOption === column)

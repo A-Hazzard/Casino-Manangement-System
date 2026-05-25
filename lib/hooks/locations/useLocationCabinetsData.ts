@@ -37,7 +37,7 @@ import type {
   AggregatedLocation,
 } from '@/shared/types/entities';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type CabinetSortOption =
   | 'assetNumber'
@@ -159,7 +159,7 @@ export function useLocationCabinetsData({
   // ============================================================================
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  const gameTypes = useMemo(() => {
+  const gameTypes = (() => {
     const uniqueGameTypes = Array.from(
       new Set(
         allCabinets
@@ -168,24 +168,21 @@ export function useLocationCabinetsData({
       )
     ).sort();
     return uniqueGameTypes;
-  }, [allCabinets]);
+  })();
 
-  const calculateBatchNumber = useCallback((page: number) => {
+  const calculateBatchNumber = (page: number) => {
     return Math.floor(page / PAGES_PER_BATCH) + 1;
-  }, []);
+  };
 
   // Determine the full source set to work from (all loaded cabinets for the period)
-  const sourceCabinets = useMemo(
-    () => (debouncedSearchTerm?.trim() ? allCabinets : accumulatedCabinets),
-    [allCabinets, accumulatedCabinets, debouncedSearchTerm]
-  );
+  const sourceCabinets = (debouncedSearchTerm?.trim() ? allCabinets : accumulatedCabinets);
 
   // ============================================================================
   // Filter, Sort & Pagination (all synchronous — no async state lag)
   // ============================================================================
   // Compute filteredCabinets synchronously from sourceCabinets, applying all
   // the same filters and sort that were previously in applyFiltersAndSort().
-  const filteredCabinets = useMemo(() => {
+  const filteredCabinets = (() => {
     let result = filterAndSortCabinets(
       sourceCabinets,
       debouncedSearchTerm, // Now passing the search term for relevance sorting
@@ -205,11 +202,11 @@ export function useLocationCabinetsData({
     );
 
     return result;
-  }, [sourceCabinets, sortOption, sortOrder, selectedGameType]);
+  })();
 
   // effectiveTotalPages is always derived from filteredCabinets (synchronous).
   // Adds +1 only when there is confirmed unfetched server data.
-  const effectiveTotalPages = useMemo(() => {
+  const effectiveTotalPages = (() => {
     const displayedPages =
       Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
@@ -219,9 +216,9 @@ export function useLocationCabinetsData({
     }
 
     return displayedPages;
-  }, [filteredCabinets.length, accumulatedCabinets.length, totalCount]);
+  })();
 
-  const isDataMissingForPage = useMemo(() => {
+  const isDataMissingForPage = (() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     // We only need more data if our startIndex for the current page
     // has exceeded what we've loaded in accumulatedCabinets, AND
@@ -233,20 +230,15 @@ export function useLocationCabinetsData({
       startIndex >= accumulatedCabinets.length &&
       accumulatedCabinets.length < totalCount
     );
-  }, [
-    accumulatedCabinets.length,
-    currentPage,
-    totalCount,
-    debouncedSearchTerm,
-  ]);
+  })();
 
   // Get paginated cabinets for current page (slice from synchronous filteredCabinets)
-  const paginatedCabinets = useMemo(() => {
+  const paginatedCabinets = (() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     return filteredCabinets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredCabinets, currentPage]);
+  })();
 
-  const financialTotals = useMemo(() => {
+  const financialTotals = (() => {
     // If we have API totals, use those; otherwise fall back to local calculation
     // Note: Local calculation is only accurate if the whole dataset is loaded
     const totals = metricsTotals
@@ -255,7 +247,7 @@ export function useLocationCabinetsData({
         ? calculateCabinetFinancialTotals(filteredCabinets)
         : null;
     return totals;
-  }, [filteredCabinets, metricsTotals]);
+  })();
 
   // ============================================================================
   // Effects - Filter & Sort
@@ -904,7 +896,7 @@ export function useLocationCabinetsData({
   // ============================================================================
   // Refresh Handler
   // ============================================================================
-  const refreshCabinets = useCallback(async () => {
+  const refreshCabinets = async () => {
     setRefreshing(true);
     prevCabinetsFetchKey.current = '';
     // Trigger refetch by clearing and resetting
@@ -912,9 +904,9 @@ export function useLocationCabinetsData({
     setAccumulatedCabinets([]);
     setLoadedBatches(new Set());
     setRefreshing(false);
-  }, []);
+  };
 
-  const refreshLocation = useCallback(async () => {
+  const refreshLocation = async () => {
     try {
       const locationResponse = await axios.get(`/api/locations/${locationId}`, {
         headers: getAuthHeaders(),
@@ -935,7 +927,7 @@ export function useLocationCabinetsData({
     } catch (err) {
       console.error('[useLocationCabinetsData] refreshLocation error:', err);
     }
-  }, [locationId]);
+  };
 
   // ============================================================================
   // Return
@@ -978,27 +970,24 @@ export function useLocationCabinetsData({
     totalCount,
     includeJackpot,
     // Setters
-    setSearchTerm: useCallback(
-      (term: string) => {
+    setSearchTerm: (term: string) => {
         if (term !== searchTerm) {
           setIsFilterResetting(true);
           setSearchTerm(term);
         }
       },
-      [searchTerm]
-    ),
-    setSelectedStatus: useCallback((status: string) => {
+    setSelectedStatus: (status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);
       setCurrentPage(0); // Reset to first page
       setSelectedStatus(status);
-    }, []),
-    setSelectedSmibStatus: useCallback((status: string) => {
+    },
+    setSelectedSmibStatus: (status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);
       setCurrentPage(0); // Reset to first page
       setSelectedSmibStatus(status);
-    }, []),
+    },
     setSelectedGameType,
     setSortOrder,
     setSortOption,

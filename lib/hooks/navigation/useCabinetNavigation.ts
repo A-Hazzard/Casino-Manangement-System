@@ -10,7 +10,7 @@ import {
 } from '@/lib/helpers/cabinets';
 import type { UseCabinetNavigationReturn } from '@/lib/types/cabinet';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   // ============================================================================
@@ -22,11 +22,11 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   const searchParams = useSearchParams();
 
   // Get active section from URL search params, default to "cabinets"
-  const getActiveSectionFromURLLocal = useCallback((): CabinetSection => {
+  const getActiveSectionFromURLLocal = (): CabinetSection => {
     const section = getActiveSectionFromURL(searchParams);
     console.warn('Getting active section from URL:', section);
     return section;
-  }, [searchParams]);
+  };
 
   const [activeSection, setActiveSection] = useState<CabinetSection>(
     getActiveSectionFromURLLocal()
@@ -37,8 +37,7 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
   // ============================================================================
 
   // Handle section changes with URL updates
-  const handleSectionChange = useCallback(
-    (section: CabinetSection) => {
+  const handleSectionChange = (section: CabinetSection) => {
       console.warn('Changing section from', activeSection, 'to', section);
       // Update state immediately for instant UI response
       setActiveSection(section);
@@ -46,9 +45,7 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
       setTimeout(() => {
         handleSectionChangeHelper(section, searchParams, pathname, router);
       }, 0);
-    },
-    [activeSection, searchParams, pathname, router]
-  );
+    };
 
   // ============================================================================
   // Effects

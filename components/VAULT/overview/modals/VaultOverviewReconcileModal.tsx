@@ -27,7 +27,7 @@ import {
   ShieldCheck,
   Wrench,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type VaultOverviewReconcileModalProps = {
@@ -57,10 +57,7 @@ export default function VaultOverviewReconcileModal({
   const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [loading, setLoading] = useState(false);
 
-  const denominationsList = useMemo(
-    () => getDenominationValues(selectedLicencee),
-    [selectedLicencee]
-  );
+  const denominationsList = getDenominationValues(selectedLicencee);
 
   const [breakdown, setBreakdown] = useState<Record<number, number>>({});
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(
@@ -88,12 +85,12 @@ export default function VaultOverviewReconcileModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const totalAmount = useMemo(() => {
+  const totalAmount = (() => {
     return Object.entries(breakdown).reduce(
       (sum, [denom, count]) => sum + Number(denom) * count,
       0
     );
-  }, [breakdown]);
+  })();
 
   const variance = totalAmount - currentBalance;
 
