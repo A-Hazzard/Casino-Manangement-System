@@ -1565,10 +1565,20 @@ export default function AdministrationAddUserModal({
                       className={`mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         accountErrors.country ? 'border-red-500' : ''
                       }`}
-                      disabled={countriesLoading}
+                      disabled={countriesLoading || countries.length === 0}
                     >
                       <option value="">Select country</option>
-                      {countries.map(country => (
+                      {countries.length === 0 && !countriesLoading && (
+                        <option value="" disabled>
+                          No countries available
+                        </option>
+                      )}
+                      {countriesLoading && (
+                        <option value="" disabled>
+                          Loading countries...
+                        </option>
+                      )}
+                      {!countriesLoading && countries.map(country => (
                         <option key={country._id} value={country.name}>
                           {country.name}
                         </option>

@@ -23,8 +23,13 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
 import { ChevronDown, Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import type { LocationMultiSelectProps } from '@/lib/types/components';
 
@@ -43,25 +48,6 @@ export default function LocationMultiSelect({
   // ============================================================================
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // ============================================================================
-  // Effects
-  // ============================================================================
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // ============================================================================
   // Handlers
@@ -122,22 +108,27 @@ export default function LocationMultiSelect({
   // Render
   // ============================================================================
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
-      <Button
-        variant="outline"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full justify-between text-left font-normal"
-      >
-        <span className="truncate">{displayText}</span>
-        <ChevronDown
-          className={`h-4 w-4 transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
-      </Button>
+    <div className={className}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-between text-left font-normal"
+          >
+            <span className="truncate">{displayText}</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${
+                isOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </Button>
+        </PopoverTrigger>
 
-      {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-96 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] z-[100002] max-h-96 overflow-auto p-0"
+        >
+          <div className="w-full bg-white">
           {/* Header with search and clear button */}
           <div className="border-b border-gray-100 p-2">
             <div className="mb-2 flex items-center justify-between">
@@ -199,50 +190,58 @@ export default function LocationMultiSelect({
 
           {/* Options */}
           <div className="py-1">
-            {filteredOptions.map(option => {
-              const isSelected = selectedLocations.includes(option.id);
-              return (
-                <div
-                  key={option.id}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
-                    isSelected ? 'bg-blue-50' : ''
-                  }`}
-                  onClick={() => handleToggleLocation(option.id)}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <div className="flex-shrink-0">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleToggleLocation(option.id)}
-                        className="h-4 w-4"
-                        onClick={e => e.stopPropagation()}
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-gray-900">
-                        {option.name}
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-4 text-center text-sm text-gray-500">
+                {locations.length === 0
+                  ? 'No locations available'
+                  : 'No locations found'}
+              </div>
+            ) : (
+              filteredOptions.map(option => {
+                const isSelected = selectedLocations.includes(option.id);
+                return (
+                  <div
+                    key={option.id}
+                    className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={() => handleToggleLocation(option.id)}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <div className="flex-shrink-0">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => handleToggleLocation(option.id)}
+                          className="h-4 w-4"
+                          onClick={e => e.stopPropagation()}
+                        />
                       </div>
-                      {showSasBadge && (
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              option.sasEnabled ? 'default' : 'secondary'
-                            }
-                            className={`text-xs ${
-                              option.sasEnabled
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
-                          </Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-gray-900">
+                          {option.name}
                         </div>
-                      )}
+                        {showSasBadge && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge
+                              variant={
+                                option.sasEnabled ? 'default' : 'secondary'
+                              }
+                              className={`text-xs ${
+                                option.sasEnabled
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Footer with selection count */}
@@ -255,10 +254,8 @@ export default function LocationMultiSelect({
             </div>
           )}
         </div>
-      )}
-
-      {/* Selected items display - Removed to improve UI presentation */}
-      {/* Selection count is already shown in the button text */}
-    </div>
-  );
+      </PopoverContent>
+    </Popover>
+  </div>
+);
 }

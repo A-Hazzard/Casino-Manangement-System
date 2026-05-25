@@ -286,35 +286,36 @@ export default function Header({
 
   // Wrapper function to handle licencee changes
   const handleLicenceeChange = async (newLicencee: string) => {
-    if (setSelectedLicencee) {
-      setSelectedLicencee(newLicencee);
-    }
-
-    // Update currency context based on licencee selection
     const isAllLicencee =
       !newLicencee || newLicencee === 'all' || newLicencee === '';
 
     let targetCurrency = displayCurrency;
-    if (!isAllLicencee && displayCurrency === 'USD') {
-      targetCurrency = await resolveLicenceeCurrency(newLicencee);
-      setDisplayCurrency(targetCurrency);
-    }
+    let newOffset = 8;
 
-    // Update gameDayOffset based on licencee
     if (!isAllLicencee) {
+      if (displayCurrency === 'USD') {
+        targetCurrency = await resolveLicenceeCurrency(newLicencee);
+      }
       try {
         const licencee = await fetchLicenceeById(newLicencee);
         if (licencee && typeof licencee.gameDayOffset === 'number') {
-          setGameDayOffset(licencee.gameDayOffset);
-        } else {
-          setGameDayOffset(8);
+          newOffset = licencee.gameDayOffset;
         }
-      } catch {
-        setGameDayOffset(8);
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch licencee for offset:', error);
+        }
       }
-    } else {
-      setGameDayOffset(8);
     }
+
+    // Update store synchronously to prevent multiple renders and fetches
+    if (setSelectedLicencee) {
+      setSelectedLicencee(newLicencee);
+    }
+    if (!isAllLicencee && displayCurrency === 'USD') {
+      setDisplayCurrency(targetCurrency);
+    }
+    setGameDayOffset(newOffset);
 
     // If we're on the dashboard and have an active filter, refresh data
     if (pathname === '/' && activeMetricsFilter) {

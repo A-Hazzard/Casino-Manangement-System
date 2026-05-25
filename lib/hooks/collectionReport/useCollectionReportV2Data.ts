@@ -3,7 +3,7 @@
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 
 // ============================================================================
@@ -51,7 +51,7 @@ export function useCollectionReportV2Data(
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
 
   const [sessions, setSessions] = useState<V2Session[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
@@ -67,12 +67,19 @@ export function useCollectionReportV2Data(
   const [showArchived, setShowArchived] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
   const fetchSessions = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -107,16 +114,22 @@ export function useCollectionReportV2Data(
       if (showArchived) params.set('includeDeleted', 'true');
 
       const res = await axios.get(
-        `/api/collection-reports-v2/sessions?${params.toString()}`
+        `/api/collection-reports-v2/sessions?${params.toString()}`,
+        { signal: controller.signal }
       );
       if (res.data?.success) {
         setSessions(res.data.data);
         setTotalSessions(res.data.pagination?.total ?? 0);
       }
     } catch (error) {
+      if (axios.isCancel(error) || (error instanceof Error && error.name === 'CanceledError')) {
+        return;
+      }
       console.error('[useCollectionReportV2Data] fetch error:', error);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [
     selectedLicencee,

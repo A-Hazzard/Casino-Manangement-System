@@ -27,7 +27,7 @@ import type { SortKey } from '@/lib/types/administration';
 import { hasTabAccess, UserRole } from '@/lib/utils/permissions';
 import { PlusCircle, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AdministrationPageContent() {
   // ============================================================================
@@ -80,7 +80,7 @@ export default function AdministrationPageContent() {
   /**
    * Manual refresh handler for all administration sections.
    */
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
     try {
       if (activeSection === 'users') {
@@ -97,7 +97,7 @@ export default function AdministrationPageContent() {
     } finally {
       setRefreshing(false);
     }
-  }, [activeSection, usersHook, licenceesHook, countriesHook]);
+  };
 
   // ============================================================================
   // Computed
@@ -106,7 +106,7 @@ export default function AdministrationPageContent() {
    * Renders the content for the currently active administration section.
    * Handles permission checks and returns appropriate content or access denied message.
    */
-  const renderSectionContent = useCallback(() => {
+  const renderSectionContent = () => {
     const userRoles = user?.roles as UserRole[];
 
     // 1. Activity Logs Section
@@ -260,14 +260,7 @@ export default function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [
-    activeSection,
-    user,
-    usersHook,
-    licenceesHook,
-    selectedLicencee,
-    countriesHook,
-  ]);
+  };
 
   // Prevent hydration mismatch
 

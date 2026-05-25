@@ -3074,8 +3074,14 @@ export default function AdministrationUserModal({
                           onChange={e =>
                             handleInputChange('country', e.target.value)
                           }
+                          disabled={countriesLoading || countries.length === 0}
                         >
                           <option value="">Select country</option>
+                          {countries.length === 0 && !countriesLoading && (
+                            <option value="" disabled>
+                              No countries available
+                            </option>
+                          )}
                           {countriesLoading ? (
                             <option value="" disabled>
                               Loading countries...

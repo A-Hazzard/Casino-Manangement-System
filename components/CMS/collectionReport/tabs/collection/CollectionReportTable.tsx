@@ -31,7 +31,7 @@ import {
   TableRow,
 } from '@/components/shared/ui/table';
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // Import SVG icons for pre-rendering
 import { Badge } from '@/components/shared/ui/badge';
@@ -71,6 +71,22 @@ export default function CollectionReportTable({
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
   const user = useUserStore(state => state.user);
+
+  const [licenceeName, setLicenceeName] = useState<string>('the selected period');
+  useEffect(() => {
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      import('@/lib/helpers/client').then(({ fetchLicenceeById }) => {
+        fetchLicenceeById(selectedLicencee)
+          .then(res => {
+            if (res?.name) setLicenceeName(res.name);
+            else setLicenceeName(selectedLicencee);
+          })
+          .catch(() => setLicenceeName(selectedLicencee));
+      });
+    } else {
+      setLicenceeName('the selected period');
+    }
+  }, [selectedLicencee]);
 
   // ============================================================================
   // Handlers
@@ -116,10 +132,6 @@ export default function CollectionReportTable({
 
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
-    const licenceeName =
-      selectedLicencee && selectedLicencee !== 'all'
-        ? selectedLicencee
-        : 'the selected period';
     const emptyMessage = `No collection reports found for ${licenceeName}.`;
 
     return (

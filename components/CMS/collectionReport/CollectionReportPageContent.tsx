@@ -337,7 +337,7 @@ const CollectionReportPageContent: FC = () => {
         )}
 
         {/* Main Tab Content Section */}
-        <div className="mt-0 flex-1 overflow-hidden">
+        <div className="mt-0 flex-1 overflow-x-hidden overflow-y-visible">
           <AnimatePresence mode="wait">
             <MotionDiv
               key={effectiveTab}

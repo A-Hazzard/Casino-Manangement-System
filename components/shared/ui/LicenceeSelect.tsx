@@ -115,6 +115,10 @@ export default function LicenceeSelect({
         </option>
       ))}
 
+      {!loading && licencees.length === 0 && (
+        <option disabled>No licencees found</option>
+      )}
+
       {loading && <option disabled>Loading...</option>}
     </select>
   );
