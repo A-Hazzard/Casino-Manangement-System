@@ -73,7 +73,7 @@ export default function VaultOverviewCloseShiftModal({
     () => getDenominationValues(selectedLicencee),
     [selectedLicencee]
   );
-  
+
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
   // ============================================================================

@@ -243,7 +243,7 @@ export const MetricsSkeleton = () => (
 
 export const LiveMetricsSkeleton = () => (
   <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
-    {[1, 2, 3, 4, 5, 6].map(i => (
+    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
       <div key={i} className="rounded-lg bg-container p-4 shadow md:p-6">
         <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
         <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>

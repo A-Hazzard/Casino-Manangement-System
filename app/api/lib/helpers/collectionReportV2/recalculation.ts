@@ -14,7 +14,7 @@
  */
 
 import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+
 import { Meters } from '@/app/api/lib/models/meters';
 import { generateMongoId } from '@/lib/utils/id';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
@@ -48,11 +48,13 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
     prevSasMetersOut,
   } = input;
 
-  const isNoSMIBLocation = locationId
-    ? await GamingLocations.findOne({ _id: locationId }, 'noSMIBLocation')
-        .lean<{ noSMIBLocation?: boolean }>()
-        .then(r => r?.noSMIBLocation === true)
-    : false;
+  // Per-machine SMIB check: look up the machine's relayId directly.
+  // If the machine has a relayId it has a SAS relay and manual meters should
+  // NOT be written to Meter documents. Non-relay machines behave like noSMIB.
+  const machineDoc = await Machine.findOne({ _id: machineId }, 'relayId').lean<{
+    relayId?: string | null;
+  }>();
+  const isNoSMIBLocation = !machineDoc?.relayId;
 
   const targetMetersIn = isNoSMIBLocation
     ? (manualMetersIn ?? input.sasMetersIn)
@@ -295,7 +297,6 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
   }
 }
 
-
 export async function propagateV2MetersToNextSession(
   machineId: string,
   currentSessionId: string,
@@ -310,8 +311,10 @@ export async function propagateV2MetersToNextSession(
     sessionStatus: 'submitted',
     sessionId: { $ne: currentSessionId },
     sasEndTime: { $gt: sasEndTime },
-    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
-  }).sort({ sasEndTime: 1 }).lean();
+    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+  })
+    .sort({ sasEndTime: 1 })
+    .lean();
 
   if (!nextReport) return;
 
@@ -320,12 +323,20 @@ export async function propagateV2MetersToNextSession(
 
   let manualMovIn = 0;
   let manualMovOut = 0;
-  const effectiveManualIn = nextReport.manualMetersIn ?? nextReport.sasMetersIn ?? 0;
-  const effectiveManualOut = nextReport.manualMetersOut ?? nextReport.sasMetersOut ?? 0;
+  const effectiveManualIn =
+    nextReport.manualMetersIn ?? nextReport.sasMetersIn ?? 0;
+  const effectiveManualOut =
+    nextReport.manualMetersOut ?? nextReport.sasMetersOut ?? 0;
 
-  if (nextReport.ramClear && nextReport.ramClearMetersIn !== undefined && nextReport.ramClearMetersOut !== undefined) {
-    manualMovIn = nextReport.ramClearMetersIn - resolvedPrevIn + effectiveManualIn;
-    manualMovOut = nextReport.ramClearMetersOut - resolvedPrevOut + effectiveManualOut;
+  if (
+    nextReport.ramClear &&
+    nextReport.ramClearMetersIn !== undefined &&
+    nextReport.ramClearMetersOut !== undefined
+  ) {
+    manualMovIn =
+      nextReport.ramClearMetersIn - resolvedPrevIn + effectiveManualIn;
+    manualMovOut =
+      nextReport.ramClearMetersOut - resolvedPrevOut + effectiveManualOut;
   } else {
     manualMovIn = effectiveManualIn - resolvedPrevIn;
     manualMovOut = effectiveManualOut - resolvedPrevOut;
@@ -344,7 +355,7 @@ export async function propagateV2MetersToNextSession(
         prevSasMetersIn: resolvedPrevIn,
         prevSasMetersOut: resolvedPrevOut,
         movement: updatedMovement,
-      }
+      },
     }
   );
 }

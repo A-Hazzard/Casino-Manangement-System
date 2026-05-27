@@ -21,4 +21,3 @@ export {
   formatValue,
   safeFormatDate,
 } from './formatting';
-

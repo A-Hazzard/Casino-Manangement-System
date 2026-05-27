@@ -129,8 +129,6 @@ export default function CollectionReportV2EditSessionModal({
       });
   }, [isOpen, sessionId]);
 
-
-
   useEffect(() => {
     if (isOpen && backdropRef.current && panelRef.current) {
       gsap.fromTo(

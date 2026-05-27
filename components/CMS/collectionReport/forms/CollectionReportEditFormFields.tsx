@@ -474,7 +474,10 @@ export default function CollectionReportEditFormFields({
               disabled={
                 (!inputsEnabled && !editingEntryId) ||
                 isProcessing ||
-                (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
+                (inputsEnabled &&
+                  !!sasStartTime &&
+                  !!sasEndTime &&
+                  sasStartTime >= sasEndTime)
               }
             >
               {isProcessing ? 'Processing...' : 'Update Entry'}
@@ -491,7 +494,10 @@ export default function CollectionReportEditFormFields({
                     !inputsEnabled ||
                     isProcessing ||
                     !isAddMachineEnabled ||
-                    (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
+                    (inputsEnabled &&
+                      !!sasStartTime &&
+                      !!sasEndTime &&
+                      sasStartTime >= sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

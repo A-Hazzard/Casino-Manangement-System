@@ -44,7 +44,9 @@ async function diagnose(locationReportId: string): Promise<void> {
       console.error(`❌ Collection report ${locationReportId} not found`);
       process.exit(1);
     }
-    console.log(`   Report: ${locationReportId}  (${report.locationName || 'unknown'})`);
+    console.log(
+      `   Report: ${locationReportId}  (${report.locationName || 'unknown'})`
+    );
     console.log(`   Stored totalVariation: ${report.totalVariation}`);
     console.log(`   Location ID: ${report.location}\n`);
 
@@ -71,7 +73,9 @@ async function diagnose(locationReportId: string): Promise<void> {
         { _id: locationId },
         { projection: { 'rel.licencee': 1, noSMIBLocation: 1 } }
       );
-      console.log(`   Location noSMIBLocation: ${location?.noSMIBLocation ?? 'not set'}`);
+      console.log(
+        `   Location noSMIBLocation: ${location?.noSMIBLocation ?? 'not set'}`
+      );
 
       if (location?.rel?.licencee) {
         const licencee = await licencees.findOne(
@@ -97,7 +101,10 @@ async function diagnose(locationReportId: string): Promise<void> {
         )
         .toArray();
       smibMap = new Map(
-        machineDocs.map(m => [String(m._id), Boolean((m.relayId as string)?.trim())])
+        machineDocs.map(m => [
+          String(m._id),
+          Boolean((m.relayId as string)?.trim()),
+        ])
       );
     }
 
@@ -108,21 +115,21 @@ async function diagnose(locationReportId: string): Promise<void> {
     for (const col of colls) {
       const sm = col.sasMeters;
       const mg = col.movement?.gross ?? 0;
-      const startTimeType = sm?.sasStartTime ? typeof sm.sasStartTime : 'missing';
+      const startTimeType = sm?.sasStartTime
+        ? typeof sm.sasStartTime
+        : 'missing';
       const endTimeType = sm?.sasEndTime ? typeof sm.sasEndTime : 'missing';
-      console.log(`   ${col.machineId}: gross=${mg}, startType=${startTimeType}, endType=${endTimeType}`);
+      console.log(
+        `   ${col.machineId}: gross=${mg}, startType=${startTimeType}, endType=${endTimeType}`
+      );
       console.log(`     start="${sm?.sasStartTime}" end="${sm?.sasEndTime}"`);
     }
     console.log();
 
     // ── Step 6: Test both query approaches ───────────────────────────
-    const meterBase = colls
-      .filter(
-        c =>
-          c.machineId &&
-          c.sasMeters?.sasStartTime &&
-          c.sasMeters?.sasEndTime
-      );
+    const meterBase = colls.filter(
+      c => c.machineId && c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime
+    );
 
     // Method A: Pass strings directly (matching current code)
     const queriesA = meterBase.map(c => ({
@@ -142,14 +149,39 @@ async function diagnose(locationReportId: string): Promise<void> {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(' TEST A: String dates in $match (current code)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    const mapA = new Map<string, { drop: number; cancelled: number; jackpot: number }>();
+    const mapA = new Map<
+      string,
+      { drop: number; cancelled: number; jackpot: number }
+    >();
     if (queriesA.length > 0) {
       for await (const doc of meters.aggregate([
-        { $match: { $or: queriesA.map(q => ({ machine: q.machineId, readAt: { $gte: q.startTime, $lte: q.endTime } })) } },
-        { $group: { _id: '$machine', totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } }, totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } }, totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } } } },
+        {
+          $match: {
+            $or: queriesA.map(q => ({
+              machine: q.machineId,
+              readAt: { $gte: q.startTime, $lte: q.endTime },
+            })),
+          },
+        },
+        {
+          $group: {
+            _id: '$machine',
+            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalCancelled: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
+            totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+          },
+        },
       ])) {
-        mapA.set(doc._id, { drop: doc.totalDrop, cancelled: doc.totalCancelled, jackpot: doc.totalJackpot });
-        console.log(`   HIT: ${doc._id} drop=${doc.totalDrop} cancelled=${doc.totalCancelled} jackpot=${doc.totalJackpot}`);
+        mapA.set(doc._id, {
+          drop: doc.totalDrop,
+          cancelled: doc.totalCancelled,
+          jackpot: doc.totalJackpot,
+        });
+        console.log(
+          `   HIT: ${doc._id} drop=${doc.totalDrop} cancelled=${doc.totalCancelled} jackpot=${doc.totalJackpot}`
+        );
       }
     }
     console.log(`   Total matches: ${mapA.size}\n`);
@@ -158,14 +190,39 @@ async function diagnose(locationReportId: string): Promise<void> {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(' TEST B: Date objects in $match (correct handling)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    const mapB = new Map<string, { drop: number; cancelled: number; jackpot: number }>();
+    const mapB = new Map<
+      string,
+      { drop: number; cancelled: number; jackpot: number }
+    >();
     if (queriesB.length > 0) {
       for await (const doc of meters.aggregate([
-        { $match: { $or: queriesB.map(q => ({ machine: q.machineId, readAt: { $gte: q.startTime, $lte: q.endTime } })) } },
-        { $group: { _id: '$machine', totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } }, totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } }, totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } } } },
+        {
+          $match: {
+            $or: queriesB.map(q => ({
+              machine: q.machineId,
+              readAt: { $gte: q.startTime, $lte: q.endTime },
+            })),
+          },
+        },
+        {
+          $group: {
+            _id: '$machine',
+            totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            totalCancelled: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
+            totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+          },
+        },
       ])) {
-        mapB.set(doc._id, { drop: doc.totalDrop, cancelled: doc.totalCancelled, jackpot: doc.totalJackpot });
-        console.log(`   HIT: ${doc._id} drop=${doc.totalDrop} cancelled=${doc.totalCancelled} jackpot=${doc.totalJackpot}`);
+        mapB.set(doc._id, {
+          drop: doc.totalDrop,
+          cancelled: doc.totalCancelled,
+          jackpot: doc.totalJackpot,
+        });
+        console.log(
+          `   HIT: ${doc._id} drop=${doc.totalDrop} cancelled=${doc.totalCancelled} jackpot=${doc.totalJackpot}`
+        );
       }
     }
     console.log(`   Total matches: ${mapB.size}\n`);
@@ -189,9 +246,15 @@ async function diagnose(locationReportId: string): Promise<void> {
       if (!smibMap.get(mid)) continue;
       const mg = col.movement?.gross ?? 0;
       const hasNoSasData = !mapA.has(mid);
-      const adjSas = hasNoSasData ? 0 : (mapA.get(mid)!.drop - mapA.get(mid)!.cancelled - (includeJackpot ? mapA.get(mid)!.jackpot : 0));
+      const adjSas = hasNoSasData
+        ? 0
+        : mapA.get(mid)!.drop -
+          mapA.get(mid)!.cancelled -
+          (includeJackpot ? mapA.get(mid)!.jackpot : 0);
       const v = mg - adjSas;
-      console.log(`   [A] ${mid}: gross=${mg}, adjustedSas=${adjSas.toFixed(2)}, hasNoSas=${hasNoSasData}, var=${v.toFixed(2)}`);
+      console.log(
+        `   [A] ${mid}: gross=${mg}, adjustedSas=${adjSas.toFixed(2)}, hasNoSas=${hasNoSasData}, var=${v.toFixed(2)}`
+      );
       varA += v;
     }
 
@@ -204,9 +267,15 @@ async function diagnose(locationReportId: string): Promise<void> {
       if (!smibMap.get(mid)) continue;
       const mg = col.movement?.gross ?? 0;
       const hasNoSasData = !mapB.has(mid);
-      const adjSas = hasNoSasData ? 0 : (mapB.get(mid)!.drop - mapB.get(mid)!.cancelled - (includeJackpot ? mapB.get(mid)!.jackpot : 0));
+      const adjSas = hasNoSasData
+        ? 0
+        : mapB.get(mid)!.drop -
+          mapB.get(mid)!.cancelled -
+          (includeJackpot ? mapB.get(mid)!.jackpot : 0);
       const v = mg - adjSas;
-      console.log(`   [B] ${mid}: gross=${mg}, adjustedSas=${adjSas.toFixed(2)}, hasNoSas=${hasNoSasData}, var=${v.toFixed(2)}`);
+      console.log(
+        `   [B] ${mid}: gross=${mg}, adjustedSas=${adjSas.toFixed(2)}, hasNoSas=${hasNoSasData}, var=${v.toFixed(2)}`
+      );
       varB += v;
     }
 
@@ -214,17 +283,22 @@ async function diagnose(locationReportId: string): Promise<void> {
     console.log(` RESULT:`);
     console.log(`   Method A (strings, no matches):  ${varA}`);
     console.log(`   Method B (Date objects, matches): ${varB}`);
-    console.log(`   Stored totalVariation:            ${report.totalVariation}`);
+    console.log(
+      `   Stored totalVariation:            ${report.totalVariation}`
+    );
     console.log(`   Sum of meterGross (SMIB only):     ${sumGross}`);
 
     if (Math.abs(varB - Number(report.totalVariation)) < 0.01) {
-      console.log(`\n   ✅ Stored value matches Method B → backfill computed correctly`);
+      console.log(
+        `\n   ✅ Stored value matches Method B → backfill computed correctly`
+      );
     } else if (Math.abs(varA - Number(report.totalVariation)) < 0.01) {
-      console.log(`\n   ⚠️  Stored value matches Method A (broken string queries)`);
+      console.log(
+        `\n   ⚠️  Stored value matches Method A (broken string queries)`
+      );
     } else {
       console.log(`\n   ❌ Neither method matches stored value exactly`);
     }
-
   } finally {
     await mongoose.disconnect();
     console.log('\n🔌 Disconnected from MongoDB');
@@ -233,11 +307,16 @@ async function diagnose(locationReportId: string): Promise<void> {
 
 const reportId = process.argv[2];
 if (!reportId) {
-  console.error('Usage: bun run scripts/diagnose-variation.ts <locationReportId>');
+  console.error(
+    'Usage: bun run scripts/diagnose-variation.ts <locationReportId>'
+  );
   process.exit(1);
 }
 
 diagnose(reportId).catch(err => {
-  console.error('\n❌ Fatal error:', err instanceof Error ? err.message : String(err));
+  console.error(
+    '\n❌ Fatal error:',
+    err instanceof Error ? err.message : String(err)
+  );
   process.exit(1);
 });

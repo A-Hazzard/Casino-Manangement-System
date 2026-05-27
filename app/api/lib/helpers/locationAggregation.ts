@@ -212,9 +212,27 @@ export const getLocationsWithMetrics = async (
               { googleMapsLink: { $exists: true, $nin: [null, ''] } },
               {
                 $or: [
-                  { 'geoCoords.latitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                  { 'geoCoords.longitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                  { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
+                  {
+                    'geoCoords.latitude': {
+                      $exists: true,
+                      $nin: [null, 0, '0', '0.0', ''],
+                      $not: { $type: 'string' },
+                    },
+                  },
+                  {
+                    'geoCoords.longitude': {
+                      $exists: true,
+                      $nin: [null, 0, '0', '0.0', ''],
+                      $not: { $type: 'string' },
+                    },
+                  },
+                  {
+                    'geoCoords.longtitude': {
+                      $exists: true,
+                      $nin: [null, 0, '0', '0.0', ''],
+                      $not: { $type: 'string' },
+                    },
+                  },
                 ],
               },
             ],

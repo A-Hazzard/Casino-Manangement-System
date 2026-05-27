@@ -659,16 +659,54 @@ export async function createUser(
   const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress) {
     try {
-      const changes: Array<{ field: string; oldValue: null; newValue: string }> = [
+      const changes: Array<{
+        field: string;
+        oldValue: null;
+        newValue: string;
+      }> = [
         { field: 'username', oldValue: null, newValue: newUser.username },
-        { field: 'emailAddress', oldValue: null, newValue: newUser.emailAddress },
-        { field: 'roles', oldValue: null, newValue: newUser.roles?.join(', ') || '' },
-        { field: 'isEnabled', oldValue: null, newValue: String(newUser.isEnabled) },
-        { field: 'assignedLocations', oldValue: null, newValue: newUser.assignedLocations?.join(', ') || '' },
-        { field: 'assignedLicencees', oldValue: null, newValue: newUser.assignedLicencees?.join(', ') || '' },
-        { field: 'moneyInMultiplier', oldValue: null, newValue: String(newUser.moneyInMultiplier || '') },
-        { field: 'moneyOutAndJackpotMultiplier', oldValue: null, newValue: String(newUser.moneyOutAndJackpotMultiplier || '') },
-        { field: 'reviewerMultiplierStartTime', oldValue: null, newValue: newUser.reviewerMultiplierStartTime ? new Date(newUser.reviewerMultiplierStartTime).toISOString() : '' },
+        {
+          field: 'emailAddress',
+          oldValue: null,
+          newValue: newUser.emailAddress,
+        },
+        {
+          field: 'roles',
+          oldValue: null,
+          newValue: newUser.roles?.join(', ') || '',
+        },
+        {
+          field: 'isEnabled',
+          oldValue: null,
+          newValue: String(newUser.isEnabled),
+        },
+        {
+          field: 'assignedLocations',
+          oldValue: null,
+          newValue: newUser.assignedLocations?.join(', ') || '',
+        },
+        {
+          field: 'assignedLicencees',
+          oldValue: null,
+          newValue: newUser.assignedLicencees?.join(', ') || '',
+        },
+        {
+          field: 'moneyInMultiplier',
+          oldValue: null,
+          newValue: String(newUser.moneyInMultiplier || ''),
+        },
+        {
+          field: 'moneyOutAndJackpotMultiplier',
+          oldValue: null,
+          newValue: String(newUser.moneyOutAndJackpotMultiplier || ''),
+        },
+        {
+          field: 'reviewerMultiplierStartTime',
+          oldValue: null,
+          newValue: newUser.reviewerMultiplierStartTime
+            ? new Date(newUser.reviewerMultiplierStartTime).toISOString()
+            : '',
+        },
       ];
       if (newUser.profile) {
         Object.entries(newUser.profile).forEach(([key, val]) => {
@@ -1006,7 +1044,7 @@ export async function updateUser(
 
   const effectiveRoles = Array.isArray(updateFields.roles)
     ? (updateFields.roles as string[])
-    : ((user.roles as string[]) || []);
+    : (user.roles as string[]) || [];
   if (
     !effectiveRoles.includes('reviewer') &&
     updateFields.reviewerMultiplierStartTime !== undefined
@@ -1829,7 +1867,9 @@ function calculateUserChanges(
     {
       field: 'roles',
       original: originalUser.roles?.join(', '),
-      updated: Array.isArray(updateFields.roles) ? updateFields.roles.join(', ') : updateFields.roles,
+      updated: Array.isArray(updateFields.roles)
+        ? updateFields.roles.join(', ')
+        : updateFields.roles,
     },
     {
       field: 'isEnabled',
@@ -1839,12 +1879,16 @@ function calculateUserChanges(
     {
       field: 'assignedLocations',
       original: originalUser.assignedLocations?.join(', '),
-      updated: Array.isArray(updateFields.assignedLocations) ? updateFields.assignedLocations.join(', ') : updateFields.assignedLocations,
+      updated: Array.isArray(updateFields.assignedLocations)
+        ? updateFields.assignedLocations.join(', ')
+        : updateFields.assignedLocations,
     },
     {
       field: 'assignedLicencees',
       original: originalUser.assignedLicencees?.join(', '),
-      updated: Array.isArray(updateFields.assignedLicencees) ? updateFields.assignedLicencees.join(', ') : updateFields.assignedLicencees,
+      updated: Array.isArray(updateFields.assignedLicencees)
+        ? updateFields.assignedLicencees.join(', ')
+        : updateFields.assignedLicencees,
     },
   ];
 

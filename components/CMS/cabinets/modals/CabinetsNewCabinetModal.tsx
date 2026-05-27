@@ -55,8 +55,6 @@ export default function CabinetsNewCabinetModal({
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
 
-
-
   // ============================================================================
   // Helpers & Handlers
   // ============================================================================

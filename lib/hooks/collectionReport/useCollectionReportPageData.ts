@@ -83,7 +83,14 @@ export function useCollectionReportPageData() {
   // Local State - Search & Filter
   // ==========================================================================
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<'collector' | 'location' | 'sessionId' | 'locationId' | 'locationReportId' | 'collectorId'>('collector');
+  const [searchType, setSearchType] = useState<
+    | 'collector'
+    | 'location'
+    | 'sessionId'
+    | 'locationId'
+    | 'locationReportId'
+    | 'collectorId'
+  >('collector');
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [locationsWithMachines, setLocationsWithMachines] = useState<
     CollectionReportLocationWithMachines[]
@@ -443,7 +450,9 @@ export function useCollectionReportPageData() {
       toast.success(archive ? 'Report archived' : 'Report deleted');
       refreshReports();
     } catch {
-      toast.error(archive ? 'Failed to archive report' : 'Failed to delete report');
+      toast.error(
+        archive ? 'Failed to archive report' : 'Failed to delete report'
+      );
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirmation(false);
@@ -479,19 +488,19 @@ export function useCollectionReportPageData() {
    * Fetch locations on licencee change
    * Uses lightweight metadata fetch for performance
    */
-    useEffect(() => {
-      fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
-        // Map to standardized location format
-        const formatted = locs.map(loc => ({
-          _id: String(loc.id),
-          name: loc.name,
-          slug: loc.slug,
-        }));
-        setLocations(formatted);
-        // Initialize metadata array as empty, modals will handle their own rich fetching
-        setLocationsWithMachines([]);
-      });
-    }, [selectedLicencee]);
+  useEffect(() => {
+    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
+      // Map to standardized location format
+      const formatted = locs.map(loc => ({
+        _id: String(loc.id),
+        name: loc.name,
+        slug: loc.slug,
+      }));
+      setLocations(formatted);
+      // Initialize metadata array as empty, modals will handle their own rich fetching
+      setLocationsWithMachines([]);
+    });
+  }, [selectedLicencee]);
 
   /**
    * Initial data fetch and reset on tab/filter change
@@ -579,67 +588,67 @@ export function useCollectionReportPageData() {
   // Return
   // ==========================================================================
 
-return {
-          // State
-          activeTab,
-          user,
-          loading:
-            loading ||
-            initialLoading ||
-            isDataMissingForPage ||
-            searchTerm !== debouncedSearch,
-          initialLoading,
-          refreshing,
-          selectedLicencee,
-          allReports,
-          filteredReports,
-          paginatedReports,
-          currentPage,
-          totalPages,
-          totalReports,
-          searchTerm,
-          searchType,
-          locations,
-          locationsWithMachines,
-          filters,
-       showNewCollectionMobile,
-       showNewCollectionDesktop,
-       showEditMobile,
-       showEditDesktop,
-       editingReportId,
-       showDeleteConfirmation,
-       reportToDelete,
-       isDeleting,
-       editableReportIds,
-       // Tab Handlers
-       handleTabChange,
-       handleRefresh: useCallback(async () => {
-         await refreshReports();
-       }, [refreshReports]),
-       // CRUD Handlers
-       handleCreate,
-       handleEdit,
-       handleDelete,
-       confirmDelete,
-       // Setters
-       setSearchTerm: handleSetSearchTerm,
-       setSearchType,
-       setCurrentPage,
-       setShowNewCollectionMobile,
-       setShowNewCollectionDesktop,
-       setShowEditMobile,
-       setShowEditDesktop,
-       setShowDeleteConfirmation,
-       setEditingReportId,
-       // Data Refresh
-       onRefreshLocations: useCallback(async () => {
-         const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
-         const formatted = locs.map(loc => ({
-           _id: String(loc.id),
-           name: loc.name,
-         }));
-         setLocations(formatted);
-         setLocationsWithMachines([]);
-       }, [selectedLicencee]),
-     };
+  return {
+    // State
+    activeTab,
+    user,
+    loading:
+      loading ||
+      initialLoading ||
+      isDataMissingForPage ||
+      searchTerm !== debouncedSearch,
+    initialLoading,
+    refreshing,
+    selectedLicencee,
+    allReports,
+    filteredReports,
+    paginatedReports,
+    currentPage,
+    totalPages,
+    totalReports,
+    searchTerm,
+    searchType,
+    locations,
+    locationsWithMachines,
+    filters,
+    showNewCollectionMobile,
+    showNewCollectionDesktop,
+    showEditMobile,
+    showEditDesktop,
+    editingReportId,
+    showDeleteConfirmation,
+    reportToDelete,
+    isDeleting,
+    editableReportIds,
+    // Tab Handlers
+    handleTabChange,
+    handleRefresh: useCallback(async () => {
+      await refreshReports();
+    }, [refreshReports]),
+    // CRUD Handlers
+    handleCreate,
+    handleEdit,
+    handleDelete,
+    confirmDelete,
+    // Setters
+    setSearchTerm: handleSetSearchTerm,
+    setSearchType,
+    setCurrentPage,
+    setShowNewCollectionMobile,
+    setShowNewCollectionDesktop,
+    setShowEditMobile,
+    setShowEditDesktop,
+    setShowDeleteConfirmation,
+    setEditingReportId,
+    // Data Refresh
+    onRefreshLocations: useCallback(async () => {
+      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
+      const formatted = locs.map(loc => ({
+        _id: String(loc.id),
+        name: loc.name,
+      }));
+      setLocations(formatted);
+      setLocationsWithMachines([]);
+    }, [selectedLicencee]),
+  };
 }

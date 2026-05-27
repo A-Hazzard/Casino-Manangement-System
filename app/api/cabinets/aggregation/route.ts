@@ -1594,7 +1594,7 @@ export async function GET(req: NextRequest) {
           if (aOnline && !bOnline) return -1;
           if (!aOnline && bOnline) return 1;
           if (aOnline && bOnline) return 0;
-          
+
           const aTime = aRecord.lastActivity
             ? new Date(aRecord.lastActivity as string | Date).getTime()
             : 0;

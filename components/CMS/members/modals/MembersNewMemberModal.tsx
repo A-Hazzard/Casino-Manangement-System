@@ -55,7 +55,6 @@ export default function MembersNewMemberModal({
   onClose,
   onMemberCreated,
 }: MembersNewMemberModalProps) {
-
   // ============================================================================
   // State & Hooks
   // ============================================================================
@@ -69,7 +68,6 @@ export default function MembersNewMemberModal({
     username: boolean;
     email: boolean;
   }>({ username: false, email: false });
-
 
   // Activity logging is now handled via API calls
   const logActivity = async (

@@ -163,11 +163,9 @@ export default function PasswordUpdateModal({
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
-
   const debouncedPhone = useDebounce(phone, 2000);
   const debouncedNewPassword = useDebounce(newPassword, 2000);
   const debouncedConfirmPassword = useDebounce(confirmPassword, 2000);
-
 
   // ============================================================================
   // Effects

@@ -44,7 +44,10 @@ import {
   UpdateMachinePayload,
 } from '@/app/api/lib/types/collectionReportV2';
 import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
-import { cascadeMachineEdit, propagateV2MetersToNextSession } from '@/app/api/lib/helpers/collectionReportV2/recalculation';
+import {
+  cascadeMachineEdit,
+  propagateV2MetersToNextSession,
+} from '@/app/api/lib/helpers/collectionReportV2/recalculation';
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -346,7 +349,9 @@ export async function PATCH(req: NextRequest) {
     // ============================================================================
     // STEP 3.5: Chronological edit check
     // ============================================================================
-    const targetMachine = await ReportedMachine.findOne({ _id: reportedMachineId }).lean<ReportedMachineDocument>();
+    const targetMachine = await ReportedMachine.findOne({
+      _id: reportedMachineId,
+    }).lean<ReportedMachineDocument>();
     if (!targetMachine) {
       return NextResponse.json(
         { success: false, error: 'Machine capture not found' },
@@ -365,17 +370,21 @@ export async function PATCH(req: NextRequest) {
       'sasStartTime',
       'sasEndTime',
     ];
-    const isModifyingKeyFields = keyFields.some(key => body[key as keyof UpdateMachinePayload] !== undefined);
+    const isModifyingKeyFields = keyFields.some(
+      key => body[key as keyof UpdateMachinePayload] !== undefined
+    );
 
     if (isModifyingKeyFields && targetMachine.machineId) {
-      const targetTime = body.sasEndTime ? new Date(body.sasEndTime as string) : (targetMachine.sasEndTime || new Date());
-      
+      const targetTime = body.sasEndTime
+        ? new Date(body.sasEndTime as string)
+        : targetMachine.sasEndTime || new Date();
+
       const nextReport = await ReportedMachine.findOne({
         machineId: targetMachine.machineId,
         sessionStatus: 'submitted',
         sessionId: { $ne: targetMachine.sessionId },
         sasEndTime: { $gt: targetTime },
-        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
       }).lean();
 
       if (nextReport) {
@@ -384,21 +393,21 @@ export async function PATCH(req: NextRequest) {
           sessionStatus: 'submitted',
           sessionId: { $ne: targetMachine.sessionId },
           sasEndTime: { $lt: targetTime },
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
         }).lean();
 
         if (prevReport) {
           return NextResponse.json(
             {
               success: false,
-              error: 'Chronological check failed: cannot edit into a middle-date report. A more recent collection session has already been submitted for this machine. To make changes, you must revert or delete the newer session(s) first.',
+              error:
+                'Chronological check failed: cannot edit into a middle-date report. A more recent collection session has already been submitted for this machine. To make changes, you must revert or delete the newer session(s) first.',
             },
             { status: 400 }
           );
         }
       }
     }
-
 
     const updateData: Partial<ReportedMachineDocument> = {};
     const dateFields = [
@@ -448,21 +457,21 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: For noSMIB locations enforce null on all SAS fields
+    // STEP 4: For non-relay machines enforce null on all SAS fields
     // ============================================================================
-    // regardless of what the payload or stored document contains. Stale non-null SAS values
-    // from sessions captured before this rule existed must be wiped on every
-    // edit so they never leak into SAS columns.
+    // Machines without a relayId have no SAS relay; any stale non-null SAS values
+    // from sessions captured before this rule existed must be wiped on every edit
+    // so they never leak into SAS columns.
     {
-      if (targetMachine?.locationId) {
-        const { GamingLocations } =
-          await import('@/app/api/lib/models/gaminglocations');
-        const locForCheck = await GamingLocations.findOne(
-          { _id: targetMachine.locationId },
-          'noSMIBLocation'
-        ).lean<{ noSMIBLocation?: boolean }>();
+      if (targetMachine?.machineId) {
+        const { Machine: MachineModel } =
+          await import('@/app/api/lib/models/machines');
+        const machineDoc = await MachineModel.findOne(
+          { _id: targetMachine.machineId },
+          'relayId'
+        ).lean<{ relayId?: string | null }>();
 
-        if (locForCheck?.noSMIBLocation === true) {
+        if (!machineDoc?.relayId) {
           updateData.sasMetersIn = null;
           updateData.sasMetersOut = null;
           updateData.sasGross = null;
@@ -678,10 +687,8 @@ export async function PATCH(req: NextRequest) {
     // recalc — strip them from updateData so $unset is the only operation
     // applied to those keys (otherwise Mongo would error on conflict).
     if (Object.keys(unsetData).length > 0) {
-      if ('ramClearMetersIn' in unsetData)
-        delete updateData.ramClearMetersIn;
-      if ('ramClearMetersOut' in unsetData)
-        delete updateData.ramClearMetersOut;
+      if ('ramClearMetersIn' in unsetData) delete updateData.ramClearMetersIn;
+      if ('ramClearMetersOut' in unsetData) delete updateData.ramClearMetersOut;
     }
 
     const updateOps: Record<string, unknown> = {};

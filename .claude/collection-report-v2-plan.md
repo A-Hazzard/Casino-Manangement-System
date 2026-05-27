@@ -3,7 +3,9 @@
 ## Status: Feature Complete (with Google Drive image storage + OAuth2)
 
 ## Purpose of This File
+
 This is the **working plan** for the Collection Report V2 feature. It tracks:
+
 - What's been done (✅)
 - How the camera/overlay works end-to-end
 - HTTPS/certificate requirements
@@ -11,6 +13,7 @@ This is the **working plan** for the Collection Report V2 feature. It tracks:
 - Every file involved
 
 Use this file to:
+
 - Onboard into the V2 feature
 - Debug the camera or HTTPS setup
 - Understand which files to touch for changes
@@ -125,6 +128,7 @@ Capture Wizard opens (one machine at a time)
 ### Developer Edit Mode
 
 When viewing a submitted session report as a developer:
+
 1. Click **Edit Session** button
 2. Wizard opens with all machines pre-filled (first machine shown)
 3. **Save & Next** → PATCHs current machine, advances to next
@@ -216,6 +220,7 @@ This is a browser security rule — you cannot bypass it.
 **Option 2: Caddy reverse proxy (used in production)**
 
 Caddy at `https://192.168.0.39` (port 443) proxies to `http://localhost:3000`:
+
 ```
 192.168.0.39 {
     reverse_proxy localhost:3000
@@ -224,13 +229,13 @@ Caddy at `https://192.168.0.39` (port 443) proxies to `http://localhost:3000`:
 
 ### Compatibility matrix
 
-| Scenario                          | Works?            | Why                                |
-| --------------------------------- | ----------------- | ---------------------------------- |
-| Desktop `localhost:3000`          | ✅ Camera works   | localhost is secure context        |
-| Desktop `127.0.0.1:3000`          | ✅ Camera works   | loopback is secure context         |
-| Mobile `192.168.x.x:3000` (HTTP)  | ❌ Camera blocked | non-localhost HTTP is insecure     |
-| Mobile `192.168.x.x` via Caddy    | ✅ Works          | HTTPS via Caddy reverse proxy      |
-| Production (HTTPS)                | ✅ Works          | production should always be HTTPS  |
+| Scenario                         | Works?            | Why                               |
+| -------------------------------- | ----------------- | --------------------------------- |
+| Desktop `localhost:3000`         | ✅ Camera works   | localhost is secure context       |
+| Desktop `127.0.0.1:3000`         | ✅ Camera works   | loopback is secure context        |
+| Mobile `192.168.x.x:3000` (HTTP) | ❌ Camera blocked | non-localhost HTTP is insecure    |
+| Mobile `192.168.x.x` via Caddy   | ✅ Works          | HTTPS via Caddy reverse proxy     |
+| Production (HTTPS)               | ✅ Works          | production should always be HTTPS |
 
 ---
 
@@ -265,42 +270,42 @@ GOOGLE_DRIVE_ROOT_FOLDER_ID=abc123xyz
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `lib/utils/drive.ts` | Drive client (OAuth2), folder management, upload/download/delete |
-| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts` | Image proxy endpoint (streams from Drive to browser) |
-| `scripts/exchange-drive-code.js` | One-time token exchange (reads from .env, outputs refresh token) |
+| File                                                          | Purpose                                                          |
+| ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `lib/utils/drive.ts`                                          | Drive client (OAuth2), folder management, upload/download/delete |
+| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts` | Image proxy endpoint (streams from Drive to browser)             |
+| `scripts/exchange-drive-code.js`                              | One-time token exchange (reads from .env, outputs refresh token) |
 
 ---
 
 ## File Map
 
-| File | Purpose |
-|------|---------|
-| `app/api/collection-reports-v2/sessions/route.ts` | POST (start session) + GET (list sessions) |
-| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts` | GET session detail + DELETE session |
-| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts` | PATCH submit session |
-| `app/api/collection-reports-v2/machines/route.ts` | POST/PATCH machine capture data (image upload to Drive) |
-| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts` | GET proxy — streams image from Drive |
-| `app/api/lib/models/reportedMachines.ts` | ReportedMachine Mongoose model (with `driveFileId`) |
-| `lib/utils/drive.ts` | Drive client, folder management, upload/download/delete |
-| `lib/utils/cookieSecurity.ts` | Cookie security helpers |
-| `scripts/exchange-drive-code.js` | One-time OAuth2 token exchange |
-| `components/CMS/collectionReport/tabs/collection-v2/CameraOverlay.tsx` | Full-screen camera with overlay |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx` | Capture wizard + review + edit mode |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReport.tsx` | Submitted report view (Machines/Summary tabs, edit button) |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx` | Searchable/sortable/paginated machine table |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportSummaryTab.tsx` | Aggregated stats |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StatusBadge.tsx` | Status badge |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop.tsx` | Session list (desktop table) |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile.tsx` | Session list (mobile cards) |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog.tsx` | Start session dialog |
-| `components/CMS/collectionReport/CollectionReportPageContent.tsx` | V2 tab rendering + refresh handling |
-| `components/CMS/collectionReport/CollectionReportHeader.tsx` | Global refresh + create buttons |
-| `lib/hooks/collectionReport/useCollectionReportV2Data.ts` | V2 data hook |
-| `lib/constants/collection.ts` | Tab config |
-| `lib/constants/maintenance.ts` | Maintenance toggle |
-| `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx` | Session list skeleton |
-| `components/ui/skeletons/CollectionReportV2SessionDetailSkeleton.tsx` | Wizard skeleton |
-| `next.config.ts` | `allowedDevOrigins` config |
-| `lib/store/userStore.ts` | Zustand user store (for `isDeveloper` check) |
+| File                                                                                                | Purpose                                                    |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `app/api/collection-reports-v2/sessions/route.ts`                                                   | POST (start session) + GET (list sessions)                 |
+| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts`                                       | GET session detail + DELETE session                        |
+| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts`                                | PATCH submit session                                       |
+| `app/api/collection-reports-v2/machines/route.ts`                                                   | POST/PATCH machine capture data (image upload to Drive)    |
+| `app/api/collection-reports-v2/drive-files/[fileId]/route.ts`                                       | GET proxy — streams image from Drive                       |
+| `app/api/lib/models/reportedMachines.ts`                                                            | ReportedMachine Mongoose model (with `driveFileId`)        |
+| `lib/utils/drive.ts`                                                                                | Drive client, folder management, upload/download/delete    |
+| `lib/utils/cookieSecurity.ts`                                                                       | Cookie security helpers                                    |
+| `scripts/exchange-drive-code.js`                                                                    | One-time OAuth2 token exchange                             |
+| `components/CMS/collectionReport/tabs/collection-v2/CameraOverlay.tsx`                              | Full-screen camera with overlay                            |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx`            | Capture wizard + review + edit mode                        |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReport.tsx`            | Submitted report view (Machines/Summary tabs, edit button) |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx` | Searchable/sortable/paginated machine table                |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportSummaryTab.tsx`  | Aggregated stats                                           |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StatusBadge.tsx`              | Status badge                                               |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop.tsx`                  | Session list (desktop table)                               |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile.tsx`                   | Session list (mobile cards)                                |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog.tsx`       | Start session dialog                                       |
+| `components/CMS/collectionReport/CollectionReportPageContent.tsx`                                   | V2 tab rendering + refresh handling                        |
+| `components/CMS/collectionReport/CollectionReportHeader.tsx`                                        | Global refresh + create buttons                            |
+| `lib/hooks/collectionReport/useCollectionReportV2Data.ts`                                           | V2 data hook                                               |
+| `lib/constants/collection.ts`                                                                       | Tab config                                                 |
+| `lib/constants/maintenance.ts`                                                                      | Maintenance toggle                                         |
+| `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx`                                    | Session list skeleton                                      |
+| `components/ui/skeletons/CollectionReportV2SessionDetailSkeleton.tsx`                               | Wizard skeleton                                            |
+| `next.config.ts`                                                                                    | `allowedDevOrigins` config                                 |
+| `lib/store/userStore.ts`                                                                            | Zustand user store (for `isDeveloper` check)               |

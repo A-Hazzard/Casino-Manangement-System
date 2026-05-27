@@ -26,9 +26,22 @@ type AdministrationActivityLogDescriptionDialogProps = {
   searchMode: 'username' | 'email' | 'description' | '_id';
 };
 
-function RenderAuditValue({ value, type }: { value: string; type: 'before' | 'after' }) {
-  if (!value || value === '—' || value === 'Not set' || value === 'Empty object' || value === 'Empty array' || value === 'Empty') {
-    return <span className="text-gray-400 italic">{value || '—'}</span>;
+function RenderAuditValue({
+  value,
+  type,
+}: {
+  value: string;
+  type: 'before' | 'after';
+}) {
+  if (
+    !value ||
+    value === '—' ||
+    value === 'Not set' ||
+    value === 'Empty object' ||
+    value === 'Empty array' ||
+    value === 'Empty'
+  ) {
+    return <span className="italic text-gray-400">{value || '—'}</span>;
   }
 
   // Check if it is a comma-separated key-value pairs string (e.g. "Key1: Val1, Key2: Val2")
@@ -39,7 +52,7 @@ function RenderAuditValue({ value, type }: { value: string; type: 'before' | 'af
       if (idx !== -1) {
         return {
           key: item.substring(0, idx).trim(),
-          val: item.substring(idx + 2).trim()
+          val: item.substring(idx + 2).trim(),
         };
       }
       return { key: '', val: item.trim() };
@@ -50,15 +63,20 @@ function RenderAuditValue({ value, type }: { value: string; type: 'before' | 'af
 
     if (hasKeys) {
       return (
-        <div className="overflow-hidden rounded border border-gray-150/70 bg-white shadow-sm">
+        <div className="border-gray-150/70 overflow-hidden rounded border bg-white shadow-sm">
           <table className="w-full table-fixed text-[10px] leading-tight">
             <tbody>
               {pairs.map((p, idx) => (
-                <tr key={idx} className="border-b border-gray-100 last:border-b-0 hover:bg-slate-50/50">
-                  <td className="w-5/12 px-2 py-1.5 font-semibold text-gray-500 bg-gray-50/30 border-r border-gray-100 break-words">
+                <tr
+                  key={idx}
+                  className="border-b border-gray-100 last:border-b-0 hover:bg-slate-50/50"
+                >
+                  <td className="w-5/12 break-words border-r border-gray-100 bg-gray-50/30 px-2 py-1.5 font-semibold text-gray-500">
                     {p.key || 'Item'}
                   </td>
-                  <td className={`w-7/12 px-2 py-1.5 font-medium break-words ${type === 'before' ? 'text-rose-700 bg-rose-50/10' : 'text-emerald-700 bg-emerald-50/10'}`}>
+                  <td
+                    className={`w-7/12 break-words px-2 py-1.5 font-medium ${type === 'before' ? 'bg-rose-50/10 text-rose-700' : 'bg-emerald-50/10 text-emerald-700'}`}
+                  >
                     {p.val}
                   </td>
                 </tr>
@@ -71,7 +89,11 @@ function RenderAuditValue({ value, type }: { value: string; type: 'before' | 'af
   }
 
   // Default rendering (as simple text)
-  return <div className="break-words leading-relaxed whitespace-pre-wrap">{value}</div>;
+  return (
+    <div className="whitespace-pre-wrap break-words leading-relaxed">
+      {value}
+    </div>
+  );
 }
 
 const ACTION_CONFIG: Record<
@@ -245,12 +267,15 @@ function Section({
 
 function CollectionReportView({ log }: { log: ActivityLog }) {
   // Extract data from newData if available
-  const data = (log.newData || log.metadata?.newData || {}) as Record<string, unknown>;
+  const data = (log.newData || log.metadata?.newData || {}) as Record<
+    string,
+    unknown
+  >;
   const hasNewData = Object.keys(data).length > 0;
 
   // Fallback parsing from changes if newData is not available
   const changes = log.changes || [];
-  
+
   const getFieldValue = (field: string, fallback: unknown = 0): unknown => {
     if (hasNewData && data[field] !== undefined) {
       return data[field];
@@ -277,10 +302,13 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
   const totalSasGross = getNumericValue('totalSasGross');
   const locationProfitPerc = getNumericValue('locationProfitPerc');
   const balanceCorrection = getNumericValue('balanceCorrection');
-  
-  const varianceReason = String(getFieldValue('varianceReason', '') || '') || null;
-  const reasonShortagePayment = String(getFieldValue('reasonShortagePayment', '') || '') || null;
-  const balanceCorrectionReas = String(getFieldValue('balanceCorrectionReas', '') || '') || null;
+
+  const varianceReason =
+    String(getFieldValue('varianceReason', '') || '') || null;
+  const reasonShortagePayment =
+    String(getFieldValue('reasonShortagePayment', '') || '') || null;
+  const balanceCorrectionReas =
+    String(getFieldValue('balanceCorrectionReas', '') || '') || null;
 
   // Extract machines
   let machinesList: Array<{
@@ -303,29 +331,53 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
       let resolvedName = String(m.displayName || '');
       if (!resolvedName && serialNumber) {
         const parts = [customName, manuf].filter(Boolean);
-        resolvedName = parts.length > 0 ? `${serialNumber} (${parts.join(', ')})` : serialNumber;
+        resolvedName =
+          parts.length > 0
+            ? `${serialNumber} (${parts.join(', ')})`
+            : serialNumber;
       }
-      if (!resolvedName) resolvedName = String(m.machineName || m.machineId || 'Machine');
+      if (!resolvedName)
+        resolvedName = String(m.machineName || m.machineId || 'Machine');
       return {
         name: resolvedName,
         metersIn: Number(m.metersIn || 0),
         metersOut: Number(m.metersOut || 0),
-        prevIn: m.prevMetersIn !== undefined ? Number(m.prevMetersIn) : (m.prevIn !== undefined ? Number(m.prevIn) : undefined),
-        prevOut: m.prevMetersOut !== undefined ? Number(m.prevMetersOut) : (m.prevOut !== undefined ? Number(m.prevOut) : undefined),
+        prevIn:
+          m.prevMetersIn !== undefined
+            ? Number(m.prevMetersIn)
+            : m.prevIn !== undefined
+              ? Number(m.prevIn)
+              : undefined,
+        prevOut:
+          m.prevMetersOut !== undefined
+            ? Number(m.prevMetersOut)
+            : m.prevOut !== undefined
+              ? Number(m.prevOut)
+              : undefined,
         ramClear: Boolean(m.ramClear || false),
-        ramClearMetersIn: m.ramClearMetersIn !== undefined ? Number(m.ramClearMetersIn) : undefined,
-        ramClearMetersOut: m.ramClearMetersOut !== undefined ? Number(m.ramClearMetersOut) : undefined,
+        ramClearMetersIn:
+          m.ramClearMetersIn !== undefined
+            ? Number(m.ramClearMetersIn)
+            : undefined,
+        ramClearMetersOut:
+          m.ramClearMetersOut !== undefined
+            ? Number(m.ramClearMetersOut)
+            : undefined,
         notes: m.notes ? String(m.notes) : null,
       };
     });
   } else {
     // Parse from changes machine_X_details
-    const machineChanges = changes.filter(c => c.field.match(/^machine_\d+_details$/));
+    const machineChanges = changes.filter(c =>
+      c.field.match(/^machine_\d+_details$/)
+    );
     machinesList = machineChanges.map(c => {
       const parsed = parseMachineDetail(String(c.newValue));
       let prevIn = undefined;
       let prevOut = undefined;
-      const prevMatch = parsed.details?.match(/Prev:\s*(\d+)\s*In,\s*(\d+)\s*Out/);
+      const prevMatch = parsed.details?.match(
+        /Prev:\s*(\d+)\s*In,\s*(\d+)\s*Out/
+      );
       if (prevMatch) {
         prevIn = Number(prevMatch[1]);
         prevOut = Number(prevMatch[2]);
@@ -354,69 +406,120 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
     <div className="space-y-5">
       {/* Overview stats grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg bg-gray-50 border border-gray-300 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Collected</p>
-          <p className="text-sm font-bold text-gray-800">{formatCurrency(amountCollected)}</p>
-        </div>
-        <div className="rounded-lg bg-gray-50 border border-gray-300 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Expected</p>
-          <p className="text-sm font-semibold text-gray-800">{formatCurrency(amountToCollect)}</p>
-        </div>
-        <div className={`rounded-lg border-2 p-3 ${variance < 0 ? 'bg-red-50/50 border-red-300' : 'bg-green-50/50 border-green-300'}`}>
-          <p className={`text-[10px] font-semibold uppercase tracking-wider ${variance < 0 ? 'text-red-500' : 'text-green-500'}`}>Variance</p>
-          <p className={`text-sm font-bold ${variance < 0 ? 'text-red-700' : 'text-green-700'}`}>
-            {variance > 0 ? '+' : ''}{formatCurrency(variance)}
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Collected
+          </p>
+          <p className="text-sm font-bold text-gray-800">
+            {formatCurrency(amountCollected)}
           </p>
         </div>
-        <div className="rounded-lg bg-gray-50 border border-gray-300 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Partner Profit</p>
-          <p className="text-sm font-semibold text-gray-800">{formatCurrency(partnerProfit)}</p>
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Expected
+          </p>
+          <p className="text-sm font-semibold text-gray-800">
+            {formatCurrency(amountToCollect)}
+          </p>
+        </div>
+        <div
+          className={`rounded-lg border-2 p-3 ${variance < 0 ? 'border-red-300 bg-red-50/50' : 'border-green-300 bg-green-50/50'}`}
+        >
+          <p
+            className={`text-[10px] font-semibold uppercase tracking-wider ${variance < 0 ? 'text-red-500' : 'text-green-500'}`}
+          >
+            Variance
+          </p>
+          <p
+            className={`text-sm font-bold ${variance < 0 ? 'text-red-700' : 'text-green-700'}`}
+          >
+            {variance > 0 ? '+' : ''}
+            {formatCurrency(variance)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Partner Profit
+          </p>
+          <p className="text-sm font-semibold text-gray-800">
+            {formatCurrency(partnerProfit)}
+          </p>
         </div>
       </div>
 
       {/* Additional details grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
-        <div className="bg-slate-50/50 border border-slate-300 rounded-lg p-2.5">
-          <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider block mb-0.5">Taxes</span>
-          <span className="font-semibold text-gray-700">{formatCurrency(taxes)}</span>
+      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+        <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-2.5">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+            Taxes
+          </span>
+          <span className="font-semibold text-gray-700">
+            {formatCurrency(taxes)}
+          </span>
         </div>
-        <div className="bg-slate-50/50 border border-slate-300 rounded-lg p-2.5">
-          <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider block mb-0.5">Advance</span>
-          <span className="font-semibold text-gray-700">{formatCurrency(advance)}</span>
+        <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-2.5">
+          <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+            Advance
+          </span>
+          <span className="font-semibold text-gray-700">
+            {formatCurrency(advance)}
+          </span>
         </div>
         {balanceCorrection !== 0 && (
-          <div className="bg-slate-50/50 border border-slate-300 rounded-lg p-2.5">
-            <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider block mb-0.5">Correction</span>
-            <span className="font-semibold text-gray-700">{formatCurrency(balanceCorrection)}</span>
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-2.5">
+            <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+              Correction
+            </span>
+            <span className="font-semibold text-gray-700">
+              {formatCurrency(balanceCorrection)}
+            </span>
           </div>
         )}
         {locationProfitPerc > 0 && (
-          <div className="bg-slate-50/50 border border-slate-300 rounded-lg p-2.5">
-            <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider block mb-0.5">Profit Split</span>
-            <span className="font-semibold text-gray-700">{locationProfitPerc}%</span>
+          <div className="rounded-lg border border-slate-300 bg-slate-50/50 p-2.5">
+            <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+              Profit Split
+            </span>
+            <span className="font-semibold text-gray-700">
+              {locationProfitPerc}%
+            </span>
           </div>
         )}
       </div>
 
       {/* Operations Performance grid */}
-      <div className="border border-slate-300 bg-white rounded-lg p-3">
-        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Operations Summary</h4>
+      <div className="rounded-lg border border-slate-300 bg-white p-3">
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Operations Summary
+        </h4>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
           <div>
             <p className="text-[9px] font-medium text-gray-400">Total Drop</p>
-            <p className="font-semibold text-gray-800">{formatCurrency(totalDrop)}</p>
+            <p className="font-semibold text-gray-800">
+              {formatCurrency(totalDrop)}
+            </p>
           </div>
           <div>
-            <p className="text-[9px] font-medium text-gray-400">Total Cancelled</p>
-            <p className="font-semibold text-gray-800">{formatCurrency(totalCancelled)}</p>
+            <p className="text-[9px] font-medium text-gray-400">
+              Total Cancelled
+            </p>
+            <p className="font-semibold text-gray-800">
+              {formatCurrency(totalCancelled)}
+            </p>
           </div>
           <div>
             <p className="text-[9px] font-medium text-gray-400">Total Gross</p>
-            <p className="font-semibold text-gray-800">{formatCurrency(totalGross)}</p>
+            <p className="font-semibold text-gray-800">
+              {formatCurrency(totalGross)}
+            </p>
           </div>
           <div>
-            <p className="text-[9px] font-medium text-gray-400">Total SAS Gross</p>
-            <p className="font-semibold text-gray-800">{formatCurrency(totalSasGross)}</p>
+            <p className="text-[9px] font-medium text-gray-400">
+              Total SAS Gross
+            </p>
+            <p className="font-semibold text-gray-800">
+              {formatCurrency(totalSasGross)}
+            </p>
           </div>
         </div>
       </div>
@@ -425,21 +528,33 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
       {(varianceReason || reasonShortagePayment || balanceCorrectionReas) && (
         <div className="space-y-2">
           {varianceReason && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs">
-              <span className="font-bold text-amber-800 block mb-0.5 uppercase text-[9px] tracking-wider">Variance Reason</span>
-              <p className="text-amber-900 leading-relaxed italic">"{varianceReason}"</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+              <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-amber-800">
+                Variance Reason
+              </span>
+              <p className="italic leading-relaxed text-amber-900">
+                "{varianceReason}"
+              </p>
             </div>
           )}
           {reasonShortagePayment && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs">
-              <span className="font-bold text-amber-800 block mb-0.5 uppercase text-[9px] tracking-wider">Shortage / Payment Reason</span>
-              <p className="text-amber-900 leading-relaxed italic">"{reasonShortagePayment}"</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+              <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-amber-800">
+                Shortage / Payment Reason
+              </span>
+              <p className="italic leading-relaxed text-amber-900">
+                "{reasonShortagePayment}"
+              </p>
             </div>
           )}
           {balanceCorrectionReas && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs">
-              <span className="font-bold text-amber-800 block mb-0.5 uppercase text-[9px] tracking-wider">Correction Reason</span>
-              <p className="text-amber-900 leading-relaxed italic">"{balanceCorrectionReas}"</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+              <span className="mb-0.5 block text-[9px] font-bold uppercase tracking-wider text-amber-800">
+                Correction Reason
+              </span>
+              <p className="italic leading-relaxed text-amber-900">
+                "{balanceCorrectionReas}"
+              </p>
             </div>
           )}
         </div>
@@ -447,50 +562,81 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
 
       {/* Recorded Machines list */}
       <div className="space-y-3">
-        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Recorded Machines ({machinesList.length})</h4>
-        
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Recorded Machines ({machinesList.length})
+        </h4>
+
         <div className="grid gap-3 sm:grid-cols-2">
           {machinesList.map((m, i) => (
-            <div key={i} className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm hover:shadow-md hover:bg-white transition-all">
+            <div
+              key={i}
+              className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm transition-all hover:bg-white hover:shadow-md"
+            >
               <div className="mb-2 flex items-center justify-between border-b border-indigo-200 pb-2">
-                <span className="font-bold text-indigo-900 text-xs tracking-wide uppercase">{m.name}</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
+                  {m.name}
+                </span>
                 {m.ramClear && (
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold tracking-wider uppercase text-red-700 ring-1 ring-red-500/20">
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-red-700 ring-1 ring-red-500/20">
                     RAM Clear
                   </span>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Current In</p>
-                  <p className="font-mono font-medium text-gray-800">{m.metersIn.toLocaleString()}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+                    Current In
+                  </p>
+                  <p className="font-mono font-medium text-gray-800">
+                    {m.metersIn.toLocaleString()}
+                  </p>
                   {m.prevIn !== undefined && (
-                    <p className="text-[9px] font-mono text-gray-400">Prev: {m.prevIn.toLocaleString()}</p>
+                    <p className="font-mono text-[9px] text-gray-400">
+                      Prev: {m.prevIn.toLocaleString()}
+                    </p>
                   )}
                 </div>
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Current Out</p>
-                  <p className="font-mono font-medium text-gray-800">{m.metersOut.toLocaleString()}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+                    Current Out
+                  </p>
+                  <p className="font-mono font-medium text-gray-800">
+                    {m.metersOut.toLocaleString()}
+                  </p>
                   {m.prevOut !== undefined && (
-                    <p className="text-[9px] font-mono text-gray-400">Prev: {m.prevOut.toLocaleString()}</p>
+                    <p className="font-mono text-[9px] text-gray-400">
+                      Prev: {m.prevOut.toLocaleString()}
+                    </p>
                   )}
                 </div>
 
-                {m.ramClear && (m.ramClearMetersIn !== undefined || m.ramClearMetersOut !== undefined) && (
-                  <div className="col-span-2 rounded bg-red-50/50 p-2 mt-1 border border-red-100/50 text-[10px]">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-red-500 mb-0.5">Meters Before RAM Clear</p>
-                    <div className="grid grid-cols-2 gap-2 font-mono">
-                      <div>In: {m.ramClearMetersIn?.toLocaleString() || '—'}</div>
-                      <div>Out: {m.ramClearMetersOut?.toLocaleString() || '—'}</div>
+                {m.ramClear &&
+                  (m.ramClearMetersIn !== undefined ||
+                    m.ramClearMetersOut !== undefined) && (
+                    <div className="col-span-2 mt-1 rounded border border-red-100/50 bg-red-50/50 p-2 text-[10px]">
+                      <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
+                        Meters Before RAM Clear
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 font-mono">
+                        <div>
+                          In: {m.ramClearMetersIn?.toLocaleString() || '—'}
+                        </div>
+                        <div>
+                          Out: {m.ramClearMetersOut?.toLocaleString() || '—'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-                
+                  )}
+
                 {m.notes && (
-                  <div className="col-span-2 rounded bg-amber-50/50 p-2 mt-1 border border-amber-100/50 text-[10px]">
-                    <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-600 mb-0.5">Machine Notes</p>
-                    <p className="text-amber-900 italic leading-relaxed">"{m.notes}"</p>
+                  <div className="col-span-2 mt-1 rounded border border-amber-100/50 bg-amber-50/50 p-2 text-[10px]">
+                    <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
+                      Machine Notes
+                    </p>
+                    <p className="italic leading-relaxed text-amber-900">
+                      "{m.notes}"
+                    </p>
                   </div>
                 )}
               </div>
@@ -572,8 +718,12 @@ function AdministrationActivityLogDescriptionDialog({
       ? log.actor.email
       : null;
 
-  const generalChanges = resolvedChanges.filter(c => !c.field.match(/^machine_\d+_details$/));
-  const machineChanges = resolvedChanges.filter(c => c.field.match(/^machine_\d+_details$/));
+  const generalChanges = resolvedChanges.filter(
+    c => !c.field.match(/^machine_\d+_details$/)
+  );
+  const machineChanges = resolvedChanges.filter(c =>
+    c.field.match(/^machine_\d+_details$/)
+  );
 
   // ============================================================================
   // Render
@@ -582,8 +732,12 @@ function AdministrationActivityLogDescriptionDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       {/* Mobile: full-height sheet. Desktop: auto-height modal capped at 85vh */}
       <DialogContent
-        className={`flex h-full flex-col gap-0 overflow-hidden rounded-none p-0 shadow-2xl sm:h-auto sm:max-h-[85vh] sm:rounded-xl transition-all duration-300 ${
-          generalChanges.length > 0 || resourceKey === 'collection-report' || resourceKey === 'collection_report' ? 'sm:max-w-4xl' : 'sm:max-w-lg'
+        className={`flex h-full flex-col gap-0 overflow-hidden rounded-none p-0 shadow-2xl transition-all duration-300 sm:h-auto sm:max-h-[85vh] sm:rounded-xl ${
+          generalChanges.length > 0 ||
+          resourceKey === 'collection-report' ||
+          resourceKey === 'collection_report'
+            ? 'sm:max-w-4xl'
+            : 'sm:max-w-lg'
         }`}
       >
         <DialogTitle className="sr-only">Activity Log Details</DialogTitle>
@@ -634,7 +788,8 @@ function AdministrationActivityLogDescriptionDialog({
           </Section>
 
           {/* Changes / Collection Report View */}
-          {resourceKey === 'collection-report' || resourceKey === 'collection_report' ? (
+          {resourceKey === 'collection-report' ||
+          resourceKey === 'collection_report' ? (
             <Section title="Collection Report Overview">
               <CollectionReportView log={log} />
             </Section>
@@ -658,9 +813,15 @@ function AdministrationActivityLogDescriptionDialog({
                       <table className="w-full min-w-[600px] table-fixed border-collapse text-left text-xs">
                         <thead>
                           <tr className="border-b border-gray-200 bg-gray-50/75 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                            <th className="w-1/4 px-4 py-3 font-semibold">Field</th>
-                            <th className="w-3/8 px-4 py-3 font-semibold">Before</th>
-                            <th className="w-3/8 px-4 py-3 font-semibold">After</th>
+                            <th className="w-1/4 px-4 py-3 font-semibold">
+                              Field
+                            </th>
+                            <th className="w-3/8 px-4 py-3 font-semibold">
+                              Before
+                            </th>
+                            <th className="w-3/8 px-4 py-3 font-semibold">
+                              After
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
@@ -669,17 +830,23 @@ function AdministrationActivityLogDescriptionDialog({
                               key={i}
                               className="transition-colors hover:bg-slate-50/50"
                             >
-                              <td className="align-top px-4 py-3.5 font-semibold text-gray-700">
+                              <td className="px-4 py-3.5 align-top font-semibold text-gray-700">
                                 {formatFieldLabel(change.field)}
                               </td>
-                              <td className="align-top px-4 py-3.5">
-                                <div className="rounded-lg bg-rose-50/60 border border-rose-100/50 px-3 py-2 text-[11px] font-mono text-rose-700 leading-relaxed max-h-[220px] overflow-y-auto">
-                                  <RenderAuditValue value={change.oldValue} type="before" />
+                              <td className="px-4 py-3.5 align-top">
+                                <div className="max-h-[220px] overflow-y-auto rounded-lg border border-rose-100/50 bg-rose-50/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-rose-700">
+                                  <RenderAuditValue
+                                    value={change.oldValue}
+                                    type="before"
+                                  />
                                 </div>
                               </td>
-                              <td className="align-top px-4 py-3.5">
-                                <div className="rounded-lg bg-emerald-50/60 border border-emerald-100/50 px-3 py-2 text-[11px] font-mono text-emerald-700 leading-relaxed max-h-[220px] overflow-y-auto">
-                                  <RenderAuditValue value={change.newValue} type="after" />
+                              <td className="px-4 py-3.5 align-top">
+                                <div className="max-h-[220px] overflow-y-auto rounded-lg border border-emerald-100/50 bg-emerald-50/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-emerald-700">
+                                  <RenderAuditValue
+                                    value={change.newValue}
+                                    type="after"
+                                  />
                                 </div>
                               </td>
                             </tr>
@@ -699,42 +866,65 @@ function AdministrationActivityLogDescriptionDialog({
 
               {/* Machine Details Breakdown */}
               {machineChanges.length > 0 && (
-                <Section title={`Reported Machines Breakdown (${machineChanges.length})`}>
+                <Section
+                  title={`Reported Machines Breakdown (${machineChanges.length})`}
+                >
                   <div className="grid gap-3">
                     {machineChanges.map((change, i) => {
                       const parsed = parseMachineDetail(change.newValue);
                       return (
-                        <div key={i} className="rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md">
+                        <div
+                          key={i}
+                          className="rounded-lg border border-indigo-100 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+                        >
                           <div className="mb-2 flex items-center justify-between border-b border-indigo-50/50 pb-2">
-                            <span className="font-semibold text-indigo-900 text-[11px] tracking-wide uppercase">{parsed.name}</span>
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-900">
+                              {parsed.name}
+                            </span>
                             {parsed.notes && (
-                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase text-amber-700 ring-1 ring-amber-500/20">
+                              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-500/20">
                                 Notes
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                             <div>
-                              <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">In</p>
-                              <p className="font-mono text-[11px] font-medium text-gray-800">{parsed.metersIn}</p>
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+                                In
+                              </p>
+                              <p className="font-mono text-[11px] font-medium text-gray-800">
+                                {parsed.metersIn}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Out</p>
-                              <p className="font-mono text-[11px] font-medium text-gray-800">{parsed.metersOut}</p>
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
+                                Out
+                              </p>
+                              <p className="font-mono text-[11px] font-medium text-gray-800">
+                                {parsed.metersOut}
+                              </p>
                             </div>
-                            
+
                             {parsed.details && (
-                              <div className="col-span-2 rounded bg-indigo-50/50 p-2 mt-1">
-                                <p className="text-[9px] font-semibold uppercase tracking-wider text-indigo-400 mb-0.5">Details / Manual</p>
-                                <p className="text-[11px] font-medium text-indigo-800">{parsed.details}</p>
+                              <div className="col-span-2 mt-1 rounded bg-indigo-50/50 p-2">
+                                <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-indigo-400">
+                                  Details / Manual
+                                </p>
+                                <p className="text-[11px] font-medium text-indigo-800">
+                                  {parsed.details}
+                                </p>
                               </div>
                             )}
 
                             {parsed.notes && (
-                              <div className="col-span-2 rounded bg-amber-50/50 p-2 mt-1">
-                                <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-500 mb-0.5">Collector Notes</p>
-                                <p className="text-[11px] text-amber-900 italic">{parsed.notes}</p>
+                              <div className="col-span-2 mt-1 rounded bg-amber-50/50 p-2">
+                                <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-500">
+                                  Collector Notes
+                                </p>
+                                <p className="text-[11px] italic text-amber-900">
+                                  {parsed.notes}
+                                </p>
                               </div>
                             )}
                           </div>

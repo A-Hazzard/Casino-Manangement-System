@@ -95,9 +95,9 @@ export default function CollectionReportMonthlyDesktop({
   // Render
   // ============================================================================
   return (
-    <div className="hidden space-y-4 rounded-lg bg-white shadow-md md:block overflow-visible">
+    <div className="hidden space-y-4 overflow-visible rounded-lg bg-white shadow-md md:block">
       {/* Controls Bar */}
-      <div className="flex items-center gap-3 rounded-t-lg bg-buttonActive p-4 overflow-visible">
+      <div className="flex items-center gap-3 overflow-visible rounded-t-lg bg-buttonActive p-4">
         <LocationMultiSelect
           locations={locations}
           selectedLocations={

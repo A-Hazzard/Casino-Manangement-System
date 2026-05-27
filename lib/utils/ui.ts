@@ -142,9 +142,13 @@ export const filterAndSortCabinets = (
     const secondLastActivity = b.lastActivity || b.lastOnline;
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
-    
-    const firstIsOnline = firstLastActivity && new Date(firstLastActivity).getTime() > fiveMinutesAgo;
-    const secondIsOnline = secondLastActivity && new Date(secondLastActivity).getTime() > fiveMinutesAgo;
+
+    const firstIsOnline =
+      firstLastActivity &&
+      new Date(firstLastActivity).getTime() > fiveMinutesAgo;
+    const secondIsOnline =
+      secondLastActivity &&
+      new Date(secondLastActivity).getTime() > fiveMinutesAgo;
 
     // Special handling for offlineTime sorting
     if (sortOption === 'offlineTime') {
@@ -154,7 +158,7 @@ export const filterAndSortCabinets = (
 
       // If both online or both offline, compare by offline time
       if (firstIsOnline && secondIsOnline) return 0;
-      
+
       const firstTime = firstLastActivity
         ? new Date(firstLastActivity).getTime()
         : 0;

@@ -142,15 +142,17 @@ export async function GET(
 
     // Fetch Machine collectionTimes + live sasMeters for fallback when
     // legacy ReportedMachine docs don't have sasMetersIn/Out stored.
+    // Also fetch relayId so we can expose hasRelay per machine (partial-SMIB support).
     const machineDocs = await Machine.find({
       _id: { $in: machineIds },
     })
-      .select('collectionTime sasMeters')
+      .select('collectionTime sasMeters relayId')
       .lean<
         {
           _id: string;
           collectionTime?: Date;
           sasMeters?: { drop?: number; totalCancelledCredits?: number };
+          relayId?: string | null;
         }[]
       >();
 
@@ -170,6 +172,11 @@ export async function GET(
           totalCancelledCredits: m.sasMeters?.totalCancelledCredits,
         },
       ])
+    );
+
+    // Maps machineId → hasRelay (per-machine SMIB detection)
+    const hasRelayMap = new Map(
+      machineDocs.map(m => [String(m._id), !!m.relayId])
     );
 
     const getLastCollectionTime = (machineId: string): Date | null =>
@@ -199,26 +206,13 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 8: Look up location to check noSMIBLocation
-    // ============================================================================
-    const { GamingLocations } =
-      await import('@/app/api/lib/models/gaminglocations');
-    const locationDoc = await GamingLocations.findOne({
-      _id: sessionLocationId,
-    })
-      .select('noSMIBLocation')
-      .lean<{ noSMIBLocation?: boolean }>();
-    const noSMIBLocation = locationDoc?.noSMIBLocation ?? false;
-
-    // ============================================================================
-    // STEP 9: Build session summary and return
+    // STEP 8: Build session summary and return
     // ============================================================================
     const sessionData = {
       sessionId,
       sessionStatus: machines[0].sessionStatus,
       locationId: sessionLocationId,
       locationName: machines[0].locationName,
-      noSMIBLocation,
       licencee: machines[0].licencee,
       collector: collectorId,
       collectorName: machines[0].collectorName,
@@ -231,29 +225,35 @@ export async function GET(
       machinesCaptured: machines.filter(m =>
         ['captured', 'confirmed'].includes(m.status)
       ).length,
-      // For noSMIB locations every captured/confirmed machine is implicitly matched
-      // since there are no SAS meters to compare against.
-      machinesConfirmed: noSMIBLocation
-        ? machines.filter(m => ['captured', 'confirmed'].includes(m.status))
-            .length
-        : machines.filter(m => m.status === 'confirmed').length,
+      // For non-relay (manual) machines every captured/confirmed machine is
+      // implicitly matched since there are no SAS meters to compare against.
+      // For relay (SMIB) machines the user must explicitly confirm after meter
+      // comparison, so only 'confirmed' counts.
+      machinesConfirmed: machines.filter(m => {
+        const machineHasRelay = hasRelayMap.get(m.machineId) ?? false;
+        if (!machineHasRelay) {
+          return ['captured', 'confirmed'].includes(m.status);
+        }
+        return m.status === 'confirmed';
+      }).length,
       machinesSkipped: machines.filter(m => m.status === 'skipped').length,
       createdAt: machines[0].createdAt,
       machines: machines.map(m => {
         // Fall back to live machine sasMeters when the stored value is null/undefined
         // (legacy sessions created before sasMetersIn/Out were persisted on ReportedMachine).
-        // For no-SMIB locations, fall back to manualMetersIn/Out since live SAS is null.
+        // For non-relay machines, fall back to manualMetersIn/Out since live SAS is null.
+        const machineHasRelay = hasRelayMap.get(m.machineId) ?? false;
         const liveSas = liveSasMetersMap.get(m.machineId);
         const resolvedSasMetersIn =
           m.sasMetersIn != null
             ? m.sasMetersIn
-            : noSMIBLocation
+            : !machineHasRelay
               ? (m.manualMetersIn ?? null)
               : (liveSas?.drop ?? null);
         const resolvedSasMetersOut =
           m.sasMetersOut != null
             ? m.sasMetersOut
-            : noSMIBLocation
+            : !machineHasRelay
               ? (m.manualMetersOut ?? null)
               : (liveSas?.totalCancelledCredits ?? null);
 
@@ -309,7 +309,10 @@ export async function GET(
           imageData: m.driveFileId
             ? `/api/collection-reports-v2/drive-files/${m.driveFileId}`
             : m.tempImageData || undefined,
-          metersMatch: noSMIBLocation ? true : m.metersMatch,
+          // Non-relay machines have no SAS relay to compare against,
+          // so metersMatch is implicitly true for them.
+          metersMatch: !machineHasRelay ? true : m.metersMatch,
+          hasRelay: machineHasRelay,
           ramClear: m.ramClear === true,
           ramClearMetersIn: m.ramClearMetersIn,
           ramClearMetersOut: m.ramClearMetersOut,

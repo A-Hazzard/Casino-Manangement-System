@@ -1578,11 +1578,12 @@ export default function AdministrationAddUserModal({
                           Loading countries...
                         </option>
                       )}
-                      {!countriesLoading && countries.map(country => (
-                        <option key={country._id} value={country.name}>
-                          {country.name}
-                        </option>
-                      ))}
+                      {!countriesLoading &&
+                        countries.map(country => (
+                          <option key={country._id} value={country.name}>
+                            {country.name}
+                          </option>
+                        ))}
                     </select>
                     {accountErrors.country && (
                       <p className="mt-1.5 text-sm text-red-600">
@@ -1840,7 +1841,8 @@ export default function AdministrationAddUserModal({
                             className="mt-1 border-blue-200 bg-blue-50/30 focus:ring-blue-500"
                           />
                           <p className="mt-1 rounded-md border border-blue-100 bg-blue-50 p-2 text-xs font-medium italic text-blue-600">
-                            ℹ️ Applies reviewer multipliers from this date onward.
+                            ℹ️ Applies reviewer multipliers from this date
+                            onward.
                           </p>
                         </div>
                       </div>

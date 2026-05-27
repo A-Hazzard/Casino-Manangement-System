@@ -1315,8 +1315,12 @@ export function useEditCollectionModal({
 
           // Guard: validate SAS time ordering before hitting the API
           if (collectionPayload.sasStartTime && collectionPayload.sasEndTime) {
-            const sasStart = new Date(collectionPayload.sasStartTime as string | Date);
-            const sasEnd = new Date(collectionPayload.sasEndTime as string | Date);
+            const sasStart = new Date(
+              collectionPayload.sasStartTime as string | Date
+            );
+            const sasEnd = new Date(
+              collectionPayload.sasEndTime as string | Date
+            );
             if (sasStart >= sasEnd) {
               toast.error('SAS start time must be before end time', {
                 description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
@@ -1399,12 +1403,17 @@ export function useEditCollectionModal({
           }
         } catch (error) {
           console.error('Error saving collection to database:', error);
-          const apiMessage = (error as { response?: { data?: { error?: string } } })
-            ?.response?.data?.error;
-          toast.error(apiMessage ?? 'Failed to save machine to database. Please try again.', {
-            position: 'top-left',
-            duration: 7000,
-          });
+          const apiMessage = (
+            error as { response?: { data?: { error?: string } } }
+          )?.response?.data?.error;
+          toast.error(
+            apiMessage ??
+              'Failed to save machine to database. Please try again.',
+            {
+              position: 'top-left',
+              duration: 7000,
+            }
+          );
         }
       }
     } catch (error) {

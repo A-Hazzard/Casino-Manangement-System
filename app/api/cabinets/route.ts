@@ -328,7 +328,9 @@ export async function POST(request: NextRequest) {
         manuf: data.manufacturer || data.manuf || '',
         manufacturer: data.manufacturer || data.manuf || '',
         sasVersion: String(data.sasVersion || data.sas_version || ''),
-        currentSession: String(data.currentSession || data.current_session || ''),
+        currentSession: String(
+          data.currentSession || data.current_session || ''
+        ),
         loggedIn: Boolean(data.loggedIn || data.logged_in || false),
         lastActivity:
           data.lastActivity || data.last_activity
@@ -336,11 +338,15 @@ export async function POST(request: NextRequest) {
             : new Date(),
         lastSasMeterAt:
           data.lastSasMeterAt || data.last_sas_meter_at
-            ? new Date((data.lastSasMeterAt || data.last_sas_meter_at) as string)
+            ? new Date(
+                (data.lastSasMeterAt || data.last_sas_meter_at) as string
+              )
             : new Date(),
         lastBillMeterAt:
           data.lastBillMeterAt || data.last_bill_meter_at
-            ? new Date((data.lastBillMeterAt || data.last_bill_meter_at) as string)
+            ? new Date(
+                (data.lastBillMeterAt || data.last_bill_meter_at) as string
+              )
             : new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -355,13 +361,13 @@ export async function POST(request: NextRequest) {
         machineMembershipSettings: {
           isPointsAllowed: Boolean(
             data.machineMembershipSettings?.isPointsAllowed ||
-              data.machineMembershipSettings?.is_points_allowed ||
-              false
+            data.machineMembershipSettings?.is_points_allowed ||
+            false
           ),
           isFreePlayAllowed: Boolean(
             data.machineMembershipSettings?.isFreePlayAllowed ||
-              data.machineMembershipSettings?.is_free_play_allowed ||
-              false
+            data.machineMembershipSettings?.is_free_play_allowed ||
+            false
           ),
           pointsAwardMethod: String(
             data.machineMembershipSettings?.pointsAwardMethod ||
@@ -425,9 +431,7 @@ export async function POST(request: NextRequest) {
         // Default SAS meters to sync with initial collection meters
         sasMeters: {
           drop: Number(
-            data.collectionSettings?.lastMetersIn ||
-              data.sasMeters?.drop ||
-              0
+            data.collectionSettings?.lastMetersIn || data.sasMeters?.drop || 0
           ),
           totalCancelledCredits: Number(
             data.collectionSettings?.lastMetersOut ||
@@ -442,7 +446,9 @@ export async function POST(request: NextRequest) {
             data.sasMeters?.moneyOut || data.sasMeters?.money_out || 0
           ),
           slotDoorOpened: Number(
-            data.sasMeters?.slotDoorOpened || data.sasMeters?.slot_door_opened || 0
+            data.sasMeters?.slotDoorOpened ||
+              data.sasMeters?.slot_door_opened ||
+              0
           ),
           powerReset: Number(
             data.sasMeters?.powerReset || data.sasMeters?.power_reset || 0
@@ -459,13 +465,15 @@ export async function POST(request: NextRequest) {
             data.sasMeters?.coinOut || data.sasMeters?.coin_out || 0
           ),
           totalWonCredits: Number(
-            data.sasMeters?.totalWonCredits || data.sasMeters?.total_won_credits || 0
+            data.sasMeters?.totalWonCredits ||
+              data.sasMeters?.total_won_credits ||
+              0
           ),
-          jackpot: Number(
-            data.sasMeters?.jackpot || 0
-          ),
+          jackpot: Number(data.sasMeters?.jackpot || 0),
           currentCredits: Number(
-            data.sasMeters?.currentCredits || data.sasMeters?.current_credits || 0
+            data.sasMeters?.currentCredits ||
+              data.sasMeters?.current_credits ||
+              0
           ),
           gamesWon: Number(
             data.sasMeters?.gamesWon || data.sasMeters?.games_won || 0
@@ -479,14 +487,23 @@ export async function POST(request: NextRequest) {
       await newCabinet.save();
 
       // Fetch location name for better logging
-      const locDoc = await (await import('@/app/api/lib/models/gaminglocations')).GamingLocations.findOne({ _id: data.gamingLocation }, 'name').lean<{ name: string }>();
+      const locDoc = await (
+        await import('@/app/api/lib/models/gaminglocations')
+      ).GamingLocations.findOne({ _id: data.gamingLocation }, 'name').lean<{
+        name: string;
+      }>();
       const locName = locDoc?.name || data.gamingLocation;
 
       // Log activity
       const currentUser = await getUserFromServer();
       if (currentUser) {
         const changes = Object.entries(newCabinet.toObject())
-          .filter(([key]) => !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key))
+          .filter(
+            ([key]) =>
+              !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(
+                key
+              )
+          )
           .map(([key, val]) => {
             let stringVal = String(val);
             if (val instanceof Date) {

@@ -42,5 +42,8 @@ export function formatCurrency(value: number): string {
  * Re-export formatDate from date utilities for backward compatibility
  * The actual implementation is in lib/utils/date/formatting.ts
  */
-export { formatDate, formatDateString, safeFormatDate } from './date/formatting';
-
+export {
+  formatDate,
+  formatDateString,
+  safeFormatDate,
+} from './date/formatting';

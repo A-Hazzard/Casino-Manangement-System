@@ -72,7 +72,9 @@ export default function CollectionReportTable({
   const { formatAmount } = useCurrencyFormat();
   const user = useUserStore(state => state.user);
 
-  const [licenceeName, setLicenceeName] = useState<string>('the selected period');
+  const [licenceeName, setLicenceeName] = useState<string>(
+    'the selected period'
+  );
   useEffect(() => {
     if (selectedLicencee && selectedLicencee !== 'all') {
       import('@/lib/helpers/client').then(({ fetchLicenceeById }) => {
@@ -354,18 +356,18 @@ export default function CollectionReportTable({
                     )}
                   </div>
                 </TableCell>
-                 <TableCell centered={false}>
-                   {row?.locationSlug ? (
-                     <Link
-                       href={`/locations/${row.locationSlug}`}
-                       className="text-buttonActive hover:underline"
-                     >
-                       {row?.location || '-'}
-                     </Link>
-                   ) : (
-                     row?.location || '-'
-                   )}
-                 </TableCell>
+                <TableCell centered={false}>
+                  {row?.locationSlug ? (
+                    <Link
+                      href={`/locations/${row.locationSlug}`}
+                      className="text-buttonActive hover:underline"
+                    >
+                      {row?.location || '-'}
+                    </Link>
+                  ) : (
+                    row?.location || '-'
+                  )}
+                </TableCell>
                 <TableCell centered={true}>
                   <span
                     className={getGrossColorClass(

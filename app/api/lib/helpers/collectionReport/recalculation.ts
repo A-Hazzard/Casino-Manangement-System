@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+
 import type { GamingMachine } from '@/shared/types';
 
 type CollectionSnapshot = {
@@ -71,10 +71,9 @@ export async function recalculateMachineCollections(
     return;
   }
 
-  const gamingLocation = await GamingLocations.findOne({
-    _id: machine.gamingLocation,
-  }).lean<{ noSMIBLocation?: boolean }>();
-  const isNoSasLocation = gamingLocation?.noSMIBLocation === true;
+  // Per-machine SMIB check: the machine has a relay if it has a relayId.
+  // Non-relay machines mirror their meter values into sasMeters.
+  const isNoSasLocation = !machine.relayId;
 
   const collections = await Collections.find({
     machineId,
@@ -144,10 +143,14 @@ export async function recalculateMachineCollections(
   const finalMetersOut = lastCol ? Number(lastCol.metersOut ?? 0) : 0;
 
   const collectionTime = lastCol
-    ? ((lastCol.collectionTime as Date | undefined) ?? (lastCol.timestamp as Date | undefined) ?? null)
+    ? ((lastCol.collectionTime as Date | undefined) ??
+      (lastCol.timestamp as Date | undefined) ??
+      null)
     : null;
   const previousCollectionTime = secondLastCol
-    ? ((secondLastCol.collectionTime as Date | undefined) ?? (secondLastCol.timestamp as Date | undefined) ?? null)
+    ? ((secondLastCol.collectionTime as Date | undefined) ??
+      (secondLastCol.timestamp as Date | undefined) ??
+      null)
     : null;
 
   // Prepare update operations

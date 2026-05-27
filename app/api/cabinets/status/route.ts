@@ -302,26 +302,62 @@ export async function GET(req: NextRequest) {
                   $and: [
                     {
                       $or: [
-                        { 'locationDetails.geoCoords.latitude': { $exists: false } },
+                        {
+                          'locationDetails.geoCoords.latitude': {
+                            $exists: false,
+                          },
+                        },
                         { 'locationDetails.geoCoords.latitude': null },
-                        { 'locationDetails.geoCoords.latitude': { $in: [0, '0', '0.0', ''] } },
-                        { 'locationDetails.geoCoords.latitude': { $type: 'string' } },
+                        {
+                          'locationDetails.geoCoords.latitude': {
+                            $in: [0, '0', '0.0', ''],
+                          },
+                        },
+                        {
+                          'locationDetails.geoCoords.latitude': {
+                            $type: 'string',
+                          },
+                        },
                       ],
                     },
                     {
                       $or: [
-                        { 'locationDetails.geoCoords.longitude': { $exists: false } },
+                        {
+                          'locationDetails.geoCoords.longitude': {
+                            $exists: false,
+                          },
+                        },
                         { 'locationDetails.geoCoords.longitude': null },
-                        { 'locationDetails.geoCoords.longitude': { $in: [0, '0', '0.0', ''] } },
-                        { 'locationDetails.geoCoords.longitude': { $type: 'string' } },
+                        {
+                          'locationDetails.geoCoords.longitude': {
+                            $in: [0, '0', '0.0', ''],
+                          },
+                        },
+                        {
+                          'locationDetails.geoCoords.longitude': {
+                            $type: 'string',
+                          },
+                        },
                       ],
                     },
                     {
                       $or: [
-                        { 'locationDetails.geoCoords.longtitude': { $exists: false } },
+                        {
+                          'locationDetails.geoCoords.longtitude': {
+                            $exists: false,
+                          },
+                        },
                         { 'locationDetails.geoCoords.longtitude': null },
-                        { 'locationDetails.geoCoords.longtitude': { $in: [0, '0', '0.0', ''] } },
-                        { 'locationDetails.geoCoords.longtitude': { $type: 'string' } },
+                        {
+                          'locationDetails.geoCoords.longtitude': {
+                            $in: [0, '0', '0.0', ''],
+                          },
+                        },
+                        {
+                          'locationDetails.geoCoords.longtitude': {
+                            $type: 'string',
+                          },
+                        },
                       ],
                     },
                   ],
@@ -332,11 +368,39 @@ export async function GET(req: NextRequest) {
           case 'HasCoordinates':
             filterConditions.push({
               $or: [
-                { 'locationDetails.googleMapsIframe': { $exists: true, $nin: [null, ''] } },
-                { 'locationDetails.googleMapsLink': { $exists: true, $nin: [null, ''] } },
-                { 'locationDetails.geoCoords.latitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                { 'locationDetails.geoCoords.longitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                { 'locationDetails.geoCoords.longtitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
+                {
+                  'locationDetails.googleMapsIframe': {
+                    $exists: true,
+                    $nin: [null, ''],
+                  },
+                },
+                {
+                  'locationDetails.googleMapsLink': {
+                    $exists: true,
+                    $nin: [null, ''],
+                  },
+                },
+                {
+                  'locationDetails.geoCoords.latitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
+                {
+                  'locationDetails.geoCoords.longitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
+                {
+                  'locationDetails.geoCoords.longtitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
               ],
             });
             break;
@@ -624,12 +688,17 @@ export async function GET(req: NextRequest) {
       if (specificIds.length > 0) {
         locationCountFilter.push({ _id: { $in: specificIds } });
       }
-    } else if (allowedLocationIds !== 'all' && Array.isArray(allowedLocationIds)) {
+    } else if (
+      allowedLocationIds !== 'all' &&
+      Array.isArray(allowedLocationIds)
+    ) {
       locationCountFilter.push({ _id: { $in: allowedLocationIds } });
     }
 
     if (machineTypeFilter) {
-      const typeFilters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+      const typeFilters = machineTypeFilter
+        .split(',')
+        .filter(f => f.trim() !== '');
       typeFilters.forEach(filter => {
         switch (filter.trim()) {
           case 'LocalServersOnly':
@@ -685,7 +754,9 @@ export async function GET(req: NextRequest) {
                       $or: [
                         { 'geoCoords.longtitude': { $exists: false } },
                         { 'geoCoords.longtitude': null },
-                        { 'geoCoords.longtitude': { $in: [0, '0', '0.0', ''] } },
+                        {
+                          'geoCoords.longtitude': { $in: [0, '0', '0.0', ''] },
+                        },
                         { 'geoCoords.longtitude': { $type: 'string' } },
                       ],
                     },
@@ -699,9 +770,27 @@ export async function GET(req: NextRequest) {
               $or: [
                 { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
                 { googleMapsLink: { $exists: true, $nin: [null, ''] } },
-                { 'geoCoords.latitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                { 'geoCoords.longitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
+                {
+                  'geoCoords.latitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
+                {
+                  'geoCoords.longitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
+                {
+                  'geoCoords.longtitude': {
+                    $exists: true,
+                    $nin: [null, 0, '0', '0.0', ''],
+                    $not: { $type: 'string' },
+                  },
+                },
               ],
             });
             break;

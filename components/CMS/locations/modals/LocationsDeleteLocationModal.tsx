@@ -63,7 +63,9 @@ export default function LocationsDeleteLocationModal({
     try {
       if (isArchived) {
         // Hard delete (permanent delete)
-        await axios.delete(`/api/locations?id=${location.location}&hardDelete=true`);
+        await axios.delete(
+          `/api/locations?id=${location.location}&hardDelete=true`
+        );
 
         toast.success('Location permanently deleted successfully');
       } else {
@@ -77,7 +79,11 @@ export default function LocationsDeleteLocationModal({
       closeDeleteModal();
     } catch (error) {
       console.error('Error removing location:', error);
-      toast.error(isArchived ? 'Failed to permanently delete location' : 'Failed to archive location');
+      toast.error(
+        isArchived
+          ? 'Failed to permanently delete location'
+          : 'Failed to archive location'
+      );
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,9 @@ export default function LocationsDeleteLocationModal({
       );
       setLoading(false);
 
-      const isArchived = Boolean((selectedLocation as { deletedAt?: string | Date })?.deletedAt);
+      const isArchived = Boolean(
+        (selectedLocation as { deletedAt?: string | Date })?.deletedAt
+      );
       if (isArchived) {
         setStep('confirmDelete');
       } else if (canPermanentlyDelete) {
@@ -236,11 +244,12 @@ export default function LocationsDeleteLocationModal({
                   )}
                   ?
                 </p>
-                <p className="text-sm text-red-600 font-semibold mb-2">
+                <p className="mb-2 text-sm font-semibold text-red-600">
                   WARNING: This action is irreversible.
                 </p>
                 <p className="text-sm text-grayHighlight">
-                  This will permanently delete the location and all its associated machines. This cannot be undone.
+                  This will permanently delete the location and all its
+                  associated machines. This cannot be undone.
                 </p>
               </div>
             )}

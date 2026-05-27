@@ -347,9 +347,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
-                              Number(
-                                machine?.sasMeters?.coinIn ?? 0
-                              )
+                              Number(machine?.sasMeters?.coinIn ?? 0)
                             )}
                           </p>
                         </div>
@@ -372,9 +370,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
-                              Number(
-                                machine?.sasMeters?.coinOut ?? 0
-                              )
+                              Number(machine?.sasMeters?.coinOut ?? 0)
                             )}
                           </p>
                         </div>
@@ -397,9 +393,30 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
-                              Number(
-                                machine?.sasMeters?.drop ?? 0
-                              )
+                              Number(machine?.sasMeters?.drop ?? 0)
+                            )}
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Jackpot */}
+                      <motion.div
+                        className="rounded-lg bg-container p-4 shadow md:p-6"
+                        variants={itemVariants}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
+                        transition={{ type: 'spring', stiffness: 300 }}
+                      >
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Jackpot
+                        </h4>
+                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
+                        <div className="flex items-center justify-center">
+                          <p className="text-center text-base font-bold md:text-xl">
+                            {formatCurrency(
+                              Number(machine?.sasMeters?.jackpot ?? 0)
                             )}
                           </p>
                         </div>
@@ -447,9 +464,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
                             {formatCurrency(
-                              Number(
-                                machine?.sasMeters?.currentCredits ?? 0
-                              )
+                              Number(machine?.sasMeters?.currentCredits ?? 0)
                             )}
                           </p>
                         </div>

@@ -5,7 +5,11 @@ import { Countries } from '../models/countries';
 import { Licencee } from '../models/licencee';
 import type { CountryDocument, LicenceeDocument } from '@shared/types';
 import { generateUniqueLicenceKey } from '../utils/licenceKey';
-import { calculateChanges, logActivity, mapDeletedFieldsToChanges } from './activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+  mapDeletedFieldsToChanges,
+} from './activityLogger';
 import { getUserFromServer } from './users';
 
 /**
@@ -170,7 +174,10 @@ export async function createLicencee(
   if (currentUser && currentUser.emailAddress) {
     try {
       const changes = Object.entries(licencee.toObject())
-        .filter(([key]) => !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key))
+        .filter(
+          ([key]) =>
+            !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key)
+        )
         .map(([key, val]) => {
           let stringVal = String(val);
           if (val instanceof Date) {
@@ -441,7 +448,9 @@ export async function deleteLicencee(_id: string, request: NextRequest) {
   if (currentUser && currentUser.emailAddress) {
     try {
       const deleteChanges = mapDeletedFieldsToChanges(
-        licenceeToDelete.toObject ? licenceeToDelete.toObject() : licenceeToDelete
+        licenceeToDelete.toObject
+          ? licenceeToDelete.toObject()
+          : licenceeToDelete
       );
 
       await logActivity({

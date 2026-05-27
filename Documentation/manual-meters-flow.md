@@ -452,10 +452,10 @@ The V2 capture system follows the same RAM clear math as V1 but stores intermedi
 
 For **no-SMIB locations only**, the submit route creates `Meters` docs:
 
-| `ramClear` | Docs created | Movement fields |
-|---|---|---|
-| `false` | 1 | `movement.drop = manualMetersIn - prevIn`, `movement.totalCancelledCredits = manualMetersOut - prevOut` |
-| `true`  | 2 | RAM clear meter (`isRamClear: true`): `movement.drop = ramClearMetersIn - prevIn`. Post-reset meter: `movement.drop = manualMetersIn` (prev treated as 0). |
+| `ramClear` | Docs created | Movement fields                                                                                                                                            |
+| ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `false`    | 1            | `movement.drop = manualMetersIn - prevIn`, `movement.totalCancelledCredits = manualMetersOut - prevOut`                                                    |
+| `true`     | 2            | RAM clear meter (`isRamClear: true`): `movement.drop = ramClearMetersIn - prevIn`. Post-reset meter: `movement.drop = manualMetersIn` (prev treated as 0). |
 
 The post-reset meter's `readAt` is offset by `+1000ms` to preserve chronological order. On re-submit, `Meters.deleteMany({ machine, locationSession })` clears the existing docs first so there are never duplicates.
 

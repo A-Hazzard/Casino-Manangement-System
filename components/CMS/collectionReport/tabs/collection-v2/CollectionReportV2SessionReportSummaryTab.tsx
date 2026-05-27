@@ -66,9 +66,15 @@ export default function CollectionReportV2SessionReportSummaryTab({
   const withoutPhotos = session.machinesTotal - withPhotos;
 
   // Compute machine breakdown from individual machine statuses
-  const confirmedCount = session.machines.filter(m => m.status === 'confirmed').length;
-  const capturedCount = session.machines.filter(m => m.status === 'captured').length;
-  const skippedCount = session.machines.filter(m => m.status === 'skipped').length;
+  const confirmedCount = session.machines.filter(
+    m => m.status === 'confirmed'
+  ).length;
+  const capturedCount = session.machines.filter(
+    m => m.status === 'captured'
+  ).length;
+  const skippedCount = session.machines.filter(
+    m => m.status === 'skipped'
+  ).length;
 
   // Compute the SAS collection period from individual machine times
   const sasStartTimes = session.machines
@@ -80,12 +86,14 @@ export default function CollectionReportV2SessionReportSummaryTab({
     .filter((t): t is string => !!t)
     .map(t => new Date(t).getTime());
 
-  const earliestSasStart = sasStartTimes.length > 0
-    ? new Date(Math.min(...sasStartTimes)).toISOString()
-    : null;
-  const latestSasEnd = sasEndTimes.length > 0
-    ? new Date(Math.max(...sasEndTimes)).toISOString()
-    : null;
+  const earliestSasStart =
+    sasStartTimes.length > 0
+      ? new Date(Math.min(...sasStartTimes)).toISOString()
+      : null;
+  const latestSasEnd =
+    sasEndTimes.length > 0
+      ? new Date(Math.max(...sasEndTimes)).toISOString()
+      : null;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -106,9 +114,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
   // ============================================================================
   return (
     <div className="space-y-6">
-      <h2 className="mb-4 text-center text-xl font-bold lg:hidden">
-        Summary
-      </h2>
+      <h2 className="mb-4 text-center text-xl font-bold lg:hidden">Summary</h2>
 
       {/* Session Info */}
       <div className="rounded-lg bg-white p-5 shadow">
@@ -169,9 +175,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Confirmed</span>
-            <span className="font-medium text-green-700">
-              {confirmedCount}
-            </span>
+            <span className="font-medium text-green-700">{confirmedCount}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Captured (manual entry)</span>
@@ -179,9 +183,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Skipped</span>
-            <span className="font-medium text-amber-700">
-              {skippedCount}
-            </span>
+            <span className="font-medium text-amber-700">{skippedCount}</span>
           </div>
           <div className="flex justify-between border-t border-gray-100 pt-2">
             <span className="text-gray-500">Machines with photos</span>
@@ -190,9 +192,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
           {withoutPhotos > 0 && (
             <div className="flex justify-between">
               <span className="text-gray-500">Without photos</span>
-              <span className="font-medium text-gray-500">
-                {withoutPhotos}
-              </span>
+              <span className="font-medium text-gray-500">{withoutPhotos}</span>
             </div>
           )}
         </div>
@@ -200,7 +200,8 @@ export default function CollectionReportV2SessionReportSummaryTab({
 
       {/* Gross Summary */}
       {(session.machines.some(m => m.machineGross !== undefined) ||
-        (!session.noSMIBLocation && session.machines.some(m => m.sasGross !== undefined))) && (
+        (!session.noSMIBLocation &&
+          session.machines.some(m => m.sasGross !== undefined))) && (
         <GrossSummary session={session} />
       )}
     </div>
@@ -219,7 +220,8 @@ function GrossSummary({ session }: { session: SessionDetail }) {
     (sum, m) => sum + (m.sasGross ?? 0),
     0
   );
-  const totalDifference = totalMachineGross === 0 ? 0 : (totalMachineGross - totalSasGross);
+  const totalDifference =
+    totalMachineGross === 0 ? 0 : totalMachineGross - totalSasGross;
 
   // ============================================================================
   // Render
@@ -248,9 +250,7 @@ function GrossSummary({ session }: { session: SessionDetail }) {
               <span className="text-gray-500">Total Variation</span>
               <span
                 className={`font-bold ${
-                  totalDifference === 0
-                    ? 'text-green-700'
-                    : 'text-red-600'
+                  totalDifference === 0 ? 'text-green-700' : 'text-red-600'
                 }`}
               >
                 {totalDifference?.toLocaleString() ?? '0'}

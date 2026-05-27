@@ -143,6 +143,7 @@ bun run dev:https
 ```
 
 **Files Created (all new):**
+
 - `app/api/collection-reports-v2/sessions/route.ts` — POST + GET sessions
 - `app/api/collection-reports-v2/sessions/[sessionId]/route.ts` — GET session detail
 - `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts` — PATCH submit
@@ -155,6 +156,7 @@ bun run dev:https
 - `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx` — skeleton
 
 **Files Modified:**
+
 - `app/api/lib/models/reportedMachines.ts` — added `imageData?: string` field
 - `lib/constants/collection.ts` — added `collection-v2` tab config
 - `lib/constants/maintenance.ts` — added `collection-v2` to maintenance config
@@ -254,10 +256,12 @@ Pattern: `/^[a-fA-F0-9]{24}$/` (24 hexadecimal characters)
 ## Files Summary
 
 ### Previous Work
+
 **Created:** 1 admin endpoint
 `app/api/admin/resolve-machine-names/route.ts`
 
 **Modified:** 8 files
+
 - 4 modal hooks (useNewCollectionModal, useEditCollectionModal, useMobileCollectionModal, useMobileEditCollectionModal)
 - 1 type file (lib/types/api/types.ts)
 - 1 helper (app/api/lib/helpers/accountingDetails.ts)
@@ -265,12 +269,15 @@ Pattern: `/^[a-fA-F0-9]{24}$/` (24 hexadecimal characters)
 - 1 admin table (AdministrationActivityLogsTable.tsx)
 
 ### CR V2 Work (Latest)
+
 **Created:** 10 new files
+
 - `app/api/collection-reports-v2/` — 4 route files (sessions POST/GET, session detail GET, submit PATCH, machines POST/PATCH)
 - `components/CMS/collectionReport/tabs/collection-v2/` — 5 components (SessionDetail, CameraOverlay, Desktop, Mobile, StartDialog)
 - `components/ui/skeletons/CollectionReportV2SessionsSkeleton.tsx`
 
 **Modified:** 5 files
+
 - `app/api/lib/models/reportedMachines.ts` — added `imageData`
 - `lib/constants/collection.ts` — tab config
 - `lib/constants/maintenance.ts` — maintenance toggle
@@ -278,15 +285,18 @@ Pattern: `/^[a-fA-F0-9]{24}$/` (24 hexadecimal characters)
 - `next.config.ts` — allowedDevOrigins
 
 ### Google Drive OAuth2 Migration (2026-05-11)
+
 **Problem:** Service account had no Drive storage quota. Google requires Shared Drives for SA file creation, but personal `@gmail.com` accounts can't create Shared Drives.
 
 **Solution:** Migrated from Service Account (JWT) to OAuth2 Desktop app:
+
 - Created new OAuth 2.0 Client ID (Desktop app) in GCP Console
 - One-time auth flow: consent URL → authorization code → exchange for refresh token
 - `getDriveClient()` in `lib/utils/drive.ts` now uses `google.auth.OAuth2` with refresh token instead of `GoogleAuth` with JWT credentials
 - Files count against the user's personal Drive quota
 
 **Files changed:**
+
 - `lib/utils/drive.ts` — replaced JWT auth with OAuth2
 - `.env` — removed 8 service account vars, added `GOOGLE_DRIVE_OAUTH_CLIENT_ID`, `GOOGLE_DRIVE_OAUTH_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`
 - `scripts/exchange-drive-code.js` — reads from `.env`, exchanges auth code for refresh token
@@ -308,12 +318,14 @@ Pattern: `/^[a-fA-F0-9]{24}$/` (24 hexadecimal characters)
 ## Next Steps (if needed)
 
 ### CR V2
+
 - End-to-end mobile test: start session → capture photos → verify meters → review → submit
 - Better error recovery: retry on save failure, network timeout handling
 - Session deletion/cancel for in-progress sessions
 - Location filter/group toggle on sessions list
 
 ### General
+
 - Monitor for any edge cases in activity log details formatting
 - Consider adding a manual "refresh/resolve now" button to the admin ObjectID banner
 - May want to add a timestamp to show when ObjectID resolution last ran

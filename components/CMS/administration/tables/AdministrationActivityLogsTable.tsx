@@ -481,7 +481,6 @@ function AdministrationActivityLogsTable({
     }
   };
 
-
   // Handle description click
   const handleDescriptionClick = (log: ActivityLog) => {
     setSelectedLog(log);
@@ -666,7 +665,7 @@ function AdministrationActivityLogsTable({
         </div>
       )}
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0">
+        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Activity Logs ({allLogs.length.toLocaleString()})
@@ -676,7 +675,7 @@ function AdministrationActivityLogsTable({
               onClick={() => setIsClearLogsModalOpen(true)}
               variant="destructive"
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 self-start sm:self-auto"
+              className="flex items-center gap-2 self-start bg-red-600 font-semibold text-white hover:bg-red-700 sm:self-auto"
             >
               <Trash2 className="h-4 w-4" />
               Clear Activity Logs
@@ -719,7 +718,9 @@ function AdministrationActivityLogsTable({
                 <SelectItem value="machine">Machine</SelectItem>
                 <SelectItem value="location">Location</SelectItem>
                 <SelectItem value="collection">Collection</SelectItem>
-                <SelectItem value="collection-report">Collection Report</SelectItem>
+                <SelectItem value="collection-report">
+                  Collection Report
+                </SelectItem>
                 <SelectItem value="licencee">Licencee</SelectItem>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="session">Session</SelectItem>
@@ -885,7 +886,8 @@ function AdministrationActivityLogsTable({
                                 log.action || 'unknown'
                               )}
                             >
-                              {(log.action || 'unknown').toLowerCase() === 'archive'
+                              {(log.action || 'unknown').toLowerCase() ===
+                              'archive'
                                 ? 'Archived'
                                 : (log.action || 'unknown').toUpperCase()}
                             </Badge>
@@ -1141,7 +1143,10 @@ function AdministrationActivityLogsTable({
       </Dialog>
 
       {/* Clear Logs Confirmation Modal */}
-      <Dialog open={isClearLogsModalOpen} onOpenChange={setIsClearLogsModalOpen}>
+      <Dialog
+        open={isClearLogsModalOpen}
+        onOpenChange={setIsClearLogsModalOpen}
+      >
         <DialogContent className="h-full gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-w-md sm:rounded-xl">
           <DialogTitle className="sr-only">Clear All Activity Logs</DialogTitle>
           {/* Header */}
@@ -1161,12 +1166,20 @@ function AdministrationActivityLogsTable({
 
           {/* Body */}
           <div className="space-y-4 px-5 py-4">
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Are you sure you want to <span className="font-semibold text-red-600">permanently delete all activity logs</span> from the database? This will clear the entire history of actions, edits, creations, and deletions.
+            <p className="text-sm leading-relaxed text-gray-600">
+              Are you sure you want to{' '}
+              <span className="font-semibold text-red-600">
+                permanently delete all activity logs
+              </span>{' '}
+              from the database? This will clear the entire history of actions,
+              edits, creations, and deletions.
             </p>
-            <div className="rounded-lg border border-red-200 bg-red-50/50 p-3 text-xs text-red-800 leading-relaxed flex gap-2">
-              <span className="font-bold shrink-0">WARNING:</span>
-              <span>This cannot be undone. All audit trails for compliance and troubleshooting will be lost forever.</span>
+            <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50/50 p-3 text-xs leading-relaxed text-red-800">
+              <span className="shrink-0 font-bold">WARNING:</span>
+              <span>
+                This cannot be undone. All audit trails for compliance and
+                troubleshooting will be lost forever.
+              </span>
             </div>
           </div>
 
@@ -1185,7 +1198,7 @@ function AdministrationActivityLogsTable({
               size="sm"
               onClick={handleClearLogs}
               disabled={isClearingLogs}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold"
+              className="flex-1 bg-red-600 font-semibold text-white hover:bg-red-700"
             >
               {isClearingLogs ? 'Clearing…' : 'Yes, clear all logs'}
             </Button>

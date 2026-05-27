@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'POST /api/users';
     const user = extractUserFromRequest(request);
-    
+
     // ============================================================================
     // STEP 1: Parse request body
     // ============================================================================
@@ -333,7 +333,7 @@ export async function PUT(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'PUT /api/users';
     const user = extractUserFromRequest(request);
-    
+
     // ============================================================================
     // STEP 1: Parse request body
     // ============================================================================
@@ -402,7 +402,7 @@ export async function DELETE(request: NextRequest) {
     const startTime = Date.now();
     const functionName = 'DELETE /api/users';
     const user = extractUserFromRequest(request);
-    
+
     // ============================================================================
     // STEP 1: Parse request body
     // ============================================================================

@@ -68,12 +68,10 @@ export class LocationDetailPage {
     this.backButton = page.getByRole('link', { name: /back|locations/i });
 
     // Machine modal — identified by "Add" or "Edit" in its title
-    this.machineModal = page
-      .locator('[role="dialog"]')
-      .filter({
-        hasText:
-          /add.*machine|create.*machine|edit.*machine|new.*cabinet|add.*cabinet/i,
-      });
+    this.machineModal = page.locator('[role="dialog"]').filter({
+      hasText:
+        /add.*machine|create.*machine|edit.*machine|new.*cabinet|add.*cabinet/i,
+    });
 
     this.serialNumberInput = this.machineModal.locator(
       'input[name="serialNumber"], #serialNumber'

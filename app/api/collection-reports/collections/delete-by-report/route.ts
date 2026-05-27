@@ -21,7 +21,10 @@ import {
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
-import { logActivity, mapDeletedFieldsToChanges } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logActivity,
+  mapDeletedFieldsToChanges,
+} from '@/app/api/lib/helpers/activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -92,15 +95,16 @@ export async function DELETE(request: NextRequest) {
       // ============================================================================
       // STEP 6: Delete associated manual meters
       // ============================================================================
-      const { deleteManualMetersPerCollection } = await import(
-        '@/app/api/lib/helpers/collectionReport/operations'
-      );
+      const { deleteManualMetersPerCollection } =
+        await import('@/app/api/lib/helpers/collectionReport/operations');
       await deleteManualMetersPerCollection(locationReportId, false);
 
       // ============================================================================
       // STEP 6.5: Fetch collection report before deleting
       // ============================================================================
-      const existingReport = await CollectionReport.findOne({ locationReportId }).lean();
+      const existingReport = await CollectionReport.findOne({
+        locationReportId,
+      }).lean();
 
       // ============================================================================
       // STEP 7: Delete all collections
@@ -117,12 +121,10 @@ export async function DELETE(request: NextRequest) {
       // ============================================================================
       // STEP 8.7: Propagate deletion forward and recalculate machines
       // ============================================================================
-      const { updateRegularAndRamClearMeters } = await import(
-        '@/app/api/lib/helpers/collectionReport/reportCreation'
-      );
-      const { recalculateMachineCollections } = await import(
-        '@/app/api/lib/helpers/collectionReport/recalculation'
-      );
+      const { updateRegularAndRamClearMeters } =
+        await import('@/app/api/lib/helpers/collectionReport/reportCreation');
+      const { recalculateMachineCollections } =
+        await import('@/app/api/lib/helpers/collectionReport/recalculation');
 
       for (const col of collections) {
         if (!col.machineId) continue;
@@ -132,7 +134,9 @@ export async function DELETE(request: NextRequest) {
           const nextReport = await Collections.findOne({
             machineId: col.machineId,
             location: col.location,
-            timestamp: { $gt: col.timestamp || col.collectionTime || new Date() },
+            timestamp: {
+              $gt: col.timestamp || col.collectionTime || new Date(),
+            },
             deletedAt: { $exists: false },
           })
             .sort({ timestamp: 1 })
@@ -155,7 +159,10 @@ export async function DELETE(request: NextRequest) {
             let movementOut = 0;
 
             if (ramClear) {
-              if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+              if (
+                ramClearMetersIn !== undefined &&
+                ramClearMetersOut !== undefined
+              ) {
                 movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
                 movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
               } else {
@@ -177,8 +184,14 @@ export async function DELETE(request: NextRequest) {
               prevIn: newPrevIn,
               prevOut: newPrevOut,
               movement,
-              softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-              softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+              softMetersIn:
+                ramClear && ramClearMetersIn
+                  ? ramClearMetersIn
+                  : currentMetersIn,
+              softMetersOut:
+                ramClear && ramClearMetersOut
+                  ? ramClearMetersOut
+                  : currentMetersOut,
             };
 
             if (nextReport.sasMeters) {
@@ -201,7 +214,9 @@ export async function DELETE(request: NextRequest) {
               ...collectionUpdate,
             };
 
-            await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+            await updateRegularAndRamClearMeters(
+              updatedNextReport as CollectionDocument
+            );
           }
 
           // Re-sync machine's current meters and history from database
@@ -253,7 +268,11 @@ export async function DELETE(request: NextRequest) {
             metadata: {
               resource: 'collection',
               resourceId: String(collection._id),
-              resourceName: collection.machineCustomName || collection.machineName || collection.machineId || 'Machine',
+              resourceName:
+                collection.machineCustomName ||
+                collection.machineName ||
+                collection.machineId ||
+                'Machine',
               changes: collectionChanges,
               previousData: collection,
               newData: null,

@@ -634,7 +634,16 @@ export async function POST(req: NextRequest) {
           {},
           created.toObject ? created.toObject() : created
         ).filter(
-          c => !['_id', '__v', 'createdAt', 'updatedAt', 'collector', 'locationReportId', 'isCompleted'].includes(c.field)
+          c =>
+            ![
+              '_id',
+              '__v',
+              'createdAt',
+              'updatedAt',
+              'collector',
+              'locationReportId',
+              'isCompleted',
+            ].includes(c.field)
         );
 
         await logActivity({
@@ -765,14 +774,16 @@ export async function PATCH(req: NextRequest) {
 
     // Convert SAS times to Date objects if they are passed as strings
     if (updateData.sasStartTime) {
-      updateData.sasStartTime = typeof updateData.sasStartTime === 'string'
-        ? new Date(updateData.sasStartTime)
-        : updateData.sasStartTime;
+      updateData.sasStartTime =
+        typeof updateData.sasStartTime === 'string'
+          ? new Date(updateData.sasStartTime)
+          : updateData.sasStartTime;
     }
     if (updateData.sasEndTime) {
-      updateData.sasEndTime = typeof updateData.sasEndTime === 'string'
-        ? new Date(updateData.sasEndTime)
-        : updateData.sasEndTime;
+      updateData.sasEndTime =
+        typeof updateData.sasEndTime === 'string'
+          ? new Date(updateData.sasEndTime)
+          : updateData.sasEndTime;
     }
 
     // ============================================================================
@@ -852,9 +863,11 @@ export async function PATCH(req: NextRequest) {
       : null;
     const sasTimesChanged =
       (updateData.sasStartTime !== undefined &&
-        new Date(updateData.sasStartTime as Date).getTime() !== existingSasStartTime) ||
+        new Date(updateData.sasStartTime as Date).getTime() !==
+          existingSasStartTime) ||
       (updateData.sasEndTime !== undefined &&
-        new Date(updateData.sasEndTime as Date).getTime() !== existingSasEndTime);
+        new Date(updateData.sasEndTime as Date).getTime() !==
+          existingSasEndTime);
 
     console.log('[Collections API PATCH] Change detection flags:', {
       timestampChanged,
@@ -921,15 +934,11 @@ export async function PATCH(req: NextRequest) {
           if (!prevInProvided) {
             // CRITICAL: Prioritize collectionMeters (manual baseline) over sasMeters
             updateData.prevIn =
-              legacyIn !== null && legacyIn > 0
-                ? legacyIn
-                : (sasIn ?? 0);
+              legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0);
           }
           if (!prevOutProvided) {
             updateData.prevOut =
-              legacyOut !== null && legacyOut > 0
-                ? legacyOut
-                : (sasOut ?? 0);
+              legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0);
           }
         }
       }
@@ -1018,12 +1027,17 @@ export async function PATCH(req: NextRequest) {
           sasEndTime
         );
 
-        console.log('[Collections API PATCH] Recalculated SAS metrics:', sasMetrics);
+        console.log(
+          '[Collections API PATCH] Recalculated SAS metrics:',
+          sasMetrics
+        );
 
         // Convert the mongoose document to a plain object first to safely extract and spread sasMeters
-        const originalCollectionObj = originalCollection && typeof originalCollection.toObject === 'function'
-          ? originalCollection.toObject()
-          : originalCollection;
+        const originalCollectionObj =
+          originalCollection &&
+          typeof originalCollection.toObject === 'function'
+            ? originalCollection.toObject()
+            : originalCollection;
         const existingSasMetersObj = originalCollectionObj.sasMeters || {};
 
         // Update sasMeters in the update data
@@ -1036,12 +1050,13 @@ export async function PATCH(req: NextRequest) {
           jackpot: sasMetrics.jackpot,
           sasStartTime: sasMetrics.sasStartTime,
           sasEndTime: sasMetrics.sasEndTime,
-          machine:
-            existingSasMetersObj.machine ||
-            originalCollection.machineId,
+          machine: existingSasMetersObj.machine || originalCollection.machineId,
         };
 
-        console.log('[Collections API PATCH] Resulting updateData.sasMeters to save:', updateData.sasMeters);
+        console.log(
+          '[Collections API PATCH] Resulting updateData.sasMeters to save:',
+          updateData.sasMeters
+        );
       } catch (sasError) {
         console.error(
           '[Collections API] Error recalculating SAS metrics:',
@@ -1088,22 +1103,28 @@ export async function PATCH(req: NextRequest) {
     const unsetData: Record<string, number> = {};
 
     if (originalCollection.ramClear === true && updateData.ramClear === false) {
-      console.log(`[Collections PATCH] RAM clear unchecked for collection ${id}. Deleting existing meters and creating new single regular meter.`);
+      console.log(
+        `[Collections PATCH] RAM clear unchecked for collection ${id}. Deleting existing meters and creating new single regular meter.`
+      );
       const { Meters } = await import('@/app/api/lib/models/meters');
-      
+
       // Delete existing meters
       if (originalCollection.meterId) {
         await Meters.findOneAndDelete({ _id: originalCollection.meterId });
       }
       if (originalCollection.ramClearMeterId) {
-        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+        await Meters.findOneAndDelete({
+          _id: originalCollection.ramClearMeterId,
+        });
       }
 
       // Create new regular meter
       const currentMeterId = await generateMongoId();
-      
-      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
-      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+
+      const newMetersIn =
+        updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut =
+        updateData.metersOut ?? originalCollection.metersOut ?? 0;
       const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
       const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
 
@@ -1141,7 +1162,10 @@ export async function PATCH(req: NextRequest) {
         totalWonCredits: 0,
         drop: newMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
-        readAt: explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp,
+        readAt:
+          explicitSasEndTime !== undefined
+            ? new Date(explicitSasEndTime as Date)
+            : collectionTimestamp,
         createdAt: new Date(),
       };
 
@@ -1151,32 +1175,45 @@ export async function PATCH(req: NextRequest) {
       unsetData.ramClearMeterId = 1;
       unsetData.ramClearMetersIn = 1;
       unsetData.ramClearMetersOut = 1;
-      
+
       delete updateData.ramClearMeterId;
       delete updateData.ramClearMetersIn;
       delete updateData.ramClearMetersOut;
-    } else if ((originalCollection.ramClear === false || !originalCollection.ramClear) && updateData.ramClear === true) {
-      console.log(`[Collections PATCH] RAM clear checked for collection ${id}. Deleting existing meters and creating two new RAM clear meters.`);
+    } else if (
+      (originalCollection.ramClear === false || !originalCollection.ramClear) &&
+      updateData.ramClear === true
+    ) {
+      console.log(
+        `[Collections PATCH] RAM clear checked for collection ${id}. Deleting existing meters and creating two new RAM clear meters.`
+      );
       const { Meters } = await import('@/app/api/lib/models/meters');
-      
+
       // Delete existing meters
       if (originalCollection.meterId) {
         await Meters.findOneAndDelete({ _id: originalCollection.meterId });
       }
       if (originalCollection.ramClearMeterId) {
-        await Meters.findOneAndDelete({ _id: originalCollection.ramClearMeterId });
+        await Meters.findOneAndDelete({
+          _id: originalCollection.ramClearMeterId,
+        });
       }
 
       // Create new RAM clear meter (Meter 1) and current meter (Meter 2)
       const ramClearMeterId = await generateMongoId();
       const currentMeterId = await generateMongoId();
 
-      const newMetersIn = updateData.metersIn ?? originalCollection.metersIn ?? 0;
-      const newMetersOut = updateData.metersOut ?? originalCollection.metersOut ?? 0;
+      const newMetersIn =
+        updateData.metersIn ?? originalCollection.metersIn ?? 0;
+      const newMetersOut =
+        updateData.metersOut ?? originalCollection.metersOut ?? 0;
       const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
       const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
-      const newRamClearMetersIn = updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn ?? 0;
-      const newRamClearMetersOut = updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut ?? 0;
+      const newRamClearMetersIn =
+        updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn ?? 0;
+      const newRamClearMetersOut =
+        updateData.ramClearMetersOut ??
+        originalCollection.ramClearMetersOut ??
+        0;
 
       const ramClearMovementIn = newRamClearMetersIn - newPrevIn;
       const ramClearMovementOut = newRamClearMetersOut - newPrevOut;
@@ -1188,7 +1225,10 @@ export async function PATCH(req: NextRequest) {
         ? new Date(updateData.timestamp)
         : new Date(originalCollection.timestamp);
 
-      const baseReadAt = explicitSasEndTime !== undefined ? new Date(explicitSasEndTime as Date) : collectionTimestamp;
+      const baseReadAt =
+        explicitSasEndTime !== undefined
+          ? new Date(explicitSasEndTime as Date)
+          : collectionTimestamp;
       const baseCreatedAt = new Date();
 
       const ramClearMeter = {
@@ -1280,9 +1320,10 @@ export async function PATCH(req: NextRequest) {
     // STEP 8.5: Update meters' readAt and movement metrics, propagate, and recalculate
     // ============================================================================
     if (updated) {
-      const { updateRegularAndRamClearMeters: updateMetersMovement, propagateMetersToNextReport } = await import(
-        '@/app/api/lib/helpers/collectionReport/reportCreation'
-      );
+      const {
+        updateRegularAndRamClearMeters: updateMetersMovement,
+        propagateMetersToNextReport,
+      } = await import('@/app/api/lib/helpers/collectionReport/reportCreation');
       await updateMetersMovement(updated);
 
       try {
@@ -1294,19 +1335,18 @@ export async function PATCH(req: NextRequest) {
           updated.metersOut || 0
         );
       } catch (propagateError) {
-        console.error('Failed to propagate meters to next report in bulk update:', propagateError);
+        console.error(
+          'Failed to propagate meters to next report in bulk update:',
+          propagateError
+        );
       }
 
       // Re-sync machine's current meters and history from database
       if (updated.machineId) {
         try {
-          const { recalculateMachineCollections } = await import(
-            '@/app/api/lib/helpers/collectionReport/recalculation'
-          );
-          await recalculateMachineCollections(
-            String(updated.machineId),
-            true
-          );
+          const { recalculateMachineCollections } =
+            await import('@/app/api/lib/helpers/collectionReport/recalculation');
+          await recalculateMachineCollections(String(updated.machineId), true);
         } catch (recalcError) {
           console.error(
             'Failed to recalculate machine collections in bulk update:',
@@ -1479,19 +1519,26 @@ export async function DELETE(req: NextRequest) {
     if (collectionToDelete.machineId) {
       try {
         const { Meters } = await import('@/app/api/lib/models/meters');
-        
+
         // Delete Meters associated with the deleted collection
         if (collectionToDelete.meterId) {
           await Meters.findOneAndDelete({ _id: collectionToDelete.meterId });
         }
         if (collectionToDelete.ramClearMeterId) {
-          await Meters.findOneAndDelete({ _id: collectionToDelete.ramClearMeterId });
+          await Meters.findOneAndDelete({
+            _id: collectionToDelete.ramClearMeterId,
+          });
         }
 
         // Find successor report
         const nextReport = await Collections.findOne({
           machineId: collectionToDelete.machineId,
-          timestamp: { $gt: collectionToDelete.timestamp || collectionToDelete.collectionTime || new Date() },
+          timestamp: {
+            $gt:
+              collectionToDelete.timestamp ||
+              collectionToDelete.collectionTime ||
+              new Date(),
+          },
           deletedAt: { $exists: false },
         })
           .sort({ timestamp: 1 })
@@ -1514,7 +1561,10 @@ export async function DELETE(req: NextRequest) {
           let movementOut = 0;
 
           if (ramClear) {
-            if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+            if (
+              ramClearMetersIn !== undefined &&
+              ramClearMetersOut !== undefined
+            ) {
               movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
               movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
             } else {
@@ -1536,8 +1586,12 @@ export async function DELETE(req: NextRequest) {
             prevIn: newPrevIn,
             prevOut: newPrevOut,
             movement,
-            softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-            softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+            softMetersIn:
+              ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+            softMetersOut:
+              ramClear && ramClearMetersOut
+                ? ramClearMetersOut
+                : currentMetersOut,
           };
 
           if (nextReport.sasMeters) {
@@ -1560,16 +1614,16 @@ export async function DELETE(req: NextRequest) {
             ...collectionUpdate,
           };
 
-          const { updateRegularAndRamClearMeters } = await import(
-            '@/app/api/lib/helpers/collectionReport/reportCreation'
+          const { updateRegularAndRamClearMeters } =
+            await import('@/app/api/lib/helpers/collectionReport/reportCreation');
+          await updateRegularAndRamClearMeters(
+            updatedNextReport as CollectionDocument
           );
-          await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
         }
 
         // Re-sync machine's current meters and history from database
-        const { recalculateMachineCollections } = await import(
-          '@/app/api/lib/helpers/collectionReport/recalculation'
-        );
+        const { recalculateMachineCollections } =
+          await import('@/app/api/lib/helpers/collectionReport/recalculation');
         await recalculateMachineCollections(
           String(collectionToDelete.machineId),
           true

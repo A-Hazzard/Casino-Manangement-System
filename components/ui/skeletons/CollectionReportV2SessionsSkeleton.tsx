@@ -26,14 +26,30 @@ export default function CollectionReportV2SessionsSkeleton() {
           <Table>
             <TableHeader>
               <TableRow className="bg-button hover:bg-button">
-                <TableHead isFirstColumn className="font-semibold text-white">LOCATION</TableHead>
-                <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
-                <TableHead centered className="font-semibold text-white">MATCHED</TableHead>
-                <TableHead centered className="font-semibold text-white">MACHINE GROSS</TableHead>
-                <TableHead centered className="font-semibold text-white">SAS GROSS</TableHead>
-                <TableHead centered className="font-semibold text-white">VARIATION</TableHead>
-                <TableHead centered className="font-semibold text-white">CREATED</TableHead>
-                <TableHead centered className="font-semibold text-white">ACTIONS</TableHead>
+                <TableHead isFirstColumn className="font-semibold text-white">
+                  LOCATION
+                </TableHead>
+                <TableHead className="font-semibold text-white">
+                  COLLECTOR
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  MATCHED
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  MACHINE GROSS
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  SAS GROSS
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  VARIATION
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  CREATED
+                </TableHead>
+                <TableHead centered className="font-semibold text-white">
+                  ACTIONS
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -75,7 +91,10 @@ export default function CollectionReportV2SessionsSkeleton() {
       {/* Mobile skeleton */}
       <div className="space-y-4 md:hidden">
         {Array.from({ length: 5 }).map((_, index) => (
-          <div key={index} className="transform overflow-hidden rounded-lg bg-white shadow-sm">
+          <div
+            key={index}
+            className="transform overflow-hidden rounded-lg bg-white shadow-sm"
+          >
             {/* Header Section */}
             <div className="bg-lighterBlueHighlight px-4 py-3">
               <div className="flex items-center justify-between">
@@ -94,33 +113,45 @@ export default function CollectionReportV2SessionsSkeleton() {
             <div className="flex flex-col gap-3 p-4">
               {/* Status Badge */}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Status</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Status
+                </span>
                 <Skeleton className="h-6 w-20 rounded bg-blue-100" />
               </div>
 
               {/* Stats Fields */}
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">Machines Matched</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Machines Matched
+                </span>
                 <Skeleton className="h-5 w-12" />
               </div>
 
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">Machine Gross</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Machine Gross
+                </span>
                 <Skeleton className="h-5 w-20" />
               </div>
 
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">SAS Gross</span>
+                <span className="text-sm font-medium text-gray-700">
+                  SAS Gross
+                </span>
                 <Skeleton className="h-5 w-20" />
               </div>
 
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-700">Variation</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Variation
+                </span>
                 <Skeleton className="h-5 w-20" />
               </div>
 
               <div className="flex justify-between border-t border-gray-100 pt-3">
-                <span className="text-sm font-medium text-gray-700">Date Created</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Date Created
+                </span>
                 <Skeleton className="h-5 w-24" />
               </div>
 

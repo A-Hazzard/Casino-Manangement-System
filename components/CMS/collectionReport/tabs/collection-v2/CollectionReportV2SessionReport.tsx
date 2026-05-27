@@ -96,8 +96,7 @@ export default function CollectionReportV2SessionReport({
     }
   };
 
-  const capturedCount =
-    session.machinesCaptured - session.machinesConfirmed;
+  const capturedCount = session.machinesCaptured - session.machinesConfirmed;
 
   // ============================================================================
   // Computed
@@ -167,7 +166,8 @@ export default function CollectionReportV2SessionReport({
                 </span>
                 <span className="absolute left-0 top-full z-50 mt-1 hidden w-max max-w-xs rounded bg-gray-800 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
                   <span className="space-y-1">
-                    {(session.collectorFirstName || session.collectorLastName) && (
+                    {(session.collectorFirstName ||
+                      session.collectorLastName) && (
                       <span className="block font-semibold">
                         {[session.collectorFirstName, session.collectorLastName]
                           .filter(Boolean)
@@ -175,10 +175,14 @@ export default function CollectionReportV2SessionReport({
                       </span>
                     )}
                     {session.collector && (
-                      <span className="block text-gray-300">ID: {session.collector}</span>
+                      <span className="block text-gray-300">
+                        ID: {session.collector}
+                      </span>
                     )}
                     {session.collectorEmail && (
-                      <span className="block text-gray-300">{session.collectorEmail}</span>
+                      <span className="block text-gray-300">
+                        {session.collectorEmail}
+                      </span>
                     )}
                   </span>
                 </span>
@@ -192,7 +196,9 @@ export default function CollectionReportV2SessionReport({
                 {session.machinesConfirmed}
               </span>{' '}
               confirmed{' · '}
-              <span className="font-medium text-blue-700">{capturedCount}</span>{' '}
+              <span className="font-medium text-blue-700">
+                {capturedCount}
+              </span>{' '}
               captured{' · '}
               <span className="font-medium text-amber-700">
                 {session.machinesSkipped}

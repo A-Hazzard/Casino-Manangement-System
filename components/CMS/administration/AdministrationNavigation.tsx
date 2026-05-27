@@ -70,7 +70,7 @@ export default function AdministrationNavigation({
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Navigation Tabs - Scrollable on all screen sizes */}
-      <nav className="no-scrollbar touch-pan-x flex items-center space-x-2 overflow-x-auto px-4 lg:space-x-4">
+      <nav className="no-scrollbar flex touch-pan-x items-center space-x-2 overflow-x-auto px-4 lg:space-x-4">
         {accessibleTabs.map(tab => {
           const isActive = activeSection === tab.id;
 

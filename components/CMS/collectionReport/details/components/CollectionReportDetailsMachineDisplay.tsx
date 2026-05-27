@@ -22,7 +22,7 @@ export const CollectionReportDetailsMachineDisplay: FC<
   // ============================================================================
   // Split the name by parenthesized parts to bold them all
   const parts = name.split(/(\(.+?\))/g);
-  
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -30,7 +30,7 @@ export const CollectionReportDetailsMachineDisplay: FC<
     <button
       onClick={onClick}
       type="button"
-      className="text-left cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline focus:outline-none"
+      className="cursor-pointer text-left font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline focus:outline-none"
     >
       {parts.map((part, i) =>
         part.startsWith('(') && part.endsWith(')') ? (

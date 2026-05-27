@@ -20,7 +20,9 @@ type EditCabinetGameConfigProps = {
     };
   };
   cabinetDataLoading: boolean;
-  onFormDataChange: (updates: Partial<EditCabinetGameConfigProps['formData']>) => void;
+  onFormDataChange: (
+    updates: Partial<EditCabinetGameConfigProps['formData']>
+  ) => void;
 };
 
 export default function EditCabinetGameConfig({
@@ -48,7 +50,7 @@ export default function EditCabinetGameConfig({
       <h3 className="border-b border-border pb-2 text-sm font-medium text-buttonActive">
         Game Configuration
       </h3>
-      
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
@@ -59,7 +61,9 @@ export default function EditCabinetGameConfig({
           ) : (
             <Input
               value={formData.gameConfig?.theoreticalRtp || ''}
-              onChange={e => handleConfigChange('theoreticalRtp', e.target.value)}
+              onChange={e =>
+                handleConfigChange('theoreticalRtp', e.target.value)
+              }
               placeholder="e.g. 94.5"
               className="border-border bg-container"
             />
@@ -140,7 +144,9 @@ export default function EditCabinetGameConfig({
           ) : (
             <Input
               value={formData.gameConfig?.progressiveGroup || ''}
-              onChange={e => handleConfigChange('progressiveGroup', e.target.value)}
+              onChange={e =>
+                handleConfigChange('progressiveGroup', e.target.value)
+              }
               placeholder="Enter Progressive Group"
               className="border-border bg-container"
             />

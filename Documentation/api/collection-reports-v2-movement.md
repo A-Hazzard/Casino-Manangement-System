@@ -4,7 +4,7 @@
 
 ## Overview
 
-The V2 Collection Report system uses a **Movement Delta Method** to calculate accurate per-collection gross figures for each machine. Rather than using raw lifetime meter totals, it computes the *difference* (movement) between the current collection and the previous one, giving an accurate picture of how much money the machine took in during a single collection period.
+The V2 Collection Report system uses a **Movement Delta Method** to calculate accurate per-collection gross figures for each machine. Rather than using raw lifetime meter totals, it computes the _difference_ (movement) between the current collection and the previous one, giving an accurate picture of how much money the machine took in during a single collection period.
 
 ---
 
@@ -12,28 +12,28 @@ The V2 Collection Report system uses a **Movement Delta Method** to calculate ac
 
 ### Top-Level Fields (on `ReportedMachine` document)
 
-| Field | Description |
-|---|---|
-| `sasMetersIn` | The SAS/system lifetime coin-in meter read from the machine at capture time. |
-| `sasMetersOut` | The SAS/system lifetime cancelled-credits meter read from the machine. |
-| `sasGross` | The calculated gross for this collection from the SAS perspective. See "Calculation Logic" below. |
-| `manualMetersIn` | The manual coin-in value entered by the collector (only set when `metersMatch === false`). |
-| `manualMetersOut` | The manual cancelled-credits value entered by the collector (only set when `metersMatch === false`). |
-| `prevSasMetersIn` | The SAS `metersIn` from the most recent previous submitted report (or `Machine.collectionMeters.metersIn` for first-time reports). |
-| `prevSasMetersOut` | The SAS `metersOut` from the most recent previous submitted report (or `Machine.collectionMeters.metersOut` for first-time reports). |
-| `ramClear` | Boolean flag — true when the machine's meters were reset between the previous collection and this one. |
-| `ramClearMetersIn` | Pre-reset peak `metersIn` reading (only meaningful when `ramClear === true`). |
-| `ramClearMetersOut` | Pre-reset peak `metersOut` reading (only meaningful when `ramClear === true`). |
+| Field               | Description                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `sasMetersIn`       | The SAS/system lifetime coin-in meter read from the machine at capture time.                                                         |
+| `sasMetersOut`      | The SAS/system lifetime cancelled-credits meter read from the machine.                                                               |
+| `sasGross`          | The calculated gross for this collection from the SAS perspective. See "Calculation Logic" below.                                    |
+| `manualMetersIn`    | The manual coin-in value entered by the collector (only set when `metersMatch === false`).                                           |
+| `manualMetersOut`   | The manual cancelled-credits value entered by the collector (only set when `metersMatch === false`).                                 |
+| `prevSasMetersIn`   | The SAS `metersIn` from the most recent previous submitted report (or `Machine.collectionMeters.metersIn` for first-time reports).   |
+| `prevSasMetersOut`  | The SAS `metersOut` from the most recent previous submitted report (or `Machine.collectionMeters.metersOut` for first-time reports). |
+| `ramClear`          | Boolean flag — true when the machine's meters were reset between the previous collection and this one.                               |
+| `ramClearMetersIn`  | Pre-reset peak `metersIn` reading (only meaningful when `ramClear === true`).                                                        |
+| `ramClearMetersOut` | Pre-reset peak `metersOut` reading (only meaningful when `ramClear === true`).                                                       |
 
 ### `movement` Sub-Document
 
 The `movement` object stores **manual delta values only** — SAS values are top-level.
 
-| Field | Description |
-|---|---|
-| `movement.manualMetersIn` | Manual (or SAS-as-manual) meters in, minus the previous SAS meters in. |
-| `movement.manualMetersOut` | Manual (or SAS-as-manual) meters out, minus the previous SAS meters out. |
-| `movement.machineGross` | `movement.manualMetersIn - movement.manualMetersOut`. The machine-perspective gross. |
+| Field                      | Description                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------ |
+| `movement.manualMetersIn`  | Manual (or SAS-as-manual) meters in, minus the previous SAS meters in.               |
+| `movement.manualMetersOut` | Manual (or SAS-as-manual) meters out, minus the previous SAS meters out.             |
+| `movement.machineGross`    | `movement.manualMetersIn - movement.manualMetersOut`. The machine-perspective gross. |
 
 ---
 
@@ -90,14 +90,14 @@ The RAM clear toggle is **always available** in the capture UI regardless of `me
 
 #### Worked example
 
-| Input | Value |
-|---|---|
-| `prevSasMetersIn / Out` | 10 / 20 |
-| `ramClearMetersIn / Out` | 20 / 25 |
-| Current `metersIn / Out` (post-reset) | 5 / 0 |
-| `movement.manualMetersIn` | (20 − 10) + 5 = **15** |
-| `movement.manualMetersOut` | (25 − 20) + 0 = **5** |
-| `movement.machineGross` | **10** |
+| Input                                 | Value                  |
+| ------------------------------------- | ---------------------- |
+| `prevSasMetersIn / Out`               | 10 / 20                |
+| `ramClearMetersIn / Out`              | 20 / 25                |
+| Current `metersIn / Out` (post-reset) | 5 / 0                  |
+| `movement.manualMetersIn`             | (20 − 10) + 5 = **15** |
+| `movement.manualMetersOut`            | (25 − 20) + 0 = **5**  |
+| `movement.machineGross`               | **10**                 |
 
 This matches V1's two-meter calculation exactly.
 
@@ -132,6 +132,7 @@ Machine.collectionTime             = ReportedMachine.sasEndTime
 ### Conditional `sasMeters` Sync (No SAS Locations)
 
 To maintain lifetime meter accuracy on machines without a live SMIB connection:
+
 - **If `noSMIBLocation === true`**: The system **also** updates `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` with the captured values.
 - **If `noSMIBLocation === false`**: The `sasMeters` fields are **never** mutated by the collection process, as they are managed by the live SAS relay.
 
@@ -141,10 +142,10 @@ This ensures that the next collection report will use the current report's SAS r
 
 For no-SMIB locations the submit route creates `Meters` documents (one per machine + session) since there is no live SAS relay producing them. When RAM clear is active, **two** docs are created instead of one — mirroring V1's behavior so downstream aggregations (`SUM(movement.drop)`) yield the same total.
 
-| `ramClear` | Meters docs created | Per-doc movement |
-|---|---|---|
-| `false` | 1 | `movement.drop = manualMetersIn - prev`, `movement.totalCancelledCredits = manualMetersOut - prev` |
-| `true`  | 2 — RAM clear meter (`isRamClear: true`) + post-reset meter | RAM clear: `movement.drop = ramClearMetersIn - prev`; post-reset: `movement.drop = manualMetersIn` (prev treated as 0) |
+| `ramClear` | Meters docs created                                         | Per-doc movement                                                                                                       |
+| ---------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `false`    | 1                                                           | `movement.drop = manualMetersIn - prev`, `movement.totalCancelledCredits = manualMetersOut - prev`                     |
+| `true`     | 2 — RAM clear meter (`isRamClear: true`) + post-reset meter | RAM clear: `movement.drop = ramClearMetersIn - prev`; post-reset: `movement.drop = manualMetersIn` (prev treated as 0) |
 
 The post-reset meter's `readAt` is set to `sasEndTime + 1000ms` so it sorts after the RAM clear meter. On re-submit, existing meters for the machine + session are deleted first via `Meters.deleteMany()` to keep the collection clean.
 
@@ -156,16 +157,16 @@ For **SMIB locations** no `Meters` docs are created by the submit route — the 
 
 The Collection Report V2 session view displays these columns in the machines table:
 
-| Column Label | Source Field | Description |
-|---|---|---|
-| Lifetime Machine In | `manualMetersIn` or `sasMetersIn` (when matched) | Absolute manual meter at collection time |
-| Lifetime SAS In | `sasMetersIn` | Absolute SAS lifetime coin-in |
-| Lifetime SAS Gross | `sasGross` (persisted) | Time-range aggregation or simple delta |
-| Movement Machine In | `movement.manualMetersIn` | Delta from previous collection (manual) |
-| Movement Machine Gross | `movement.machineGross` | Machine-perspective collection gross |
-| Movement SAS Gross | `sasGross` | SAS-perspective collection gross |
-| Variation | `grossDifference` | `machineGross - sasGross` |
-| RAM Clear badge | `ramClear === true` | Yellow pill on the machine row; tooltip shows the pre-reset peak values |
+| Column Label           | Source Field                                     | Description                                                             |
+| ---------------------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| Lifetime Machine In    | `manualMetersIn` or `sasMetersIn` (when matched) | Absolute manual meter at collection time                                |
+| Lifetime SAS In        | `sasMetersIn`                                    | Absolute SAS lifetime coin-in                                           |
+| Lifetime SAS Gross     | `sasGross` (persisted)                           | Time-range aggregation or simple delta                                  |
+| Movement Machine In    | `movement.manualMetersIn`                        | Delta from previous collection (manual)                                 |
+| Movement Machine Gross | `movement.machineGross`                          | Machine-perspective collection gross                                    |
+| Movement SAS Gross     | `sasGross`                                       | SAS-perspective collection gross                                        |
+| Variation              | `grossDifference`                                | `machineGross - sasGross`                                               |
+| RAM Clear badge        | `ramClear === true`                              | Yellow pill on the machine row; tooltip shows the pre-reset peak values |
 
 ---
 
@@ -198,8 +199,7 @@ To maintain data integrity across both collection engines, the V1 system has bee
 
 To guarantee mathematical consistency in movement deltas, both V1 and V2 systems enforce strict chronological rules:
 
-1. **Middle-Date Blocking**: You cannot insert a report (or session) for a machine if its timestamp falls exactly *between* two existing reports for that machine. The system checks the sasEndTime against the specific machine's history and blocks the submission to prevent breaking the contiguous timeline.
-2. **Cascade Updates**: If you edit a machine's data in an *older* report (i.e. a newer report exists chronologically), the system automatically triggers a cascade update. It finds the immediate next report for that machine, updates its prevSasMetersIn and prevSasMetersOut, and recalculates its movement and gross to ensure the timeline remains mathematically sound.
+1. **Middle-Date Blocking**: You cannot insert a report (or session) for a machine if its timestamp falls exactly _between_ two existing reports for that machine. The system checks the sasEndTime against the specific machine's history and blocks the submission to prevent breaking the contiguous timeline.
+2. **Cascade Updates**: If you edit a machine's data in an _older_ report (i.e. a newer report exists chronologically), the system automatically triggers a cascade update. It finds the immediate next report for that machine, updates its prevSasMetersIn and prevSasMetersOut, and recalculates its movement and gross to ensure the timeline remains mathematically sound.
 3. **Location ID Enforcement**: To preserve referential integrity, meters are strictly saved using the machine's \locationId\ (ObjectId). They never fallback to the location name string, ensuring robust ID-based aggregations.
 4. **RAM Clear Offsets**: For no-SMIB locations, when creating Meters documents for a RAM clear event, the system guarantees the current meter is exactly at the collection time, while the RAM clear peak meter is logged exactly 1 second prior (\collectionTime - 1000ms\).
-

@@ -683,7 +683,9 @@ export default function CollectionReportNewCollectionModal({
         message={`You are about to create a collection report for ${
           collectedMachineEntries.length
         } machine(s) with collection time: ${
-          resolvedCollectionTime ? formatDate(resolvedCollectionTime) : 'Not set'
+          resolvedCollectionTime
+            ? formatDate(resolvedCollectionTime)
+            : 'Not set'
         }. Do you want to proceed?`}
         confirmText="Yes, Create Report"
         cancelText="Cancel"

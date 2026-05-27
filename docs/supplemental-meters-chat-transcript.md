@@ -151,37 +151,37 @@ This report provides a technical overview of how manual meters function in both 
 
 ### Part 1: How Manual Meters Function (V1 vs. V2)
 
-Manual meters are physical readings recorded by field collectors to reconcile the cash collected in the drop bags against the machine's electronic accounts. 
+Manual meters are physical readings recorded by field collectors to reconcile the cash collected in the drop bags against the machine's electronic accounts.
 
 #### 1. Under the Hood: V1 Manual Meters Flow
+
 In V1, manual meter records are immediately generated and persisted to the database during the collection capture phase.
 
-*   **Database Models involved**:
-    *   `collections`: Holds transient collection data, linking a single machine's capture to a parent `CollectionReport`. It stores the physical readings (`metersIn`, `metersOut`, `prevIn`, `prevOut`), the `ramClear` boolean, and references to the actual `Meters` documents (`meterId` and `ramClearMeterId`).
-    *   `meters`: Holds the authoritative, immutable meter documents (queried for downstream revenue aggregations).
-*   **Creation Flow (`createManualMetersForEachMachine`)**:
-    *   When the report wizard is committed, the API creates documents in the `meters` collection.
-    *   **RAM Clear = `false`**: Creates **one** `Meters` document with `movement.drop = metersIn - prevIn` and `movement.totalCancelledCredits = metersOut - prevOut`.
-    *   **RAM Clear = `true`**: Creates **two** distinct `Meters` documents to handle the rollover:
-        1.  *RAM Clear Meter* (`isRamClear: true`): Captures movement from the previous collection up to the peak point prior to reset. Movement is computed as `ramClearMetersIn - prevIn`. Its `readAt` timestamp is set to **1 second behind** the collection time (`collectionTime - 1000ms`) to preserve chronological order in the ledger.
-        2.  *Current Meter* (`isRamClear: false`): Captures movement from `0` (post-reset baseline) to the current reading (`metersIn`). Its
-<truncated 7196 bytes>
-   *   Provides full CRUD modals (`ScheduleEditModal`, `ScheduleDeleteDialog`) to manage collector shifts.
+- **Database Models involved**:
+  - `collections`: Holds transient collection data, linking a single machine's capture to a parent `CollectionReport`. It stores the physical readings (`metersIn`, `metersOut`, `prevIn`, `prevOut`), the `ramClear` boolean, and references to the actual `Meters` documents (`meterId` and `ramClearMeterId`).
+  - `meters`: Holds the authoritative, immutable meter documents (queried for downstream revenue aggregations).
+- **Creation Flow (`createManualMetersForEachMachine`)**:
+  _ When the report wizard is committed, the API creates documents in the `meters` collection.
+  _ **RAM Clear = `false`**: Creates **one** `Meters` document with `movement.drop = metersIn - prevIn` and `movement.totalCancelledCredits = metersOut - prevOut`.
+  - **RAM Clear = `true`**: Creates **two** distinct `Meters` documents to handle the rollover: 1. _RAM Clear Meter_ (`isRamClear: true`): Captures movement from the previous collection up to the peak point prior to reset. Movement is computed as `ramClearMetersIn - prevIn`. Its `readAt` timestamp is set to **1 second behind** the collection time (`collectionTime - 1000ms`) to preserve chronological order in the ledger. 2. \*Current Meter\* (`isRamClear: false`): Captures movement from `0` (post-reset baseline) to the current reading (`metersIn`). Its
+    <truncated 7196 bytes>
+- Provides full CRUD modals (`ScheduleEditModal`, `ScheduleDeleteDialog`) to manage collector shifts.
 
 #### 5. Collector Schedule (`?section=collector`)
-*   **Access**: All user roles.
-*   **Purpose**: Operational calendar and card-based task list for field collectors performing drops.
-*   **Features**:
-    *   Presents collectors with their assigned properties, schedules, and active machine checklist.
-    *   Uses a mobile-resilient layout stack to enable quick checklist-ticking and submission.
+
+- **Access**: All user roles.
+- **Purpose**: Operational calendar and card-based task list for field collectors performing drops.
+- **Features**:
+  - Presents collectors with their assigned properties, schedules, and active machine checklist.
+  - Uses a mobile-resilient layout stack to enable quick checklist-ticking and submission.
 
 ---
 
 ### Part 3: Architecture & Design Considerations
 
-*   **Responsive Dual Layouts**: Tabs dynamically switch from rich desktop tables (e.g., `CollectionReportDesktopLayout`) to custom card-based lists optimized for mobile screens (e.g., `CollectionReportMobileLayout`). The tab bar itself is horizontally scrollable to prevent UI wrapping on mobile.
-*   **Performance loaders**: Every tab utilizes localized Skeleton loader components matching the exact layout of the target data rows. A specific `setInitialLoading(true)` trigger ensures that standard skeleton slots overlay the UI on every fetch event, completely eliminating generic spinners and layout shift during lazy load or tab switches.
-*   **Form Persistence & Zustand**: The 3-Step V1 Wizard syncs its capture states to a Zustand store (`collectionModalStore`) to survive page navigation, while V2 leverages active API draft updates to ensure field entries are safely persisted mid-drop if a collector loses connectivity.
+- **Responsive Dual Layouts**: Tabs dynamically switch from rich desktop tables (e.g., `CollectionReportDesktopLayout`) to custom card-based lists optimized for mobile screens (e.g., `CollectionReportMobileLayout`). The tab bar itself is horizontally scrollable to prevent UI wrapping on mobile.
+- **Performance loaders**: Every tab utilizes localized Skeleton loader components matching the exact layout of the target data rows. A specific `setInitialLoading(true)` trigger ensures that standard skeleton slots overlay the UI on every fetch event, completely eliminating generic spinners and layout shift during lazy load or tab switches.
+- **Form Persistence & Zustand**: The 3-Step V1 Wizard syncs its capture states to a Zustand store (`collectionModalStore`) to survive page navigation, while V2 leverages active API draft updates to ensure field entries are safely persisted mid-drop if a collector loses connectivity.
 
 ---
 
@@ -197,6 +197,7 @@ In V1, manual meter records are immediately generated and persisted to the datab
 
 <USER_REQUEST>
 Do not edit anything but tell me if u understand exacctly these instruction and the example in the image which is a summary of the meter objects to assist in explaininng and to ensure u do understannd provide a scenario and data flow example
+
 ```
 check if machine has relay id , if not then create manual meters
 if it does then check if offline (3 days) then create supplemental meters
@@ -204,9 +205,10 @@ Supplemental meters:
 1. carry forward and set movement to 0 for non-entered meters (jackpot, won, current credits, etc.)
 2. Treat entered meters as normal (drop, cancelled credits)
 Edge Case:
-if machine was ram cleared then carry forward meters to ram clear and then set current non-entered meters to 0 
+if machine was ram cleared then carry forward meters to ram clear and then set current non-entered meters to 0
 Should also show a status symbol that supplemental meters were created for machine since its been offlien for more than or equal to 3 days
-``` 
+```
+
 </USER_REQUEST>
 <ADDITIONAL_METADATA>
 The current local time is: 2026-05-26T18:22:41-04:00.
@@ -216,7 +218,7 @@ The current local time is: 2026-05-26T18:22:41-04:00.
 
 ### 🤖 Antigravity
 
-Yes, I understand these instructions and the spreadsheet example. 
+Yes, I understand these instructions and the spreadsheet example.
 
 By carrying forward the lifetime values of non-entered meters (like `jackpot` and `won`) and setting their movements to `0` while the machine is offline, **you create a bridge**. This prevents data loss and prevents the movement calculations from breaking when the machine eventually reconnects to the network and the `sas-worker` resumes writing automatic meters.
 
@@ -227,24 +229,24 @@ By carrying forward the lifetime values of non-entered meters (like `jackpot` an
 The spreadsheet demonstrates three chronological points in the ledger:
 
 1.  **October 20th (Online - `sas-worker`):**
-    *   The machine is online. The lifetime values are: `jackpot: 1500`, `drop: 3000`, `won: 200`, `cancelled: 1000`.
-    *   The movements are calculated normally from the previous online reading.
+    - The machine is online. The lifetime values are: `jackpot: 1500`, `drop: 3000`, `won: 200`, `cancelled: 1000`.
+    - The movements are calculated normally from the previous online reading.
 2.  **October 23rd (Offline for 3 days - Collection Report):**
-    *   The machine is offline. The collector performs a physical drop and enters **only** the physical meters: `drop: 3500` (Meter In) and `cancelled: 1250` (Meter Out).
-    *   **Supplemental Meters Logic Triggered:**
-        *   Because `drop` and `cancelled` are entered, their movements are calculated normally: 
-            $$\text{movement.drop} = 3500 - 3000 = 500$$
-            $$\text{movement.cancelled} = 1250 - 1000 = 250$$
-        *   The non-entered meters (`jackpot`, `won`) **carry forward** their lifetime totals from the 20th (`jackpot: 1500`, `won: 200`).
-        *   Their movements are set explicitly to `0` (`movement.jackpot = 0`, `movement.won = 0`).
+    - The machine is offline. The collector performs a physical drop and enters **only** the physical meters: `drop: 3500` (Meter In) and `cancelled: 1250` (Meter Out).
+    - **Supplemental Meters Logic Triggered:**
+      - Because `drop` and `cancelled` are entered, their movements are calculated normally:
+        $$\text{movement.drop} = 3500 - 3000 = 500$$
+        $$\text{movement.cancelled} = 1250 - 1000 = 250$$
+      - The non-entered meters (`jackpot`, `won`) **carry forward** their lifetime totals from the 20th (`jackpot: 1500`, `won: 200`).
+      - Their movements are set explicitly to `0` (`movement.jackpot = 0`, `movement.won = 0`).
 3.  **October 24th (Online again - `sas-worker`):**
-    *   The machine comes back online and the relay reads lifetime values: `jackpot: 2000`, `drop: 3800`, `won: 400`, `cancelled: 1350`.
-    *   **The Math Resolves Smoothly:** Because we carried forward `1500` for `jackpot` and `200` for `won` on the 23rd, the new movements are calculated correctly:
-        $$\text{movement.jackpot} = 2000 - 1500 = 500$$
-        $$\text{movement.won} = 400 - 200 = 200$$
-    *   There is no gap in the lifetime meters, a
-<truncated 2503 bytes>
-, these are set to **0** on the physical machine, so their lifetime values are recorded as `0` and movements are `0`.
+    _ The machine comes back online and the relay reads lifetime values: `jackpot: 2000`, `drop: 3800`, `won: 400`, `cancelled: 1350`.
+    _ **The Math Resolves Smoothly:** Because we carried forward `1500` for `jackpot` and `200` for `won` on the 23rd, the new movements are calculated correctly:
+    $$\text{movement.jackpot} = 2000 - 1500 = 500$$
+    $$\text{movement.won} = 400 - 200 = 200$$ \* There is no gap in the lifetime meters, a
+    <truncated 2503 bytes>
+    , these are set to **0** on the physical machine, so their lifetime values are recorded as `0` and movements are `0`.
+
 ```json
 {
   "_id": "supp-meter-current",
@@ -272,14 +274,17 @@ The spreadsheet demonstrates three chronological points in the ledger:
 #### 3. Frontend UI Status Indicator
 
 In the Collection Report V2 review list / session report page:
-*   A status symbol will appear next to the machine name (e.g., an amber signal icon `📶` with a warning badge or a clock badge `🕒`).
-*   **Tooltip:** Hovering over this icon displays the message: 
-    > *"Supplemental meters created. This machine has a relay connection but has been offline since May 23rd (>= 3 days). Non-entered meter counts were successfully carried forward."*
+
+- A status symbol will appear next to the machine name (e.g., an amber signal icon `📶` with a warning badge or a clock badge `🕒`).
+- **Tooltip:** Hovering over this icon displays the message:
+  > _"Supplemental meters created. This machine has a relay connection but has been offline since May 23rd (>= 3 days). Non-entered meter counts were successfully carried forward."_
 
 ---
 
 ### Summary of My Understanding
+
 I have a complete and detailed understanding of the supplemental meter mechanics:
+
 1.  **Check Relay ID:** If `relayId` is absent $\rightarrow$ standard manual meters are used.
 2.  **Check Offline Duration:** If `relayId` is present but the heartbeat is $\ge 3$ days $\rightarrow$ supplemental meters are generated to fill the database gap.
 3.  **Bridge the Delta:** Entered fields are computed as normal; non-entered fields carry forward their values with `0` movement.
@@ -367,6 +372,7 @@ The implementation plan has been created as an artifact and is available for you
 [implementation_plan.md](file:///C:/Users/pc/.gemini/antigravity/brain/03ca2d10-3037-4da7-b363-df4c0628ff21/implementation_plan.md)
 
 ### Key Aspects in the Plan:
+
 1. **Database Schema Additions**: Introducing the `isSupplemental` boolean flag on the `Meters` and `ReportedMachine` collections.
 2. **Supplemental Calculation Engine (V1 & V2)**: Implementing the automatic carry forward of non-entered lifetime meters (`jackpot`, `won`, etc.) with `0` movement delta, triggered when a machine has a `relayId` but is offline for $\ge$ 3 days.
 3. **RAM Clear Edge Cases**: Handled Rollovers where peak values are carried forward, and post-reset meters reset non-entered lifetime values to `0`.
@@ -456,6 +462,7 @@ The implementation plan has been created as an artifact and is available for you
 [implementation_plan.md](file:///C:/Users/pc/.gemini/antigravity/brain/03ca2d10-3037-4da7-b363-df4c0628ff21/implementation_plan.md)
 
 ### Key Aspects in the Plan:
+
 1. **Database Schema Additions**: Introducing the `isSupplemental` boolean flag on the `Meters` and `ReportedMachine` collections.
 2. **Supplemental Calculation Engine (V1 & V2)**: Implementing the automatic carry forward of non-entered lifetime meters (`jackpot`, `won`, etc.) with `0` movement delta, triggered when a machine has a `relayId` but is offline for $\ge$ 3 days.
 3. **RAM Clear Edge Cases**: Handled Rollovers where peak values are carried forward, and post-reset meters reset non-entered lifetime values to `0`.
@@ -829,7 +836,7 @@ undefined
 
 ### 🤖 Antigravity
 
-The type check passed with no `error TS` lines — the `Select-String` returned empty output (exit 0), meaning **zero TypeScript errors**. 
+The type check passed with no `error TS` lines — the `Select-String` returned empty output (exit 0), meaning **zero TypeScript errors**.
 
 Now let me update the task tracker and do a final review of all the changes made:
 
@@ -844,6 +851,7 @@ All frontend UI work is done. Here's a full summary of everything completed in t
 ## ✅ What was done
 
 ### Backend (previously completed)
+
 - `meters.ts` — `isSupplemental` field added to Mongoose schema
 - `reportedMachines.ts` — `isSupplemental` field added to schema + TS type
 - `reportCreation.ts` (V1) — carry-forward logic for offline SMIBs, RAM Clear edge case
@@ -892,17 +900,17 @@ Created at [docs/supplemental-meters.md](file:///C:/Users/pc/Documents/Github/ev
 
 Here's what the doc covers:
 
-| Section | Contents |
-|---|---|
-| **Background** | How `Meters` collection works, SMIB vs No-SMIB locations, what fields exist |
-| **The Problem** | Why phantom movement inflation happens when a SMIB reconnects after offline gap |
-| **Decision Tree** | Full branching logic — No relay → Manual, SMIB online → Standard, SMIB offline ≥3d → Supplemental, + RAM Clear sub-case |
-| **Offline Detection** | Exact formula (`relayId` + `lastActivity` + 72h threshold) |
-| **Data Flow Diagram** | Full V2 path from `GET /session` → capture → `POST /machines` → `PATCH /submit` → future reconnect |
-| **Code Changes** | Every file changed, with the specific before/after code snippets for the critical parts |
-| **Visual UI Summary** | ASCII mockups of the warning banner, review badge, and submitted table badge |
-| **Mathematical Guarantee** | Exact field-by-field values for both normal and RAM Clear cases, proving no movement inflation |
-| **Key Constraints** | The 5 rules that keep V1/V2 parity and prevent breaking SMIB online flows |
-| **Files Changed Table** | Quick-reference summary of all 9 modified files |
+| Section                    | Contents                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Background**             | How `Meters` collection works, SMIB vs No-SMIB locations, what fields exist                                             |
+| **The Problem**            | Why phantom movement inflation happens when a SMIB reconnects after offline gap                                         |
+| **Decision Tree**          | Full branching logic — No relay → Manual, SMIB online → Standard, SMIB offline ≥3d → Supplemental, + RAM Clear sub-case |
+| **Offline Detection**      | Exact formula (`relayId` + `lastActivity` + 72h threshold)                                                              |
+| **Data Flow Diagram**      | Full V2 path from `GET /session` → capture → `POST /machines` → `PATCH /submit` → future reconnect                      |
+| **Code Changes**           | Every file changed, with the specific before/after code snippets for the critical parts                                 |
+| **Visual UI Summary**      | ASCII mockups of the warning banner, review badge, and submitted table badge                                            |
+| **Mathematical Guarantee** | Exact field-by-field values for both normal and RAM Clear cases, proving no movement inflation                          |
+| **Key Constraints**        | The 5 rules that keep V1/V2 parity and prevent breaking SMIB online flows                                               |
+| **Files Changed Table**    | Quick-reference summary of all 9 modified files                                                                         |
 
 ---

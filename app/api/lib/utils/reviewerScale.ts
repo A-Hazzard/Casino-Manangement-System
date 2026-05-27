@@ -48,7 +48,9 @@ function parseTimestamp(
   return null;
 }
 
-function resolveReferenceTimestamp(referenceDate?: Date | string | null): number {
+function resolveReferenceTimestamp(
+  referenceDate?: Date | string | null
+): number {
   const parsedReferenceTimestamp = parseTimestamp(referenceDate);
   return parsedReferenceTimestamp ?? Date.now();
 }

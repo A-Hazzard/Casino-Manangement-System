@@ -152,12 +152,10 @@ export function useNewCollectionModal({
   const [previousCollectionTime, setPreviousCollectionTime] = useState<
     string | Date | undefined
   >(undefined);
-  const [machineFirstCollectionTime, setMachineFirstCollectionTime] = useState<
-    Date | null
-  >(null);
-  const [machineLastCollectionTime, setMachineLastCollectionTime] = useState<
-    Date | null
-  >(null);
+  const [machineFirstCollectionTime, setMachineFirstCollectionTime] =
+    useState<Date | null>(null);
+  const [machineLastCollectionTime, setMachineLastCollectionTime] =
+    useState<Date | null>(null);
   const [isLoadingExistingCollections, setIsLoadingExistingCollections] =
     useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(false);
@@ -1178,7 +1176,9 @@ export function useNewCollectionModal({
     } catch (error) {
       const apiMessage = (error as { response?: { data?: { error?: string } } })
         ?.response?.data?.error;
-      const errorMessage = apiMessage ?? (error instanceof Error ? error.message : 'Unknown error');
+      const errorMessage =
+        apiMessage ??
+        (error instanceof Error ? error.message : 'Unknown error');
       toast.error(`Failed to add machine: ${errorMessage}`, { duration: 7000 });
     } finally {
       setIsProcessing(false);

@@ -228,7 +228,9 @@ export async function getCollectionReportById(
   if (report.collector) {
     try {
       const UserModel = (await import('@/app/api/lib/models/user')).default;
-      const collectorUser = await UserModel.findOne({ _id: report.collector }).lean<{
+      const collectorUser = await UserModel.findOne({
+        _id: report.collector,
+      }).lean<{
         username?: string;
         profile?: { firstName?: string; lastName?: string };
         emailAddress?: string;
@@ -242,14 +244,21 @@ export async function getCollectionReportById(
           collectorName = collectorUser.emailAddress;
         }
       } else {
-        if (/^[0-9a-fA-F]{24}$/.test(report.collector) || report.collector.startsWith('user_') || report.collector.length > 15) {
+        if (
+          /^[0-9a-fA-F]{24}$/.test(report.collector) ||
+          report.collector.startsWith('user_') ||
+          report.collector.length > 15
+        ) {
           collectorName = 'Deleted User';
         } else {
           collectorName = report.collector;
         }
       }
     } catch (err) {
-      console.warn('[getCollectionReportById] Failed to look up collector user:', err);
+      console.warn(
+        '[getCollectionReportById] Failed to look up collector user:',
+        err
+      );
     }
   }
 
@@ -510,7 +519,10 @@ export async function getCollectionReportById(
       const location = await GamingLocations.findOne(
         { _id: report.location },
         { 'rel.licencee': 1, noSMIBLocation: 1 }
-      ).lean<{ rel?: { licencee?: string }; noSMIBLocation?: boolean } | null>();
+      ).lean<{
+        rel?: { licencee?: string };
+        noSMIBLocation?: boolean;
+      } | null>();
 
       isNoSMIBLocation = location?.noSMIBLocation === true;
       const licenceeId = location?.rel?.licencee;
@@ -580,7 +592,8 @@ export async function getCollectionReportById(
   // This must use the same logic as the machine metrics loop below (hasSmib, hasNoSasData, includeJackpot).
   let computedTotalVariation = 0;
   for (const collection of collections) {
-    const machineHasSmib = hasRelayMap.get(String(collection.machineId)) ?? false;
+    const machineHasSmib =
+      hasRelayMap.get(String(collection.machineId)) ?? false;
     if (!machineHasSmib) continue;
 
     const machineMeterGross = collection.movement?.gross ?? 0;
@@ -608,7 +621,8 @@ export async function getCollectionReportById(
       !collection.sasMeters?.sasEndTime ||
       !meterDataMap.has(String(collection.machineId));
 
-    computedTotalVariation += machineMeterGross - (machineHasNoSasData ? 0 : machineAdjustedSasGross);
+    computedTotalVariation +=
+      machineMeterGross - (machineHasNoSasData ? 0 : machineAdjustedSasGross);
   }
 
   const locationMetrics = {
@@ -616,8 +630,12 @@ export async function getCollectionReportById(
     metersGross: scaledGross,
     jackpot: scaledJackpot,
     netGross: scaledGross - scaledJackpot,
-    variation: isNoSMIBLocation ? 'No SMIB for this Machine' : computedTotalVariation * moneyInScale,
-    sasGross: isNoSMIBLocation ? 'No SMIB for this Machine' : totalSasGross * moneyInScale,
+    variation: isNoSMIBLocation
+      ? 'No SMIB for this Machine'
+      : computedTotalVariation * moneyInScale,
+    sasGross: isNoSMIBLocation
+      ? 'No SMIB for this Machine'
+      : totalSasGross * moneyInScale,
     locationRevenue: (report.partnerProfit || 0) * moneyInScale,
     amountUncollected: (report.amountUncollected || 0) * moneyInScale,
     amountToCollect: (report.amountToCollect || 0) * moneyInScale,
@@ -781,14 +799,16 @@ export async function getCollectionReportById(
         metersGross: scaled.meterGross,
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
-        sasGross: (isNoSMIBLocation || !hasSmib)
-          ? 'No SMIB for this Machine'
-          : hasNoSasData
-            ? 'No SAS Data'
-            : formatSmartDecimal(scaled.sasGross),
-        variation: (isNoSMIBLocation || !hasSmib)
-          ? 'No SMIB for this Machine'
-          : formatSmartDecimal(scaled.variation),
+        sasGross:
+          isNoSMIBLocation || !hasSmib
+            ? 'No SMIB for this Machine'
+            : hasNoSasData
+              ? 'No SAS Data'
+              : formatSmartDecimal(scaled.sasGross),
+        variation:
+          isNoSMIBLocation || !hasSmib
+            ? 'No SMIB for this Machine'
+            : formatSmartDecimal(scaled.variation),
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,

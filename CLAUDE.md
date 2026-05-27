@@ -100,6 +100,7 @@ export async function GET(req: NextRequest) {
 Options: `{ optionalAuth: true }` for public routes, `{ bypassDb: true }` when DB is not needed.
 
 Every route handler MUST also follow this structure:
+
 - **File-level JSDoc** with `@module app/api/[path]/route` tag and feature bullets.
 - **Performance tracking**: `const startTime = Date.now()` at the top; log a warning if `Date.now() - startTime > 1000`.
 - **Numbered steps** with `// ============================================================================` separators and `// STEP N: Description` labels.
@@ -148,8 +149,12 @@ Type generics MUST come from `shared/types/` (imported via `@shared/types`), not
 
 ```ts
 // ✅ CORRECT
-const cursor = Meters.aggregate(pipeline, { allowDiskUse: true }).cursor({ batchSize: 1000 });
-for await (const doc of cursor) { results.push(doc); }
+const cursor = Meters.aggregate(pipeline, { allowDiskUse: true }).cursor({
+  batchSize: 1000,
+});
+for await (const doc of cursor) {
+  results.push(doc);
+}
 
 // ❌ WRONG
 const results = await Meters.aggregate(pipeline).exec();
@@ -181,6 +186,7 @@ const results = await Meters.aggregate(pipeline).exec();
 ### 7. Custom Hook Structure
 
 Sections inside hooks MUST appear in this order:
+
 1. External Dependencies → 2. Type Definitions → 3. Helper Functions → 4. Main Hook → 5. Store State → 6. Local State (grouped by concern) → 7. Form Data Bindings → 8. Computed Values → 9. Debounced Values → 10. Refs → 11. Effects → 12. Event Handlers (grouped by category) → 13. Return.
 
 Reference: `lib/hooks/collectionReport/useNewCollectionModal.ts`.
@@ -229,6 +235,7 @@ if (!result) {
 ### 12. Financial Color Coding
 
 Use `getFinancialColorClass` / `getGrossColorClass` from `lib/utils/financial/colors.ts` consistently:
+
 - **Green**: positive values, income, "Money In".
 - **Red**: negative values, expenses, "Money Out".
 - **Neutral**: zero or non-directional metrics.
@@ -255,11 +262,13 @@ Use **bun exclusively** for all operations.
 - `bun run test` - Run Playwright e2e tests (dashboard suite, Chromium)
 
 To run a single Playwright test file:
+
 ```sh
 bunx playwright test e2e/tests/<file>.spec.ts -c e2e/playwright.config.ts --project=chromium
 ```
 
 To run TypeScript unit tests with Jest:
+
 ```sh
 bun jest <path/to/file.test.ts>
 ```

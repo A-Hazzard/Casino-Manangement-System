@@ -1,4 +1,7 @@
-import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+} from '@/app/api/lib/helpers/activityLogger';
 import {
   applyCurrencyConversionToMetrics,
   shouldApplyCurrencyConversion,
@@ -412,7 +415,10 @@ export async function POST(request: NextRequest) {
             ipAddress: getClientIP(request) || undefined,
             userAgent: request.headers.get('user-agent') || undefined,
             userId: currentUser._id as string,
-            username: (currentUser.username as string) || (currentUser.emailAddress as string) || 'unknown',
+            username:
+              (currentUser.username as string) ||
+              (currentUser.emailAddress as string) ||
+              'unknown',
             metadata: {
               resource: 'member',
               resourceId: newMember._id,

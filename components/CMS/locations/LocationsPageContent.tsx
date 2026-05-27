@@ -262,10 +262,10 @@ export default function LocationsPageContent() {
           ) : (
             /* Main Content: Display data in appropriate format for viewport */
             <div>
-               {/* Mobile View: Cards display */}
+              {/* Mobile View: Cards display */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
                 {locationData.map(loc => (
-                   <LocationsLocationCard
+                  <LocationsLocationCard
                     key={String(loc._id || loc.location || Math.random())}
                     location={loc}
                     onLocationClick={handleLocationClick}

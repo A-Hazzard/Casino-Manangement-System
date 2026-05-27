@@ -458,12 +458,14 @@ async function getPreviousCollectionMeters(
     const legacyIn = machine.collectionMeters?.metersIn ?? null;
     const legacyOut = machine.collectionMeters?.metersOut ?? null;
     const sasIn = (machine.sasMeters?.drop as number | undefined) ?? null;
-    const sasOut = (machine.sasMeters?.totalCancelledCredits as number | undefined) ?? null;
+    const sasOut =
+      (machine.sasMeters?.totalCancelledCredits as number | undefined) ?? null;
 
     // CRITICAL: Prioritize collectionMeters (manual baseline) over sasMeters (live lifetime meters)
     // This ensures that operator-entered baselines are respected during the first collection.
     prevMetersIn = legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0);
-    prevMetersOut = legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0);
+    prevMetersOut =
+      legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0);
 
     console.warn(
       '⚠️ No previous collection found, using machine collectionMeters as initial prev values:',
@@ -624,7 +626,12 @@ export async function updateRegularAndRamClearMeters(
   if (ramClearMeterId) {
     const result = await Meters.findOneAndUpdate(
       { _id: ramClearMeterId },
-      { $set: { readAt: new Date(readAtDate.getTime() - 1000), updatedAt: new Date() } }
+      {
+        $set: {
+          readAt: new Date(readAtDate.getTime() - 1000),
+          updatedAt: new Date(),
+        },
+      }
     );
     console.log(
       `[updateRegularAndRamClearMeters] ramClearMeter ${ramClearMeterId}:`,

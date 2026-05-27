@@ -480,6 +480,7 @@ This section records notable technical work completed during the v4.3.0 developm
 **Requirement**: V2 collection reports needed to support the RAM clear scenario (machine meters reset between collections) with the **same financial result** as V1 — including 2-`Meters`-doc creation for no-SMIB locations.
 
 **Implementation**:
+
 - Added `ramClear`, `ramClearMetersIn`, `ramClearMetersOut` to the `ReportedMachine` schema and `CaptureMachinePayload` / `UpdateMachinePayload` types.
 - Extended `computeMovement()` to apply the unified formula `(ramClearMetersIn − prevSasIn) + effectiveIn` across all three branches (no-SMIB, `metersMatch === true`, `metersMatch === false`). Same for the out side.
 - POST/PATCH `/api/collection-reports-v2/machines` now accepts and validates the new fields; toggling RAM clear off triggers `$unset` of the peak fields (mirrors V1).

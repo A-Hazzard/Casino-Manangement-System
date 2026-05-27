@@ -444,6 +444,22 @@ export async function deleteManualMetersPerCollection(
     );
 
     for (const collection of collections) {
+      // Check if machine is SMIB machine
+      let hasRelay = false;
+      if (collection.machineId) {
+        const machineDoc = await Machine.findOne(
+          { _id: collection.machineId },
+          'relayId'
+        ).lean<{ relayId?: string | null }>();
+        hasRelay = !!machineDoc?.relayId;
+      }
+      if (hasRelay) {
+        console.log(
+          `⏭️ [deleteManualMetersPerCollection] Skipping SMIB machine ${collection.machineId} (has relayId)`
+        );
+        continue;
+      }
+
       // Delete RAM clear meter if it exists (only for collections with RAM clear)
       if (collection.ramClearMeterId) {
         let ramClearResult;

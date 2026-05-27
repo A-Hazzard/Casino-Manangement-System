@@ -99,7 +99,7 @@ async function backfillTotalVariation(): Promise<void> {
       // Progress log every BATCH_SIZE
       if (checked % BATCH_SIZE === 0 || checked === 1) {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        const rate = (checked / (Date.now() - startTime) * 1000).toFixed(1);
+        const rate = ((checked / (Date.now() - startTime)) * 1000).toFixed(1);
         console.log(
           `   [${checked}/${totalReports}] ${rate} r/s | Last: ${locationReportId} | Updated: ${updated} | Elapsed: ${elapsed}s`
         );
@@ -244,9 +244,10 @@ async function backfillTotalVariation(): Promise<void> {
           return sum + (meterGross - (hasNoSasData ? 0 : adjustedSasGross));
         }, 0);
 
-        const storedTotal = typeof report.totalVariation === 'number'
-          ? report.totalVariation
-          : null;
+        const storedTotal =
+          typeof report.totalVariation === 'number'
+            ? report.totalVariation
+            : null;
         const roundedComputed = Number(computedTotal.toFixed(2));
 
         if (
@@ -276,7 +277,9 @@ async function backfillTotalVariation(): Promise<void> {
     console.log(
       `\n📊 Results: Checked=${checked}, Updated=${updated}, Skipped=${skipped}, Errors=${errors}`
     );
-    console.log(`⏱️  Time: ${elapsed}s | Last processed: ${lastReportId || 'none'}`);
+    console.log(
+      `⏱️  Time: ${elapsed}s | Last processed: ${lastReportId || 'none'}`
+    );
     console.log('✅ Backfill complete\n');
   } catch (error) {
     console.error(

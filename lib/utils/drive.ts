@@ -65,8 +65,18 @@ async function ensureFolder(
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /**
@@ -100,7 +110,11 @@ async function ensureMachineDateFolder(params: {
   const month = MONTH_NAMES[params.capturedAt.getMonth()];
   const dateStr = params.capturedAt.toISOString().split('T')[0];
 
-  const machineFolderId = await ensureFolder(drive, params.machineName, params.locationFolderId);
+  const machineFolderId = await ensureFolder(
+    drive,
+    params.machineName,
+    params.locationFolderId
+  );
   const yearFolderId = await ensureFolder(drive, year, machineFolderId);
   const monthFolderId = await ensureFolder(drive, month, yearFolderId);
   const dateFolderId = await ensureFolder(drive, dateStr, monthFolderId);

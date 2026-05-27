@@ -219,6 +219,20 @@ export async function GET(req: NextRequest) {
       ReportedMachine.aggregate([
         { $match: matchStage },
         {
+          $lookup: {
+            from: 'machines',
+            localField: 'machineId',
+            foreignField: '_id',
+            as: 'machineDoc',
+          },
+        },
+        {
+          $unwind: {
+            path: '$machineDoc',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $group: {
             _id: '$sessionId',
             sessionId: { $first: '$sessionId' },
@@ -235,7 +249,26 @@ export async function GET(req: NextRequest) {
               },
             },
             machinesConfirmed: {
-              $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] },
+              $sum: {
+                $cond: [
+                  {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ne: ['$machineDoc.relayId', null] },
+                          {
+                            $ne: [{ $ifNull: ['$machineDoc.relayId', ''] }, ''],
+                          },
+                        ],
+                      },
+                      { $eq: ['$status', 'confirmed'] },
+                      { $in: ['$status', ['captured', 'confirmed']] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
             },
             machinesSkipped: {
               $sum: { $cond: [{ $eq: ['$status', 'skipped'] }, 1, 0] },
@@ -344,20 +377,6 @@ export async function GET(req: NextRequest) {
           },
         },
         { $project: { locationDetails: 0 } },
-        // For noSMIB locations every captured/confirmed machine is implicitly
-        // matched (no SMIB means there are no SAS meters to compare against).
-        // Override machinesConfirmed so the MATCHED column shows the correct count.
-        {
-          $addFields: {
-            machinesConfirmed: {
-              $cond: [
-                '$noSMIBLocation',
-                '$machinesCaptured',
-                '$machinesConfirmed',
-              ],
-            },
-          },
-        },
       ]),
       ReportedMachine.aggregate([
         { $match: matchStage },

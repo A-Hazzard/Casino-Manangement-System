@@ -42,6 +42,7 @@ type SessionMachine = {
   isSupplemental?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  hasRelay?: boolean;
 };
 
 type MachinesTabProps = {
@@ -473,6 +474,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                   const lifetimeSasIn = machine.sasMetersIn;
                   const lifetimeSasOut = machine.sasMetersOut;
                   const lifetimeSasGross = machine.sasGross ?? null;
+                  const isMachineNoSMIB =
+                    machine.hasRelay === false || noSMIBLocation === true;
 
                   return (
                     <tr
@@ -497,7 +500,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         <div className="flex items-center gap-2">
                           <MatchIcon machine={machine} />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -505,7 +508,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                                 }
                                 className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
                               >
-                                {machine.machineCustomName || machine.machineName}
+                                {machine.machineCustomName ||
+                                  machine.machineName}
                               </button>
                               {machine.isSupplemental && <SupplementalBadge />}
                             </div>
@@ -516,27 +520,30 @@ export default function CollectionReportV2SessionReportMachinesTab({
 
                       {/* Col 3 — Lifetime Machine In/Out */}
                       <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-900 last:border-r-0">
-                        {formatNum(lifetimeMachineIn)}/{formatNum(lifetimeMachineOut)}
+                        {formatNum(lifetimeMachineIn)}/
+                        {formatNum(lifetimeMachineOut)}
                       </td>
 
                       {/* Col 4 — Movement Machine In/Out */}
                       <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
-                        {formatNum(machine.movement?.manualMetersIn ?? null)}/{formatNum(machine.movement?.manualMetersOut ?? null)}
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}/
+                        {formatNum(machine.movement?.manualMetersOut ?? null)}
                       </td>
 
                       {/* Cols 5-6 — SAS: merged for noSMIB, separate for SMIB */}
-                      {noSMIBLocation ? (
+                      {isMachineNoSMIB ? (
                         <td
                           colSpan={2}
                           className="border-r border-gray-100 px-3 py-3 text-center font-medium italic text-gray-400 last:border-r-0"
                         >
-                          No SMIBs for this Location
+                          No SMIB for this Machine
                         </td>
                       ) : (
                         <>
                           {/* Col 5 — Lifetime SAS In/Out */}
                           <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-600 last:border-r-0">
-                            {formatNum(lifetimeSasIn)}/{formatNum(lifetimeSasOut)}
+                            {formatNum(lifetimeSasIn)}/
+                            {formatNum(lifetimeSasOut)}
                           </td>
 
                           {/* Col 6 — Lifetime SAS Gross */}
@@ -552,7 +559,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
                       </td>
 
                       {/* Col 8 — Variation */}
-                      {noSMIBLocation ? (
+                      {isMachineNoSMIB ? (
                         <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium text-gray-400 last:border-r-0">
                           —
                         </td>
@@ -591,6 +598,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
               const lifetimeSasGross = machine.sasGross ?? null;
               const startStr = formatDateTime(machine.sasStartTime);
               const endStr = formatDateTime(machine.sasEndTime);
+              const isMachineNoSMIB =
+                machine.hasRelay === false || noSMIBLocation === true;
 
               return (
                 <div
@@ -638,7 +647,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         Lifetime Machine In/Out
                       </p>
                       <p className="mt-0.5 font-medium tabular-nums text-gray-900">
-                        {formatNum(lifetimeMachineIn)}/{formatNum(lifetimeMachineOut)}
+                        {formatNum(lifetimeMachineIn)}/
+                        {formatNum(lifetimeMachineOut)}
                       </p>
                     </div>
 
@@ -648,18 +658,19 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         Movement Machine In/Out
                       </p>
                       <p className="mt-0.5 font-medium tabular-nums text-gray-700">
-                        {formatNum(machine.movement?.manualMetersIn ?? null)}/{formatNum(machine.movement?.manualMetersOut ?? null)}
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}/
+                        {formatNum(machine.movement?.manualMetersOut ?? null)}
                       </p>
                     </div>
 
                     {/* SAS section — merged for noSMIB */}
-                    {noSMIBLocation ? (
+                    {isMachineNoSMIB ? (
                       <div className="col-span-2">
                         <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
                           SAS
                         </p>
                         <p className="mt-0.5 font-normal italic text-gray-400">
-                          No SMIBs for this Location
+                          No SMIB for this Machine
                         </p>
                       </div>
                     ) : (
@@ -670,7 +681,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                             Lifetime SAS In/Out
                           </p>
                           <p className="mt-0.5 font-medium tabular-nums text-gray-600">
-                            {formatNum(machine.sasMetersIn)}/{formatNum(machine.sasMetersOut)}
+                            {formatNum(machine.sasMetersIn)}/
+                            {formatNum(machine.sasMetersOut)}
                           </p>
                         </div>
                       </>
@@ -685,7 +697,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         {formatNum(machine.movement?.machineGross ?? null)}
                       </p>
                     </div>
-                    {!noSMIBLocation ? (
+                    {!isMachineNoSMIB ? (
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
                           Lifetime SAS Gross
@@ -699,7 +711,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
                     )}
 
                     {/* Variation at the end */}
-                    {!noSMIBLocation ? (
+                    {!isMachineNoSMIB ? (
                       <div className="col-span-2">
                         <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
                           Variation

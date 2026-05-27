@@ -122,7 +122,10 @@ export function useCollectionReportV2Data(
         setTotalSessions(res.data.pagination?.total ?? 0);
       }
     } catch (error) {
-      if (axios.isCancel(error) || (error instanceof Error && error.name === 'CanceledError')) {
+      if (
+        axios.isCancel(error) ||
+        (error instanceof Error && error.name === 'CanceledError')
+      ) {
         return;
       }
       console.error('[useCollectionReportV2Data] fetch error:', error);

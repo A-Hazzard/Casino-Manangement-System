@@ -13,7 +13,10 @@
  */
 
 import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails';
-import { logActivity, mapDeletedFieldsToChanges } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logActivity,
+  mapDeletedFieldsToChanges,
+} from '@/app/api/lib/helpers/activityLogger';
 import {
   deleteManualMetersPerCollection,
   updateCollectionReport,
@@ -557,12 +560,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 7: Delete/Archive manual meters per collection
     // ============================================================================
-    const deleteMetersResult =
-      await deleteManualMetersPerCollection(resolvedReportId, archive);
+    const deleteMetersResult = await deleteManualMetersPerCollection(
+      resolvedReportId,
+      archive
+    );
     if (!deleteMetersResult.success) {
       return NextResponse.json(
         {
-          message: deleteMetersResult.error || `Failed to ${archive ? 'archive' : 'delete'} manual meters`,
+          message:
+            deleteMetersResult.error ||
+            `Failed to ${archive ? 'archive' : 'delete'} manual meters`,
         },
         { status: 500 }
       );
@@ -584,9 +591,11 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
     let affectedCount = 0;
     if (archive) {
-      affectedCount = (deleteCollectionsResult as { modifiedCount: number }).modifiedCount;
+      affectedCount = (deleteCollectionsResult as { modifiedCount: number })
+        .modifiedCount;
     } else {
-      affectedCount = (deleteCollectionsResult as { deletedCount: number }).deletedCount;
+      affectedCount = (deleteCollectionsResult as { deletedCount: number })
+        .deletedCount;
     }
     if (affectedCount === 0) {
       console.warn(
@@ -611,7 +620,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
     if (!deletedReport) {
       return NextResponse.json(
-        { message: `Failed to ${archive ? 'archive' : 'delete'} collection report` },
+        {
+          message: `Failed to ${archive ? 'archive' : 'delete'} collection report`,
+        },
         { status: 500 }
       );
     }
@@ -619,12 +630,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 9.5: Propagate deletion forward and recalculate machines
     // ============================================================================
-    const { updateRegularAndRamClearMeters } = await import(
-      '@/app/api/lib/helpers/collectionReport/reportCreation'
-    );
-    const { recalculateMachineCollections } = await import(
-      '@/app/api/lib/helpers/collectionReport/recalculation'
-    );
+    const { updateRegularAndRamClearMeters } =
+      await import('@/app/api/lib/helpers/collectionReport/reportCreation');
+    const { recalculateMachineCollections } =
+      await import('@/app/api/lib/helpers/collectionReport/recalculation');
 
     for (const col of associatedCollections) {
       if (!col.machineId) continue;
@@ -656,7 +665,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           let movementOut = 0;
 
           if (ramClear) {
-            if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
+            if (
+              ramClearMetersIn !== undefined &&
+              ramClearMetersOut !== undefined
+            ) {
               movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
               movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
             } else {
@@ -678,8 +690,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             prevIn: newPrevIn,
             prevOut: newPrevOut,
             movement,
-            softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-            softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+            softMetersIn:
+              ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+            softMetersOut:
+              ramClear && ramClearMetersOut
+                ? ramClearMetersOut
+                : currentMetersOut,
           };
 
           if (nextReport.sasMeters) {
@@ -702,7 +718,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
             ...collectionUpdate,
           };
 
-          await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+          await updateRegularAndRamClearMeters(
+            updatedNextReport as CollectionDocument
+          );
         }
 
         // Re-sync machine's current meters and history from database
@@ -754,7 +772,11 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           metadata: {
             resource: 'collection',
             resourceId: String(collection._id),
-            resourceName: collection.machineCustomName || collection.machineName || collection.machineId || 'Machine',
+            resourceName:
+              collection.machineCustomName ||
+              collection.machineName ||
+              collection.machineId ||
+              'Machine',
             changes: collectionChanges,
             previousData: collection,
             newData: null,

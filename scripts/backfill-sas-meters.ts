@@ -37,11 +37,21 @@ async function backfillSasMeters() {
 
     const machinesCollection = db.collection('machines');
     const totalMachines = await machinesCollection.countDocuments();
-    
+
     console.log(`📊 Found ${totalMachines} total machines to check\n`);
 
     const cursor = machinesCollection
-      .find({}, { projection: { _id: 1, sasMeters: 1, serialNumber: 1, 'custom.name': 1 } })
+      .find(
+        {},
+        {
+          projection: {
+            _id: 1,
+            sasMeters: 1,
+            serialNumber: 1,
+            'custom.name': 1,
+          },
+        }
+      )
       .batchSize(BATCH_SIZE);
 
     let checked = 0;
@@ -57,7 +67,10 @@ async function backfillSasMeters() {
       // Check each field in the default list
       for (const [key, defaultValue] of Object.entries(defaultSasMeters)) {
         // Only default to 0 if the field is completely missing (undefined or null)
-        if (currentSasMeters[key] === undefined || currentSasMeters[key] === null) {
+        if (
+          currentSasMeters[key] === undefined ||
+          currentSasMeters[key] === null
+        ) {
           setFields[`sasMeters.${key}`] = defaultValue;
           needsUpdate = true;
         }
@@ -66,8 +79,13 @@ async function backfillSasMeters() {
       const machineLabel = `[${machine._id}] "${machine.custom?.name ?? 'N/A'}" (S/N: ${machine.serialNumber ?? 'N/A'})`;
 
       if (needsUpdate) {
-        console.log(`\n── Machine ${checked}/${totalMachines}: ${machineLabel}`);
-        console.log(`   BEFORE sasMeters:`, JSON.stringify(currentSasMeters, null, 2));
+        console.log(
+          `\n── Machine ${checked}/${totalMachines}: ${machineLabel}`
+        );
+        console.log(
+          `   BEFORE sasMeters:`,
+          JSON.stringify(currentSasMeters, null, 2)
+        );
 
         await machinesCollection.updateOne(
           { _id: machine._id },
@@ -81,13 +99,20 @@ async function backfillSasMeters() {
           const fieldName = dotKey.replace('sasMeters.', '');
           afterSasMeters[fieldName] = value;
         }
-        console.log(`   AFTER  sasMeters:`, JSON.stringify(afterSasMeters, null, 2));
+        console.log(
+          `   AFTER  sasMeters:`,
+          JSON.stringify(afterSasMeters, null, 2)
+        );
 
         // Show which fields were backfilled
-        const backfilledKeys = Object.keys(setFields).map((key) => key.replace('sasMeters.', ''));
+        const backfilledKeys = Object.keys(setFields).map(key =>
+          key.replace('sasMeters.', '')
+        );
         console.log(`   ⚡ Backfilled fields: ${backfilledKeys.join(', ')}`);
       } else {
-        console.log(`✔ Machine ${checked}/${totalMachines}: ${machineLabel} — already complete, skipped`);
+        console.log(
+          `✔ Machine ${checked}/${totalMachines}: ${machineLabel} — already complete, skipped`
+        );
       }
     }
 

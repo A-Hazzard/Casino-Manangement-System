@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
 
     if (!machineId || !startDate || !endDate) {
       return NextResponse.json(
-        { success: false, error: 'machineId, startDate, and endDate are required' },
+        {
+          success: false,
+          error: 'machineId, startDate, and endDate are required',
+        },
         { status: 400 }
       );
     }
@@ -67,7 +70,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

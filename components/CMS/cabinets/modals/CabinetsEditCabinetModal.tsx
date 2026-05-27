@@ -71,8 +71,6 @@ export default function CabinetsEditCabinetModal({
   const [collectionMultiplierError, setCollectionMultiplierError] =
     useState<string>('');
 
-
-
   // ============================================================================
   // Helpers & Handlers
   // ============================================================================
@@ -268,7 +266,6 @@ export default function CabinetsEditCabinetModal({
   useEffect(() => {
     userModifiedFieldsRef.current = userModifiedFields;
   }, [userModifiedFields]);
-
 
   useEffect(() => {
     // Initial form data setup from selected cabinet
@@ -799,8 +796,10 @@ export default function CabinetsEditCabinetModal({
       if (pendingCollectionSettings) {
         // Map collectionSettings back to backend-expected format
         // We send what's in formData.collectionSettings if ANY part of it changed
-        updatePayload.collectionTime = formData.collectionSettings?.lastCollectionTime || formData.collectionTime;
-        
+        updatePayload.collectionTime =
+          formData.collectionSettings?.lastCollectionTime ||
+          formData.collectionTime;
+
         updatePayload.collectionMeters = {
           metersIn: Number(formData.collectionSettings?.lastMetersIn) || 0,
           metersOut: Number(formData.collectionSettings?.lastMetersOut) || 0,

@@ -260,8 +260,8 @@ See [`isEditing` Flag System](#isediting-flag-system---unsaved-changes-protectio
 
 To maintain data integrity and accurate mathematical flow between sequential reports, the collections engine enforces the following strict chronological rules:
 
-1. **Middle-Date Blocking**: A new collection report cannot be inserted if its timestamp falls exactly *between* two existing reports for any machine in the report. This per-machine check prevents breaking the contiguous timeline.
-2. **Cascade Updates**: Editing a machine's values in an *older* report automatically triggers a cascade update. The system finds the chronologically next report for that machine, updates its `prevMetersIn/Out` (or `prevSasMetersIn/Out` in V2), and recalculates its movement to reflect the corrected baseline.
+1. **Middle-Date Blocking**: A new collection report cannot be inserted if its timestamp falls exactly _between_ two existing reports for any machine in the report. This per-machine check prevents breaking the contiguous timeline.
+2. **Cascade Updates**: Editing a machine's values in an _older_ report automatically triggers a cascade update. The system finds the chronologically next report for that machine, updates its `prevMetersIn/Out` (or `prevSasMetersIn/Out` in V2), and recalculates its movement to reflect the corrected baseline.
 3. **Location ID Enforcement**: Meter objects are strictly saved using the machine's `locationId` (ObjectId) rather than falling back to the location name string. This prevents referential integrity issues during RAM clear toggles and ensures ID-based backend aggregations succeed.
 4. **RAM Clear Timing**: When a RAM clear occurs, the system generates two Meter documents. The post-reset "Current" meter is logged exactly at the collection time. The pre-reset "RAM Clear" peak meter is logged exactly 1 second prior (`collectionTime - 1000ms`). This ensures queries process them in the correct sequential order.
 
@@ -2176,7 +2176,9 @@ This fix ensures that editing collection reports maintains the same data integri
 ### SAS Manual Time Window Override & Recalculation (Added May 19, 2026)
 
 #### The Problem: Manual Time Updates Stalling Metrics
+
 When operators manually adjusted SAS start or end times inside the V1 edit modal, the client would send `sasStartTime` and `sasEndTime` in the request body. However:
+
 1. **Recalculation Skipped**: The API's Step 7 recalculation block was only triggered if the main timestamp or the physical meters changed. A pure adjustment of SAS times did not trigger recalculation, leaving the financial metrics (`drop`, `gross`, `totalCancelledCredits`) calculated for the old range.
 2. **Auto-Detect Collision**: When step 7 did run, `getSasTimePeriod` would auto-detect the start time from the previous collection rather than respecting the operator's manual selection.
 3. **Mongoose Subdocument Spread Mutation**: Spreading a live Mongoose subdocument directly:
@@ -2184,12 +2186,14 @@ When operators manually adjusted SAS start or end times inside the V1 edit modal
    updateData.sasMeters = {
      ...originalCollection.sasMeters,
      // ...
-   }
+   };
    ```
    copied Mongoose's internal states, getters, and document properties (`_doc`, `$__`). This confused Mongoose during save operations, causing updates to not persist.
 
 #### The Fix:
+
 1. **Detection Flag**: Added `sasTimesChanged` in Step 5:
+
    ```typescript
    const existingSasStartTime = originalCollection.sasMeters?.sasStartTime
      ? new Date(originalCollection.sasMeters.sasStartTime).getTime()
@@ -2204,13 +2208,15 @@ When operators manually adjusted SAS start or end times inside the V1 edit modal
      (updateData.sasEndTime !== undefined &&
        new Date(updateData.sasEndTime).getTime() !== existingSasEndTime);
    ```
+
 2. **Recalculation Trigger**: Included `sasTimesChanged` in the Step 7 condition: `if (timestampChanged || metersChanged || sasTimesChanged)`.
 3. **Force Custom Windows**: When only SAS times are overridden, they are supplied directly as `customStartTime` / `customEndTime` to `getSasTimePeriod` so the system respects the manual range instead of auto-detecting the start time.
 4. **Mongoose Document to Plain Object**: Convert the mongoose document using `.toObject()` before spreading to strip the Mongoose helpers/internals:
    ```typescript
-   const originalCollectionObj = originalCollection && typeof originalCollection.toObject === 'function'
-     ? originalCollection.toObject()
-     : originalCollection;
+   const originalCollectionObj =
+     originalCollection && typeof originalCollection.toObject === 'function'
+       ? originalCollection.toObject()
+       : originalCollection;
    const existingSasMetersObj = originalCollectionObj.sasMeters || {};
    ```
 

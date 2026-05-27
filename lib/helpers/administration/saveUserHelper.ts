@@ -136,9 +136,8 @@ export async function saveUserHelper({
   }
 
   if (
-    (
-      updated as { reviewerMultiplierStartTime?: string | Date | null }
-    ).reviewerMultiplierStartTime !== undefined
+    (updated as { reviewerMultiplierStartTime?: string | Date | null })
+      .reviewerMultiplierStartTime !== undefined
   ) {
     originalData.reviewerMultiplierStartTime =
       selectedUser.reviewerMultiplierStartTime || null;
@@ -218,9 +217,8 @@ export async function saveUserHelper({
   }
 
   if (
-    (
-      updated as { reviewerMultiplierStartTime?: string | Date | null }
-    ).reviewerMultiplierStartTime !== undefined
+    (updated as { reviewerMultiplierStartTime?: string | Date | null })
+      .reviewerMultiplierStartTime !== undefined
   ) {
     updatePayload.reviewerMultiplierStartTime = (
       updated as { reviewerMultiplierStartTime: string | Date | null }

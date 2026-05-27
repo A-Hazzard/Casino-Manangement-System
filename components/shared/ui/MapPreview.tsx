@@ -442,7 +442,8 @@ export default function MapPreview(props: MapPreviewProps) {
     if (location.googleMapsLink) return false;
     if (location.geoCoords) {
       const validLongitude = getValidLongitude(location.geoCoords);
-      if (location.geoCoords.latitude && location.geoCoords.latitude !== 0) return false;
+      if (location.geoCoords.latitude && location.geoCoords.latitude !== 0)
+        return false;
       if (validLongitude !== undefined && validLongitude !== 0) return false;
     }
     return true;
@@ -455,7 +456,11 @@ export default function MapPreview(props: MapPreviewProps) {
         ? allLocations
         : allLocations?.filter(loc => matchesLicencee(loc, normalizedSelected));
 
-    return source?.filter(loc => isActiveLocation(loc) && isMissingCoordinates(loc)) || [];
+    return (
+      source?.filter(
+        loc => isActiveLocation(loc) && isMissingCoordinates(loc)
+      ) || []
+    );
   }, [props.gamingLocations, normalizedSelected]);
 
   const totalActiveLicenceeLocations = useMemo(() => {
@@ -849,7 +854,10 @@ export default function MapPreview(props: MapPreviewProps) {
             <div className="flex items-center gap-1.5 text-[10px] text-yellow-800 sm:gap-2 sm:text-xs">
               <MapPin className="h-2.5 w-2.5 flex-shrink-0 sm:h-3 sm:w-3" />
               <span>
-                <strong>{locationsWithoutCoords.length}/{totalActiveLicenceeLocations}</strong> locations without coordinates
+                <strong>
+                  {locationsWithoutCoords.length}/{totalActiveLicenceeLocations}
+                </strong>{' '}
+                locations without coordinates
               </span>
             </div>
             {locationsWithoutCoords.length <= 3 && (
@@ -991,7 +999,11 @@ export default function MapPreview(props: MapPreviewProps) {
                 <div className="flex items-center gap-2 text-xs text-yellow-800 sm:text-sm">
                   <MapPin className="h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
                   <span>
-                    <strong>{locationsWithoutCoords.length}/{totalActiveLicenceeLocations}</strong> locations without coordinates
+                    <strong>
+                      {locationsWithoutCoords.length}/
+                      {totalActiveLicenceeLocations}
+                    </strong>{' '}
+                    locations without coordinates
                   </span>
                 </div>
                 {locationsWithoutCoords.length <= 5 && (

@@ -140,7 +140,10 @@ export default function CollectionReportV2DeleteSessionModal({
               <div className="text-center">
                 <p className="mb-2 text-lg font-semibold text-grayHighlight">
                   What would you like to do with session{' '}
-                  <span className="font-bold text-buttonActive">#{shortId}</span>?
+                  <span className="font-bold text-buttonActive">
+                    #{shortId}
+                  </span>
+                  ?
                 </p>
                 <p className="mb-6 text-sm text-grayHighlight/70">
                   Choose how you want to remove this session.
@@ -174,7 +177,9 @@ export default function CollectionReportV2DeleteSessionModal({
                       <Trash2 className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-red-800">Permanent Delete</p>
+                      <p className="font-semibold text-red-800">
+                        Permanent Delete
+                      </p>
                       <p className="text-xs text-red-700/80">
                         Remove permanently. This action cannot be undone.
                       </p>
@@ -194,11 +199,14 @@ export default function CollectionReportV2DeleteSessionModal({
                 </div>
                 <p className="mb-4 text-lg font-semibold text-grayHighlight">
                   Archive session{' '}
-                  <span className="font-bold text-buttonActive">#{shortId}</span>?
+                  <span className="font-bold text-buttonActive">
+                    #{shortId}
+                  </span>
+                  ?
                 </p>
                 <p className="text-sm text-grayHighlight">
-                  The session will be hidden from active views but its data is preserved.
-                  Drive images for this session will be deleted.
+                  The session will be hidden from active views but its data is
+                  preserved. Drive images for this session will be deleted.
                 </p>
               </div>
             )}
@@ -213,7 +221,10 @@ export default function CollectionReportV2DeleteSessionModal({
                 </div>
                 <p className="mb-4 text-lg font-semibold text-grayHighlight">
                   Permanently delete session{' '}
-                  <span className="font-bold text-buttonActive">#{shortId}</span>?
+                  <span className="font-bold text-buttonActive">
+                    #{shortId}
+                  </span>
+                  ?
                 </p>
                 <p className="text-sm text-red-700">
                   All machine records and Drive images for this session will be

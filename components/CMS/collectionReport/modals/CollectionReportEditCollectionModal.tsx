@@ -171,7 +171,7 @@ function DesktopEditWrapper({
         );
         if (isNoSmib) return;
 
-          const machinesForCheck = desktopHook.collectedMachineEntries.map(
+        const machinesForCheck = desktopHook.collectedMachineEntries.map(
           entry => ({
             machineId: entry.machineId,
             machineName:

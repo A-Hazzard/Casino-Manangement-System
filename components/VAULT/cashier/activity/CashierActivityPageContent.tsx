@@ -21,7 +21,7 @@ export default function CashierActivityPageContent() {
   // ============================================================================
   const { user } = useAuth();
   const { formatAmount } = useCurrencyFormat();
-  
+
   // ============================================================================
   // Local State
   // ============================================================================
@@ -78,7 +78,6 @@ export default function CashierActivityPageContent() {
   return (
     <PageLayout showHeader={false}>
       <div className="space-y-6">
-        
         {/* Header Section */}
         <VaultManagerHeader
           title="My Activity"

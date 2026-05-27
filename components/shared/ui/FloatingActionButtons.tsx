@@ -49,7 +49,7 @@ export const FloatingActionButtons = ({
   const [mounted, setMounted] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const { user } = useUserStore();
-  
+
   const {
     notifications: storeNotifications,
     unreadCount,
@@ -89,8 +89,6 @@ export const FloatingActionButtons = ({
     const interval = setInterval(refreshPendingCount, 60_000);
     return () => clearInterval(interval);
   }, [refreshPendingCount]);
-
-
 
   // ============================================================================
   // Render

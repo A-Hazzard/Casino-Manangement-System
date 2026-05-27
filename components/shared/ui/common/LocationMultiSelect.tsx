@@ -126,136 +126,138 @@ export default function LocationMultiSelect({
 
         <PopoverContent
           align="start"
-          className="w-[var(--radix-popover-trigger-width)] z-[100002] max-h-96 overflow-auto p-0"
+          className="z-[100002] max-h-96 w-[var(--radix-popover-trigger-width)] overflow-auto p-0"
         >
           <div className="w-full bg-white">
-          {/* Header with search and clear button */}
-          <div className="border-b border-gray-100 p-2">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">
-                Locations
-              </span>
-              {selectedLocations.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleClearAll();
-                  }}
-                  className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
-                >
-                  Clear all
-                </Button>
+            {/* Header with search and clear button */}
+            <div className="border-b border-gray-100 p-2">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">
+                  Locations
+                </span>
+                {selectedLocations.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleClearAll();
+                    }}
+                    className="h-6 px-2 text-xs text-red-600 hover:text-red-700"
+                  >
+                    Clear all
+                  </Button>
+                )}
+              </div>
+              {/* Search input */}
+              {showSearch && (
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search locations..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="h-8 pl-8 text-sm"
+                    onClick={e => e.stopPropagation()}
+                  />
+                </div>
               )}
             </div>
-            {/* Search input */}
-            {showSearch && (
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search locations..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="h-8 pl-8 text-sm"
-                  onClick={e => e.stopPropagation()}
-                />
+
+            {/* Select All Option */}
+            {locations.length > 0 && (
+              <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-100">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {allSelected ? 'Deselect All' : 'Select All'} (
+                    {locations.length})
+                  </span>
+                  {someSelected && !allSelected && (
+                    <span className="ml-auto text-xs text-gray-500">
+                      {selectedLocations.length} selected
+                    </span>
+                  )}
+                </label>
               </div>
             )}
-          </div>
 
-          {/* Select All Option */}
-          {locations.length > 0 && (
-            <div className="border-b border-gray-200 bg-gray-50 px-3 py-2">
-              <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-100">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={handleSelectAll}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {allSelected ? 'Deselect All' : 'Select All'} (
-                  {locations.length})
-                </span>
-                {someSelected && !allSelected && (
-                  <span className="ml-auto text-xs text-gray-500">
-                    {selectedLocations.length} selected
-                  </span>
-                )}
-              </label>
-            </div>
-          )}
-
-          {/* Options */}
-          <div className="py-1">
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-gray-500">
-                {locations.length === 0
-                  ? 'No locations available'
-                  : 'No locations found'}
-              </div>
-            ) : (
-              filteredOptions.map(option => {
-                const isSelected = selectedLocations.includes(option.id);
-                return (
-                  <div
-                    key={option.id}
-                    className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
-                      isSelected ? 'bg-blue-50' : ''
-                    }`}
-                    onClick={() => handleToggleLocation(option.id)}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <div className="flex-shrink-0">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleToggleLocation(option.id)}
-                          className="h-4 w-4"
-                          onClick={e => e.stopPropagation()}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-gray-900">
-                          {option.name}
+            {/* Options */}
+            <div className="py-1">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-sm text-gray-500">
+                  {locations.length === 0
+                    ? 'No locations available'
+                    : 'No locations found'}
+                </div>
+              ) : (
+                filteredOptions.map(option => {
+                  const isSelected = selectedLocations.includes(option.id);
+                  return (
+                    <div
+                      key={option.id}
+                      className={`flex cursor-pointer items-center justify-between px-3 py-2 hover:bg-gray-50 ${
+                        isSelected ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => handleToggleLocation(option.id)}
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <div className="flex-shrink-0">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              handleToggleLocation(option.id)
+                            }
+                            className="h-4 w-4"
+                            onClick={e => e.stopPropagation()}
+                          />
                         </div>
-                        {showSasBadge && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge
-                              variant={
-                                option.sasEnabled ? 'default' : 'secondary'
-                              }
-                              className={`text-xs ${
-                                option.sasEnabled
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
-                            </Badge>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-gray-900">
+                            {option.name}
                           </div>
-                        )}
+                          {showSasBadge && (
+                            <div className="mt-1 flex items-center gap-2">
+                              <Badge
+                                variant={
+                                  option.sasEnabled ? 'default' : 'secondary'
+                                }
+                                className={`text-xs ${
+                                  option.sasEnabled
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              )}
+            </div>
+
+            {/* Footer with selection count */}
+            {selectedLocations.length > 0 && (
+              <div className="border-t border-gray-100 bg-gray-50 p-2">
+                <div className="text-xs text-gray-600">
+                  {selectedLocations.length} location
+                  {selectedLocations.length > 1 ? 's' : ''} selected
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Footer with selection count */}
-          {selectedLocations.length > 0 && (
-            <div className="border-t border-gray-100 bg-gray-50 p-2">
-              <div className="text-xs text-gray-600">
-                {selectedLocations.length} location
-                {selectedLocations.length > 1 ? 's' : ''} selected
-              </div>
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  </div>
-);
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }

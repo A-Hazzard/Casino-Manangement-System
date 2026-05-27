@@ -42,7 +42,6 @@ type MembersEditMemberModalProps = {
   onMemberUpdated: () => void;
 };
 
-
 /**
  * Members Edit Member Modal Component
  */

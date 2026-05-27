@@ -153,8 +153,22 @@ export type CollectionReportDesktopUIProps = {
   onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
-  searchType: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId';
-  onSearchTypeChange: (type: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId') => void;
+  searchType:
+    | 'collector'
+    | 'location'
+    | 'sessionId'
+    | 'locationReportId'
+    | 'locationId'
+    | 'collectorId';
+  onSearchTypeChange: (
+    type:
+      | 'collector'
+      | 'location'
+      | 'sessionId'
+      | 'locationReportId'
+      | 'locationId'
+      | 'collectorId'
+  ) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
@@ -182,8 +196,22 @@ export type CollectionReportMobileUIProps = {
   onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
-  searchType: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId';
-  onSearchTypeChange: (type: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId') => void;
+  searchType:
+    | 'collector'
+    | 'location'
+    | 'sessionId'
+    | 'locationReportId'
+    | 'locationId'
+    | 'collectorId';
+  onSearchTypeChange: (
+    type:
+      | 'collector'
+      | 'location'
+      | 'sessionId'
+      | 'locationReportId'
+      | 'locationId'
+      | 'collectorId'
+  ) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
@@ -390,8 +418,22 @@ export type CollectionReportFiltersProps = {
   onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
-  searchType: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId';
-  onSearchTypeChange: (type: 'collector' | 'location' | 'sessionId' | 'locationReportId' | 'locationId' | 'collectorId') => void;
+  searchType:
+    | 'collector'
+    | 'location'
+    | 'sessionId'
+    | 'locationReportId'
+    | 'locationId'
+    | 'collectorId';
+  onSearchTypeChange: (
+    type:
+      | 'collector'
+      | 'location'
+      | 'sessionId'
+      | 'locationReportId'
+      | 'locationId'
+      | 'collectorId'
+  ) => void;
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;

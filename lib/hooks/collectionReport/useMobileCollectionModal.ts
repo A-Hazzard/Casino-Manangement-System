@@ -816,14 +816,16 @@ export function useMobileCollectionModal({
           newStack.pop(); // Pop the 'form' panel
         }
 
-        const topPanel = newStack.length > 0 ? newStack[newStack.length - 1] : null;
+        const topPanel =
+          newStack.length > 0 ? newStack[newStack.length - 1] : null;
 
         return {
           ...prev,
           collectedMachines: newCollectedMachines,
           lockedLocationId: newLockedLocationId, // Lock on first machine
           isFormVisible: false,
-          isMachineListVisible: topPanel === 'machine-list' || topPanel === null,
+          isMachineListVisible:
+            topPanel === 'machine-list' || topPanel === null,
           isCollectedListVisible: topPanel === 'list',
           navigationStack: newStack,
           selectedMachine: null,

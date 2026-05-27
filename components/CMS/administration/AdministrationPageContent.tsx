@@ -271,7 +271,6 @@ export default function AdministrationPageContent() {
 
   // Prevent hydration mismatch
 
-
   if (!mounted) return null;
 
   // ============================================================================

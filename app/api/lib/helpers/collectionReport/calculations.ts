@@ -276,7 +276,10 @@ export async function computeTotalVariation(
       endTime: new Date(collection.sasMeters!.sasEndTime!),
     }));
 
-  const meterDataMap = new Map<string, { drop: number; cancelled: number; jackpot: number }>();
+  const meterDataMap = new Map<
+    string,
+    { drop: number; cancelled: number; jackpot: number }
+  >();
   if (meterQueries.length > 0) {
     const cursor = Meters.aggregate([
       {

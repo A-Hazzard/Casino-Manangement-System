@@ -217,7 +217,10 @@ export function safeFormatDate(
  * @param depth - Current recursion depth
  * @returns Formatted string
  */
-function formatObjectRecursively(obj: Record<string, unknown>, depth = 0): string {
+function formatObjectRecursively(
+  obj: Record<string, unknown>,
+  depth = 0
+): string {
   if (depth > 3) return '[Object]';
 
   const formatKey = (key: string): string => {
@@ -252,7 +255,8 @@ function formatObjectRecursively(obj: Record<string, unknown>, depth = 0): strin
   const entries = Object.entries(obj)
     .filter(([k, v]) => {
       // Filter out internal fields and empty/null/undefined values
-      if (['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(k)) return false;
+      if (['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(k))
+        return false;
       return v !== null && v !== undefined && v !== '';
     })
     .map(([k, v]) => {
@@ -262,7 +266,10 @@ function formatObjectRecursively(obj: Record<string, unknown>, depth = 0): strin
           if (v.length === 0) return `${prettyKey}: Empty`;
           const formattedItems = v.map((item: unknown) => {
             if (typeof item === 'object' && item !== null) {
-              return formatObjectRecursively(item as Record<string, unknown>, depth + 1);
+              return formatObjectRecursively(
+                item as Record<string, unknown>,
+                depth + 1
+              );
             }
             return String(item);
           });
@@ -305,13 +312,18 @@ export function formatValue(value: unknown, fieldName?: string): string {
   if (typeof parsedValue === 'boolean') return parsedValue ? 'Yes' : 'No';
 
   // Special handling for complex field types
-  if (fieldName === 'profile' && typeof parsedValue === 'object' && parsedValue !== null) {
+  if (
+    fieldName === 'profile' &&
+    typeof parsedValue === 'object' &&
+    parsedValue !== null
+  ) {
     return formatProfileObject(parsedValue as Record<string, unknown>);
   }
 
   // Check if the value is a date string (ISO format or Date object)
   if (typeof parsedValue === 'string' || parsedValue instanceof Date) {
-    const dateValue = typeof parsedValue === 'string' ? parsedValue : parsedValue.toISOString();
+    const dateValue =
+      typeof parsedValue === 'string' ? parsedValue : parsedValue.toISOString();
 
     // Check if it's a valid ISO date string with time (more flexible regex)
     const isoDateTimeRegex =
@@ -387,7 +399,10 @@ export function formatValue(value: unknown, fieldName?: string): string {
     if (keys.length === 0) return 'Empty object';
 
     // Check for sasMeters object
-    if (fieldName === 'sasMeters' || ('drop' in parsedValue && 'gross' in parsedValue)) {
+    if (
+      fieldName === 'sasMeters' ||
+      ('drop' in parsedValue && 'gross' in parsedValue)
+    ) {
       const sas = parsedValue as Record<string, unknown>;
       return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
     }
@@ -395,7 +410,9 @@ export function formatValue(value: unknown, fieldName?: string): string {
     // Check for movement object
     if (
       fieldName === 'movement' ||
-      ('metersIn' in parsedValue && 'metersOut' in parsedValue && 'gross' in parsedValue)
+      ('metersIn' in parsedValue &&
+        'metersOut' in parsedValue &&
+        'gross' in parsedValue)
     ) {
       const movementData = parsedValue as Record<string, unknown>;
       return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
@@ -458,7 +475,11 @@ export function formatValue(value: unknown, fieldName?: string): string {
     }
 
     // Check if it's an address object
-    if ('street' in parsedValue || 'city' in parsedValue || 'country' in parsedValue) {
+    if (
+      'street' in parsedValue ||
+      'city' in parsedValue ||
+      'country' in parsedValue
+    ) {
       const address = parsedValue as Record<string, unknown>;
       const parts = [];
       if (address.street && address.street !== '')

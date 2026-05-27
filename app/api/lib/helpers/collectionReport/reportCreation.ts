@@ -27,7 +27,11 @@ import {
 } from './calculations';
 import { generateMongoId } from '../../../../../lib/utils/id';
 import { Meters } from '../../models/meters';
-import type { MetersData, GamingMachine } from '../../../../../shared/types';
+import type {
+  MetersData,
+  GamingMachine,
+  MeterDocument,
+} from '../../../../../shared/types';
 import { Collections } from '../../models/collections';
 import { GamingLocations } from '../../models/gaminglocations';
 
@@ -270,13 +274,14 @@ async function updateMachineCollectionData(
 
   if (!currentMachine) return;
 
-  // Fetch location to check for noSMIBLocation flag
-  const gamingLocation = currentMachine.gamingLocation
-    ? await GamingLocations.findOne({
-        _id: currentMachine.gamingLocation,
-      }).lean<{ noSMIBLocation?: boolean }>()
-    : null;
-  const isNoSasLocation = gamingLocation?.noSMIBLocation === true;
+  // Per-machine SMIB check: fetch relayId directly from the Machine document.
+  // A machine with a relayId has a SAS relay; its sasMeters are owned by the relay
+  // and must never be overwritten here.
+  const machineForRelay = await Machine.findOne(
+    { _id: machineId },
+    'relayId'
+  ).lean<{ relayId?: string | null }>();
+  const isNoSasLocation = !machineForRelay?.relayId;
 
   const currentCollectionMeters = currentMachine.collectionMeters;
   const currentMachineCollectionTime = currentMachine.collectionTime;
@@ -492,16 +497,34 @@ async function createManualMetersForEachMachine(
       `🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`
     );
 
-    const machineDoc = await Machine.findOne({ _id: machine.machineId }).lean<any>();
+    const machineDoc = await Machine.findOne({ _id: machine.machineId }).lean<{
+      relayId?: string | null;
+      lastActivity?: Date | string;
+    }>();
     const hasRelay = !!machineDoc?.relayId;
-    const isOffline = hasRelay && (!machineDoc?.lastActivity || (new Date().getTime() - new Date(machineDoc.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
+    const isOffline =
+      hasRelay &&
+      (!machineDoc?.lastActivity ||
+        new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
+          3 * 24 * 60 * 60 * 1000);
 
-    let prevMeterDoc: any = null;
+    // SMIB machines have a relay that supplies Meter documents automatically;
+    // only create manual meters for non-relay machines.
+    if (hasRelay) {
+      console.log(
+        `⏭️ [createManualMetersForEachMachine] Skipping SMIB machine ${machine.machineId} (has relayId)`
+      );
+      continue;
+    }
+
+    let prevMeterDoc: MeterDocument | null = null;
     if (isOffline) {
       prevMeterDoc = await Meters.findOne({
         machine: machine.machineId,
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-      }).sort({ readAt: -1 }).lean();
+      })
+        .sort({ readAt: -1 })
+        .lean<MeterDocument>();
     }
 
     const collectionId = machine.collectionId;
@@ -551,14 +574,20 @@ async function createManualMetersForEachMachine(
           totalWonCredits: 0,
           drop: ramClearMovementIn,
         },
-        coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
-        coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
-        jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
-        totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
-        currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
-        totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
-        gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
-        gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+        coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
+        coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
+        jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
+        totalHandPaidCancelledCredits:
+          isOffline && prevMeterDoc
+            ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+            : 0,
+        currentCredits:
+          isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
+        totalWonCredits:
+          isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
+        gamesPlayed:
+          isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
+        gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
         totalCancelledCredits: ramClearMetersOut,
         drop: ramClearMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
@@ -653,14 +682,20 @@ async function createManualMetersForEachMachine(
           totalWonCredits: 0,
           drop: movementIn, // movement.drop
         },
-        coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
-        coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
-        jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
-        totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
-        currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
-        totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
-        gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
-        gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+        coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
+        coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
+        jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
+        totalHandPaidCancelledCredits:
+          isOffline && prevMeterDoc
+            ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+            : 0,
+        currentCredits:
+          isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
+        totalWonCredits:
+          isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
+        gamesPlayed:
+          isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
+        gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
         totalCancelledCredits: currentMetersOut, // NOT movementOut
         drop: currentMetersIn, // NOT movementIn
         meterSource: 'COLLECTION_REPORT' as const,
@@ -766,9 +801,7 @@ export async function updateRegularAndRamClearMeters(
       collectionDocument.timestamp ??
       new Date();
     const newReadAt =
-      typeof newReadAtVal === 'string'
-        ? new Date(newReadAtVal)
-        : newReadAtVal;
+      typeof newReadAtVal === 'string' ? new Date(newReadAtVal) : newReadAtVal;
     const now = new Date();
 
     console.log(
@@ -777,22 +810,35 @@ export async function updateRegularAndRamClearMeters(
 
     let locationId = '';
     let isOffline = false;
-    let prevMeterDoc: any = null;
+    let prevMeterDoc: MeterDocument | null = null;
 
     if (collectionDocument.machineId) {
       const machineDoc = await Machine.findOne({
         _id: collectionDocument.machineId,
-      }).lean<any>();
+      }).lean<{
+        gamingLocation?: string;
+        relayId?: string | null;
+        lastActivity?: Date | string;
+      }>();
       if (machineDoc?.gamingLocation) {
         locationId = String(machineDoc.gamingLocation);
       }
 
       const hasRelay = !!machineDoc?.relayId;
-      isOffline = hasRelay && (!machineDoc?.lastActivity || (new Date().getTime() - new Date(machineDoc.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
+      if (hasRelay) {
+        console.log(
+          `⏭️ [updateRegularAndRamClearMeters] Skipping SMIB machine ${collectionDocument.machineId} (has relayId)`
+        );
+        return { success: true };
+      }
+      isOffline =
+        hasRelay &&
+        (!machineDoc?.lastActivity ||
+          new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
+            3 * 24 * 60 * 60 * 1000);
     }
 
     const isRamClear = !!collectionDocument.ramClear;
-
 
     // Determine meter IDs — prefer IDs already stored on the collection document
     // so that we never change what the collection points to unless there truly is none.
@@ -818,7 +864,9 @@ export async function updateRegularAndRamClearMeters(
         _id: { $nin: [meterId, ramClearMeterId].filter(Boolean) },
         readAt: { $lt: newReadAt },
         $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-      }).sort({ readAt: -1 }).lean();
+      })
+        .sort({ readAt: -1 })
+        .lean<MeterDocument>();
     }
 
     // ============================================================================
@@ -864,14 +912,27 @@ export async function updateRegularAndRamClearMeters(
                 totalWonCredits: 0,
                 drop: ramClearMovementIn,
               },
-              coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
-              coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
-              jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
-              totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
-              currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
-              totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
-              gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
-              gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+              coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
+              coinOut:
+                isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
+              jackpot:
+                isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
+              totalHandPaidCancelledCredits:
+                isOffline && prevMeterDoc
+                  ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+                  : 0,
+              currentCredits:
+                isOffline && prevMeterDoc
+                  ? prevMeterDoc.currentCredits || 0
+                  : 0,
+              totalWonCredits:
+                isOffline && prevMeterDoc
+                  ? prevMeterDoc.totalWonCredits || 0
+                  : 0,
+              gamesPlayed:
+                isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
+              gamesWon:
+                isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
               totalCancelledCredits: ramClearMetersOut,
               drop: ramClearMetersIn,
               meterSource: 'COLLECTION_REPORT' as const,
@@ -894,8 +955,8 @@ export async function updateRegularAndRamClearMeters(
 
     // 2. Regular (current) meter — always present
     if (meterId) {
-      const regularPrevIn = isRamClear ? 0 : (collectionDocument.prevIn || 0);
-      const regularPrevOut = isRamClear ? 0 : (collectionDocument.prevOut || 0);
+      const regularPrevIn = isRamClear ? 0 : collectionDocument.prevIn || 0;
+      const regularPrevOut = isRamClear ? 0 : collectionDocument.prevOut || 0;
       const currentMetersIn = collectionDocument.metersIn || 0;
       const currentMetersOut = collectionDocument.metersOut || 0;
       const movementIn = currentMetersIn - regularPrevIn;
@@ -924,14 +985,46 @@ export async function updateRegularAndRamClearMeters(
                 totalWonCredits: 0,
                 drop: movementIn,
               },
-              coinIn: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.coinIn || 0)) : 0,
-              coinOut: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.coinOut || 0)) : 0,
-              jackpot: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.jackpot || 0)) : 0,
-              totalHandPaidCancelledCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.totalHandPaidCancelledCredits || 0)) : 0,
-              currentCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.currentCredits || 0)) : 0,
-              totalWonCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.totalWonCredits || 0)) : 0,
-              gamesPlayed: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.gamesPlayed || 0)) : 0,
-              gamesWon: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.gamesWon || 0)) : 0,
+              coinIn: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.coinIn || 0
+                : 0,
+              coinOut: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.coinOut || 0
+                : 0,
+              jackpot: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.jackpot || 0
+                : 0,
+              totalHandPaidCancelledCredits: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.totalHandPaidCancelledCredits || 0
+                : 0,
+              currentCredits: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.currentCredits || 0
+                : 0,
+              totalWonCredits: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.totalWonCredits || 0
+                : 0,
+              gamesPlayed: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.gamesPlayed || 0
+                : 0,
+              gamesWon: isOffline
+                ? isRamClear
+                  ? 0
+                  : prevMeterDoc?.gamesWon || 0
+                : 0,
               totalCancelledCredits: currentMetersOut,
               drop: currentMetersIn,
               meterSource: 'COLLECTION_REPORT' as const,
@@ -1054,7 +1147,9 @@ export async function createCollectionReport(
     let resolvedCollectorName = body.collectorName;
     if (!resolvedCollectorName && body.collector) {
       try {
-        const userDoc = await UserModel.findOne({ _id: body.collector }).lean<{ username?: string }>();
+        const userDoc = await UserModel.findOne({ _id: body.collector }).lean<{
+          username?: string;
+        }>();
         if (userDoc?.username) {
           resolvedCollectorName = userDoc.username;
         }
@@ -1185,42 +1280,36 @@ export async function createCollectionReport(
       );
     }
 
-    // Only create manual meters for no-SMIB locations
-    const reportLocation = await GamingLocations.findOne({
-      _id: body.location,
-    }).lean<{ noSMIBLocation?: boolean }>();
-    if (reportLocation?.noSMIBLocation) {
-      const collectionIds = body.collectionIds || [];
+    // Create manual meters for each non-relay machine in this collection.
+    // The function skips machines that have a relayId (SMIB machines) internally,
+    // so we can call it unconditionally for all machines.
+    const collectionIds = body.collectionIds || [];
 
-      // Use each machine's timestamp from the payload directly — it is the authoritative
-      // collection end time set by the user and already stored on the collection document.
-      // Re-querying the DB and pulling sasMeters.sasEndTime introduced stale timestamps.
-      const machinesWithCollectionIds = body.machines?.map(
-        (machine, index) => ({
-          ...machine,
-          collectionId: collectionIds[index],
-        })
-      );
+    // Use each machine's timestamp from the payload directly — it is the authoritative
+    // collection end time set by the user and already stored on the collection document.
+    // Re-querying the DB and pulling sasMeters.sasEndTime introduced stale timestamps.
+    const machinesWithCollectionIds = body.machines?.map((machine, index) => ({
+      ...machine,
+      collectionId: collectionIds[index],
+    }));
 
-      const firstMachine = machinesWithCollectionIds?.[0];
-      const sasEndTime = firstMachine?.timestamp
-        ? new Date(firstMachine.timestamp)
-        : new Date();
-      await createManualMetersForEachMachine(
-        machinesWithCollectionIds,
-        sasEndTime
-      );
-    } else
-      console.log(
-        '[createCollectionReport] Skipping manual meter creation — location is not a SMIB location'
-      );
+    const firstMachine = machinesWithCollectionIds?.[0];
+    const sasEndTime = firstMachine?.timestamp
+      ? new Date(firstMachine.timestamp)
+      : new Date();
+    await createManualMetersForEachMachine(
+      machinesWithCollectionIds,
+      sasEndTime
+    );
 
     // ============================================================================
     // Update the GamingLocation's previousCollectionTime with the most recent sasEndTime
     // ============================================================================
     if (body.collectionIds && body.collectionIds.length > 0) {
       try {
-        const collections = await Collections.find({ _id: { $in: body.collectionIds } }).lean<{ sasMeters?: { sasEndTime?: Date } }[]>();
+        const collections = await Collections.find({
+          _id: { $in: body.collectionIds },
+        }).lean<{ sasMeters?: { sasEndTime?: Date } }[]>();
         let maxSasEndTime: Date | undefined;
         for (const col of collections) {
           if (col.sasMeters?.sasEndTime) {
@@ -1235,12 +1324,16 @@ export async function createCollectionReport(
             { _id: body.location },
             { $set: { previousCollectionTime: maxSasEndTime } }
           );
-          console.log(`✅ [createCollectionReport] Updated GamingLocation previousCollectionTime to ${maxSasEndTime}`);
+          console.log(
+            `✅ [createCollectionReport] Updated GamingLocation previousCollectionTime to ${maxSasEndTime}`
+          );
         }
       } catch (locationUpdateErr) {
         console.error(
           '[createCollectionReport] Failed to update GamingLocation previousCollectionTime:',
-          locationUpdateErr instanceof Error ? locationUpdateErr.message : 'Unknown error'
+          locationUpdateErr instanceof Error
+            ? locationUpdateErr.message
+            : 'Unknown error'
         );
       }
     }
@@ -1324,8 +1417,10 @@ export async function propagateMetersToNextReport(
       prevIn: newMetersIn,
       prevOut: newMetersOut,
       movement,
-      softMetersIn: ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-      softMetersOut: ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
+      softMetersIn:
+        ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
+      softMetersOut:
+        ramClear && ramClearMetersOut ? ramClearMetersOut : currentMetersOut,
     };
 
     if (nextReport.sasMeters) {
@@ -1351,7 +1446,9 @@ export async function propagateMetersToNextReport(
 
     // Recreate/update the actual Meter documents for the next report
     // This will calculate the new movement (nextReport.metersIn - our new prevIn)
-    const updateResult = await updateRegularAndRamClearMeters(updatedNextReport as CollectionDocument);
+    const updateResult = await updateRegularAndRamClearMeters(
+      updatedNextReport as CollectionDocument
+    );
 
     if (!updateResult.success) {
       console.error(
@@ -1365,9 +1462,9 @@ export async function propagateMetersToNextReport(
     );
     return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error('[propagateMetersToNextReport] Error:', errorMessage);
     return { success: false, error: errorMessage };
   }
 }
-

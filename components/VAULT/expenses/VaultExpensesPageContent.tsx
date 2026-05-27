@@ -96,7 +96,7 @@ export default function VaultExpensesPageContent() {
     useUserStore();
   const locationId = user?.assignedLocations?.[0] || '';
   const { vaultBalance } = useVaultShift();
-  
+
   const [expenses, setExpenses] = useState<VaultTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

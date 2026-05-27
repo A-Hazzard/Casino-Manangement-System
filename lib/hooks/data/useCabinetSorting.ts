@@ -179,7 +179,7 @@ export const useCabinetSorting = ({
         if (firstIsOnline && secondIsOnline) {
           return 0; // Both online, maintain order
         }
-        
+
         // Both offline, compare by time offline (older lastActivity = longer offline)
         const firstTime = firstLastActivity
           ? new Date(firstLastActivity).getTime()
@@ -201,11 +201,21 @@ export const useCabinetSorting = ({
       // For all other sort options, still prioritize online status if available
       const now = Date.now();
       const threeMinutesAgo = now - 3 * 60 * 1000;
-      const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
-      const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
-      
-      const firstIsOnline = firstCabinet.online !== undefined ? firstCabinet.online : (firstLastActivity && new Date(firstLastActivity).getTime() > threeMinutesAgo);
-      const secondIsOnline = secondCabinet.online !== undefined ? secondCabinet.online : (secondLastActivity && new Date(secondLastActivity).getTime() > threeMinutesAgo);
+      const firstLastActivity =
+        firstCabinet.lastActivity || firstCabinet.lastOnline;
+      const secondLastActivity =
+        secondCabinet.lastActivity || secondCabinet.lastOnline;
+
+      const firstIsOnline =
+        firstCabinet.online !== undefined
+          ? firstCabinet.online
+          : firstLastActivity &&
+            new Date(firstLastActivity).getTime() > threeMinutesAgo;
+      const secondIsOnline =
+        secondCabinet.online !== undefined
+          ? secondCabinet.online
+          : secondLastActivity &&
+            new Date(secondLastActivity).getTime() > threeMinutesAgo;
 
       if (firstIsOnline && !secondIsOnline) return -1;
       if (!firstIsOnline && secondIsOnline) return 1;

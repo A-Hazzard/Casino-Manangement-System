@@ -60,7 +60,7 @@ function LoginPageContent() {
     <>
       {/* Background Component */}
       <LiquidGradient />
-      
+
       {/* Main Container */}
       <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
         <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">

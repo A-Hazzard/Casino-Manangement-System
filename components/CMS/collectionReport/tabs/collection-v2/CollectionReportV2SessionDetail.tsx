@@ -63,6 +63,8 @@ type SessionMachine = {
   sessionEndTime?: string;
   imageData?: string;
   metersMatch?: boolean;
+  /** true when this machine has a SMIB relay, false when manual-only */
+  hasRelay?: boolean;
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
@@ -81,7 +83,6 @@ type SessionDetail = {
   sessionStatus: 'in-progress' | 'submitted';
   locationId: string;
   locationName: string;
-  noSMIBLocation?: boolean;
   licencee: string;
   collector: string;
   collectorName: string;
@@ -157,8 +158,10 @@ export default function CollectionReportV2SessionDetail({
   const [useCustomPeriod, setUseCustomPeriod] = useState(false);
   const [customSasStart, setCustomSasStart] = useState('');
   const [customSasEnd, setCustomSasEnd] = useState('');
-  const [machineFirstCollectionTime, setMachineFirstCollectionTime] = useState<Date | null>(null);
-  const [machineLastCollectionTime, setMachineLastCollectionTime] = useState<Date | null>(null);
+  const [machineFirstCollectionTime, setMachineFirstCollectionTime] =
+    useState<Date | null>(null);
+  const [machineLastCollectionTime, setMachineLastCollectionTime] =
+    useState<Date | null>(null);
   const [fetchingCustomMeters, setFetchingCustomMeters] = useState(false);
   const [sasStartOpen, setSasStartOpen] = useState(false);
   const [sasEndOpen, setSasEndOpen] = useState(false);
@@ -278,7 +281,9 @@ export default function CollectionReportV2SessionDetail({
       setCaptureState(
         getInitialCaptureStateForMachine(
           currentMachine,
-          session.noSMIBLocation === true
+          // Per-machine SMIB: use hasRelay from the machine, not session-level flag.
+          // A machine with no relay (hasRelay === false) behaves like noSMIB.
+          currentMachine.hasRelay === false
         )
       );
     }
@@ -343,8 +348,12 @@ export default function CollectionReportV2SessionDetail({
       .then(res => {
         const data = res.data?.data;
         if (data) {
-          setMachineFirstCollectionTime(data.firstCollectionTime ? new Date(data.firstCollectionTime) : null);
-          setMachineLastCollectionTime(data.collectionTime ? new Date(data.collectionTime) : null);
+          setMachineFirstCollectionTime(
+            data.firstCollectionTime ? new Date(data.firstCollectionTime) : null
+          );
+          setMachineLastCollectionTime(
+            data.collectionTime ? new Date(data.collectionTime) : null
+          );
         } else {
           setMachineFirstCollectionTime(null);
           setMachineLastCollectionTime(null);
@@ -357,14 +366,22 @@ export default function CollectionReportV2SessionDetail({
   }, [currentIndex, currentMachine?.machineId, sessionId]);
 
   const targetTime = useCustomPeriod
-    ? (customSasEnd ? new Date(customSasEnd) : null)
-    : (currentMachine?.sasEndTime ? new Date(currentMachine.sasEndTime) : new Date());
+    ? customSasEnd
+      ? new Date(customSasEnd)
+      : null
+    : currentMachine?.sasEndTime
+      ? new Date(currentMachine.sasEndTime)
+      : new Date();
 
   const isMiddleReportWarning = (() => {
     if (machineFirstCollectionTime && machineLastCollectionTime) {
       const startTimeVal = useCustomPeriod
-        ? (customSasStart ? new Date(customSasStart) : null)
-        : (currentMachine?.sasStartTime ? new Date(currentMachine.sasStartTime) : null);
+        ? customSasStart
+          ? new Date(customSasStart)
+          : null
+        : currentMachine?.sasStartTime
+          ? new Date(currentMachine.sasStartTime)
+          : null;
 
       const startInMiddle =
         startTimeVal &&
@@ -516,7 +533,7 @@ export default function CollectionReportV2SessionDetail({
     setCaptureState(
       getInitialCaptureStateForMachine(
         prevMachine,
-        session.noSMIBLocation === true
+        prevMachine.hasRelay === false
       )
     );
     setCurrentIndex(prevIndex);
@@ -537,7 +554,7 @@ export default function CollectionReportV2SessionDetail({
       setCaptureState(
         getInitialCaptureStateForMachine(
           nextMachine,
-          session.noSMIBLocation === true
+          nextMachine.hasRelay === false
         )
       );
       setCurrentIndex(nextIndex);
@@ -556,7 +573,7 @@ export default function CollectionReportV2SessionDetail({
     setSaveError(null);
 
     try {
-      const isNoSMIB = session?.noSMIBLocation === true;
+      const isNoSMIB = currentMachine?.hasRelay === false;
       const isMatch = isNoSMIB ? true : captureState.metersMatch;
       const status = isMatch !== null ? 'confirmed' : 'captured';
 
@@ -759,7 +776,7 @@ export default function CollectionReportV2SessionDetail({
       setCaptureState(
         getInitialCaptureStateForMachine(
           nextMachine,
-          session?.noSMIBLocation === true
+          nextMachine?.hasRelay === false
         )
       );
 
@@ -841,7 +858,7 @@ export default function CollectionReportV2SessionDetail({
       setCaptureState(
         getInitialCaptureStateForMachine(
           nextMachine,
-          session?.noSMIBLocation === true
+          nextMachine?.hasRelay === false
         )
       );
 
@@ -952,7 +969,7 @@ export default function CollectionReportV2SessionDetail({
       setCaptureState(
         getInitialCaptureStateForMachine(
           firstMachine,
-          session?.noSMIBLocation === true
+          firstMachine.hasRelay === false
         )
       );
     }
@@ -1014,6 +1031,10 @@ export default function CollectionReportV2SessionDetail({
       />
     );
   }
+
+  // Per-machine SMIB flag: true when this machine has no SAS relay (manual entry only).
+  // Replace all former `session?.noSMIBLocation` checks in the JSX with this value.
+  const isCurrentMachineNoSMIB = currentMachine.hasRelay === false;
 
   const totalCount = session.machines.length;
   const doneCount = session.machines.filter(
@@ -1218,7 +1239,7 @@ export default function CollectionReportV2SessionDetail({
                     <p className="text-sm font-semibold text-blue-800">
                       Custom collection period
                     </p>
-                    {session?.noSMIBLocation && (
+                    {isCurrentMachineNoSMIB && (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600">
                         Audit only
                       </span>
@@ -1262,7 +1283,9 @@ export default function CollectionReportV2SessionDetail({
                             mode="single"
                             showTime={true}
                             buttonLabel="Apply"
-                            maxDate={customSasEnd ? new Date(customSasEnd) : new Date()}
+                            maxDate={
+                              customSasEnd ? new Date(customSasEnd) : new Date()
+                            }
                             onSelect={range => {
                               if (range?.from) {
                                 setCustomSasStart(range.from.toISOString());
@@ -1305,7 +1328,11 @@ export default function CollectionReportV2SessionDetail({
                             showTime={true}
                             buttonLabel="Apply"
                             maxDate={new Date()}
-                            minDate={customSasStart ? new Date(customSasStart) : undefined}
+                            minDate={
+                              customSasStart
+                                ? new Date(customSasStart)
+                                : undefined
+                            }
                             onSelect={range => {
                               if (range?.from) {
                                 setCustomSasEnd(range.from.toISOString());
@@ -1318,14 +1345,16 @@ export default function CollectionReportV2SessionDetail({
                     </div>
                   </div>
                   {/* Inline error when start >= end */}
-                  {customSasStart && customSasEnd && new Date(customSasStart) >= new Date(customSasEnd) && (
-                    <p className="mt-2 text-xs font-semibold text-red-600">
-                      ⚠️ Start time must be before end time
-                    </p>
-                  )}
+                  {customSasStart &&
+                    customSasEnd &&
+                    new Date(customSasStart) >= new Date(customSasEnd) && (
+                      <p className="mt-2 text-xs font-semibold text-red-600">
+                        ⚠️ Start time must be before end time
+                      </p>
+                    )}
 
                   {/* Apply Period Meters button — SMIB locations only */}
-                  {!session?.noSMIBLocation && (
+                  {!isCurrentMachineNoSMIB && (
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
@@ -1334,9 +1363,11 @@ export default function CollectionReportV2SessionDetail({
                           fetchingCustomMeters ||
                           !customSasStart ||
                           !customSasEnd ||
-                          (!!customSasStart && !!customSasEnd && new Date(customSasStart) >= new Date(customSasEnd))
+                          (!!customSasStart &&
+                            !!customSasEnd &&
+                            new Date(customSasStart) >= new Date(customSasEnd))
                         }
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {fetchingCustomMeters
                           ? 'Applying...'
@@ -1348,7 +1379,7 @@ export default function CollectionReportV2SessionDetail({
                 <button
                   type="button"
                   onClick={
-                    session?.noSMIBLocation
+                    isCurrentMachineNoSMIB
                       ? () => setUseCustomPeriod(false)
                       : handleUseAutoDetected
                   }
@@ -1401,7 +1432,7 @@ export default function CollectionReportV2SessionDetail({
                       </p>
                     </div>
                   </div>
-                  {session?.noSMIBLocation && (
+                  {isCurrentMachineNoSMIB && (
                     <p className="mt-2 text-xs italic text-green-600">
                       For auditing purposes only
                     </p>
@@ -1423,7 +1454,7 @@ export default function CollectionReportV2SessionDetail({
                     No previous collection found for this machine
                   </p>
                   <p className="mt-1 text-xs text-amber-700">
-                    {session?.noSMIBLocation
+                    {isCurrentMachineNoSMIB
                       ? 'Set the collection start time for auditing purposes.'
                       : 'When was the last time this machine was collected?'}
                   </p>
@@ -1473,7 +1504,7 @@ export default function CollectionReportV2SessionDetail({
                       </PopoverContent>
                     </Popover>
                   </div>
-                  {session?.noSMIBLocation && (
+                  {isCurrentMachineNoSMIB && (
                     <p className="mt-2 text-xs italic text-amber-600">
                       For auditing purposes only
                     </p>
@@ -1491,7 +1522,7 @@ export default function CollectionReportV2SessionDetail({
           </div>
 
           {/* System Meters */}
-          {!session?.noSMIBLocation && (
+          {!isCurrentMachineNoSMIB && (
             <div className="mb-6">
               <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
                 System Meters (from SMIB)
@@ -1515,24 +1546,32 @@ export default function CollectionReportV2SessionDetail({
 
           {/* Supplemental Meters Warning — shown when the machine is flagged as supplemental
                (backend detected offline SMIB ≥ 3 days on save/load). */}
-          {!session?.noSMIBLocation && currentMachine?.isSupplemental === true && (
-            <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 text-lg leading-none" aria-hidden="true">📶</span>
-                <div>
-                  <p className="text-sm font-semibold text-amber-800">
-                    Supplemental meters will be generated
-                  </p>
-                  <p className="mt-1 text-xs text-amber-700">
-                    This SMIB cabinet has been offline for ≥ 3 days. Non-entered lifetime
-                    meters (jackpot, credits won, current credits, etc.) will be carried
-                    forward from the previous collection with a movement delta of&nbsp;0.
-                    Only physical drop meters (Meters In / Meters Out) reflect actual movement.
-                  </p>
+          {!isCurrentMachineNoSMIB &&
+            currentMachine?.isSupplemental === true && (
+              <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                <div className="flex items-start gap-3">
+                  <span
+                    className="mt-0.5 text-lg leading-none"
+                    aria-hidden="true"
+                  >
+                    📶
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      Supplemental meters will be generated
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      This SMIB cabinet has been offline for ≥ 3 days.
+                      Non-entered lifetime meters (jackpot, credits won, current
+                      credits, etc.) will be carried forward from the previous
+                      collection with a movement delta of&nbsp;0. Only physical
+                      drop meters (Meters In / Meters Out) reflect actual
+                      movement.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Photo Capture */}
 
@@ -1603,7 +1642,7 @@ export default function CollectionReportV2SessionDetail({
           </div>
 
           {/* Meters Match */}
-          {!session?.noSMIBLocation && (
+          {!isCurrentMachineNoSMIB && (
             <div className="mb-6">
               <label className="mb-3 block text-sm font-medium text-gray-700">
                 Do the physical meters match the system values?
@@ -1653,18 +1692,18 @@ export default function CollectionReportV2SessionDetail({
           )}
 
           {/* Manual Entry */}
-          {(session?.noSMIBLocation === true ||
+          {(isCurrentMachineNoSMIB === true ||
             captureState.metersMatch === false) && (
             <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
               <label className="mb-3 block text-sm font-medium text-amber-800">
-                {session?.noSMIBLocation === true
+                {isCurrentMachineNoSMIB === true
                   ? 'Enter meter values from the machine'
                   : 'Enter actual meter values from the machine'}
               </label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                 <div>
                   <label className="block text-xs text-amber-700">
-                    {session?.noSMIBLocation === true
+                    {isCurrentMachineNoSMIB === true
                       ? 'Meters In'
                       : 'Actual Meters In'}
                   </label>
@@ -1678,7 +1717,7 @@ export default function CollectionReportV2SessionDetail({
                       }))
                     }
                     placeholder={
-                      session?.noSMIBLocation === true
+                      isCurrentMachineNoSMIB === true
                         ? '0'
                         : String(currentMachine.sasMetersIn)
                     }
@@ -1687,7 +1726,7 @@ export default function CollectionReportV2SessionDetail({
                 </div>
                 <div>
                   <label className="block text-xs text-amber-700">
-                    {session?.noSMIBLocation === true
+                    {isCurrentMachineNoSMIB === true
                       ? 'Meters Out'
                       : 'Actual Meters Out'}
                   </label>
@@ -1701,7 +1740,7 @@ export default function CollectionReportV2SessionDetail({
                       }))
                     }
                     placeholder={
-                      session?.noSMIBLocation === true
+                      isCurrentMachineNoSMIB === true
                         ? '0'
                         : String(currentMachine.sasMetersOut)
                     }
@@ -1808,7 +1847,8 @@ export default function CollectionReportV2SessionDetail({
                 <span className="mr-2">⚠️</span> Cannot save machine
               </p>
               <p className="mt-1 text-xs text-red-600">
-                The selected collection times fall between existing reports. Middle-date collections are not allowed.
+                The selected collection times fall between existing reports.
+                Middle-date collections are not allowed.
               </p>
             </div>
           )}
@@ -2094,6 +2134,7 @@ function ReviewView({
           {session.machines.map((machine, index) => {
             const isDone =
               machine.status === 'confirmed' || machine.status === 'skipped';
+            const isMachineNoSMIB = machine.hasRelay === false;
             return (
               <div
                 key={machine.reportedMachineId || index}
@@ -2230,7 +2271,7 @@ function ReviewView({
                     <div className="flex flex-col gap-1.5 text-xs sm:mt-2 sm:grid sm:grid-cols-2 sm:gap-3">
                       <div className="flex items-baseline justify-between sm:block">
                         <span className="text-gray-400">
-                          {session?.noSMIBLocation ? 'Machine In' : 'Sys In'}
+                          {isMachineNoSMIB ? 'Machine In' : 'Sys In'}
                         </span>
                         <span className="font-medium text-gray-700 sm:ml-1">
                           {machine.sasMetersIn?.toLocaleString() ?? 'N/A'}
@@ -2238,7 +2279,7 @@ function ReviewView({
                       </div>
                       <div className="flex items-baseline justify-between sm:block">
                         <span className="text-gray-400">
-                          {session?.noSMIBLocation ? 'Machine Out' : 'Sys Out'}
+                          {isMachineNoSMIB ? 'Machine Out' : 'Sys Out'}
                         </span>
                         <span className="font-medium text-gray-700 sm:ml-1">
                           {machine.sasMetersOut?.toLocaleString() ?? 'N/A'}
@@ -2252,16 +2293,15 @@ function ReviewView({
                           </span>
                         </div>
                       )}
-                      {!session?.noSMIBLocation &&
-                        machine.sasGross !== undefined && (
-                          <div className="flex items-baseline justify-between sm:block">
-                            <span className="text-gray-400">SAS Gross</span>
-                            <span className="font-medium text-gray-700 sm:ml-1">
-                              {machine.sasGross?.toLocaleString() ?? 'N/A'}
-                            </span>
-                          </div>
-                        )}
-                      {!session?.noSMIBLocation &&
+                      {!isMachineNoSMIB && machine.sasGross !== undefined && (
+                        <div className="flex items-baseline justify-between sm:block">
+                          <span className="text-gray-400">SAS Gross</span>
+                          <span className="font-medium text-gray-700 sm:ml-1">
+                            {machine.sasGross?.toLocaleString() ?? 'N/A'}
+                          </span>
+                        </div>
+                      )}
+                      {!isMachineNoSMIB &&
                         machine.grossDifference !== undefined &&
                         machine.grossDifference !== 0 && (
                           <div className="flex items-baseline justify-between sm:col-span-2 sm:block">
@@ -2272,7 +2312,7 @@ function ReviewView({
                             </span>
                           </div>
                         )}
-                      {!session?.noSMIBLocation &&
+                      {!isMachineNoSMIB &&
                         machine.metersMatch !== undefined && (
                           <div className="flex items-baseline justify-between gap-2 sm:col-span-2 sm:block">
                             <span className="shrink-0 text-gray-400">

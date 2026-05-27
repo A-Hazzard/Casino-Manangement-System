@@ -298,7 +298,9 @@ export async function POST(request: NextRequest) {
         profitShare: profitShare || 50,
         gameDayOffset: gameDayOffset ?? 8,
         isLocalServer: isLocalServer || false,
-        previousCollectionTime: previousCollectionTime ? new Date(previousCollectionTime) : undefined,
+        previousCollectionTime: previousCollectionTime
+          ? new Date(previousCollectionTime)
+          : undefined,
         geoCoords: {
           latitude: geoCoords?.latitude || 0,
           longitude: geoCoords?.longitude || 0,
@@ -347,7 +349,12 @@ export async function POST(request: NextRequest) {
 
       if (currentUser && currentUser.emailAddress) {
         const changes = Object.entries(newLocation.toObject())
-          .filter(([key]) => !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key))
+          .filter(
+            ([key]) =>
+              !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(
+                key
+              )
+          )
           .map(([key, val]) => {
             let stringVal = String(val);
             if (val instanceof Date) {
@@ -649,7 +656,9 @@ export async function DELETE(request: NextRequest) {
 
         const archiveTimestamp = new Date();
 
-        const associatedMachines = await Machine.find({ gamingLocation: id }).lean();
+        const associatedMachines = await Machine.find({
+          gamingLocation: id,
+        }).lean();
 
         if (hardDelete && isDevOrAdminOrLocAdmin) {
           const deleteLocationResult = await GamingLocations.deleteOne({
@@ -708,7 +717,11 @@ export async function DELETE(request: NextRequest) {
         }
 
         if (currentUser && currentUser.emailAddress) {
-          const changes = mapDeletedFieldsToChanges(locationToDelete.toObject ? locationToDelete.toObject() : locationToDelete);
+          const changes = mapDeletedFieldsToChanges(
+            locationToDelete.toObject
+              ? locationToDelete.toObject()
+              : locationToDelete
+          );
           await logActivity({
             action: hardDelete && isDevOrAdminOrLocAdmin ? 'DELETE' : 'ARCHIVE',
             details: `${hardDelete && isDevOrAdminOrLocAdmin ? 'Permanently deleted' : 'Archived'} location "${locationToDelete.name}"`,
@@ -722,7 +735,9 @@ export async function DELETE(request: NextRequest) {
               resourceName: locationToDelete.name,
               isHardDelete: hardDelete && isDevOrAdminOrLocAdmin,
               changes,
-              previousData: locationToDelete.toObject ? locationToDelete.toObject() : locationToDelete,
+              previousData: locationToDelete.toObject
+                ? locationToDelete.toObject()
+                : locationToDelete,
               newData: null,
             },
           });
@@ -741,7 +756,8 @@ export async function DELETE(request: NextRequest) {
                 metadata: {
                   resource: 'machine',
                   resourceId: m._id,
-                  resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+                  resourceName:
+                    m.custom?.name || m.serialNumber || m.machineId || m._id,
                   changes: machineChanges,
                   previousData: m,
                   newData: null,
@@ -765,7 +781,8 @@ export async function DELETE(request: NextRequest) {
                 metadata: {
                   resource: 'machine',
                   resourceId: m._id,
-                  resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+                  resourceName:
+                    m.custom?.name || m.serialNumber || m.machineId || m._id,
                   changes: machineChanges,
                   previousData: m,
                   newData: { ...m, deletedAt: archiveTimestamp },
@@ -873,7 +890,9 @@ export async function PATCH(request: NextRequest) {
         );
       }
       // Restore all machines belonging to this location
-      const associatedMachines = await Machine.find({ gamingLocation: id }).lean();
+      const associatedMachines = await Machine.find({
+        gamingLocation: id,
+      }).lean();
       const restoreMachinesResult = await Machine.updateMany(
         { gamingLocation: id },
         { $unset: { deletedAt: 1 } }
@@ -920,7 +939,8 @@ export async function PATCH(request: NextRequest) {
             metadata: {
               resource: 'machine',
               resourceId: m._id,
-              resourceName: m.custom?.name || m.serialNumber || m.machineId || m._id,
+              resourceName:
+                m.custom?.name || m.serialNumber || m.machineId || m._id,
               changes: machineChanges,
               previousData: m,
               newData: { ...m, deletedAt: undefined },

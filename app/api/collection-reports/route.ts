@@ -419,10 +419,14 @@ export async function POST(req: NextRequest) {
     // STEP 3.5: Per-Machine Chronological creation check
     // ============================================================================
     let isInsertingFirstReport = false;
-    if (sanitizedBody.location && sanitizedBody.timestamp && sanitizedBody.machines) {
+    if (
+      sanitizedBody.location &&
+      sanitizedBody.timestamp &&
+      sanitizedBody.machines
+    ) {
       const targetTime = new Date(sanitizedBody.timestamp);
       const { Collections } = await import('@/app/api/lib/models/collections');
-      
+
       const validMachines = [];
       let firstReportInsertedCount = 0;
 
@@ -451,7 +455,7 @@ export async function POST(req: NextRequest) {
 
         // If it passes, keep it
         validMachines.push(machine);
-        
+
         if (nextReport && !prevReport) {
           firstReportInsertedCount++;
         }
@@ -461,14 +465,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: 'All machines were blocked due to chronological constraints (middle-date block).',
+            error:
+              'All machines were blocked due to chronological constraints (middle-date block).',
           },
           { status: 400 }
         );
       }
 
       sanitizedBody.machines = validMachines;
-      
+
       if (firstReportInsertedCount > 0) {
         isInsertingFirstReport = true;
       }
@@ -496,9 +501,17 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 4.5: Propagate meters if we inserted before the oldest report
     // ============================================================================
-    if (isInsertingFirstReport && sanitizedBody.machines && sanitizedBody.location && sanitizedBody.timestamp) {
-      console.log(`[Collection Reports POST API] Inserted a first report. Propagating meters to the next report...`);
-      const { propagateMetersToNextReport } = await import('@/app/api/lib/helpers/collectionReport/reportCreation');
+    if (
+      isInsertingFirstReport &&
+      sanitizedBody.machines &&
+      sanitizedBody.location &&
+      sanitizedBody.timestamp
+    ) {
+      console.log(
+        `[Collection Reports POST API] Inserted a first report. Propagating meters to the next report...`
+      );
+      const { propagateMetersToNextReport } =
+        await import('@/app/api/lib/helpers/collectionReport/reportCreation');
       for (const machine of sanitizedBody.machines) {
         await propagateMetersToNextReport(
           machine.machineId,
@@ -517,10 +530,15 @@ export async function POST(req: NextRequest) {
     if (currentUser && currentUser.emailAddress) {
       try {
         // Fetch machine names for readable log entries
-        const machineIds = (body.machines || []).map(m => String(m.machineId)).filter(Boolean);
-        const machineDocuments = machineIds.length > 0
-          ? await Machine.find({ _id: { $in: machineIds } }).lean<GamingMachine[]>()
-          : [];
+        const machineIds = (body.machines || [])
+          .map(m => String(m.machineId))
+          .filter(Boolean);
+        const machineDocuments =
+          machineIds.length > 0
+            ? await Machine.find({ _id: { $in: machineIds } }).lean<
+                GamingMachine[]
+              >()
+            : [];
         const machineNameMap = new Map<string, GamingMachine>(
           machineDocuments.map(m => [String(m._id), m])
         );
@@ -530,10 +548,13 @@ export async function POST(req: NextRequest) {
           if (m.custom?.name) parts.push(m.custom.name);
           const manufacturer = m.manuf || m.manufacturer;
           if (manufacturer) parts.push(manufacturer);
-          return parts.length > 0 ? `${m.serialNumber} (${parts.join(', ')})` : m.serialNumber;
+          return parts.length > 0
+            ? `${m.serialNumber} (${parts.join(', ')})`
+            : m.serialNumber;
         };
 
-        const collectorDisplay = body.collectorName || body.collector || 'Unknown';
+        const collectorDisplay =
+          body.collectorName || body.collector || 'Unknown';
 
         const createChanges = [
           {
@@ -572,7 +593,9 @@ export async function POST(req: NextRequest) {
 
         if (body.machines && Array.isArray(body.machines)) {
           body.machines.forEach((machineItem, index) => {
-            const machineDoc = machineNameMap.get(String(machineItem.machineId));
+            const machineDoc = machineNameMap.get(
+              String(machineItem.machineId)
+            );
             const machineName = machineDoc
               ? buildMachineName(machineDoc)
               : `Machine ${index + 1}`;
@@ -624,9 +647,13 @@ export async function POST(req: NextRequest) {
             changes: createChanges,
             previousData: null,
             newData: {
-              ...(result.report && (result.report as { toObject?: () => Record<string, unknown> }).toObject
-                ? (result.report as { toObject: () => Record<string, unknown> }).toObject()
-                : (result.report || {})),
+              ...(result.report &&
+              (result.report as { toObject?: () => Record<string, unknown> })
+                .toObject
+                ? (
+                    result.report as { toObject: () => Record<string, unknown> }
+                  ).toObject()
+                : result.report || {}),
               machines: enrichedMachines,
             },
           },

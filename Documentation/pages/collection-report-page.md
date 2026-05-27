@@ -16,13 +16,13 @@ The page hosts two parallel collection systems — **V1** (legacy form-based) an
 
 ## 2. Tab Overview
 
-| Tab | `section=` param | Access |
-|-----|-----------------|--------|
-| Collection Reports (V1) | `collection` | All roles |
-| Collection Reports V2 ⚡ DEV | `collection-v2` | Developer only |
-| Monthly Report | `monthly` | Manager+ |
-| Manager Schedule | `manager` | Manager+ |
-| Collector Schedule | `collector` | All roles |
+| Tab                          | `section=` param | Access         |
+| ---------------------------- | ---------------- | -------------- |
+| Collection Reports (V1)      | `collection`     | All roles      |
+| Collection Reports V2 ⚡ DEV | `collection-v2`  | Developer only |
+| Monthly Report               | `monthly`        | Manager+       |
+| Manager Schedule             | `manager`        | Manager+       |
+| Collector Schedule           | `collector`      | All roles      |
 
 **Navigation component:** `CollectionReportNavigation.tsx` — horizontally scrollable flex bar on md+ screens; falls back to a `<select>` dropdown on mobile.
 
@@ -182,27 +182,27 @@ Currently in active development — visible to the **Developer** role only (DEV 
 
 All V2 data lives in the `ReportedMachine` collection (`app/api/lib/models/reportedMachines.ts`). One document per machine per session.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `sessionId` | String | Groups all machines for one collection run |
-| `sessionStatus` | `'in-progress' \| 'submitted'` | Session lifecycle state |
-| `locationId` / `locationName` | String | Location being collected (denormalized) |
-| `licencee` | String | Licencee context |
-| `collector` | String | User ID of the collector |
-| `collectorName` | String | Denormalized display name |
-| `machineId` | String | Reference to the Machine document |
-| `machineName` / `machineCustomName` | String | Display identifiers |
-| `systemMetersIn` / `systemMetersOut` | Number | SAS meter snapshot at session start |
-| `manualMetersIn` / `manualMetersOut` | Number | Manually captured readings |
-| `status` | `'pending' \| 'captured' \| 'confirmed' \| 'skipped'` | Per-machine capture state |
-| `metersMatch` | Boolean | Whether manual and SAS readings agree |
-| `ramClear` | Boolean | True when the machine's meters were reset between collections |
-| `ramClearMetersIn` / `ramClearMetersOut` | Number | Pre-reset peak readings (only when `ramClear === true`) |
-| `sequenceOrder` | Number | Capture/display order within the session |
-| `sessionStartTime` / `sessionEndTime` | Date | Session window — start derived from previous session's end |
-| `driveFileId` | String | Google Drive ID for captured meter image |
-| `imageCapturedAt` | Date | Timestamp of meter photo |
-| `deletedAt` | Date | Soft-delete marker |
+| Field                                    | Type                                                  | Description                                                   |
+| ---------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- |
+| `sessionId`                              | String                                                | Groups all machines for one collection run                    |
+| `sessionStatus`                          | `'in-progress' \| 'submitted'`                        | Session lifecycle state                                       |
+| `locationId` / `locationName`            | String                                                | Location being collected (denormalized)                       |
+| `licencee`                               | String                                                | Licencee context                                              |
+| `collector`                              | String                                                | User ID of the collector                                      |
+| `collectorName`                          | String                                                | Denormalized display name                                     |
+| `machineId`                              | String                                                | Reference to the Machine document                             |
+| `machineName` / `machineCustomName`      | String                                                | Display identifiers                                           |
+| `systemMetersIn` / `systemMetersOut`     | Number                                                | SAS meter snapshot at session start                           |
+| `manualMetersIn` / `manualMetersOut`     | Number                                                | Manually captured readings                                    |
+| `status`                                 | `'pending' \| 'captured' \| 'confirmed' \| 'skipped'` | Per-machine capture state                                     |
+| `metersMatch`                            | Boolean                                               | Whether manual and SAS readings agree                         |
+| `ramClear`                               | Boolean                                               | True when the machine's meters were reset between collections |
+| `ramClearMetersIn` / `ramClearMetersOut` | Number                                                | Pre-reset peak readings (only when `ramClear === true`)       |
+| `sequenceOrder`                          | Number                                                | Capture/display order within the session                      |
+| `sessionStartTime` / `sessionEndTime`    | Date                                                  | Session window — start derived from previous session's end    |
+| `driveFileId`                            | String                                                | Google Drive ID for captured meter image                      |
+| `imageCapturedAt`                        | Date                                                  | Timestamp of meter photo                                      |
+| `deletedAt`                              | Date                                                  | Soft-delete marker                                            |
 
 ### RAM Clear (V2)
 
@@ -225,16 +225,16 @@ DELETE /api/collection-reports-v2/sessions/[sessionId]   → soft-delete (sets d
 
 The list endpoint groups by `sessionId` and returns one summary row:
 
-| Field | Aggregation |
-|-------|-------------|
-| `machinesTotal` | `$sum: 1` |
-| `machinesCaptured` | Count where status in `['captured', 'confirmed']` |
-| `machinesConfirmed` | Count where status is `'confirmed'` |
-| `machinesSkipped` | Count where status is `'skipped'` |
-| `totalMachineGross` | `$sum (manualMetersIn − manualMetersOut)` |
-| `totalSasGross` | `$sum (systemMetersIn − systemMetersOut)` |
-| `totalGrossDifference` | `totalMachineGross − totalSasGross` |
-| `createdAt` | Earliest `createdAt` in the group |
+| Field                  | Aggregation                                       |
+| ---------------------- | ------------------------------------------------- |
+| `machinesTotal`        | `$sum: 1`                                         |
+| `machinesCaptured`     | Count where status in `['captured', 'confirmed']` |
+| `machinesConfirmed`    | Count where status is `'confirmed'`               |
+| `machinesSkipped`      | Count where status is `'skipped'`                 |
+| `totalMachineGross`    | `$sum (manualMetersIn − manualMetersOut)`         |
+| `totalSasGross`        | `$sum (systemMetersIn − systemMetersOut)`         |
+| `totalGrossDifference` | `totalMachineGross − totalSasGross`               |
+| `createdAt`            | Earliest `createdAt` in the group                 |
 
 ### Search (V2)
 
@@ -247,24 +247,24 @@ matchStage.$and = [
 ];
 ```
 
-| Search type | Field queried |
-|-------------|---------------|
-| `collector` | `collectorName` (denormalized on `ReportedMachine`) |
-| `location` | `locationName` (denormalized on `ReportedMachine`) |
-| `sessionId` | `sessionId` |
-| `locationId` | `locationId` |
+| Search type  | Field queried                                       |
+| ------------ | --------------------------------------------------- |
+| `collector`  | `collectorName` (denormalized on `ReportedMachine`) |
+| `location`   | `locationName` (denormalized on `ReportedMachine`)  |
+| `sessionId`  | `sessionId`                                         |
+| `locationId` | `locationId`                                        |
 
 ### Search (V1)
 
 Server-side, case-insensitive. Search type determines where the filter is applied in the aggregation pipeline:
 
-| Search type | Field / Stage |
-|-------------|---------------|
-| `collector` | Post-lookup `$match` on `collectorDetails.username`, `firstName`, `lastName`, `emailAddress` |
-| `location` | Initial `$match` on `locationName` (denormalized — no join required) |
-| `locationReportId` | Initial `$match` on `locationReportId` |
-| `collectorId` | Initial `$match` on `collector` (raw user ID) |
-| `locationId` | Initial `$match` on `location` (raw location ID) |
+| Search type        | Field / Stage                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `collector`        | Post-lookup `$match` on `collectorDetails.username`, `firstName`, `lastName`, `emailAddress` |
+| `location`         | Initial `$match` on `locationName` (denormalized — no join required)                         |
+| `locationReportId` | Initial `$match` on `locationReportId`                                                       |
+| `collectorId`      | Initial `$match` on `collector` (raw user ID)                                                |
+| `locationId`       | Initial `$match` on `location` (raw location ID)                                             |
 
 ### Frontend Hook
 
@@ -276,15 +276,15 @@ Server-side, case-insensitive. Search type determines where the filter is applie
 
 ### Components
 
-| Component | Role |
-|-----------|------|
-| `CollectionReportV2Desktop.tsx` | Desktop session list table |
-| `CollectionReportV2Mobile.tsx` | Mobile session list cards |
-| `CollectionReportV2Filters.tsx` | Purple filter bar (search type, text input, location multi-select) |
-| `CollectionReportV2SessionDetail.tsx` | Per-session machine list |
-| `CollectionReportV2SessionReport.tsx` | Session report wrapper (summary + machines tabs) |
-| `CollectionReportV2SessionReportSummaryTab.tsx` | Aggregated financials for a session |
-| `CollectionReportV2SessionReportMachinesTab.tsx` | Per-machine reading detail |
+| Component                                        | Role                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------ |
+| `CollectionReportV2Desktop.tsx`                  | Desktop session list table                                         |
+| `CollectionReportV2Mobile.tsx`                   | Mobile session list cards                                          |
+| `CollectionReportV2Filters.tsx`                  | Purple filter bar (search type, text input, location multi-select) |
+| `CollectionReportV2SessionDetail.tsx`            | Per-session machine list                                           |
+| `CollectionReportV2SessionReport.tsx`            | Session report wrapper (summary + machines tabs)                   |
+| `CollectionReportV2SessionReportSummaryTab.tsx`  | Aggregated financials for a session                                |
+| `CollectionReportV2SessionReportMachinesTab.tsx` | Per-machine reading detail                                         |
 
 ---
 

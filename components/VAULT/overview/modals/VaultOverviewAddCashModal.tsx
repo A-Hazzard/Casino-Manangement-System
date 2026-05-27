@@ -101,7 +101,7 @@ export default function VaultOverviewAddCashModal({
     () => getDenominationValues(selectedLicencee),
     [selectedLicencee]
   );
-  
+
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});

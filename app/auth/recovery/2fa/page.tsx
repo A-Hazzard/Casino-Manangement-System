@@ -167,7 +167,6 @@ function TwoFactorRecoveryContent() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 sm:p-8">
       <div className="w-full max-w-xl space-y-8">
-        
         {/* Header Section */}
         <div className="space-y-2 text-center">
           <h1 className="text-4xl font-black tracking-tight text-slate-900">
@@ -181,7 +180,6 @@ function TwoFactorRecoveryContent() {
 
         {/* QR Code and Form Section */}
         <div className="grid items-center gap-8 rounded-3xl border border-slate-100 bg-slate-50 p-6 sm:p-10 md:grid-cols-2">
-          
           {/* QR Code Display */}
           <div className="flex flex-col items-center justify-center">
             <div className="rounded-2xl border-2 border-slate-200 bg-white p-4 shadow-sm">

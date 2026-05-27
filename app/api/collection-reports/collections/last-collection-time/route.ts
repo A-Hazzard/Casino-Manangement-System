@@ -77,8 +77,10 @@ export async function GET(request: NextRequest) {
       .sort({ collectionTime: 1 })
       .lean<CollectionDocument | null>();
 
-    let collectionTime: Date | null = lastCollection?.collectionTime ?? lastCollection?.timestamp ?? null;
-    let firstCollectionTime: Date | null = firstCollection?.collectionTime ?? firstCollection?.timestamp ?? null;
+    let collectionTime: Date | null =
+      lastCollection?.collectionTime ?? lastCollection?.timestamp ?? null;
+    let firstCollectionTime: Date | null =
+      firstCollection?.collectionTime ?? firstCollection?.timestamp ?? null;
     let metersIn: number | null = lastCollection?.metersIn ?? null;
     let metersOut: number | null = lastCollection?.metersOut ?? null;
     const hasPreviousCollection = !!lastCollection;
@@ -90,7 +92,10 @@ export async function GET(request: NextRequest) {
       const { Machine } = await import('@/app/api/lib/models/machines');
       const machine = await Machine.findOne({ _id: machineId })
         .select('collectionTime collectionMeters')
-        .lean<{ collectionTime?: Date; collectionMeters?: { metersIn?: number; metersOut?: number } }>();
+        .lean<{
+          collectionTime?: Date;
+          collectionMeters?: { metersIn?: number; metersOut?: number };
+        }>();
       if (machine) {
         collectionTime = machine.collectionTime ?? null;
         firstCollectionTime = machine.collectionTime ?? null;

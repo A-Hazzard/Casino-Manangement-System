@@ -136,31 +136,50 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Post-lookup filter for collector name (searches joined user fields)
     ...(search && searchType === 'collector'
       ? [
-        {
-          $match: {
-            $or: [
-              { 'collectorDetails.username': { $regex: search, $options: 'i' } },
-              { 'collectorDetails.profile.firstName': { $regex: search, $options: 'i' } },
-              { 'collectorDetails.profile.lastName': { $regex: search, $options: 'i' } },
-              { 'collectorDetails.emailAddress': { $regex: search, $options: 'i' } },
-            ],
-          },
-        } as PipelineStage,
-      ]
+          {
+            $match: {
+              $or: [
+                {
+                  'collectorDetails.username': {
+                    $regex: search,
+                    $options: 'i',
+                  },
+                },
+                {
+                  'collectorDetails.profile.firstName': {
+                    $regex: search,
+                    $options: 'i',
+                  },
+                },
+                {
+                  'collectorDetails.profile.lastName': {
+                    $regex: search,
+                    $options: 'i',
+                  },
+                },
+                {
+                  'collectorDetails.emailAddress': {
+                    $regex: search,
+                    $options: 'i',
+                  },
+                },
+              ],
+            },
+          } as PipelineStage,
+        ]
       : []),
     // Apply licencee filter only if provided
     ...(licenceeId
       ? [
-
-        {
-          $match: {
-            $or: [
-              { 'locationDetails.rel.licencee': licenceeId },
-              { 'locationDetails.rel.licencee': licenceeId },
-            ],
+          {
+            $match: {
+              $or: [
+                { 'locationDetails.rel.licencee': licenceeId },
+                { 'locationDetails.rel.licencee': licenceeId },
+              ],
+            },
           },
-        },
-      ]
+        ]
       : []),
     { $sort: { timestamp: -1 } },
   ];
@@ -384,12 +403,12 @@ export async function getAllCollectionReportsWithMachineCounts(
     const reportTimestampSource = doc.timestamp;
     const scaleReferenceDate =
       typeof reportTimestampSource === 'string' ||
-        reportTimestampSource instanceof Date
+      reportTimestampSource instanceof Date
         ? reportTimestampSource
         : typeof reportTimestampSource === 'object' &&
-          reportTimestampSource !== null &&
-          '$date' in reportTimestampSource &&
-          typeof reportTimestampSource.$date === 'string'
+            reportTimestampSource !== null &&
+            '$date' in reportTimestampSource &&
+            typeof reportTimestampSource.$date === 'string'
           ? reportTimestampSource.$date
           : null;
     const moneyInScale = reviewerScaleUser
@@ -412,10 +431,10 @@ export async function getAllCollectionReportsWithMachineCounts(
     const collectorUserId = (doc.collector as string) || '';
     const collectorDetails = doc.collectorDetails as
       | {
-        username?: string;
-        profile?: { firstName?: string; lastName?: string };
-        emailAddress?: string;
-      }
+          username?: string;
+          profile?: { firstName?: string; lastName?: string };
+          emailAddress?: string;
+        }
       | undefined;
 
     // Compute display name with priority: username → firstName → emailAddress → collectorName
@@ -452,7 +471,11 @@ export async function getAllCollectionReportsWithMachineCounts(
 
     // Priority 5: Fallback to 'Deleted User' if user not found and no legacy name is set
     if (!collectorDisplayName && collectorUserId) {
-      if (/^[0-9a-fA-F]{24}$/.test(collectorUserId) || collectorUserId.startsWith('user_') || collectorUserId.length > 15) {
+      if (
+        /^[0-9a-fA-F]{24}$/.test(collectorUserId) ||
+        collectorUserId.startsWith('user_') ||
+        collectorUserId.length > 15
+      ) {
         collectorDisplayName = 'Deleted User';
       } else {
         collectorDisplayName = collectorUserId;
@@ -469,24 +492,28 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Prepare tooltip data: firstName, lastName, ID, email
     const collectorTooltipData = collectorDetails
       ? {
-        firstName: collectorDetails.profile?.firstName || undefined,
-        lastName: collectorDetails.profile?.lastName || undefined,
-        id: collectorUserId || undefined,
-        email: collectorDetails.emailAddress || undefined,
-      }
+          firstName: collectorDetails.profile?.firstName || undefined,
+          lastName: collectorDetails.profile?.lastName || undefined,
+          id: collectorUserId || undefined,
+          email: collectorDetails.emailAddress || undefined,
+        }
       : collectorUserId
         ? {
-          firstName: undefined,
-          lastName: undefined,
-          id: collectorUserId,
-          email: undefined,
-        }
+            firstName: undefined,
+            lastName: undefined,
+            id: collectorUserId,
+            email: undefined,
+          }
         : undefined;
 
     const result = {
       _id: doc._id || '',
       locationReportId,
-      locationId: doc.locationDetails?._id || (typeof doc.location === 'object' && doc.location !== null ? doc.location._id : ''),
+      locationId:
+        doc.locationDetails?._id ||
+        (typeof doc.location === 'object' && doc.location !== null
+          ? doc.location._id
+          : ''),
       locationSlug: doc.locationDetails?.slug || '',
       collector: collectorUserId, // User ID (primary field)
       collectorFullName: collectorDisplayName || undefined, // Display name (username → firstName → email → collectorName)
@@ -511,8 +538,8 @@ export async function getAllCollectionReportsWithMachineCounts(
             typeof ts === 'string' || ts instanceof Date
               ? new Date(ts)
               : typeof ts === 'object' &&
-                '$date' in ts &&
-                typeof ts.$date === 'string'
+                  '$date' in ts &&
+                  typeof ts.$date === 'string'
                 ? new Date(ts.$date)
                 : null;
 

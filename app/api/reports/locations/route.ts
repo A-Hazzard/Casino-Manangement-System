@@ -272,7 +272,11 @@ export async function GET(req: NextRequest) {
                           $or: [
                             { 'geoCoords.latitude': { $exists: false } },
                             { 'geoCoords.latitude': null },
-                            { 'geoCoords.latitude': { $in: [0, '0', '0.0', ''] } },
+                            {
+                              'geoCoords.latitude': {
+                                $in: [0, '0', '0.0', ''],
+                              },
+                            },
                             { 'geoCoords.latitude': { $type: 'string' } },
                           ],
                         },
@@ -280,7 +284,11 @@ export async function GET(req: NextRequest) {
                           $or: [
                             { 'geoCoords.longitude': { $exists: false } },
                             { 'geoCoords.longitude': null },
-                            { 'geoCoords.longitude': { $in: [0, '0', '0.0', ''] } },
+                            {
+                              'geoCoords.longitude': {
+                                $in: [0, '0', '0.0', ''],
+                              },
+                            },
                             { 'geoCoords.longitude': { $type: 'string' } },
                           ],
                         },
@@ -288,7 +296,11 @@ export async function GET(req: NextRequest) {
                           $or: [
                             { 'geoCoords.longtitude': { $exists: false } },
                             { 'geoCoords.longtitude': null },
-                            { 'geoCoords.longtitude': { $in: [0, '0', '0.0', ''] } },
+                            {
+                              'geoCoords.longtitude': {
+                                $in: [0, '0', '0.0', ''],
+                              },
+                            },
                             { 'geoCoords.longtitude': { $type: 'string' } },
                           ],
                         },
@@ -302,9 +314,27 @@ export async function GET(req: NextRequest) {
                   $or: [
                     { googleMapsIframe: { $exists: true, $nin: [null, ''] } },
                     { googleMapsLink: { $exists: true, $nin: [null, ''] } },
-                    { 'geoCoords.latitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                    { 'geoCoords.longitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
-                    { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0, '0', '0.0', ''], $not: { $type: 'string' } } },
+                    {
+                      'geoCoords.latitude': {
+                        $exists: true,
+                        $nin: [null, 0, '0', '0.0', ''],
+                        $not: { $type: 'string' },
+                      },
+                    },
+                    {
+                      'geoCoords.longitude': {
+                        $exists: true,
+                        $nin: [null, 0, '0', '0.0', ''],
+                        $not: { $type: 'string' },
+                      },
+                    },
+                    {
+                      'geoCoords.longtitude': {
+                        $exists: true,
+                        $nin: [null, 0, '0', '0.0', ''],
+                        $not: { $type: 'string' },
+                      },
+                    },
                   ],
                 });
                 break;

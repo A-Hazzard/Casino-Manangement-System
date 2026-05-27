@@ -43,7 +43,10 @@ export default function LocationsArchivedLocationSkeleton() {
             </thead>
             <tbody>
               {Array.from({ length: 10 }).map((_, idx) => (
-                <tr key={idx} className="hover:bg-muted border-b border-gray-100">
+                <tr
+                  key={idx}
+                  className="border-b border-gray-100 hover:bg-muted"
+                >
                   {/* First column: Location name with icons and badges */}
                   <td className="p-3">
                     <div className="flex flex-col gap-1.5">
@@ -75,7 +78,7 @@ export default function LocationsArchivedLocationSkeleton() {
                   </td>
                   {/* Archived When column */}
                   <td className="p-3 text-center">
-                    <div className="flex flex-col gap-1 items-center justify-center">
+                    <div className="flex flex-col items-center justify-center gap-1">
                       <Skeleton className="h-4 w-32" />
                       <Skeleton className="h-3 w-20" />
                     </div>

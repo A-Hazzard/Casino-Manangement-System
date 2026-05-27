@@ -80,7 +80,7 @@ export default function LocationsLocationSkeleton() {
       </div>
 
       {/* Mobile skeleton (card) - matches LocationsLocationCard - single card per skeleton */}
-      <div className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm">
+      <div className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm lg:hidden">
         {/* Location Name with Icons */}
         <div className="mb-3 flex flex-col gap-2">
           <div className="inline-flex items-start gap-1.5">

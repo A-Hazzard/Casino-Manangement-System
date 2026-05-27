@@ -39,7 +39,6 @@ export default function MembersDeleteMemberModal({
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
 
-
   // ============================================================================
   // Effects
   // ============================================================================
@@ -78,7 +77,6 @@ export default function MembersDeleteMemberModal({
       const response = await axios.delete(`/api/members/${selectedMember._id}`);
 
       if (response.status === 200) {
-
         toast.success('Member deleted successfully');
         onDelete();
         handleClose();

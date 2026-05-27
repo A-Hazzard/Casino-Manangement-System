@@ -74,18 +74,18 @@ export async function GET(request: NextRequest) {
 
     // Find the most recent submitted collection for this machine,
     // ordered by sasEndTime descending so we get the latest gaming period end.
-    const lastCollection = await ReportedMachine.findOne(
-      baseFilter,
-      { sasEndTime: 1, manualMetersIn: 1, manualMetersOut: 1 }
-    )
+    const lastCollection = await ReportedMachine.findOne(baseFilter, {
+      sasEndTime: 1,
+      manualMetersIn: 1,
+      manualMetersOut: 1,
+    })
       .sort({ sasEndTime: -1 })
       .lean();
 
     // Find the oldest submitted collection to establish chronological boundaries
-    const firstCollection = await ReportedMachine.findOne(
-      baseFilter,
-      { sasEndTime: 1 }
-    )
+    const firstCollection = await ReportedMachine.findOne(baseFilter, {
+      sasEndTime: 1,
+    })
       .sort({ sasEndTime: 1 })
       .lean();
 

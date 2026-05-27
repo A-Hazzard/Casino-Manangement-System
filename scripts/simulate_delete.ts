@@ -5,10 +5,11 @@ import { Machine } from '../app/api/lib/models/machines';
 import {
   removeCollectionHistoryFromMachines,
   revertMachineCollectionMeters,
-  deleteManualMetersPerCollection
+  deleteManualMetersPerCollection,
 } from '../app/api/lib/helpers/collectionReport/operations';
 
-const MONGODB_URI = 'mongodb://sunny1:87ydaiuhdsia2e@147.182.133.136:27017/sas-aaron?authSource=admin';
+const MONGODB_URI =
+  'mongodb://sunny1:87ydaiuhdsia2e@147.182.133.136:27017/sas-aaron?authSource=admin';
 
 async function main() {
   try {
@@ -36,17 +37,22 @@ async function main() {
     console.log(`Found ${associatedCollections.length} collections`);
 
     console.log('3. Removing collection history from machines...');
-    const historyResult = await removeCollectionHistoryFromMachines(resolvedReportId);
+    const historyResult =
+      await removeCollectionHistoryFromMachines(resolvedReportId);
     console.log('History removal result:', historyResult);
 
     console.log('4. Reverting machine collection meters...');
-    const revertResult = await revertMachineCollectionMeters(associatedCollections);
+    const revertResult = await revertMachineCollectionMeters(
+      associatedCollections
+    );
     console.log('Revert result:', revertResult);
 
     console.log('5. Deleting manual meters...');
-    const deleteMetersResult = await deleteManualMetersPerCollection(resolvedReportId, false);
+    const deleteMetersResult = await deleteManualMetersPerCollection(
+      resolvedReportId,
+      false
+    );
     console.log('Delete manual meters result:', deleteMetersResult);
-
   } catch (error) {
     console.error('SIMULATION ERROR:', error);
   } finally {

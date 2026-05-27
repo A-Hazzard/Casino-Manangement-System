@@ -10,10 +10,10 @@
 
 The Evolution1 CMS supports two types of gaming locations:
 
-| Location Type | Meter Source | Collection Method |
-|---|---|---|
-| **No-SMIB Location** | No hardware relay | 100% manual entry of drop/cancelled credits |
-| **SMIB Location** | SMIB relay (`relayId` present) | SAS meters auto-delivered by `sas-worker`; collector confirms match or enters manual override |
+| Location Type        | Meter Source                   | Collection Method                                                                             |
+| -------------------- | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| **No-SMIB Location** | No hardware relay              | 100% manual entry of drop/cancelled credits                                                   |
+| **SMIB Location**    | SMIB relay (`relayId` present) | SAS meters auto-delivered by `sas-worker`; collector confirms match or enters manual override |
 
 ### The `Meters` Collection
 
@@ -91,7 +91,9 @@ Machine on session
 ```
 
 ### Non-Entered Meters (carry-forward with delta = 0)
+
 These are SAS lifetime counters the collector cannot physically read:
+
 - `coinIn`, `coinOut`
 - `totalWonCredits`, `totalHandPaidCancelledCredits`
 - `jackpot`
@@ -99,7 +101,9 @@ These are SAS lifetime counters the collector cannot physically read:
 - `gamesPlayed`, `gamesWon`
 
 ### Entered Meters (calculated normally)
+
 These are the physical drop metrics the collector reads from the machine:
+
 - `drop` (Meters In)
 - `totalCancelledCredits` (Meters Out)
 
@@ -112,7 +116,8 @@ const OFFLINE_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000; // 72 hours
 
 const isOffline =
   hasRelayId &&
-  (!lastActivity || (Date.now() - new Date(lastActivity).getTime()) >= OFFLINE_THRESHOLD_MS);
+  (!lastActivity ||
+    Date.now() - new Date(lastActivity).getTime() >= OFFLINE_THRESHOLD_MS);
 ```
 
 - `hasRelayId` — `machine.relayId` is non-empty/non-null
@@ -171,14 +176,18 @@ Future: sas-worker reconnects
 ### 6.1 Database Schemas
 
 #### `app/api/lib/models/meters.ts`
+
 Added `isSupplemental` flag to `MetersSchema`:
+
 ```typescript
 isRamClear: { type: Boolean, default: false },
 isSupplemental: { type: Boolean, default: false },  // NEW
 ```
 
 #### `app/api/lib/models/reportedMachines.ts`
+
 Added `isSupplemental` to both the TypeScript type definition and Mongoose schema:
+
 ```typescript
 // Type
 isSupplemental?: boolean;
@@ -196,6 +205,7 @@ isSupplemental: { type: Boolean, default: false },
 Two functions updated: `createManualMetersForEachMachine` and `updateRegularAndRamClearMeters`.
 
 **Logic added:**
+
 1. After fetching the Machine doc, check `relayId` and `lastActivity`.
 2. If offline ≥ 3 days → query most recent prior `Meters` doc.
 3. Build the new `Meters` document with:
@@ -214,13 +224,15 @@ Two functions updated: `createManualMetersForEachMachine` and `updateRegularAndR
 #### `app/api/lib/helpers/collectionReportV2/movement.ts`
 
 In `computeMovement()`:
+
 ```typescript
 // Detect offline SMIB
 const hasRelay = !!machine.relayId;
 const lastActivity = machine.lastActivity;
 const THRESHOLD = 3 * 24 * 60 * 60 * 1000;
 const isOffline =
-  hasRelay && (!lastActivity || Date.now() - new Date(lastActivity).getTime() >= THRESHOLD);
+  hasRelay &&
+  (!lastActivity || Date.now() - new Date(lastActivity).getTime() >= THRESHOLD);
 
 // Return isSupplemental in result
 return {
@@ -230,6 +242,7 @@ return {
 ```
 
 When `isOffline`:
+
 - Non-entered movement deltas (`movement.jackpot`, `movement.totalWonCredits`, etc.) set to `0`
 - Non-entered lifetime values carried forward from the previous `Meters` doc
 
@@ -240,6 +253,7 @@ When `isOffline`:
 #### `app/api/collection-reports-v2/machines/route.ts`
 
 Both `POST` (new machine capture) and `PATCH` (update capture) routes:
+
 ```typescript
 const { isSupplemental } = computeMovement(machine, captureData);
 
@@ -254,15 +268,21 @@ updateData.isSupplemental = isSupplemental;
 #### `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts`
 
 **Changed condition for Meters doc generation:**
+
 ```typescript
 // Before:
-if (isNoSasLocation) { /* create manual Meters docs */ }
+if (isNoSasLocation) {
+  /* create manual Meters docs */
+}
 
 // After:
-if (isNoSasLocation || m.isSupplemental === true) { /* create Meters docs */ }
+if (isNoSasLocation || m.isSupplemental === true) {
+  /* create Meters docs */
+}
 ```
 
 **For supplemental SMIBs specifically:**
+
 ```typescript
 if (m.isSupplemental === true) {
   // Query most recent prior Meters doc
@@ -291,6 +311,7 @@ if (m.isSupplemental === true) {
 ```
 
 **RAM Clear variant** (two docs created when `m.ramClear === true`):
+
 - Doc 1: Peak values carried forward, `isRamClear: true`, `isSupplemental: true`
 - Doc 2: Post-reset values, non-entered lifetime = 0, non-entered movement = 0, `isSupplemental: true`
 
@@ -301,13 +322,14 @@ if (m.isSupplemental === true) {
 #### `app/api/collection-reports-v2/sessions/[sessionId]/route.ts`
 
 Added `isSupplemental` to the machines mapping in the GET response (line ~315):
+
 ```typescript
 return {
   // ...existing fields...
   ramClear: m.ramClear === true,
   ramClearMetersIn: m.ramClearMetersIn,
   ramClearMetersOut: m.ramClearMetersOut,
-  isSupplemental: m.isSupplemental === true,  // NEW
+  isSupplemental: m.isSupplemental === true, // NEW
   lastCollectionTime: getLastCollectionTime(m.machineId),
   createdAt: m.createdAt,
   updatedAt: m.updatedAt,
@@ -321,61 +343,74 @@ return {
 #### `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx`
 
 **Type update:**
+
 ```typescript
 type SessionMachine = {
   // ...existing fields...
   lastCollectionTime?: string | null;
-  isSupplemental?: boolean;  // NEW
+  isSupplemental?: boolean; // NEW
   createdAt?: string;
   updatedAt?: string;
 };
 ```
 
 **Amber warning banner** (shown between "System Meters" and "Photo Capture" sections):
+
 ```tsx
-{!session?.noSMIBLocation && currentMachine?.isSupplemental === true && (
-  <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 text-lg leading-none" aria-hidden="true">📶</span>
-      <div>
-        <p className="text-sm font-semibold text-amber-800">
-          Supplemental meters will be generated
-        </p>
-        <p className="mt-1 text-xs text-amber-700">
-          This SMIB cabinet has been offline for ≥ 3 days. Non-entered lifetime
-          meters (jackpot, credits won, current credits, etc.) will be carried
-          forward from the previous collection with a movement delta of 0.
-          Only physical drop meters (Meters In / Meters Out) reflect actual movement.
-        </p>
+{
+  !session?.noSMIBLocation && currentMachine?.isSupplemental === true && (
+    <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 text-lg leading-none" aria-hidden="true">
+          📶
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">
+            Supplemental meters will be generated
+          </p>
+          <p className="mt-1 text-xs text-amber-700">
+            This SMIB cabinet has been offline for ≥ 3 days. Non-entered
+            lifetime meters (jackpot, credits won, current credits, etc.) will
+            be carried forward from the previous collection with a movement
+            delta of 0. Only physical drop meters (Meters In / Meters Out)
+            reflect actual movement.
+          </p>
+        </div>
       </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 **📶 Supplemental badge in ReviewView — Desktop (alongside RAM Clear badge):**
+
 ```tsx
-{machine.isSupplemental === true && (
-  <span
-    className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
-    title="Supplemental meters: SMIB cabinet was offline ≥ 3 days. Non-entered lifetime meters were carried forward with 0 movement delta."
-  >
-    <span aria-hidden="true">📶</span>
-    Supplemental
-  </span>
-)}
+{
+  machine.isSupplemental === true && (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+      title="Supplemental meters: SMIB cabinet was offline ≥ 3 days. Non-entered lifetime meters were carried forward with 0 movement delta."
+    >
+      <span aria-hidden="true">📶</span>
+      Supplemental
+    </span>
+  );
+}
 ```
 
 **📶 Supplemental badge in ReviewView — Mobile (`sm:hidden` section):**
+
 ```tsx
-{machine.isSupplemental === true && (
-  <span
-    className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700"
-    title="Supplemental: SMIB offline ≥ 3 days"
-  >
-    <span aria-hidden="true">📶</span>
-  </span>
-)}
+{
+  machine.isSupplemental === true && (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700"
+      title="Supplemental: SMIB offline ≥ 3 days"
+    >
+      <span aria-hidden="true">📶</span>
+    </span>
+  );
+}
 ```
 
 ---
@@ -385,17 +420,19 @@ type SessionMachine = {
 #### `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx`
 
 **Type update:**
+
 ```typescript
 type SessionMachine = {
   // ...existing fields...
   machineGross?: number;
   grossDifference?: number;
-  isSupplemental?: boolean;  // NEW
+  isSupplemental?: boolean; // NEW
   createdAt?: string;
 };
 ```
 
 **`SupplementalBadge` component** (defined as an inner component alongside `MatchIcon`, `SortIcon`, etc.):
+
 ```tsx
 const SupplementalBadge = () => (
   <span
@@ -409,6 +446,7 @@ const SupplementalBadge = () => (
 ```
 
 **Desktop table — machine name cell:**
+
 ```tsx
 <div className="flex items-center gap-1.5 flex-wrap">
   <button ...>{machine.machineCustomName || machine.machineName}</button>
@@ -417,12 +455,15 @@ const SupplementalBadge = () => (
 ```
 
 **Mobile card — name area:**
+
 ```tsx
-{machine.isSupplemental && (
-  <div className="mt-1">
-    <SupplementalBadge />
-  </div>
-)}
+{
+  machine.isSupplemental && (
+    <div className="mt-1">
+      <SupplementalBadge />
+    </div>
+  );
+}
 ```
 
 ---
@@ -430,6 +471,7 @@ const SupplementalBadge = () => (
 ## 7. Visual UI Summary
 
 ### During Capture Wizard (in-progress session)
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ System Meters (from SMIB)                       │
@@ -449,6 +491,7 @@ const SupplementalBadge = () => (
 ```
 
 ### Review View (before submit)
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ [Photo]  Machine ABC-123                        │
@@ -458,6 +501,7 @@ const SupplementalBadge = () => (
 ```
 
 ### Submitted Session — Machines Tab (desktop table)
+
 ```
 ┌──────────┬──────────────────────────────────┬─────────────────┬─────┐
 │  Photo   │  Machine                         │  Lifetime In/Out│ ... │
@@ -471,11 +515,13 @@ const SupplementalBadge = () => (
 ## 8. Mathematical Guarantee
 
 Given:
+
 - `prevDoc` = most recent prior Meters document
 - `entered_in` = drop entered by collector
 - `entered_out` = cancelledCredits entered by collector
 
 Supplemental document values:
+
 ```
 new.drop                = entered_in
 new.totalCancelledCred  = entered_out
@@ -492,10 +538,12 @@ new.movement.games      = 0  ← zeroed
 ```
 
 When SMIB reconnects and `sas-worker` writes the next real doc:
+
 ```
 nextDoc.movement.coinIn = nextDoc.coinIn - supplementalDoc.coinIn
                         = nextDoc.coinIn - prevDoc.coinIn
 ```
+
 → Movement is correctly calculated only for the period after reconnection. ✅
 
 ---
@@ -505,6 +553,7 @@ nextDoc.movement.coinIn = nextDoc.coinIn - supplementalDoc.coinIn
 When the machine was RAM cleared while offline:
 
 **Doc 1 — Peak (RAM Clear snapshot):**
+
 ```
 drop                = ramClearMetersIn  (collector entered peak)
 totalCancelled      = ramClearMetersOut
@@ -516,6 +565,7 @@ isSupplemental      = true
 ```
 
 **Doc 2 — Post-reset current:**
+
 ```
 drop                = entered_in        (current reading, reset from 0)
 totalCancelled      = entered_out
@@ -535,20 +585,20 @@ isSupplemental      = true
 2. **No-SMIB locations are never supplemental** — they have no relay so there's no offline detection (`relayId` is absent).
 3. **Online SMIB machines are never supplemental** — only machines with `lastActivity` older than 72 hours qualify.
 4. **V1 and V2 mathematical parity** — both systems produce identical `Meters` documents. V1 does it in `reportCreation.ts`, V2 does it in the submit route.
-5. **`isSupplemental` is idempotent** — re-saving a supplemental machine does not double-carry or corrupt values. The logic always queries the *most recent prior* doc excluding the current session.
+5. **`isSupplemental` is idempotent** — re-saving a supplemental machine does not double-carry or corrupt values. The logic always queries the _most recent prior_ doc excluding the current session.
 
 ---
 
 ## 11. Files Changed — Quick Reference
 
-| File | Change Type | Purpose |
-|---|---|---|
-| `app/api/lib/models/meters.ts` | Schema | Add `isSupplemental` field |
-| `app/api/lib/models/reportedMachines.ts` | Schema + Type | Add `isSupplemental` field |
-| `app/api/lib/helpers/collectionReport/reportCreation.ts` | Logic | V1 carry-forward + zero-delta + RAM clear |
-| `app/api/lib/helpers/collectionReportV2/movement.ts` | Logic | V2 offline detection + movement modification |
-| `app/api/collection-reports-v2/machines/route.ts` | API | Persist `isSupplemental` on POST/PATCH |
-| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts` | API | Generate supplemental `Meters` docs on submit |
-| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts` | API | Expose `isSupplemental` in GET response |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx` | UI | Warning banner during capture + badge in ReviewView |
-| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx` | UI | `📶 Supplemental` badge in submitted report table |
+| File                                                                                                | Change Type   | Purpose                                             |
+| --------------------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------- |
+| `app/api/lib/models/meters.ts`                                                                      | Schema        | Add `isSupplemental` field                          |
+| `app/api/lib/models/reportedMachines.ts`                                                            | Schema + Type | Add `isSupplemental` field                          |
+| `app/api/lib/helpers/collectionReport/reportCreation.ts`                                            | Logic         | V1 carry-forward + zero-delta + RAM clear           |
+| `app/api/lib/helpers/collectionReportV2/movement.ts`                                                | Logic         | V2 offline detection + movement modification        |
+| `app/api/collection-reports-v2/machines/route.ts`                                                   | API           | Persist `isSupplemental` on POST/PATCH              |
+| `app/api/collection-reports-v2/sessions/[sessionId]/submit/route.ts`                                | API           | Generate supplemental `Meters` docs on submit       |
+| `app/api/collection-reports-v2/sessions/[sessionId]/route.ts`                                       | API           | Expose `isSupplemental` in GET response             |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionDetail.tsx`            | UI            | Warning banner during capture + badge in ReviewView |
+| `components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2SessionReportMachinesTab.tsx` | UI            | `📶 Supplemental` badge in submitted report table   |

@@ -59,7 +59,9 @@ export default function CollectionReportCards({
   const { formatAmount } = useCurrencyFormat();
   const user = useUserStore(state => state.user);
 
-  const [licenceeName, setLicenceeName] = useState<string>('the selected period');
+  const [licenceeName, setLicenceeName] = useState<string>(
+    'the selected period'
+  );
   useEffect(() => {
     if (selectedLicencee && selectedLicencee !== 'all') {
       import('@/lib/helpers/client').then(({ fetchLicenceeById }) => {

@@ -68,15 +68,15 @@ export const CollectionReportDetailsLocationSummary: FC<
               <span
                 className={`font-medium ${row.isCurrency ? getFinancialColorClass(row.value as number) : 'text-gray-800'}`}
               >
-                {row.isCurrency
-                  ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
-                  : row.value === 'No SMIB for this Machine' ? (
-                      <span className="italic text-gray-500">
-                        No SMIB for this Machine
-                      </span>
-                    ) : (
-                      row.value
-                    )}
+                {row.isCurrency ? (
+                  `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+                ) : row.value === 'No SMIB for this Machine' ? (
+                  <span className="italic text-gray-500">
+                    No SMIB for this Machine
+                  </span>
+                ) : (
+                  row.value
+                )}
               </span>
             </div>
           ))}
@@ -100,18 +100,20 @@ export const CollectionReportDetailsLocationSummary: FC<
               <td className="p-3 font-medium text-gray-700">{row.label}</td>
               <td
                 className={`p-3 text-right ${
-                  row.isCurrency ? getFinancialColorClass(row.value as number) : ''
+                  row.isCurrency
+                    ? getFinancialColorClass(row.value as number)
+                    : ''
                 }`}
               >
-                {row.isCurrency
-                  ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
-                  : row.value === 'No SMIB for this Machine' ? (
-                      <span className="italic text-gray-500">
-                        No SMIB for this Machine
-                      </span>
-                    ) : (
-                      row.value
-                    )}
+                {row.isCurrency ? (
+                  `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+                ) : row.value === 'No SMIB for this Machine' ? (
+                  <span className="italic text-gray-500">
+                    No SMIB for this Machine
+                  </span>
+                ) : (
+                  row.value
+                )}
               </td>
             </tr>
           ))}

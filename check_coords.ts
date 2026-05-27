@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 import { GamingLocations } from './app/api/lib/models/gaminglocations';
 
 async function check() {
-  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/evolution-one-cms');
+  await mongoose.connect(
+    process.env.MONGODB_URI || 'mongodb://localhost:27017/evolution-one-cms'
+  );
   const locs = await GamingLocations.find({}).lean();
   for (const loc of locs) {
     console.log('---', loc.name);

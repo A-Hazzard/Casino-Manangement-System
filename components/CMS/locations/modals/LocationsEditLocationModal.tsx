@@ -116,7 +116,7 @@ export default function LocationsEditLocationModal({
   const isDeveloper = Array.isArray(user?.roles)
     ? user?.roles.includes('developer')
     : false;
- 
+
   const [formData, setFormData] = useState({
     name: '',
     street: '',
@@ -162,7 +162,7 @@ export default function LocationsEditLocationModal({
     },
     previousCollectionTime: '',
   });
- 
+
   // Store original form data exactly as loaded from API for accurate comparison
   const [originalFormData, setOriginalFormData] = useState<
     typeof formData | null
@@ -172,20 +172,26 @@ export default function LocationsEditLocationModal({
     if (!formData.googleMapsLink) return;
 
     // 1. Try to find the !3d...!4d pattern (usually more accurate marker position in long URLs)
-    const dataMatch = formData.googleMapsLink.match(/!3d([-0-9.]+)!4d([-0-9.]+)/);
+    const dataMatch = formData.googleMapsLink.match(
+      /!3d([-0-9.]+)!4d([-0-9.]+)/
+    );
     // 2. Try to find the @lat,lng pattern (viewport center)
     const atMatch = formData.googleMapsLink.match(/@([-0-9.]+),([-0-9.]+)/);
     // 3. Try to find query params q=lat,lng or ll=lat,lng
-    const qMatch = formData.googleMapsLink.match(/[?&](?:q|ll)=([-0-9.]+),([-0-9.]+)/);
+    const qMatch = formData.googleMapsLink.match(
+      /[?&](?:q|ll)=([-0-9.]+),([-0-9.]+)/
+    );
     // 4. Try to find search or place patterns
-    const searchMatch = formData.googleMapsLink.match(/\/(?:search|place)\/([-0-9.]+),([-0-9.]+)/);
+    const searchMatch = formData.googleMapsLink.match(
+      /\/(?:search|place)\/([-0-9.]+),([-0-9.]+)/
+    );
 
     const match = dataMatch || atMatch || qMatch || searchMatch;
 
     if (match && match.length >= 3) {
       const lat = match[1];
       const lng = match[2];
-      
+
       // Only update if they are actually different to avoid infinite loops or unnecessary re-renders
       if (lat !== formData.latitude || lng !== formData.longitude) {
         setFormData(prev => ({
@@ -197,7 +203,7 @@ export default function LocationsEditLocationModal({
       }
     }
   }, [formData.googleMapsLink, formData.latitude, formData.longitude]);
- 
+
   useEffect(() => {
     if (!isDeveloper && useMap) {
       setUseMap(false);
@@ -614,7 +620,6 @@ export default function LocationsEditLocationModal({
     });
   };
 
-
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
@@ -757,7 +762,9 @@ export default function LocationsEditLocationModal({
         locationMembershipSettings: originalFormData.locationMembershipSettings,
         googleMapsLink: originalFormData.googleMapsLink,
         googleMapsIframe: originalFormData.googleMapsIframe,
-        previousCollectionTime: originalFormData.previousCollectionTime ? new Date(originalFormData.previousCollectionTime).toISOString() : null,
+        previousCollectionTime: originalFormData.previousCollectionTime
+          ? new Date(originalFormData.previousCollectionTime).toISOString()
+          : null,
       };
 
       const formDataComparison = {
@@ -791,7 +798,9 @@ export default function LocationsEditLocationModal({
         googleMapsLink: formData.googleMapsLink,
         googleMapsIframe: formData.googleMapsIframe,
         locationMembershipSettings: formData.locationMembershipSettings,
-        previousCollectionTime: formData.previousCollectionTime ? new Date(formData.previousCollectionTime).toISOString() : null,
+        previousCollectionTime: formData.previousCollectionTime
+          ? new Date(formData.previousCollectionTime).toISOString()
+          : null,
       };
 
       // Detect changes by comparing original loaded data with current form data
@@ -945,15 +954,18 @@ export default function LocationsEditLocationModal({
                   </h3>
                   <div className="mt-1 font-mono text-sm text-gray-600">
                     {locationDetailsLoading ? (
-                      <div className="h-4 w-32 animate-pulse mx-auto rounded bg-gray-200" />
+                      <div className="mx-auto h-4 w-32 animate-pulse rounded bg-gray-200" />
                     ) : formData.previousCollectionTime ? (
-                      new Date(formData.previousCollectionTime).toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+                      new Date(formData.previousCollectionTime).toLocaleString(
+                        'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }
+                      )
                     ) : (
                       'Unknown'
                     )}
@@ -963,7 +975,7 @@ export default function LocationsEditLocationModal({
                   <h3 className="text-sm font-medium text-gray-700">Created</h3>
                   <div className="mt-1 text-sm text-gray-600">
                     {locationDetailsLoading && !locationDetails?.createdAt ? (
-                      <div className="h-4 w-24 animate-pulse ml-auto rounded bg-gray-200" />
+                      <div className="ml-auto h-4 w-24 animate-pulse rounded bg-gray-200" />
                     ) : locationDetails?.createdAt ? (
                       new Date(locationDetails.createdAt).toLocaleDateString(
                         'en-US',
@@ -999,8 +1011,6 @@ export default function LocationsEditLocationModal({
                 className="h-12 w-full border-border bg-container text-base"
               />
             </div>
- 
-
 
             {/* Address */}
             <div className="mb-4">
@@ -1195,8 +1205,6 @@ export default function LocationsEditLocationModal({
                 </select>
               )}
             </div>
- 
-
 
             {/* Membership Configuration Section */}
             <div className="mb-4 rounded-lg border border-gray-200 p-4">
@@ -1561,13 +1569,22 @@ export default function LocationsEditLocationModal({
             {/* Google Maps Integration Section */}
             <div className="mb-6 space-y-4 rounded-xl border border-blue-100 bg-blue-50/30 p-4">
               <h3 className="flex items-center text-sm font-semibold text-blue-800">
-                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2 h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 Google Maps Integration
               </h3>
-              
+
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* Google Maps Link */}
                 <div>
@@ -1597,14 +1614,21 @@ export default function LocationsEditLocationModal({
                   />
                 </div>
               </div>
-              
+
               {(formData.googleMapsLink || formData.googleMapsIframe) && (
                 <div className="mt-2 text-[10px] text-blue-600">
                   {formData.googleMapsLink && !formData.latitude && (
-                    <p>?? Tip: If coordinates didn&apos;t extract, try copying the URL directly from your browser&apos;s address bar while viewing the location.</p>
+                    <p>
+                      ?? Tip: If coordinates didn&apos;t extract, try copying
+                      the URL directly from your browser&apos;s address bar
+                      while viewing the location.
+                    </p>
                   )}
                   {formData.googleMapsIframe && (
-                    <p>? Iframe detected. This will be used for the location preview below.</p>
+                    <p>
+                      ? Iframe detected. This will be used for the location
+                      preview below.
+                    </p>
                   )}
                 </div>
               )}
@@ -1642,9 +1666,14 @@ export default function LocationsEditLocationModal({
             </div>
 
             {/* Map Component or Iframe Preview */}
-            {(useMap || (formData.latitude && formData.longitude) || formData.googleMapsIframe) && (
+            {(useMap ||
+              (formData.latitude && formData.longitude) ||
+              formData.googleMapsIframe) && (
               <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-                {useMap || (formData.latitude && formData.longitude && formData.googleMapsLink) ? (
+                {useMap ||
+                (formData.latitude &&
+                  formData.longitude &&
+                  formData.googleMapsLink) ? (
                   <div className="relative">
                     {mapLoadError && (
                       <div className="relative z-10 mb-2 rounded-md border border-yellow-200 bg-yellow-50 p-2">
@@ -1656,7 +1685,9 @@ export default function LocationsEditLocationModal({
                     )}
                     <LocationsLocationPickerMap
                       initialLat={
-                        formData.latitude ? parseFloat(formData.latitude) : 10.6599
+                        formData.latitude
+                          ? parseFloat(formData.latitude)
+                          : 10.6599
                       }
                       initialLng={
                         formData.longitude
@@ -1670,11 +1701,13 @@ export default function LocationsEditLocationModal({
                     />
                   </div>
                 ) : formData.googleMapsIframe ? (
-                  <div 
+                  <div
                     className="h-[300px] w-full"
-                    dangerouslySetInnerHTML={{ 
-                      __html: formData.googleMapsIframe.replace(/width="[0-9%]+"/, 'width="100%"').replace(/height="[0-9]+"/, 'height="300"') 
-                    }} 
+                    dangerouslySetInnerHTML={{
+                      __html: formData.googleMapsIframe
+                        .replace(/width="[0-9%]+"/, 'width="100%"')
+                        .replace(/height="[0-9]+"/, 'height="300"'),
+                    }}
                   />
                 ) : null}
               </div>

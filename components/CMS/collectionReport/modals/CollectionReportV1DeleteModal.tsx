@@ -142,7 +142,10 @@ export default function CollectionReportV1DeleteModal({
               <div className="text-center">
                 <p className="mb-2 text-lg font-semibold text-grayHighlight">
                   What would you like to do with the report for{' '}
-                  <span className="font-bold text-buttonActive">{locationName}</span>?
+                  <span className="font-bold text-buttonActive">
+                    {locationName}
+                  </span>
+                  ?
                 </p>
                 <p className="mb-6 text-sm text-grayHighlight/70">
                   ID: #{shortId}
@@ -161,7 +164,8 @@ export default function CollectionReportV1DeleteModal({
                     <div>
                       <p className="font-semibold text-amber-800">Archive</p>
                       <p className="text-xs text-amber-700/80">
-                        Hide from active reports list. Can be restored if needed.
+                        Hide from active reports list. Can be restored if
+                        needed.
                       </p>
                     </div>
                   </button>
@@ -176,9 +180,12 @@ export default function CollectionReportV1DeleteModal({
                       <Trash2 className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-red-800">Permanent Delete</p>
+                      <p className="font-semibold text-red-800">
+                        Permanent Delete
+                      </p>
                       <p className="text-xs text-red-700/80">
-                        Remove permanently from the database. This action cannot be undone.
+                        Remove permanently from the database. This action cannot
+                        be undone.
                       </p>
                     </div>
                   </button>
@@ -196,10 +203,14 @@ export default function CollectionReportV1DeleteModal({
                 </div>
                 <p className="mb-4 text-lg font-semibold text-grayHighlight">
                   Archive report for{' '}
-                  <span className="font-bold text-buttonActive">{locationName}</span>?
+                  <span className="font-bold text-buttonActive">
+                    {locationName}
+                  </span>
+                  ?
                 </p>
                 <p className="text-sm text-grayHighlight">
-                  The report and its collections will be hidden from active lists. Associated manual meters will also be soft-deleted.
+                  The report and its collections will be hidden from active
+                  lists. Associated manual meters will also be soft-deleted.
                 </p>
               </div>
             )}
@@ -214,10 +225,15 @@ export default function CollectionReportV1DeleteModal({
                 </div>
                 <p className="mb-4 text-lg font-semibold text-grayHighlight">
                   Permanently delete report for{' '}
-                  <span className="font-bold text-buttonActive">{locationName}</span>?
+                  <span className="font-bold text-buttonActive">
+                    {locationName}
+                  </span>
+                  ?
                 </p>
                 <p className="text-sm text-red-700">
-                  This report, all associated machine collections, and manually created meters will be permanently removed. This cannot be undone.
+                  This report, all associated machine collections, and manually
+                  created meters will be permanently removed. This cannot be
+                  undone.
                 </p>
               </div>
             )}

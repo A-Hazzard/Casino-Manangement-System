@@ -195,24 +195,24 @@ export async function computeMovement(
   let manualMovIn = 0;
   let manualMovOut = 0;
 
-  // Find machine to get its locationId to check noSMIBLocation and offline status
+  // Find machine to get its relayId (per-machine SMIB detection) and offline status.
   const machine = await Machine.findOne(
     { _id: machineId },
     'gamingLocation relayId lastActivity'
-  ).lean<any>();
-  let isNoSMIBLocation = false;
-  let isOffline = false;
-  if (machine?.gamingLocation) {
-    const { GamingLocations } =
-      await import('@/app/api/lib/models/gaminglocations');
-    const locDoc = await GamingLocations.findOne(
-      { _id: machine.gamingLocation },
-      'noSMIBLocation'
-    ).lean<{ noSMIBLocation?: boolean }>();
-    isNoSMIBLocation = locDoc?.noSMIBLocation === true;
-  }
+  ).lean<{
+    gamingLocation?: string;
+    relayId?: string | null;
+    lastActivity?: Date | string;
+  }>();
   const hasRelay = !!machine?.relayId;
-  isOffline = hasRelay && (!machine?.lastActivity || (new Date().getTime() - new Date(machine.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
+  // A relay machine is considered offline if lastActivity is >3 days ago.
+  const isOffline =
+    hasRelay &&
+    (!machine?.lastActivity ||
+      new Date().getTime() - new Date(machine.lastActivity).getTime() >=
+        3 * 24 * 60 * 60 * 1000);
+  // Non-relay machines (no relayId) behave like noSMIB: manual meters used.
+  const isNoSMIBLocation = !hasRelay;
 
   if (isNoSMIBLocation) {
     const effectiveManualIn = currentManualIn ?? currentSasIn;

@@ -20,13 +20,13 @@ import type { AggregatedLocation } from '@/lib/types/location';
 export function hasMissingCoordinates(location: AggregatedLocation): boolean {
   const iframe = location.googleMapsIframe;
   const mapUrl = location.googleMapsLink;
-  
+
   // 1. Is the iframe missing?
   const isIframeMissing = !iframe || iframe.trim() === '';
-  
+
   // 2. Is the map URL missing?
   const isMapUrlMissing = !mapUrl || mapUrl.trim() === '';
-  
+
   // 3. Are the longitude & latitude together missing?
   const geoCoords = location.geoCoords;
   const hasLatitude =

@@ -36,9 +36,14 @@ export default function CollectionReportMobileLayout(
     }
     if (Array.isArray(props.selectedLocation)) {
       if (props.selectedLocation.length === 1) {
-        const loc = props.locations.find(l => l._id === props.selectedLocation[0]);
+        const loc = props.locations.find(
+          l => l._id === props.selectedLocation[0]
+        );
         return loc?.slug ? (
-          <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+          <Link
+            href={`/locations/${loc.slug}`}
+            className="text-buttonActive hover:underline"
+          >
             {loc.name}
           </Link>
         ) : (
@@ -49,7 +54,10 @@ export default function CollectionReportMobileLayout(
     }
     const loc = props.locations.find(l => l._id === props.selectedLocation);
     return loc?.slug ? (
-      <Link href={`/locations/${loc.slug}`} className="text-buttonActive hover:underline">
+      <Link
+        href={`/locations/${loc.slug}`}
+        className="text-buttonActive hover:underline"
+      >
         {loc.name}
       </Link>
     ) : (

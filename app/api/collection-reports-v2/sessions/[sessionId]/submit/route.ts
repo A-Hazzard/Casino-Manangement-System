@@ -28,6 +28,7 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
+import type { MeterDocument } from '@/shared/types';
 
 export async function PATCH(
   req: NextRequest,
@@ -85,20 +86,25 @@ export async function PATCH(
     // ============================================================================
     // STEP 3.5: Chronological submit check (Middle-Date Block per Machine)
     // ============================================================================
-    const sessionMachines = await ReportedMachine.find({ sessionId }, 'machineId sasEndTime').lean();
-    
+    const sessionMachines = await ReportedMachine.find(
+      { sessionId },
+      'machineId sasEndTime'
+    ).lean();
+
     for (const sm of sessionMachines) {
       if (!sm.machineId) continue;
-      
-      const targetTime = sm.sasEndTime ? new Date(sm.sasEndTime) : sessionEndTime;
-      
+
+      const targetTime = sm.sasEndTime
+        ? new Date(sm.sasEndTime)
+        : sessionEndTime;
+
       // Check if this machine is being inserted in the middle of its history
       const nextReport = await ReportedMachine.findOne({
         machineId: sm.machineId,
         sessionStatus: 'submitted',
         sessionId: { $ne: sessionId },
         sasEndTime: { $gt: targetTime },
-        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
       }).lean();
 
       if (nextReport) {
@@ -107,14 +113,15 @@ export async function PATCH(
           sessionStatus: 'submitted',
           sessionId: { $ne: sessionId },
           sasEndTime: { $lt: targetTime },
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }]
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
         }).lean();
 
         if (prevReport) {
           return NextResponse.json(
             {
               success: false,
-              error: 'Chronological check failed: cannot insert a middle-date report. A more recent collection session has already been submitted for one or more of these machines. To proceed, you must revert or delete the newer session(s) first.',
+              error:
+                'Chronological check failed: cannot insert a middle-date report. A more recent collection session has already been submitted for one or more of these machines. To proceed, you must revert or delete the newer session(s) first.',
             },
             { status: 400 }
           );
@@ -464,37 +471,19 @@ export async function PATCH(
     >();
 
     if (submittedMachines.length > 0) {
-      // Determine if this is a "No SAS" location once for all machines in the session
-      const firstMachine = await ReportedMachine.findOne(
-        { sessionId },
-        'locationId'
-      ).lean<{ locationId: string }>();
-      const locationId = firstMachine?.locationId;
-      let isNoSasLocation = false;
-      if (locationId) {
-        const loc = await GamingLocations.findOne(
-          { _id: locationId },
-          'noSMIBLocation'
-        ).lean<{ noSMIBLocation?: boolean }>();
-        isNoSasLocation = loc?.noSMIBLocation === true;
-      }
+      // For non-relay machines (no relayId), mark every captured/confirmed machine
+      // as metersMatch since there is no SAS relay to compare against.
+      // We do this per-machine below inside the loop.
 
-      // For no-SMIB locations, mark every captured/confirmed machine as metersMatch
-      if (isNoSasLocation) {
-        await ReportedMachine.updateMany(
-          {
-            sessionId,
-            status: { $in: ['captured', 'confirmed'] },
-          },
-          { $set: { metersMatch: true } }
-        );
-      }
+      // Derive the shared location ID for the GamingLocation previousCollectionTime update.
+      const sessionLocationId = submittedMachines[0]?.locationId;
 
       await Promise.all(
         submittedMachines.map(async m => {
           const currentMachine = await Machine.findOne({
             _id: m.machineId,
           }).lean<{
+            relayId?: string | null;
             collectionTime?: Date;
             collectionMeters?: { metersIn?: number; metersOut?: number };
             collectionMetersHistory?: Array<{
@@ -508,12 +497,30 @@ export async function PATCH(
             }>;
           }>();
 
-          const targetMetersIn = isNoSasLocation
+          // Per-machine SMIB check: if the machine has a relayId it has a SAS relay
+          // and manual meters should NOT be used for Meter document creation.
+          const machineHasRelay = !!currentMachine?.relayId;
+
+          // For non-relay machines, mark metersMatch so submission succeeds.
+          if (!machineHasRelay) {
+            await ReportedMachine.findOneAndUpdate(
+              {
+                machineId: m.machineId,
+                sessionId,
+                status: { $in: ['captured', 'confirmed'] },
+              },
+              { $set: { metersMatch: true } }
+            ).catch(() => undefined);
+          }
+
+          const targetMetersIn = !machineHasRelay
             ? (m.manualMetersIn ?? m.sasMetersIn)
             : m.sasMetersIn;
-          const targetMetersOut = isNoSasLocation
+          const targetMetersOut = !machineHasRelay
             ? (m.manualMetersOut ?? m.sasMetersOut)
             : m.sasMetersOut;
+
+          const locationId = m.locationId as string | undefined;
 
           console.log(
             `[${functionName}] Persisting machine meters:`,
@@ -521,7 +528,7 @@ export async function PATCH(
               {
                 machineId: m.machineId,
                 locationName: m.locationName,
-                isNoSasLocation,
+                isNoSasLocation: !machineHasRelay,
                 reportedSasIn: m.sasMetersIn,
                 reportedSasOut: m.sasMetersOut,
                 reportedManualIn: m.manualMetersIn,
@@ -542,11 +549,11 @@ export async function PATCH(
             updatedAt: new Date(),
           };
 
-          // For noSMIB locations: mirror the collector's entered values into
+          // For non-relay machines: mirror the collector's entered values into
           // sasMeters so dashboard queries (which read sasMeters) reflect the
-          // correct figures. For SMIB locations these fields are owned by the
+          // correct figures. For SMIB machines these fields are owned by the
           // live relay and must never be overwritten here.
-          if (isNoSasLocation) {
+          if (!machineHasRelay) {
             updateFields['sasMeters.drop'] = targetMetersIn ?? null;
             updateFields['sasMeters.totalCancelledCredits'] =
               targetMetersOut ?? null;
@@ -596,10 +603,10 @@ export async function PATCH(
             );
           });
 
-          // For noSMIB locations, enforce null on all SAS meter fields stored
+          // For non-relay machines, enforce null on all SAS meter fields stored
           // on the ReportedMachine document. Stale non-null values from sessions
           // captured before this rule existed are wiped here on every submit.
-          if (isNoSasLocation) {
+          if (!machineHasRelay) {
             await ReportedMachine.findOneAndUpdate(
               { machineId: m.machineId, sessionId },
               {
@@ -613,7 +620,7 @@ export async function PATCH(
             });
           }
 
-          // If it's a No SMIB location, upsert the Meter document(s).
+          // If the machine has no relay (non-SMIB), upsert the Meter document(s).
           // On first submit: no existing meter — create one.
           // On re-submit after editing: a meter already exists for this
           // machine + session — delete it first, then create with the
@@ -623,7 +630,7 @@ export async function PATCH(
           //   1. RAM clear meter: pre-reset drop (peak - prev), isRamClear=true
           //   2. Current meter: post-reset drop (current - 0)
           // Otherwise create ONE meter doc with the normal delta.
-          if (isNoSasLocation || m.isSupplemental === true) {
+          if (!machineHasRelay || m.isSupplemental === true) {
             // Resolve the true "before this session" meter values.
             // Priority:
             //   1. existingHistoryEntry.prevMetersIn/Out — written once at
@@ -655,14 +662,16 @@ export async function PATCH(
               m.ramClearMetersIn !== undefined &&
               m.ramClearMetersOut !== undefined;
 
-            let prevMeterDoc: any = null;
+            let prevMeterDoc: MeterDocument | null = null;
             if (m.isSupplemental === true) {
               prevMeterDoc = await Meters.findOne({
                 machine: m.machineId,
                 locationSession: { $ne: sessionId },
                 readAt: { $lt: baseReadAt },
                 $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-              }).sort({ readAt: -1 }).lean();
+              })
+                .sort({ readAt: -1 })
+                .lean<MeterDocument>();
             }
 
             if (isRamClear) {
@@ -687,16 +696,40 @@ export async function PATCH(
                   gamesPlayed: 0,
                   gamesWon: 0,
                 },
-                coinIn: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
-                coinOut: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
+                coinIn:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.coinIn || 0
+                    : 0,
+                coinOut:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.coinOut || 0
+                    : 0,
                 totalCancelledCredits: m.ramClearMetersOut as number,
-                totalHandPaidCancelledCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
-                totalWonCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
+                totalHandPaidCancelledCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+                    : 0,
+                totalWonCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.totalWonCredits || 0
+                    : 0,
                 drop: m.ramClearMetersIn as number,
-                jackpot: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
-                currentCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
-                gamesPlayed: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
-                gamesWon: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+                jackpot:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.jackpot || 0
+                    : 0,
+                currentCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.currentCredits || 0
+                    : 0,
+                gamesPlayed:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.gamesPlayed || 0
+                    : 0,
+                gamesWon:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.gamesWon || 0
+                    : 0,
                 meterSource: 'COLLECTION_REPORT' as const,
                 isSupplemental: m.isSupplemental === true,
                 readAt: new Date(
@@ -777,16 +810,40 @@ export async function PATCH(
                   gamesPlayed: 0,
                   gamesWon: 0,
                 },
-                coinIn: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
-                coinOut: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
+                coinIn:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.coinIn || 0
+                    : 0,
+                coinOut:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.coinOut || 0
+                    : 0,
                 totalCancelledCredits: m.manualMetersOut ?? null,
-                totalHandPaidCancelledCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
-                totalWonCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
+                totalHandPaidCancelledCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+                    : 0,
+                totalWonCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.totalWonCredits || 0
+                    : 0,
                 drop: m.manualMetersIn ?? null,
-                jackpot: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
-                currentCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
-                gamesPlayed: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
-                gamesWon: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+                jackpot:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.jackpot || 0
+                    : 0,
+                currentCredits:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.currentCredits || 0
+                    : 0,
+                gamesPlayed:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.gamesPlayed || 0
+                    : 0,
+                gamesWon:
+                  m.isSupplemental === true && prevMeterDoc
+                    ? prevMeterDoc.gamesWon || 0
+                    : 0,
                 meterSource: 'COLLECTION_REPORT' as const,
                 isSupplemental: m.isSupplemental === true,
                 readAt: baseReadAt,
@@ -807,7 +864,7 @@ export async function PATCH(
       // ============================================================================
       // Update GamingLocation previousCollectionTime
       // ============================================================================
-      if (locationId) {
+      if (sessionLocationId) {
         let maxSasEndTime: Date | undefined;
         for (const m of submittedMachines) {
           if (m.sasEndTime) {
@@ -819,11 +876,11 @@ export async function PATCH(
         }
         if (maxSasEndTime) {
           await GamingLocations.findOneAndUpdate(
-            { _id: locationId },
+            { _id: sessionLocationId },
             { $set: { previousCollectionTime: maxSasEndTime } }
           ).catch(err => {
             console.error(
-              `[submit] Failed to update GamingLocation.previousCollectionTime for ${locationId}:`,
+              `[submit] Failed to update GamingLocation.previousCollectionTime for ${sessionLocationId}:`,
               err
             );
           });

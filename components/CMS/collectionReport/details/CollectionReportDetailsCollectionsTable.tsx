@@ -271,7 +271,9 @@ export function CollectionReportDetailsCollectionsTable({
                   ) : (
                     <span
                       className={`font-bold ${
-                        Number(metric.variation ?? 0) < 0 ? 'text-red-600' : 'text-green-600'
+                        Number(metric.variation ?? 0) < 0
+                          ? 'text-red-600'
+                          : 'text-green-600'
                       }`}
                     >
                       {smartCurrency(metric.variation ?? 0)}
