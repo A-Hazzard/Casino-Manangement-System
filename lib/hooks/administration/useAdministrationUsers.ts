@@ -13,7 +13,7 @@ import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SortKey, User } from '@/lib/types/administration';
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseAdministrationUsersProps = {
@@ -75,25 +75,25 @@ export function useAdministrationUsers({
   // ============================================================================
   // Computed
   // ============================================================================
-  const isDeveloper = (() => {
+  const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
     return userRoles.some(
       role => typeof role === 'string' && role === 'developer'
     );
-  })();
+  }, [user?.roles]);
 
-  const isOwner = (() => {
+  const isOwner = useMemo(() => {
     const userRoles = user?.roles || [];
     return userRoles.some(role => typeof role === 'string' && role === 'owner');
-  })();
+  }, [user?.roles]);
 
   // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = (page: number) => {
+  const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / pagesPerBatch) + 1;
-  };
+  }, []);
 
   // Apply role filter to all users first (before pagination)
-  const roleFilteredUsers = (() => {
+  const roleFilteredUsers = useMemo(() => {
     if (selectedRole === 'all') {
       return allUsers;
     }
@@ -103,18 +103,18 @@ export function useAdministrationUsers({
         role => typeof role === 'string' && role === selectedRole
       );
     });
-  })();
+  }, [allUsers, selectedRole]);
 
   // Get items for current page from the role-filtered users
-  const paginatedUsers = (() => {
+  const paginatedUsers = useMemo(() => {
     const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
     const startIndex = positionInBatch;
     const endIndex = startIndex + itemsPerPage;
     return roleFilteredUsers.slice(startIndex, endIndex);
-  })();
+  }, [roleFilteredUsers, currentPage]);
 
   // Calculate total pages based on role-filtered users or search results
-  const totalPages = (() => {
+  const totalPages = useMemo(() => {
     if (usingBackendSearch && paginationMetadata) {
       return paginationMetadata.totalPages > 0
         ? paginationMetadata.totalPages
@@ -123,9 +123,9 @@ export function useAdministrationUsers({
     const totalItems = roleFilteredUsers.length;
     const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
     return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  })();
+  }, [roleFilteredUsers.length, usingBackendSearch, paginationMetadata]);
 
-  const processedUsers = (() => {
+  const processedUsers = useMemo(() => {
     const effectiveSearchValue = usingBackendSearch ? '' : searchValue;
     return administrationUtils.processUsers(
       paginatedUsers,
@@ -135,7 +135,13 @@ export function useAdministrationUsers({
       isDeveloper,
       isOwner
     );
-  })();
+  }, [
+    paginatedUsers,
+    searchValue,
+    usingBackendSearch,
+    sortConfig,
+    isDeveloper,
+  ]);
 
   const requestSort = administrationUtils.createSortHandler(
     sortConfig,
@@ -143,7 +149,7 @@ export function useAdministrationUsers({
   );
 
   // Counts derived from the full current result set (status + search filtered, not paginated)
-  const filteredCounts = (() => {
+  const filteredCounts = useMemo(() => {
     const usersToCount = allUsers;
     return {
       total: usersToCount.length,
@@ -162,7 +168,7 @@ export function useAdministrationUsers({
         (user.roles as string[] | undefined)?.includes('manager')
       ).length,
     };
-  })();
+  }, [allUsers]);
 
   // ============================================================================
   // Effects
@@ -544,7 +550,7 @@ export function useAdministrationUsers({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleEditUser = async (user: User) => {
+  const handleEditUser = useCallback(async (user: User) => {
     setIsUserModalOpen(true);
     setSelectedUser(null);
 
@@ -563,22 +569,22 @@ export function useAdministrationUsers({
       toast.error('Failed to load user details');
       setIsUserModalOpen(false);
     }
-  };
+  }, []);
 
-  const handleDeleteUser = (user: User) => {
+  const handleDeleteUser = useCallback((user: User) => {
     setSelectedUserToDelete(user);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const openAddUserModal = () => {
+  const openAddUserModal = useCallback(() => {
     setIsAddUserModalOpen(true);
-  };
+  }, []);
 
-  const closeAddUserModal = async () => {
+  const closeAddUserModal = useCallback(async () => {
     setIsAddUserModalOpen(false);
-  };
+  }, []);
 
-  const refreshUsers = async () => {
+  const refreshUsers = useCallback(async () => {
     setRefreshing(true);
     try {
       const result = await fetchUsers(
@@ -598,9 +604,9 @@ export function useAdministrationUsers({
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [selectedLicencee, selectedStatus]);
 
-  const getUserDisplayName = () => {
+  const getUserDisplayName = useCallback(() => {
     if (!user) return 'Unknown User';
     if (user.profile?.firstName && user.profile?.lastName) {
       return `${user.profile.firstName} ${user.profile.lastName}`;
@@ -618,9 +624,10 @@ export function useAdministrationUsers({
       return user.emailAddress;
     }
     return 'Unknown User';
-  };
+  }, [user]);
 
-  const handleSaveUser = async (
+  const handleSaveUser = useCallback(
+    async (
       updated: Partial<User> & {
         password?: string;
       }
@@ -676,9 +683,25 @@ export function useAdministrationUsers({
           // Error already handled in helper with toast
         },
       });
-    };
+    },
+    [
+      selectedUser,
+      user,
+      getUserDisplayName,
+      selectedLicencee,
+      selectedStatus,
+      setAllUsers,
+      setAllLoadedUsers,
+      setIsUserModalOpen,
+      setSelectedUser,
+      setRefreshing,
+      setLoadedBatches,
+      setCurrentPage,
+    ]
+  );
 
-  const handleDeleteUserConfirm = async (userToDelete: User) => {
+  const handleDeleteUserConfirm = useCallback(
+    async (userToDelete: User) => {
       const userData = { ...userToDelete };
 
       try {
@@ -736,7 +759,19 @@ export function useAdministrationUsers({
       }
       setIsDeleteModalOpen(false);
       setSelectedUserToDelete(null);
-    };
+    },
+    [
+      user,
+      getUserDisplayName,
+      selectedLicencee,
+      selectedStatus,
+      setAllUsers,
+      setLoadedBatches,
+      setCurrentPage,
+      setIsDeleteModalOpen,
+      setSelectedUserToDelete,
+    ]
+  );
 
   return {
     // State

@@ -27,7 +27,7 @@ import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 import { isAbortError } from '@/lib/utils/errors';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
 type SmibSyncStatus = {
@@ -79,9 +79,9 @@ export function useLocationsPageData() {
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 
   // Helper to calculate which batch a page belongs to
-  const calculateBatchNumber = (page: number) => {
+  const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / PAGES_PER_BATCH) + 1;
-  };
+  }, []);
 
   // ============================================================================
   // Base Hook Integration
@@ -98,7 +98,10 @@ export function useLocationsPageData() {
       sortOrder: sortOrder,
     });
 
-  const machineTypeFilterString = selectedFilters.join(',');
+  const machineTypeFilterString = useMemo(
+    () => selectedFilters.join(','),
+    [selectedFilters]
+  );
   const { machineStats, machineStatsLoading, refreshMachineStats } =
     useLocationMachineStats(
       undefined,
@@ -113,24 +116,30 @@ export function useLocationsPageData() {
   // ============================================================================
   // Computed
   // ============================================================================
-  const financialTotals = calculateLocationFinancialTotals(locationData);
+  const financialTotals = useMemo(
+    () => calculateLocationFinancialTotals(locationData),
+    [locationData]
+  );
 
   // Sliced data for the current page
-  const paginatedLocationData = (() => {
+  const paginatedLocationData = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     return locationData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  })();
+  }, [locationData, currentPage, ITEMS_PER_PAGE]);
 
-  const isDataMissingForPage = (() => {
+  const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
     return (
       locationData.length <= startIndex && totalCount > locationData.length
     );
-  })();
+  }, [locationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
 
-  const isDataComplete = locationData.length >= totalCount && totalCount > 0;
+  const isDataComplete = useMemo(
+    () => locationData.length >= totalCount && totalCount > 0,
+    [locationData.length, totalCount]
+  );
 
-  const effectiveTotalPages = (() => {
+  const effectiveTotalPages = useMemo(() => {
     const displayedCount = locationData.length;
     const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
 
@@ -141,7 +150,7 @@ export function useLocationsPageData() {
     }
 
     return displayedPages;
-  })();
+  }, [locationData.length, totalCount, ITEMS_PER_PAGE]);
 
   // ============================================================================
   // Handlers

@@ -46,7 +46,7 @@ import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import type {
@@ -98,10 +98,10 @@ function DesktopEditWrapper({
   forceCloseRef,
 }: WrapperProps) {
   // Wrap onClose to set force close flag before calling (bypasses unsaved changes check)
-  const handleCloseWithForce = () => {
+  const handleCloseWithForce = useCallback(() => {
     forceCloseRef && (forceCloseRef.current = true);
     onClose();
-  };
+  }, [forceCloseRef, onClose]);
 
   // ============================================================================
   // State & Hooks
@@ -406,10 +406,10 @@ function MobileEditWrapper({
   forceCloseRef,
 }: WrapperProps) {
   // Wrap onClose to set force close flag before calling (bypasses unsaved changes check)
-  const handleCloseWithForce = () => {
+  const handleCloseWithForce = useCallback(() => {
     forceCloseRef && (forceCloseRef.current = true);
     onClose();
-  };
+  }, [forceCloseRef, onClose]);
 
   // ============================================================================
   // State & Hooks
@@ -709,9 +709,9 @@ export default function CollectionReportEditCollectionModal({
   const hasUnsavedEditsRef = useRef(false);
   // Force close bypasses unsaved changes check (used after successful save)
   const forceCloseRef = useRef(false);
-  const handleMachineEditingChange = (editing: boolean) => {
+  const handleMachineEditingChange = useCallback((editing: boolean) => {
     isMachineEditingRef.current = editing;
-  };
+  }, []);
 
   // ============================================================================
   // Effects
@@ -724,7 +724,7 @@ export default function CollectionReportEditCollectionModal({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleCloseAttempt = () => {
+  const handleCloseAttempt = useCallback(() => {
     // Check if we're forcing close (after successful save)
     if (forceCloseRef.current) {
       forceCloseRef.current = false;
@@ -743,7 +743,7 @@ export default function CollectionReportEditCollectionModal({
       return;
     }
     onClose();
-  };
+  }, [onClose]);
 
   // ============================================================================
   // Render

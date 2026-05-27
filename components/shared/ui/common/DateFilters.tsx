@@ -31,7 +31,7 @@ import {
 } from '@/shared/utils/dateFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { DateFiltersProps } from '@/lib/types/components';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function DateFilters({
   disabled,
@@ -152,7 +152,7 @@ export default function DateFilters({
   // Computed
   // ============================================================================
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
-    (() => {
+    useMemo(() => {
       const baseButtons = [
         { label: 'Today', value: 'Today' as TimePeriod },
         { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
@@ -179,7 +179,7 @@ export default function DateFilters({
       }
 
       return baseButtons;
-    })();
+    }, [hideAllTime, showQuarterly]);
 
   // Handle callback after state updates
   useEffect(() => {

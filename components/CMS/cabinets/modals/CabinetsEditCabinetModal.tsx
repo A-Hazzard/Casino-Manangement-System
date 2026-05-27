@@ -25,7 +25,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
 import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
@@ -178,7 +178,7 @@ export default function CabinetsEditCabinetModal({
   };
 
   // Fetch locations data
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       setLocationsLoading(true);
       const response = await axios.get('/api/locations');
@@ -199,10 +199,10 @@ export default function CabinetsEditCabinetModal({
     } finally {
       setLocationsLoading(false);
     }
-  };
+  }, []);
 
   // Fetch manufacturers data
-  const fetchManufacturersData = async () => {
+  const fetchManufacturersData = useCallback(async () => {
     try {
       setManufacturersLoading(true);
       const fetchedManufacturers = await fetchManufacturers();
@@ -214,7 +214,7 @@ export default function CabinetsEditCabinetModal({
     } finally {
       setManufacturersLoading(false);
     }
-  };
+  }, []);
 
   type CollectionSettingsForm = {
     multiplier?: string;
@@ -319,21 +319,12 @@ export default function CabinetsEditCabinetModal({
         collectionSettings: {
           multiplier: selectedCabinet.collectionMultiplier || '1',
           lastCollectionTime: initialCollectionTime.toISOString(),
-          // Prefer sasMeters (source of truth for CR baseline) over legacy collectionMeters
-          lastMetersIn:
-            selectedCabinet.sasMeters?.drop != null &&
-            selectedCabinet.sasMeters.drop > 0
-              ? String(selectedCabinet.sasMeters.drop)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-                : '',
-          lastMetersOut:
-            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
-            selectedCabinet.sasMeters.totalCancelledCredits > 0
-              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-                : '',
+          lastMetersIn: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersIn ?? 0)
+            : '0',
+          lastMetersOut: selectedCabinet.collectionMeters
+            ? String(selectedCabinet.collectionMeters.metersOut ?? 0)
+            : '0',
         },
       };
       setFormData(initialFormData);
@@ -436,23 +427,14 @@ export default function CabinetsEditCabinetModal({
                         ? new Date(cabinetDetails.collectionTime).toISOString()
                         : prevData.collectionSettings?.lastCollectionTime) ||
                       initialCollectionTime.toISOString(),
-                    // Prefer sasMeters as source of truth; fall back to collectionMeters then prev state
                     lastMetersIn:
-                      cabinetDetails.sasMeters?.drop != null &&
-                      cabinetDetails.sasMeters.drop > 0
-                        ? String(cabinetDetails.sasMeters.drop)
-                        : cabinetDetails.collectionMeters?.metersIn !==
-                            undefined
-                          ? String(cabinetDetails.collectionMeters.metersIn)
-                          : prevData.collectionSettings?.lastMetersIn || '',
+                      cabinetDetails.collectionMeters?.metersIn !== undefined
+                        ? String(cabinetDetails.collectionMeters.metersIn)
+                        : prevData.collectionSettings?.lastMetersIn || '0',
                     lastMetersOut:
-                      cabinetDetails.sasMeters?.totalCancelledCredits != null &&
-                      cabinetDetails.sasMeters.totalCancelledCredits > 0
-                        ? String(cabinetDetails.sasMeters.totalCancelledCredits)
-                        : cabinetDetails.collectionMeters?.metersOut !==
-                            undefined
-                          ? String(cabinetDetails.collectionMeters.metersOut)
-                          : prevData.collectionSettings?.lastMetersOut || '',
+                      cabinetDetails.collectionMeters?.metersOut !== undefined
+                        ? String(cabinetDetails.collectionMeters.metersOut)
+                        : prevData.collectionSettings?.lastMetersOut || '0',
                   },
                   otherGameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.otherGameType

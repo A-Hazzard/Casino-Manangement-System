@@ -10,11 +10,12 @@
  * - Minimum height for better UX
  */
 
-import { Ref } from 'react';
+import { forwardRef } from 'react';
 import { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
-const Textarea = ({ ref,  className, ...props }: ComponentProps<'textarea'> & { ref?: Ref<HTMLTextAreaElement> }) => {
+const Textarea = forwardRef<HTMLTextAreaElement, ComponentProps<'textarea'>>(
+  ({ className, ...props }, ref) => {
     return (
       <textarea
         className={cn(
@@ -25,7 +26,8 @@ const Textarea = ({ ref,  className, ...props }: ComponentProps<'textarea'> & { 
         {...props}
       />
     );
-  };
+  }
+);
 Textarea.displayName = 'Textarea';
 
 export { Textarea };

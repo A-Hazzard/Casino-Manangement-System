@@ -42,7 +42,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type VaultOverviewShiftReviewPanelProps = {
   pendingShifts: UnbalancedShiftInfo[];
@@ -208,7 +208,7 @@ export default function VaultOverviewShiftReviewPanel({
     setAuditComment('');
   };
 
-  const currentShortageCheck = (() => {
+  const currentShortageCheck = useMemo(() => {
     if (!resolvingId || !isEditingBreakdown)
       return { hasShortage: false, shortages: [] };
 
@@ -224,7 +224,7 @@ export default function VaultOverviewShiftReviewPanel({
       });
 
     return { hasShortage: shortages.length > 0, shortages };
-  })();
+  }, [resolvingId, isEditingBreakdown, shiftDenominations, vaultInventory]);
 
   const { hasShortage } = currentShortageCheck;
 

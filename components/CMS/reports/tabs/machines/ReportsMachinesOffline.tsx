@@ -57,6 +57,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+
 // ============================================================================
 // Internal Components
 // ============================================================================
@@ -138,7 +140,7 @@ export const ReportsMachinesOffline = ({
   // ============================================================================
 
   // Use independent machine stats API for all counts (independent of pagination)
-  const offlineSummary = (() => {
+  const offlineSummary = useMemo(() => {
     // Use machine stats API for all counts (independent of pagination)
     const totalOffline = machineStats?.offlineMachines || 0;
     const criticalOffline = machineStats?.criticalOffline || 0;
@@ -158,7 +160,7 @@ export const ReportsMachinesOffline = ({
       recentPercentage:
         totalOffline > 0 ? (recentOffline / totalOffline) * 100 : 0,
     };
-  })();
+  }, [machineStats, machineStatsLoading]);
 
   // ============================================================================
   // Render

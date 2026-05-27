@@ -29,7 +29,7 @@ import {
 } from '@/components/shared/ui/select';
 import { Separator } from '@/components/shared/ui/separator';
 import { Search } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -117,7 +117,7 @@ export default function ReportsManufacturerPerformanceChart({
     });
 
   // Search suggestions - only from filtered data
-  const manufacturerSuggestions = (() => {
+  const manufacturerSuggestions = useMemo(() => {
     if (!searchTerm.trim()) return [];
     const searchLower = searchTerm.toLowerCase().trim();
     return filteredData
@@ -127,7 +127,7 @@ export default function ReportsManufacturerPerformanceChart({
       }))
       .filter(item => item.manufacturer.toLowerCase().includes(searchLower))
       .slice(0, 10);
-  })();
+  }, [filteredData, searchTerm]);
 
   // ============================================================================
   // Effects

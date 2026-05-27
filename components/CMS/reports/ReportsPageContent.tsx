@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useCallback, useMemo, useState } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -50,34 +50,34 @@ export default function ReportsPageContent() {
   const { user } = useUserStore();
 
   // Check user roles
-  const userRoles = (() => {
+  const userRoles = useMemo(() => {
     const roles = user?.roles || [];
     return roles.map(role =>
       typeof role === 'string' ? role.toLowerCase() : ''
     );
-  })();
+  }, [user?.roles]);
 
-  const isDeveloper = (() => {
+  const isDeveloper = useMemo(() => {
     return userRoles.includes('developer');
-  })();
+  }, [userRoles]);
 
-  const isAdmin = (() => {
+  const isAdmin = useMemo(() => {
     return userRoles.includes('admin');
-  })();
+  }, [userRoles]);
 
-  const isLocationAdmin = (() => {
+  const isLocationAdmin = useMemo(() => {
     return userRoles.includes('location admin');
-  })();
+  }, [userRoles]);
 
-  const isOwner = (() => {
+  const isOwner = useMemo(() => {
     return userRoles.includes('owner');
-  })();
+  }, [userRoles]);
 
   // Filter tabs based on maintenance state and user role
   // Developers: all tabs (minus maintenance)
   // Admins, Owners, and Location Admins: meters and locations tabs (minus maintenance)
   // Others: only meters tab (minus maintenance)
-  const availableTabs = (() => {
+  const availableTabs = useMemo(() => {
     const notUnderMaintenance = (tab: (typeof REPORTS_TABS_CONFIG)[number]) =>
       tab.available !== false;
 
@@ -95,7 +95,7 @@ export default function ReportsPageContent() {
     return REPORTS_TABS_CONFIG.filter(
       tab => notUnderMaintenance(tab) && tab.id === 'meters'
     );
-  })();
+  }, [isDeveloper, isAdmin, isLocationAdmin, isOwner]);
 
   // All authenticated users have access to reports
   const hasAccess = true;
@@ -186,14 +186,14 @@ export default function ReportsPageContent() {
   // ============================================================================
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     // Dispatch a custom event that tabs can listen to
     window.dispatchEvent(new CustomEvent('refreshReports'));
     // Simulate a brief loading state for the button animation
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
-  };
+  }, []);
 
   // ============================================================================
   // Render

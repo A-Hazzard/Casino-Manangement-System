@@ -50,7 +50,14 @@ import {
   XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
@@ -142,16 +149,20 @@ export default function AdministrationUserModal({
   );
   const canEditLicencees = isDeveloper || isAdmin; // Only admins/developers can edit licencee assignments
 
-  const currentUserLicenceeIds = (Array.isArray(currentUser?.assignedLicencees)
+  const currentUserLicenceeIds = useMemo(
+    () =>
+      (Array.isArray(currentUser?.assignedLicencees)
         ? currentUser.assignedLicencees
         : []
-      ).map(id => String(id));
+      ).map(id => String(id)),
+    [currentUser?.assignedLicencees]
+  );
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
 
   // Filter available roles based on editor's permissions
-  const availableRoles = (() => {
+  const availableRoles = useMemo(() => {
     if (isDeveloper) {
       return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
     } else if (isOwner) {
@@ -180,12 +191,16 @@ export default function AdministrationUserModal({
     }
 
     return [];
-  })();
+  }, [isDeveloper, isAdmin, isManager, isLocationAdmin, isEditMode, roles]);
 
-  const currentUserLocationPermissions = (Array.isArray(currentUser?.assignedLocations)
+  const currentUserLocationPermissions = useMemo(
+    () =>
+      (Array.isArray(currentUser?.assignedLocations)
         ? currentUser.assignedLocations
         : []
-      ).map(id => String(id));
+      ).map(id => String(id)),
+    [currentUser?.assignedLocations]
+  );
 
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -280,7 +295,7 @@ export default function AdministrationUserModal({
     locationsRef.current = locations;
   }, [locations]);
 
-  const hydrateFormFromUser = (targetUser: User) => {
+  const hydrateFormFromUser = useCallback((targetUser: User) => {
     setFormData({
       firstName: targetUser.profile?.firstName || '',
       lastName: targetUser.profile?.lastName || '',
@@ -376,7 +391,7 @@ export default function AdministrationUserModal({
       );
       setAllLicenceesSelected(false);
     }
-  };
+  }, []);
 
   const currentUserIdRef = useRef<string | null>(null);
 
@@ -1014,7 +1029,7 @@ export default function AdministrationUserModal({
     }
   };
 
-  const availableLocations = (() => {
+  const availableLocations = useMemo(() => {
     if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
       return locations.filter(loc =>
         currentUserLocationPermissions.includes(loc._id)
@@ -1029,7 +1044,13 @@ export default function AdministrationUserModal({
               loc.licenceeId && selectedLicenceeIds.includes(loc.licenceeId)
           )
         : [];
-  })();
+  }, [
+    isLocationAdmin,
+    currentUserLocationPermissions,
+    locations,
+    allLicenceesSelected,
+    selectedLicenceeIds,
+  ]);
 
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
   useEffect(() => {

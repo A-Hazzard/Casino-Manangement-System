@@ -37,7 +37,7 @@ import {
 } from '@/shared/types/vault';
 import { FileText, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 // Type for data passed to handleModalConfirm
@@ -154,7 +154,8 @@ export default function VaultOverviewPageContent() {
   /**
    * Fetch all vault data for the current location
    */
-  const fetchData = async (isSilent = false) => {
+  const fetchData = useCallback(
+    async (isSilent = false) => {
       // If Admin/Dev, allow global fetch even without assigned location
       if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
         setLoading(false);
@@ -211,7 +212,9 @@ export default function VaultOverviewPageContent() {
         setLoading(false);
         setRefreshing(false);
       }
-    };
+    },
+    [user?.assignedLocations, user?.username, selectedLicencee, isAdminOrDev]
+  );
 
   /**
    * Refetch data when location or licencee changes
@@ -526,11 +529,12 @@ export default function VaultOverviewPageContent() {
   // Computed
   // ============================================================================
 
-  const isStaleShift = (() => {
+  const isStaleShift = useMemo(() => {
     return isShiftStale(vaultBalance.openedAt);
-  })();
+  }, [vaultBalance.openedAt]);
 
-  const checkShiftStarted = (actionKey?: string) => {
+  const checkShiftStarted = useCallback(
+    (actionKey?: string) => {
       if (!isShiftActive) {
         toast.error('Operation Blocked', {
           description:
@@ -566,7 +570,9 @@ export default function VaultOverviewPageContent() {
       }
 
       return true;
-    };
+    },
+    [isShiftActive, isStaleShift, vaultBalance.isReconciled]
+  );
 
   const handleAction = (actionKey: keyof typeof modals) => {
     if (!checkShiftStarted(actionKey)) return;

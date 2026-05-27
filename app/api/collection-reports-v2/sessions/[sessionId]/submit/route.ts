@@ -443,7 +443,7 @@ export async function PATCH(
         sessionId,
         status: { $in: ['captured', 'confirmed'] },
       },
-      'machineId sasMetersIn sasMetersOut sasEndTime locationName locationId prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut ramClear ramClearMetersIn ramClearMetersOut'
+      'machineId sasMetersIn sasMetersOut sasEndTime locationName locationId prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut ramClear ramClearMetersIn ramClearMetersOut isSupplemental'
     ).lean<
       Array<{
         machineId: string;
@@ -459,6 +459,7 @@ export async function PATCH(
         ramClear?: boolean;
         ramClearMetersIn?: number;
         ramClearMetersOut?: number;
+        isSupplemental?: boolean;
       }>
     >();
 
@@ -622,7 +623,7 @@ export async function PATCH(
           //   1. RAM clear meter: pre-reset drop (peak - prev), isRamClear=true
           //   2. Current meter: post-reset drop (current - 0)
           // Otherwise create ONE meter doc with the normal delta.
-          if (isNoSasLocation) {
+          if (isNoSasLocation || m.isSupplemental === true) {
             // Resolve the true "before this session" meter values.
             // Priority:
             //   1. existingHistoryEntry.prevMetersIn/Out — written once at
@@ -654,6 +655,16 @@ export async function PATCH(
               m.ramClearMetersIn !== undefined &&
               m.ramClearMetersOut !== undefined;
 
+            let prevMeterDoc: any = null;
+            if (m.isSupplemental === true) {
+              prevMeterDoc = await Meters.findOne({
+                machine: m.machineId,
+                locationSession: { $ne: sessionId },
+                readAt: { $lt: baseReadAt },
+                $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+              }).sort({ readAt: -1 }).lean();
+            }
+
             if (isRamClear) {
               // STEP 2a: RAM clear meter — captures drop up to the reset point.
               const ramClearMeterId = await generateMongoId();
@@ -676,17 +687,18 @@ export async function PATCH(
                   gamesPlayed: 0,
                   gamesWon: 0,
                 },
-                coinIn: 0,
-                coinOut: 0,
+                coinIn: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
+                coinOut: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
                 totalCancelledCredits: m.ramClearMetersOut as number,
-                totalHandPaidCancelledCredits: 0,
-                totalWonCredits: 0,
+                totalHandPaidCancelledCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
+                totalWonCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
                 drop: m.ramClearMetersIn as number,
-                jackpot: 0,
-                currentCredits: 0,
-                gamesPlayed: 0,
-                gamesWon: 0,
+                jackpot: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
+                currentCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
+                gamesPlayed: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
+                gamesWon: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
                 meterSource: 'COLLECTION_REPORT' as const,
+                isSupplemental: m.isSupplemental === true,
                 readAt: new Date(
                   (baseReadAt instanceof Date
                     ? baseReadAt
@@ -734,6 +746,7 @@ export async function PATCH(
                 gamesPlayed: 0,
                 gamesWon: 0,
                 meterSource: 'COLLECTION_REPORT' as const,
+                isSupplemental: m.isSupplemental === true,
                 readAt: baseReadAt, // exactly at collection time
                 createdAt: new Date(new Date().getTime() + 1000),
               };
@@ -764,17 +777,18 @@ export async function PATCH(
                   gamesPlayed: 0,
                   gamesWon: 0,
                 },
-                coinIn: 0,
-                coinOut: 0,
+                coinIn: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
+                coinOut: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
                 totalCancelledCredits: m.manualMetersOut ?? null,
-                totalHandPaidCancelledCredits: 0,
-                totalWonCredits: 0,
+                totalHandPaidCancelledCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
+                totalWonCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
                 drop: m.manualMetersIn ?? null,
-                jackpot: 0,
-                currentCredits: 0,
-                gamesPlayed: 0,
-                gamesWon: 0,
+                jackpot: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
+                currentCredits: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
+                gamesPlayed: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
+                gamesWon: m.isSupplemental === true && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
                 meterSource: 'COLLECTION_REPORT' as const,
+                isSupplemental: m.isSupplemental === true,
                 readAt: baseReadAt,
                 createdAt: new Date(),
               };

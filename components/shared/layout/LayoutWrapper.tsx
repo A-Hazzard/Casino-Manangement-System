@@ -25,6 +25,7 @@ import { getCmsNavigationConfig } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
+import { useMemo } from 'react';
 import { Toaster } from 'sonner';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -54,9 +55,9 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const isAuthPage = AUTH_PATHS.includes(pathname);
 
   // Get CMS navigation config with grouping for high-priority CMS roles
-  const navConfig = (() => {
+  const navConfig = useMemo(() => {
     return getCmsNavigationConfig(user?.roles as string[]);
-  })();
+  }, [user?.roles]);
 
   // ============================================================================
   // Render

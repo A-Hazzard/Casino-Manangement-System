@@ -17,7 +17,7 @@
  */
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { AxiosResponse } from 'axios';
 import { classifyError, isRetryableError } from '@/lib/utils/errors';
 import type { ApiError } from '@/lib/types/errors';
@@ -55,7 +55,8 @@ export function useApiWithRetry<T>(
   // ============================================================================
   // Handlers
   // ============================================================================
-  const execute = async (...args: unknown[]): Promise<T | null> => {
+  const execute = useCallback(
+    async (...args: unknown[]): Promise<T | null> => {
       // Cancel previous request if still running
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -132,9 +133,11 @@ export function useApiWithRetry<T>(
 
       setError(lastError);
       return null;
-    };
+    },
+    [apiFunction, maxRetries, baseDelay, timeout, onError, onRetry]
+  );
 
-  const reset = () => {
+  const reset = useCallback(() => {
     // Cancel any ongoing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -144,7 +147,7 @@ export function useApiWithRetry<T>(
     setError(null);
     setLoading(false);
     setRetryCount(0);
-  };
+  }, []);
 
   return {
     data,

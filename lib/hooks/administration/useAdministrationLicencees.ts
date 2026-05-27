@@ -20,7 +20,7 @@ import {
 } from '@/lib/utils/changeDetection';
 import { getNext30Days } from '@/lib/utils/licencee';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseAdministrationLicenceesProps = {
@@ -80,24 +80,27 @@ export function useAdministrationLicencees({
   // ============================================================================
   // Computed
   // ============================================================================
-  const countryNameById = (() => {
+  const countryNameById = useMemo(() => {
     const map = new Map<string, string>();
     countries.forEach(country => {
       map.set(country._id, country.name);
     });
     return map;
-  })();
+  }, [countries]);
 
-  const getCountryNameById = (countryId?: string) => {
+  const getCountryNameById = useCallback(
+    (countryId?: string) => {
       if (!countryId) return '';
       return countryNameById.get(countryId) || countryId;
-    };
+    },
+    [countryNameById]
+  );
 
-  const calculateLicenceesBatchNumber = (page: number) => {
+  const calculateLicenceesBatchNumber = useCallback((page: number) => {
     return Math.floor(page / licenceesPagesPerBatch) + 1;
-  };
+  }, []);
 
-  const licenceesWithCountryNames = (() => {
+  const licenceesWithCountryNames = useMemo(() => {
     if (!Array.isArray(allLicencees)) {
       console.warn('allLicencees is not an array:', allLicencees);
       return [];
@@ -110,9 +113,9 @@ export function useAdministrationLicencees({
         getCountryNameById(licencee.country) ||
         licencee.country,
     }));
-  })();
+  }, [allLicencees, getCountryNameById]);
 
-  const filteredLicencees = (() => {
+  const filteredLicencees = useMemo(() => {
     if (!licenceeSearchValue) return licenceesWithCountryNames;
     const searchLower = licenceeSearchValue.toLowerCase().trim();
     const filtered = licenceesWithCountryNames.filter(licencee =>
@@ -129,9 +132,9 @@ export function useAdministrationLicencees({
       if (aStarts !== bStarts) return bStarts - aStarts;
       return aName.localeCompare(bName);
     });
-  })();
+  }, [licenceesWithCountryNames, licenceeSearchValue]);
 
-  const getUserDisplayName = () => {
+  const getUserDisplayName = useCallback(() => {
     if (!user) return 'Unknown User';
     if (user.profile?.firstName && user.profile?.lastName) {
       return `${user.profile.firstName} ${user.profile.lastName}`;
@@ -149,7 +152,7 @@ export function useAdministrationLicencees({
       return user.emailAddress;
     }
     return 'Unknown User';
-  };
+  }, [user]);
 
   // ============================================================================
   // Effects
@@ -280,12 +283,12 @@ export function useAdministrationLicencees({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleOpenAddLicencee = () => {
+  const handleOpenAddLicencee = useCallback(() => {
     setLicenceeForm({});
     setIsAddLicenceeModalOpen(true);
-  };
+  }, []);
 
-  const handleSaveAddLicencee = async () => {
+  const handleSaveAddLicencee = useCallback(async () => {
     if (!licenceeForm.name || !licenceeForm.country) {
       toast.error('Name and country are required');
       return;
@@ -388,9 +391,23 @@ export function useAdministrationLicencees({
           'Failed to add licencee'
       );
     }
-  };
+  }, [
+    licenceeForm,
+    user,
+    getUserDisplayName,
+    getCountryNameById,
+    setIsAddLicenceeModalOpen,
+    setLicenceeForm,
+    setIsLicenceesLoading,
+    setAllLicencees,
+    setLicenceesLoadedBatches,
+    setLicenceesCurrentPage,
+    setCreatedLicencee,
+    setIsLicenceeSuccessModalOpen,
+  ]);
 
-  const handleOpenEditLicencee = (licencee: Licencee) => {
+  const handleOpenEditLicencee = useCallback(
+    (licencee: Licencee) => {
       setSelectedLicencee(licencee);
       setLicenceeForm({
         _id: licencee._id,
@@ -411,9 +428,11 @@ export function useAdministrationLicencees({
         includeJackpot: licencee.includeJackpot ?? false,
       });
       setIsEditLicenceeModalOpen(true);
-    };
+    },
+    [setSelectedLicencee, setLicenceeForm, setIsEditLicenceeModalOpen]
+  );
 
-  const handleSaveEditLicencee = async () => {
+  const handleSaveEditLicencee = useCallback(async () => {
     try {
       if (!selectedLicencee) return;
 
@@ -523,14 +542,29 @@ export function useAdministrationLicencees({
           'Failed to update licencee'
       );
     }
-  };
+  }, [
+    selectedLicencee,
+    licenceeForm,
+    user,
+    getUserDisplayName,
+    setIsEditLicenceeModalOpen,
+    setSelectedLicencee,
+    setLicenceeForm,
+    setIsLicenceesLoading,
+    setAllLicencees,
+    setLicenceesLoadedBatches,
+    setLicenceesCurrentPage,
+  ]);
 
-  const handleOpenDeleteLicencee = (licencee: Licencee) => {
+  const handleOpenDeleteLicencee = useCallback(
+    (licencee: Licencee) => {
       setSelectedLicencee(licencee);
       setIsDeleteLicenceeModalOpen(true);
-    };
+    },
+    [setSelectedLicencee, setIsDeleteLicenceeModalOpen]
+  );
 
-  const handleDeleteLicencee = async () => {
+  const handleDeleteLicencee = useCallback(async () => {
     if (!selectedLicencee) return;
 
     const licenceeData = { ...selectedLicencee };
@@ -606,19 +640,36 @@ export function useAdministrationLicencees({
           'Failed to delete licencee'
       );
     }
-  };
+  }, [
+    selectedLicencee,
+    user,
+    getUserDisplayName,
+    getCountryNameById,
+    setIsDeleteLicenceeModalOpen,
+    setSelectedLicencee,
+    setIsLicenceesLoading,
+    setAllLicencees,
+    setLicenceesLoadedBatches,
+    setLicenceesCurrentPage,
+  ]);
 
-  const handlePaymentHistory = (licencee: Licencee) => {
+  const handlePaymentHistory = useCallback(
+    (licencee: Licencee) => {
       setSelectedLicenceeForPayment(licencee);
       setIsPaymentHistoryModalOpen(true);
-    };
+    },
+    [setSelectedLicenceeForPayment, setIsPaymentHistoryModalOpen]
+  );
 
-  const handleTogglePaymentStatus = (licencee: Licencee) => {
+  const handleTogglePaymentStatus = useCallback(
+    (licencee: Licencee) => {
       setSelectedLicenceeForPaymentChange(licencee);
       setIsPaymentConfirmModalOpen(true);
-    };
+    },
+    [setSelectedLicenceeForPaymentChange, setIsPaymentConfirmModalOpen]
+  );
 
-  const handleConfirmPaymentStatusChange = async () => {
+  const handleConfirmPaymentStatusChange = useCallback(async () => {
     if (!selectedLicenceeForPaymentChange) return;
 
     try {
@@ -705,9 +756,19 @@ export function useAdministrationLicencees({
       }
       toast.error('Failed to update payment status');
     }
-  };
+  }, [
+    selectedLicenceeForPaymentChange,
+    user,
+    getUserDisplayName,
+    setIsLicenceesLoading,
+    setAllLicencees,
+    setLicenceesLoadedBatches,
+    setLicenceesCurrentPage,
+    setIsPaymentConfirmModalOpen,
+    setSelectedLicenceeForPaymentChange,
+  ]);
 
-  const refreshLicencees = async () => {
+  const refreshLicencees = useCallback(async () => {
     setIsLicenceesLoading(true);
     try {
       const result = await fetchLicencees(1, licenceesItemsPerBatch);
@@ -719,7 +780,7 @@ export function useAdministrationLicencees({
     } finally {
       setIsLicenceesLoading(false);
     }
-  };
+  }, []);
 
   return {
     // State

@@ -14,7 +14,7 @@ import { fetchAndFormatCollectorSchedules } from '@/lib/helpers/collections';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectorSchedule } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
 const MANAGE_ROLES = [
@@ -34,7 +34,11 @@ export function useCollectorScheduleData(
   // ============================================================================
   // Permission
   // ============================================================================
-  const canManage = user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useMemo(
+    () =>
+      user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
+    [user]
+  );
 
   // ============================================================================
   // Filter State
@@ -67,17 +71,20 @@ export function useCollectorScheduleData(
   // ============================================================================
   // Computed
   // ============================================================================
-  const totalPages = Math.ceil(collectorSchedules.length / ITEMS_PER_PAGE) || 1;
+  const totalPages = useMemo(
+    () => Math.ceil(collectorSchedules.length / ITEMS_PER_PAGE) || 1,
+    [collectorSchedules.length]
+  );
 
-  const paginatedSchedules = (() => {
+  const paginatedSchedules = useMemo(() => {
     const skip = currentPage * ITEMS_PER_PAGE;
     return collectorSchedules.slice(skip, skip + ITEMS_PER_PAGE);
-  })();
+  }, [collectorSchedules, currentPage]);
 
   // ============================================================================
   // Data Fetching
   // ============================================================================
-  const fetchSchedules = async () => {
+  const fetchSchedules = useCallback(async () => {
     setLoadingCollectorSchedules(true);
     try {
       const { collectorSchedules: schedules, collectors: collectorList } =
@@ -96,12 +103,13 @@ export function useCollectorScheduleData(
     } finally {
       setLoadingCollectorSchedules(false);
     }
-  };
+  }, [selectedLicencee, selectedLocation, selectedCollector, selectedStatus]);
 
   // ============================================================================
   // Edit Handler
   // ============================================================================
-  const handleEditSave = async (data: { startTime: string; endTime: string; status: string }) => {
+  const handleEditSave = useCallback(
+    async (data: { startTime: string; endTime: string; status: string }) => {
       if (!editingSchedule?._id) return;
       setSaving(true);
       try {
@@ -113,12 +121,14 @@ export function useCollectorScheduleData(
       } finally {
         setSaving(false);
       }
-    };
+    },
+    [editingSchedule, fetchSchedules]
+  );
 
   // ============================================================================
   // Delete Handler
   // ============================================================================
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingSchedule?._id) return;
     setDeleting(true);
     try {
@@ -130,13 +140,13 @@ export function useCollectorScheduleData(
     } finally {
       setDeleting(false);
     }
-  };
+  }, [deletingSchedule, fetchSchedules]);
 
-  const onResetFilters = () => {
+  const onResetFilters = useCallback(() => {
     setSelectedLocation('all');
     setSelectedCollector('all');
     setSelectedStatus('all');
-  };
+  }, []);
 
   // ============================================================================
   // Effects

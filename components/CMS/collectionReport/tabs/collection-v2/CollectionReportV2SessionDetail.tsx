@@ -9,7 +9,7 @@
 
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import CameraOverlay from './CameraOverlay';
 import CollectionReportV2SessionDetailSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionDetailSkeleton';
@@ -71,6 +71,7 @@ type SessionMachine = {
   sasGross?: number;
   grossDifference?: number;
   lastCollectionTime?: string | null;
+  isSupplemental?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -156,6 +157,8 @@ export default function CollectionReportV2SessionDetail({
   const [useCustomPeriod, setUseCustomPeriod] = useState(false);
   const [customSasStart, setCustomSasStart] = useState('');
   const [customSasEnd, setCustomSasEnd] = useState('');
+  const [machineFirstCollectionTime, setMachineFirstCollectionTime] = useState<Date | null>(null);
+  const [machineLastCollectionTime, setMachineLastCollectionTime] = useState<Date | null>(null);
   const [fetchingCustomMeters, setFetchingCustomMeters] = useState(false);
   const [sasStartOpen, setSasStartOpen] = useState(false);
   const [sasEndOpen, setSasEndOpen] = useState(false);
@@ -189,7 +192,8 @@ export default function CollectionReportV2SessionDetail({
   // Effects
   // ============================================================================
 
-  const fetchSession = async (background = false) => {
+  const fetchSession = useCallback(
+    async (background = false) => {
       if (!sessionId) return;
       if (!background) setLoading(true);
       if (!background) setError(null);
@@ -208,7 +212,9 @@ export default function CollectionReportV2SessionDetail({
       } finally {
         if (!background) setLoading(false);
       }
-    };
+    },
+    [sessionId]
+  );
 
   useEffect(() => {
     fetchSession();
@@ -225,7 +231,8 @@ export default function CollectionReportV2SessionDetail({
   // Reset capture state when current index changes
   const currentMachine = session?.machines[currentIndex];
 
-  const getInitialCaptureStateForMachine = (
+  const getInitialCaptureStateForMachine = useCallback(
+    (
       machine: SessionMachine | undefined | null,
       isNoSMIB: boolean
     ): CaptureState => {
@@ -261,7 +268,9 @@ export default function CollectionReportV2SessionDetail({
             ? String(machine.ramClearMetersOut)
             : '',
       };
-    };
+    },
+    []
+  );
 
   // Pre-fill capture state from existing data (server returns Drive URL or tempImageData).
   useEffect(() => {
@@ -322,6 +331,56 @@ export default function CollectionReportV2SessionDetail({
     const timer = setTimeout(() => setCheckingCollection(false), 400);
     return () => clearTimeout(timer);
   }, [currentIndex, currentMachine?.reportedMachineId]);
+
+  // Fetch chronological boundaries when currentMachine changes
+  useEffect(() => {
+    if (!currentMachine?.machineId) return;
+
+    axios
+      .get(
+        `/api/collection-reports-v2/machines/last-collection-time?machineId=${currentMachine.machineId}&excludeSessionId=${sessionId || ''}`
+      )
+      .then(res => {
+        const data = res.data?.data;
+        if (data) {
+          setMachineFirstCollectionTime(data.firstCollectionTime ? new Date(data.firstCollectionTime) : null);
+          setMachineLastCollectionTime(data.collectionTime ? new Date(data.collectionTime) : null);
+        } else {
+          setMachineFirstCollectionTime(null);
+          setMachineLastCollectionTime(null);
+        }
+      })
+      .catch(() => {
+        setMachineFirstCollectionTime(null);
+        setMachineLastCollectionTime(null);
+      });
+  }, [currentIndex, currentMachine?.machineId, sessionId]);
+
+  const targetTime = useCustomPeriod
+    ? (customSasEnd ? new Date(customSasEnd) : null)
+    : (currentMachine?.sasEndTime ? new Date(currentMachine.sasEndTime) : new Date());
+
+  const isMiddleReportWarning = (() => {
+    if (machineFirstCollectionTime && machineLastCollectionTime) {
+      const startTimeVal = useCustomPeriod
+        ? (customSasStart ? new Date(customSasStart) : null)
+        : (currentMachine?.sasStartTime ? new Date(currentMachine.sasStartTime) : null);
+
+      const startInMiddle =
+        startTimeVal &&
+        startTimeVal > machineFirstCollectionTime &&
+        startTimeVal < machineLastCollectionTime;
+      const endInMiddle =
+        targetTime &&
+        targetTime > machineFirstCollectionTime &&
+        targetTime < machineLastCollectionTime;
+
+      if (startInMiddle || endInMiddle) {
+        return true;
+      }
+    }
+    return false;
+  })();
 
   // ============================================================================
   // Handlers
@@ -417,7 +476,7 @@ export default function CollectionReportV2SessionDetail({
     setShowCamera(false);
   };
 
-  const handlePaste = (e: ClipboardEvent) => {
+  const handlePaste = useCallback((e: ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -436,7 +495,7 @@ export default function CollectionReportV2SessionDetail({
         break;
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (mode !== 'capture' || showCamera) return;
@@ -1454,7 +1513,29 @@ export default function CollectionReportV2SessionDetail({
             </div>
           )}
 
+          {/* Supplemental Meters Warning — shown when the machine is flagged as supplemental
+               (backend detected offline SMIB ≥ 3 days on save/load). */}
+          {!session?.noSMIBLocation && currentMachine?.isSupplemental === true && (
+            <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 text-lg leading-none" aria-hidden="true">📶</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    Supplemental meters will be generated
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700">
+                    This SMIB cabinet has been offline for ≥ 3 days. Non-entered lifetime
+                    meters (jackpot, credits won, current credits, etc.) will be carried
+                    forward from the previous collection with a movement delta of&nbsp;0.
+                    Only physical drop meters (Meters In / Meters Out) reflect actual movement.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Photo Capture */}
+
           <div className="mb-6">
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
               Meter Photo
@@ -1720,6 +1801,17 @@ export default function CollectionReportV2SessionDetail({
               </div>
             </div>
           )}
+          {/* Middle-Date Block Warning */}
+          {isMiddleReportWarning && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3.5 shadow-sm">
+              <p className="flex items-center text-sm font-semibold text-red-700">
+                <span className="mr-2">⚠️</span> Cannot save machine
+              </p>
+              <p className="mt-1 text-xs text-red-600">
+                The selected collection times fall between existing reports. Middle-date collections are not allowed.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1782,6 +1874,7 @@ export default function CollectionReportV2SessionDetail({
                     disabled={
                       saving ||
                       captureState.metersMatch === null ||
+                      isMiddleReportWarning ||
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
@@ -1841,6 +1934,7 @@ export default function CollectionReportV2SessionDetail({
                     disabled={
                       saving ||
                       captureState.metersMatch === null ||
+                      isMiddleReportWarning ||
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
@@ -2039,7 +2133,15 @@ function ReviewView({
                           {machine.manufacturer}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1">
+                        {machine.isSupplemental === true && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700"
+                            title="Supplemental: SMIB offline ≥ 3 days"
+                          >
+                            <span aria-hidden="true">📶</span>
+                          </span>
+                        )}
                         <StatusBadge status={machine.status} />
                         {onEditMachine && (
                           <button
@@ -2087,6 +2189,15 @@ function ReviewView({
                             title={`Pre-reset peak: ${machine.ramClearMetersIn ?? '-'} / ${machine.ramClearMetersOut ?? '-'}`}
                           >
                             RAM Clear
+                          </span>
+                        )}
+                        {machine.isSupplemental === true && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                            title="Supplemental meters: SMIB cabinet was offline ≥ 3 days. Non-entered lifetime meters were carried forward with 0 movement delta."
+                          >
+                            <span aria-hidden="true">📶</span>
+                            Supplemental
                           </span>
                         )}
                         <StatusBadge status={machine.status} />

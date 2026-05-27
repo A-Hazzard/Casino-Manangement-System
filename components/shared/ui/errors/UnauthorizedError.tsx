@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { ShieldX, ArrowLeft, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -39,22 +39,22 @@ export default function UnauthorizedError({
   // Handlers
   // ============================================================================
 
-  const getRedirectPath = () => {
+  const getRedirectPath = useCallback(() => {
     if (customBackHref) return customBackHref;
     if (resourceType === 'cabinet' || resourceType === 'machine')
       return '/cabinets';
     if (resourceType === 'location') return '/locations';
     if (resourceType === 'report') return '/collection-report';
     return '/';
-  };
+  }, [customBackHref, resourceType]);
 
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     if (onGoBack) {
       onGoBack();
     } else {
       router.push(getRedirectPath());
     }
-  };
+  }, [onGoBack, router, getRedirectPath]);
 
   // ============================================================================
   // Effects

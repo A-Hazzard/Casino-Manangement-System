@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Calendar } from '@/components/shared/ui/calendar';
 import {
@@ -59,7 +59,7 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
   // Computed
   // ============================================================================
   // Format display value to show month and year
-  const displayValue = (() => {
+  const displayValue = useMemo(() => {
     if (value?.from && value?.to) {
       const fromMonth = format(value.from, 'MMMM yyyy');
       const toMonth = format(value.to, 'MMMM yyyy');
@@ -72,7 +72,7 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
       return format(value.from, 'MMMM yyyy');
     }
     return 'Select month';
-  })();
+  }, [value]);
 
   // ============================================================================
   // Handlers

@@ -13,7 +13,7 @@
  * - Reset functionality
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { UseDashboardScrollReturn } from '@/lib/types/dashboard';
 
 export function useDashboardScroll(
@@ -30,10 +30,10 @@ export function useDashboardScroll(
   // ============================================================================
 
   // Handle scroll events to show/hide floating refresh button
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
     setShowFloatingRefresh(scrollTop > scrollThreshold);
-  };
+  }, [scrollThreshold]);
 
   // ============================================================================
   // Effects
@@ -46,9 +46,9 @@ export function useDashboardScroll(
   }, [handleScroll]);
 
   // Reset scroll state — also a handler
-  const resetScrollState = () => {
+  const resetScrollState = useCallback(() => {
     setShowFloatingRefresh(false);
-  };
+  }, []);
 
   return {
     showFloatingRefresh,

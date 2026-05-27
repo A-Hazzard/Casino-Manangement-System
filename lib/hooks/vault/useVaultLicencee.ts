@@ -1,5 +1,7 @@
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+import { useMemo } from 'react';
+
 /**
  * Hook to get the effective licencee ID for vault operations.
  *
@@ -22,13 +24,13 @@ export function useVaultLicencee() {
   // Computed
   // ============================================================================
 
-  const isAdminOrDev = (() => {
+  const isAdminOrDev = useMemo(() => {
     return user?.roles?.some(role =>
       ['admin', 'developer'].includes(role.toLowerCase())
     );
-  })();
+  }, [user?.roles]);
 
-  const effectiveLicenceeId = (() => {
+  const effectiveLicenceeId = useMemo(() => {
     // If not admin, prioritize assigned licencees
     if (
       !isAdminOrDev &&
@@ -39,7 +41,7 @@ export function useVaultLicencee() {
     }
     // Otherwise use dashboard selection (for admins)
     return selectedLicencee;
-  })();
+  }, [isAdminOrDev, user?.assignedLicencees, selectedLicencee]);
 
   return {
     licenceeId: effectiveLicenceeId,

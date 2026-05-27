@@ -62,7 +62,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
@@ -286,7 +286,7 @@ export function CabinetsDetailsCollectionHistoryTable({
   // ============================================================================
   // Computed
   // ============================================================================
-  const filteredAndSortedData = (() => {
+  const filteredAndSortedData = useMemo(() => {
     let filtered = [...data];
 
     if (timeFilter !== 'all') {
@@ -396,13 +396,16 @@ export function CabinetsDetailsCollectionHistoryTable({
     }
 
     return filtered;
-  })();
+  }, [data, timeFilter, sortField, sortDirection, customRange, localDateRange]);
 
   const totalPages = Math.max(
     1,
     Math.ceil(filteredAndSortedData.length / pageSize)
   );
-  const paged = filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize);
+  const paged = useMemo(
+    () => filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize),
+    [filteredAndSortedData, page]
+  );
 
   // ============================================================================
   // Helpers

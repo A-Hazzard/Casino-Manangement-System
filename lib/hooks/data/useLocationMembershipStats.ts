@@ -13,7 +13,7 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { isAbortError } from '@/lib/utils/errors';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type UseLocationMembershipStatsReturn = {
   membershipStats: MembershipStats | null;
@@ -41,7 +41,7 @@ export function useLocationMembershipStats(
   // ============================================================================
 
   // Fetch membership stats
-  const fetchMembershipStatsData = async () => {
+  const fetchMembershipStatsData = useCallback(async () => {
     setMembershipStatsLoading(true);
     setError(null);
 
@@ -69,12 +69,12 @@ export function useLocationMembershipStats(
     } finally {
       setMembershipStatsLoading(false);
     }
-  };
+  }, [selectedLicencee, locationId, machineTypeFilter]);
 
   // Refresh membership stats
-  const refreshMembershipStats = async () => {
+  const refreshMembershipStats = useCallback(async () => {
     await fetchMembershipStatsData();
-  };
+  }, [fetchMembershipStatsData]);
 
   // ============================================================================
   // Effects

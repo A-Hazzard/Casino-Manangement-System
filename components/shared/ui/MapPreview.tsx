@@ -34,7 +34,7 @@ import 'leaflet/dist/leaflet.css';
 import { DollarSign, MapPin, Search, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
@@ -390,7 +390,7 @@ export default function MapPreview(props: MapPreviewProps) {
     return licenceeCandidates.includes(licenceeKey);
   };
 
-  const validLocations = (() => {
+  const validLocations = useMemo(() => {
     return (
       (props.gamingLocations as Location[])?.filter(location => {
         if (location.deletedAt) {
@@ -415,16 +415,16 @@ export default function MapPreview(props: MapPreviewProps) {
         return hasValidCoords;
       }) || []
     );
-  })();
+  }, [props.gamingLocations]);
 
-  const filteredLocations = (() => {
+  const filteredLocations = useMemo(() => {
     if (!normalizedSelected || normalizedSelected === 'all') {
       return validLocations;
     }
     return validLocations.filter(location =>
       matchesLicencee(location, normalizedSelected)
     );
-  })();
+  }, [normalizedSelected, validLocations]);
 
   const isActiveLocation = (location: Location): boolean => {
     if (!location.deletedAt) return true;
@@ -448,7 +448,7 @@ export default function MapPreview(props: MapPreviewProps) {
     return true;
   };
 
-  const locationsWithoutCoords = (() => {
+  const locationsWithoutCoords = useMemo(() => {
     const allLocations = props.gamingLocations as Location[];
     const source =
       !normalizedSelected || normalizedSelected === 'all'
@@ -456,16 +456,16 @@ export default function MapPreview(props: MapPreviewProps) {
         : allLocations?.filter(loc => matchesLicencee(loc, normalizedSelected));
 
     return source?.filter(loc => isActiveLocation(loc) && isMissingCoordinates(loc)) || [];
-  })();
+  }, [props.gamingLocations, normalizedSelected]);
 
-  const totalActiveLicenceeLocations = (() => {
+  const totalActiveLicenceeLocations = useMemo(() => {
     const allLocations = props.gamingLocations as Location[];
     const source =
       !normalizedSelected || normalizedSelected === 'all'
         ? allLocations
         : allLocations?.filter(loc => matchesLicencee(loc, normalizedSelected));
     return source?.filter(isActiveLocation)?.length || 0;
-  })();
+  }, [props.gamingLocations, normalizedSelected]);
 
   const centersEqual = (a: [number, number], b: [number, number]): boolean =>
     a[0] === b[0] && a[1] === b[1];

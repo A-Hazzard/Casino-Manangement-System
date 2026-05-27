@@ -27,7 +27,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Search, TrendingUp } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 
 // ============================================================================
@@ -288,10 +288,10 @@ export default function ReportsLocationsMapImplementation({
     setShowSearchResults(false);
   };
 
-  const handleMapReady = (map: L.Map) => {
+  const handleMapReady = useCallback((map: L.Map) => {
     mapRef.current = map;
     setMapInstanceReady(true);
-  };
+  }, []);
 
   // ============================================================================
   // Computed (Map Properties)

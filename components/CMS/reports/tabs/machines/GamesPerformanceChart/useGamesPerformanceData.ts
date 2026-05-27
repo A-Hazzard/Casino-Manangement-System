@@ -8,6 +8,8 @@ import {
   type GamesPerformanceData,
   type MachineEvaluationData,
 } from '@/shared/types/reports';
+import { useMemo } from 'react';
+
 type UseGamesPerformanceDataProps = {
   initialData: GamesPerformanceData[];
   allMachines: MachineEvaluationData[];
@@ -28,7 +30,7 @@ export function useGamesPerformanceData({
   // Computed (Memoized Data)
   // ============================================================================
   // Re-aggregate data based on selected filters
-  const aggregatedData = (() => {
+  const aggregatedData = useMemo(() => {
     if (!allMachines.length) return initialData;
 
     let filteredMachines = allMachines;
@@ -196,15 +198,15 @@ export function useGamesPerformanceData({
         totalMachinesCount: activeMachinesNumber,
       };
     });
-  })();
+  }, [allMachines, selectedFilters, initialData]);
 
   // Filter by selected games
-  const filteredData = (() => {
+  const filteredData = useMemo(() => {
     return aggregatedData.filter(d => selectedGames.includes(d.gameName));
-  })();
+  }, [aggregatedData, selectedGames]);
 
   // Transform data for the chart
-  const chartData = (() => {
+  const chartData = useMemo(() => {
     return filteredData.map(item => {
       const maxLength = 15;
       const displayName =
@@ -228,7 +230,7 @@ export function useGamesPerformanceData({
         totalMachinesCount: item.totalMachinesCount,
       };
     });
-  })();
+  }, [filteredData]);
 
   // Calculate width based on data length
   const minWidth = Math.max(600, filteredData.length * 60);

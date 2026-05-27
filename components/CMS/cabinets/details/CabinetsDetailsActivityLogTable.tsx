@@ -33,7 +33,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { CheckIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 // ============================================================================
@@ -163,7 +163,7 @@ export const CabinetsDetailsActivityLogTable: FC<
   // Computed
   // ============================================================================
   // Get unique event types and types from data
-  const uniqueEventTypes = (() => {
+  const uniqueEventTypes = useMemo(() => {
     const eventTypes = new Set<string>();
     data.forEach(item => {
       if (item.eventType) {
@@ -171,10 +171,10 @@ export const CabinetsDetailsActivityLogTable: FC<
       }
     });
     return Array.from(eventTypes).sort();
-  })();
+  }, [data]);
 
   // Filter and paginate data
-  const filteredAndPaginatedData = (() => {
+  const filteredAndPaginatedData = useMemo(() => {
     const filtered = data.filter(item => {
       // Time filtering - fix the time comparison logic
       if (filters.startTime || filters.endTime) {
@@ -238,7 +238,7 @@ export const CabinetsDetailsActivityLogTable: FC<
       totalPages,
       totalItems: filtered.length,
     };
-  })();
+  }, [data, filters, currentPage, itemsPerPage]);
 
   // ============================================================================
   // Render

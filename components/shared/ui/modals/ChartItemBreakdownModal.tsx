@@ -35,6 +35,8 @@ import {
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { MachineEvaluationData } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils/formatting';
+import { useMemo } from 'react';
+
 type LocationBreakdown = {
   locationId: string;
   locationName: string;
@@ -89,7 +91,7 @@ export default function ChartItemBreakdownModal({
   // Computed
   // ============================================================================
   // Calculate location breakdown
-  const locationBreakdown = (() => {
+  const locationBreakdown = useMemo(() => {
     // Filter machines by item (manufacturer or game)
     const filteredMachines = allMachines.filter(machine => {
       if (itemType === 'manufacturer') {
@@ -192,10 +194,10 @@ export default function ChartItemBreakdownModal({
 
     // Sort by machine count descending
     return breakdown.sort((a, b) => b.machineCount - a.machineCount);
-  })();
+  }, [itemName, itemType, allMachines, totalMetrics, totalMachinesCount]);
 
   // Calculate totals
-  const totals = (() => {
+  const totals = useMemo(() => {
     return locationBreakdown.reduce(
       (acc, location) => ({
         machineCount: acc.machineCount + location.machineCount,
@@ -217,7 +219,7 @@ export default function ChartItemBreakdownModal({
         totalGamesPlayed: 0,
       }
     );
-  })();
+  }, [locationBreakdown]);
 
   const itemLabel = itemType === 'manufacturer' ? 'Manufacturer' : 'Game';
 

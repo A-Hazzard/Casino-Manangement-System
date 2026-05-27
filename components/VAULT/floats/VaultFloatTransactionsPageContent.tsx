@@ -37,7 +37,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { CashierFloat, FloatTransaction } from '@/shared/types/vault';
 import { AlertTriangle, RefreshCw, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultCashierFloatsMobileCards from './cards/VaultCashierFloatsMobileCards';
 import VaultFloatTransactionsMobileCards from './cards/VaultFloatTransactionsMobileCards';
@@ -120,17 +120,23 @@ export default function VaultFloatTransactionsPageContent() {
   /**
    * Sum of all cashier float amounts
    */
-  const totalCashierFloat = cashierFloats.reduce((sum, float) => sum + (float.balance || 0), 0);
+  const totalCashierFloat = useMemo(
+    () => cashierFloats.reduce((sum, float) => sum + (float.balance || 0), 0),
+    [cashierFloats]
+  );
 
   /**
    * Count of active cashiers
    */
-  const activeCashiers = cashierFloats.filter(f => f.status === 'active').length;
+  const activeCashiers = useMemo(
+    () => cashierFloats.filter(f => f.status === 'active').length,
+    [cashierFloats]
+  );
 
   /**
    * Sort cashier floats based on sort option and order
    */
-  const sortedCashierFloats = (() => {
+  const sortedCashierFloats = useMemo(() => {
     const sorted = [...cashierFloats].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -158,12 +164,12 @@ export default function VaultFloatTransactionsPageContent() {
     });
 
     return sorted;
-  })();
+  }, [cashierFloats, floatSortOption, floatSortOrder]);
 
   /**
    * Sort float transactions based on sort option and order
    */
-  const sortedFloatTransactions = (() => {
+  const sortedFloatTransactions = useMemo(() => {
     const sorted = [...floatTransactions].sort((a, b) => {
       let aValue: string | number | boolean;
       let bValue: string | number | boolean;
@@ -203,7 +209,7 @@ export default function VaultFloatTransactionsPageContent() {
     });
 
     return sorted;
-  })();
+  }, [floatTransactions, transactionSortOption, transactionSortOrder]);
 
   // ============================================================================
   // Handlers (continued)

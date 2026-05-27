@@ -25,6 +25,8 @@ import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Layers } from 'lucide-react';
+import { useMemo } from 'react';
+
 type VaultInventoryCardProps = {
   denominations: Denomination[];
   isLoading?: boolean;
@@ -44,7 +46,7 @@ export default function VaultInventoryCard({
   const { licenceeId: selectedLicencee } = useVaultLicencee();
 
   // Normalize denominations to ensure all slots exist even if 0
-  const normalizedDenoms = (() => {
+  const normalizedDenoms = useMemo(() => {
     const map = new Map<number, number>();
     const denomsList = getDenominationValues(selectedLicencee);
     (denominations || []).forEach(d => map.set(d.denomination, d.quantity));
@@ -57,7 +59,7 @@ export default function VaultInventoryCard({
     }));
 
     return result;
-  })();
+  }, [denominations, selectedLicencee]);
 
   // ============================================================================
   // Computed

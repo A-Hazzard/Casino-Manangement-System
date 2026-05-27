@@ -15,7 +15,7 @@ import {
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/shared/ui/badge';
@@ -112,7 +112,7 @@ export default function VaultOverviewShiftReviewModal({
     0
   );
 
-  const currentShortageCheck = (() => {
+  const currentShortageCheck = useMemo(() => {
     if (!shift || !isEditingBreakdown)
       return { hasShortage: false, shortages: [] };
 
@@ -128,7 +128,7 @@ export default function VaultOverviewShiftReviewModal({
       });
 
     return { hasShortage: shortages.length > 0, shortages };
-  })();
+  }, [shift, isEditingBreakdown, shiftDenominations, vaultInventory]);
 
   const { hasShortage } = currentShortageCheck;
 

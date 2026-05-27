@@ -42,7 +42,7 @@ import {
   Search,
   Server,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type ReportsLocationsTableProps = {
   locations: AggregatedLocation[];
@@ -99,9 +99,9 @@ export default function ReportsLocationsTable({
   // Computed
   // ============================================================================
   // Calculate total machines across all locations for floor position calculation
-  const totalMachinesAcrossAllLocations = (() => {
+  const totalMachinesAcrossAllLocations = useMemo(() => {
     return locations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
-  })();
+  }, [locations]);
 
   // ============================================================================
   // Handlers

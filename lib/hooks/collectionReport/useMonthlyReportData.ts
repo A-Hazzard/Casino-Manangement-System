@@ -13,7 +13,7 @@ import type {
   MonthlyReportSummary,
 } from '@/lib/types/components';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 export function useMonthlyReportData(
@@ -57,7 +57,7 @@ export function useMonthlyReportData(
   // ============================================================================
   // Handlers
   // ============================================================================
-  const fetchMonthlyData = async () => {
+  const fetchMonthlyData = useCallback(async () => {
     if (!pendingRange?.from || !pendingRange?.to) return;
 
     setMonthlyLoading(true);
@@ -84,9 +84,10 @@ export function useMonthlyReportData(
     } finally {
       setMonthlyLoading(false);
     }
-  };
+  }, [pendingRange, monthlyLocation, selectedLicencee]);
 
-  const handleSort = (field: keyof MonthlyReportDetailsRow) => {
+  const handleSort = useCallback(
+    (field: keyof MonthlyReportDetailsRow) => {
       if (sortField === field) {
         setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
       } else {
@@ -94,24 +95,26 @@ export function useMonthlyReportData(
         setSortDirection('desc'); // Default to desc for new field
       }
       setMonthlyPage(0);
-    };
+    },
+    [sortField]
+  );
 
-  const handleSetLastMonth = () => {
+  const handleSetLastMonth = useCallback(() => {
     const lastMonth = subMonths(new Date(), 1);
     const start = startOfMonth(lastMonth);
     const end = endOfMonth(lastMonth);
     setPendingRange({ from: start, to: end });
     // After setting range, it will trigger fetch due to dependency if we use an effect
-  };
+  }, []);
 
   // ============================================================================
   // Computed
   // ============================================================================
-  const monthlyTotalPages = (() => {
+  const monthlyTotalPages = useMemo(() => {
     return Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE) || 1;
-  })();
+  }, [monthlyDetails.length]);
 
-  const sortedDetails = (() => {
+  const sortedDetails = useMemo(() => {
     const data = [...monthlyDetails];
     if (!sortField) return data;
 
@@ -137,12 +140,12 @@ export function useMonthlyReportData(
 
       return sortDirection === 'asc' ? numA - numB : numB - numA;
     });
-  })();
+  }, [monthlyDetails, sortField, sortDirection]);
 
-  const monthlyCurrentItems = (() => {
+  const monthlyCurrentItems = useMemo(() => {
     const skip = monthlyPage * ITEMS_PER_PAGE;
     return sortedDetails.slice(skip, skip + ITEMS_PER_PAGE);
-  })();
+  }, [sortedDetails, monthlyPage]);
 
   const firstItemIndex = monthlyPage * ITEMS_PER_PAGE + 1;
   const lastItemIndex = Math.min(

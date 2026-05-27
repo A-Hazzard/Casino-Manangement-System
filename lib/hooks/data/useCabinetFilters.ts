@@ -7,7 +7,7 @@ import type {
   UseCabinetFiltersProps,
   UseCabinetFiltersReturn,
 } from '@/lib/types/cabinet';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useCabinetFilters({
   onFiltersChange,
@@ -42,44 +42,44 @@ export function useCabinetFilters({
   // ============================================================================
 
   // Clear all filters
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setSelectedLocation([]);
     setSelectedGameType([]);
     setSelectedStatus('All');
     setSelectedMembership('all');
     setSelectedSmibStatus('all');
-  };
+  }, []);
 
   // Handle search term changes
-  const handleSearchTermChange = (term: string) => {
+  const handleSearchTermChange = useCallback((term: string) => {
     setSearchTerm(term);
-  };
+  }, []);
 
   // Handle location filter changes
-  const handleLocationChange = (locations: string[]) => {
+  const handleLocationChange = useCallback((locations: string[]) => {
     setSelectedLocation(locations);
-  };
+  }, []);
 
   // Handle game type filter changes
-  const handleGameTypeChange = (gameTypes: string[]) => {
+  const handleGameTypeChange = useCallback((gameTypes: string[]) => {
     setSelectedGameType(gameTypes);
-  };
+  }, []);
 
   // Handle status filter changes
-  const handleStatusChange = (status: string) => {
+  const handleStatusChange = useCallback((status: string) => {
     setSelectedStatus(status);
-  };
+  }, []);
 
   // Handle membership filter changes
-  const handleMembershipChange = (membership: string) => {
+  const handleMembershipChange = useCallback((membership: string) => {
     setSelectedMembership(membership);
-  };
+  }, []);
 
   // Handle SMIB status filter changes
-  const handleSmibStatusChange = (status: string) => {
+  const handleSmibStatusChange = useCallback((status: string) => {
     setSelectedSmibStatus(status);
-  };
+  }, []);
 
   // ============================================================================
   // Effects

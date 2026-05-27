@@ -43,7 +43,7 @@ import {
   Monitor,
   Search,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 /**
  * Main ReportsLocationsRevenueTable Component
@@ -71,12 +71,12 @@ export default function ReportsLocationsRevenueTable({
   // Computed
   // ============================================================================
   // Calculate total machines across all locations for floor position calculation
-  const totalMachinesAcrossAllLocations = (() => {
+  const totalMachinesAcrossAllLocations = useMemo(() => {
     return locations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
-  })();
+  }, [locations]);
 
   // Filter locations based on search term
-  const filteredLocations = (() => {
+  const filteredLocations = useMemo(() => {
     if (!searchTerm?.trim()) return locations;
     const searchQuery = (searchTerm || '').toLowerCase().trim();
     return locations.filter(location => {
@@ -92,10 +92,10 @@ export default function ReportsLocationsRevenueTable({
       ).toLowerCase();
       return name.includes(searchQuery) || id.includes(searchQuery);
     });
-  })();
+  }, [locations, searchTerm]);
 
   // Sort locations
-  const sortedLocations = (() => {
+  const sortedLocations = useMemo(() => {
     return [...filteredLocations].sort((a, b) => {
       const aVal = (a as Record<string, unknown>)[sortField];
       const bVal = (b as Record<string, unknown>)[sortField];
@@ -133,7 +133,7 @@ export default function ReportsLocationsRevenueTable({
 
       return 0;
     });
-  })();
+  }, [filteredLocations, sortField, sortDirection]);
 
   // Use sorted locations - sorting is applied here, pagination is handled by parent
   const paginatedLocations = sortedLocations;

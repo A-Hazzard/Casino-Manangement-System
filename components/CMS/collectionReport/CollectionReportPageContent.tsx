@@ -14,7 +14,7 @@
 
 'use client';
 
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -127,15 +127,18 @@ const CollectionReportPageContent: FC = () => {
   // Handlers
   // ============================================================================
   // Open a session in view-mode AND push the URL so it's shareable.
-  const openV2View = (sessionId: string) => {
+  const openV2View = useCallback(
+    (sessionId: string) => {
       setV2EditSessionId(sessionId);
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('view', sessionId);
       router.push(`/collection-report?${params.toString()}`, { scroll: false });
-    };
+    },
+    [router, searchParams]
+  );
 
   // Close the view modal AND strip ?view= from the URL.
-  const closeV2View = () => {
+  const closeV2View = useCallback(() => {
     setV2EditSessionId(null);
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('view');
@@ -143,7 +146,7 @@ const CollectionReportPageContent: FC = () => {
     router.push(query ? `/collection-report?${query}` : '/collection-report', {
       scroll: false,
     });
-  };
+  }, [router, searchParams]);
 
   // ============================================================================
   // Computed & Additional Hooks

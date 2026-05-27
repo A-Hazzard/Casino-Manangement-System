@@ -10,7 +10,7 @@ import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useMachinePageData() {
   // ============================================================================
@@ -62,7 +62,7 @@ export function useMachinePageData() {
   // Computed
   // ============================================================================
 
-  const canManageMachines = (() => {
+  const canManageMachines = useMemo(() => {
     const roles = user?.roles || [];
     if (roles.includes('collector')) return false;
     return [
@@ -72,13 +72,14 @@ export function useMachinePageData() {
       'location admin',
       'technician',
     ].some(role => roles.includes(role));
-  })();
+  }, [user]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback(
+    (tab: string) => {
       setActiveTab(tab);
       const sectionMap: Record<string, string> = {
         'Movement Metrics': '',
@@ -96,7 +97,9 @@ export function useMachinePageData() {
       else params.delete('section');
 
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    };
+    },
+    [pathname, router, searchParams]
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);

@@ -16,7 +16,7 @@ import { getDefaultRedirectPathFromRoles } from '@/lib/utils/roleBasedRedirect';
 
 import type { UserAuthPayload } from '@/shared/types/auth';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { UserRole } from '../../constants/roles';
 
 export function useLoginPageData() {
@@ -68,7 +68,8 @@ export function useLoginPageData() {
   // ============================================================================
 
   // === Login Handler ===
-  const handleLogin = async (e?: FormEvent) => {
+  const handleLogin = useCallback(
+    async (e?: FormEvent) => {
       if (e) e.preventDefault();
       if (!identifier)
         return setErrors({ identifier: 'Enter email or username.' });
@@ -118,10 +119,21 @@ export function useLoginPageData() {
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [
+      identifier,
+      password,
+      rememberMe,
+      clearLastLoginPassword,
+      clearUser,
+      setUser,
+      setLastLoginPassword,
+    ]
+  );
 
   // === Password Update Handler (called from modal) ===
-  const handlePasswordUpdate = async (
+  const handlePasswordUpdate = useCallback(
+    async (
       currentPassword: string,
       newPassword: string,
       phone?: string
@@ -175,9 +187,11 @@ export function useLoginPageData() {
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [setUser]
+  );
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await logoutUser();
     } finally {
@@ -186,7 +200,7 @@ export function useLoginPageData() {
       setMessage('Logged out');
       setMessageType('info');
     }
-  };
+  }, [clearUser]);
 
   // ============================================================================
   // Effects

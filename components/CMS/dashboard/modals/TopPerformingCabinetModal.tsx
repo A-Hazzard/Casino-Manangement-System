@@ -36,7 +36,7 @@ import { TimePeriod } from '@/shared/types/common';
 import gsap from 'gsap';
 import { ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type TopPerformingCabinetModalProps = {
   open: boolean;
@@ -88,7 +88,7 @@ export default function TopPerformingCabinetModal({
 
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Never show for 7d and 30d - they always use daily format
-  const showGranularitySelector = (() => {
+  const showGranularitySelector = useMemo(() => {
     const timePeriod = effectiveTimePeriod as TimePeriod;
 
     // Never show granularity selector for 7d and 30d
@@ -126,7 +126,7 @@ export default function TopPerformingCabinetModal({
       }
     }
     return false;
-  })();
+  }, [effectiveTimePeriod, customDateRange]);
 
   // ============================================================================
   // Effects

@@ -21,7 +21,7 @@ import type {
   UseDashboardFiltersProps,
   UseDashboardFiltersReturn,
 } from '@/lib/types/dashboard';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 export function useDashboardFilters({
   selectedLicencee,
@@ -59,7 +59,7 @@ export function useDashboardFilters({
   // ============================================================================
 
   // Validate if current filter configuration is valid
-  const isFilterValid = (() => {
+  const isFilterValid = useMemo(() => {
     if (!activeMetricsFilter) return false;
 
     if (activeMetricsFilter === 'Custom') {
@@ -67,14 +67,14 @@ export function useDashboardFilters({
     }
 
     return true;
-  })();
+  }, [activeMetricsFilter, customDateRange]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
   // Reset all filters to default state
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     const { gameDayOffset } = useDashBoardStore.getState();
     const today = new Date();
     const startDate = setTimeToGamingDayStart(today, gameDayOffset);
@@ -90,24 +90,41 @@ export function useDashboardFilters({
       endDate,
     });
     setShowDatePicker(false);
-  };
+  }, [
+    setActiveMetricsFilter,
+    setActivePieChartFilter,
+    setCustomDateRange,
+    setShowDatePicker,
+  ]);
 
   // Memoize setters to prevent unnecessary re-renders
-  const memoizedSetActiveMetricsFilter = (filter: TimePeriod | '') => {
+  const memoizedSetActiveMetricsFilter = useCallback(
+    (filter: TimePeriod | '') => {
       setActiveMetricsFilter(filter);
-    };
+    },
+    [setActiveMetricsFilter]
+  );
 
-  const memoizedSetActivePieChartFilter = (filter: TimePeriod | '') => {
+  const memoizedSetActivePieChartFilter = useCallback(
+    (filter: TimePeriod | '') => {
       setActivePieChartFilter(filter);
-    };
+    },
+    [setActivePieChartFilter]
+  );
 
-  const memoizedSetCustomDateRange = (range: dateRange) => {
+  const memoizedSetCustomDateRange = useCallback(
+    (range: dateRange) => {
       setCustomDateRange(range);
-    };
+    },
+    [setCustomDateRange]
+  );
 
-  const memoizedSetShowDatePicker = (show: boolean) => {
+  const memoizedSetShowDatePicker = useCallback(
+    (show: boolean) => {
       setShowDatePicker(show);
-    };
+    },
+    [setShowDatePicker]
+  );
 
   return {
     activeMetricsFilter,

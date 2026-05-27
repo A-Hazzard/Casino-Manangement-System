@@ -13,6 +13,8 @@ import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
+
 // === Sub-components ===
 import {
   CollectionReportDetailsJackpotIndicator,
@@ -101,9 +103,13 @@ export function CollectionReportDetailsCollectionsTable({
   const router = useRouter();
 
   // Online/offline status — collect actualMachineId for each metric that has one
-  const detailsMachineIds = metrics
+  const detailsMachineIds = useMemo(
+    () =>
+      metrics
         .map(m => m.actualMachineId)
-        .filter((id): id is string => Boolean(id));
+        .filter((id): id is string => Boolean(id)),
+    [metrics]
+  );
   const detailsMachineStatusMap = useMachineOnlineStatus(detailsMachineIds);
 
   // ============================================================================
@@ -114,11 +120,14 @@ export function CollectionReportDetailsCollectionsTable({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleMachineClick = (metric: MachineMetric) => {
+  const handleMachineClick = useCallback(
+    (metric: MachineMetric) => {
       if (metric.actualMachineId) {
         router.push(`/cabinets/${metric.actualMachineId}`);
       }
-    };
+    },
+    [router]
+  );
 
   // ============================================================================
   // Render

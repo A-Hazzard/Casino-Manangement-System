@@ -14,6 +14,8 @@
  * @param props - Component props
  */
 'use client';
+
+import { useMemo } from 'react';
 import { ReactNode } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { MemberSession } from '@/shared/types/entities';
@@ -257,7 +259,7 @@ export default function MembersPlayerSessionTable({
   // Computed
   // ============================================================================
   // Sort sessions based on current sort option and order
-  const sortedSessions = (() => {
+  const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -331,7 +333,7 @@ export default function MembersPlayerSessionTable({
         return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
       }
     });
-  })();
+  }, [sessions, sortOption, sortOrder]);
 
   // ============================================================================
   // Render Helper Functions

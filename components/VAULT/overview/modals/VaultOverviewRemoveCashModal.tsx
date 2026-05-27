@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { ArrowDownRight, Info, MessageSquare, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
@@ -66,7 +66,10 @@ export default function VaultOverviewRemoveCashModal({
     new Set()
   );
 
-  const denomsList = getDenominationValues(selectedLicencee);
+  const denomsList = useMemo(
+    () => getDenominationValues(selectedLicencee),
+    [selectedLicencee]
+  );
 
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -95,18 +98,21 @@ export default function VaultOverviewRemoveCashModal({
    * Calculate total amount from denomination breakdown
    * Multiplies each denomination count by its value and sums them
    */
-  const totalAmount = (() => {
+  const totalAmount = useMemo(() => {
     return denominations.reduce(
       (acc, curr) => acc + curr.denomination * curr.quantity,
       0
     );
-  })();
+  }, [denominations]);
 
   /**
    * Check if form is valid for submission
    * Requires destination selection and total amount > 0
    */
-  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isAllTouched = useMemo(
+    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    [denomsList, touchedDenominations]
+  );
   const isValid = reason.trim() !== '' && (totalAmount > 0 || isAllTouched);
 
   // ============================================================================

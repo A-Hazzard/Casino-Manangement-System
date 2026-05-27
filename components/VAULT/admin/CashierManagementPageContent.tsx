@@ -3,7 +3,7 @@
 // ============================================================================
 // External Dependencies
 // ============================================================================
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 // ============================================================================
 // Internal Components & Hooks
@@ -30,9 +30,9 @@ export default function CashierManagementPageContent() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refreshFnRef.current();
-  };
+  }, []);
 
   // ============================================================================
   // Render

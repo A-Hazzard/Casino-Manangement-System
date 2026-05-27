@@ -17,7 +17,7 @@ import { PaginationData, Session } from '@/lib/types/sessions';
 import { isAbortError } from '@/lib/utils/errors';
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useSessionsFilters } from './useSessionsFilters';
 
@@ -50,7 +50,8 @@ export function useSessions() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const fetchSessions = async (batch: number = 1, append: boolean = false) => {
+  const fetchSessions = useCallback(
+    async (batch: number = 1, append: boolean = false) => {
       setLoading(true);
       await makeRequest(async signal => {
         // "page=1&limit=100"
@@ -204,7 +205,18 @@ export function useSessions() {
           setLoading(false);
         }
       });
-    };
+    },
+    [
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      debouncedSearchTerm,
+      sortBy,
+      sortOrder,
+      statusFilter,
+      makeRequest,
+    ]
+  );
 
   // ============================================================================
   // Effects
@@ -234,21 +246,22 @@ export function useSessions() {
   // ============================================================================
   // Computed
   // ============================================================================
-  const sessions = (() => {
+  const sessions = useMemo(() => {
     const start = currentPage * itemsPerPage;
     const end = start + itemsPerPage;
     return allSessions.slice(start, end);
-  })();
+  }, [allSessions, currentPage, itemsPerPage]);
 
-  const totalPages = (() => {
+  const totalPages = useMemo(() => {
     if (!allSessions.length) return 0;
     return Math.ceil(allSessions.length / itemsPerPage);
-  })();
+  }, [allSessions, itemsPerPage]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback(
+    (page: number) => {
       setCurrentPage(page);
 
       // If we are moving to the last page of loaded data and there's more on the server,
@@ -261,22 +274,24 @@ export function useSessions() {
           setCurrentBatch(nextBatch);
         }
       }
-    };
+    },
+    [totalPages, hasMore, loading, currentBatch, loadedBatches, fetchSessions]
+  );
 
-  const refreshSessions = async () => {
+  const refreshSessions = useCallback(async () => {
     setCurrentPage(0);
     setCurrentBatch(1);
     setAllSessions([]);
     setLoadedBatches(new Set([1]));
     await fetchSessions(1, false);
-  };
+  }, [fetchSessions]);
 
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
     const nextBatch = currentBatch + 1;
     setCurrentBatch(nextBatch);
     await fetchSessions(nextBatch, true);
-  };
+  }, [hasMore, loading, currentBatch, fetchSessions]);
 
   // ============================================================================
   // Return
@@ -297,7 +312,8 @@ export function useSessions() {
     sortBy,
     sortOrder,
     statusFilter,
-    setSearchTerm: (term: string) => {
+    setSearchTerm: useCallback(
+      (term: string) => {
         if (term.trim() !== searchTerm.trim()) {
           filterControls.setSearchTerm(term);
           setAllSessions([]);
@@ -306,6 +322,8 @@ export function useSessions() {
           setCurrentBatch(1);
         }
       },
+      [searchTerm, filterControls]
+    ),
     setSortBy: filterControls.setSortBy,
     setSortOrder: filterControls.setSortOrder,
     setStatusFilter: filterControls.setStatusFilter,

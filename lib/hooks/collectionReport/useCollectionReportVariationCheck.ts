@@ -11,7 +11,7 @@
  * - Provides methods to toggle minimize state and reset
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface CheckVariationsMachine {
   machineId: string;
@@ -86,7 +86,8 @@ export function useCollectionReportVariationCheck(
   /**
    * Check variations for the given machines in a location
    */
-  const checkVariations = async (
+  const checkVariations = useCallback(
+    async (
       locationId: string,
       machines: CheckVariationsMachine[],
       includeJackpot?: boolean
@@ -146,12 +147,15 @@ export function useCollectionReportVariationCheck(
           error: errorMessage,
         }));
       }
-    };
+    },
+    []
+  );
 
   /**
    * Auto re-check when machines change (with debounce)
    */
-  const triggerAutoCheck = (
+  const triggerAutoCheck = useCallback(
+    (
       locationId: string,
       machines: CheckVariationsMachine[],
       includeJackpot?: boolean
@@ -169,28 +173,30 @@ export function useCollectionReportVariationCheck(
       }, debounceMs);
 
       lastMachinesRef.current = machines;
-    };
+    },
+    [state.checkComplete, checkVariations, debounceMs]
+  );
 
   /**
    * Toggle minimize state
    */
-  const toggleMinimize = () => {
+  const toggleMinimize = useCallback(() => {
     setState(prev => ({
       ...prev,
       isMinimized: !prev.isMinimized,
     }));
-  };
+  }, []);
 
   /**
    * Reset to initial state
    */
-  const reset = () => {
+  const reset = useCallback(() => {
     setState(DEFAULT_STATE);
     lastMachinesRef.current = null;
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
-  };
+  }, []);
 
   // ============================================================================
   // Effects

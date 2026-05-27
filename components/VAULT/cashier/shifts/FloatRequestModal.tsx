@@ -25,7 +25,7 @@ import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type FloatRequestModalProps = {
@@ -61,7 +61,10 @@ export default function FloatRequestModal({
   );
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
-  const denomsList = getDenominationValues(effectiveLicenceeId);
+  const denomsList = useMemo(
+    () => getDenominationValues(effectiveLicenceeId),
+    [effectiveLicenceeId]
+  );
 
   // ============================================================================
   // Effects
@@ -83,14 +86,17 @@ export default function FloatRequestModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const totalAmount = (() => {
+  const totalAmount = useMemo(() => {
     return denominations.reduce(
       (sum, d) => sum + d.denomination * d.quantity,
       0
     );
-  })();
+  }, [denominations]);
 
-  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isAllTouched = useMemo(
+    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    [denomsList, touchedDenominations]
+  );
   const isFormValid = totalAmount > 0 || isAllTouched;
 
   // ============================================================================

@@ -13,7 +13,7 @@ import type { AggregatedLocation, dateRange } from '@/lib/types/index';
 import { LocationFilter } from '@/lib/types/location';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { TimePeriod } from '@/shared/types/common';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationDataProps = {
   selectedLicencee: string;
@@ -84,9 +84,9 @@ export function useLocationData({
   // ============================================================================
 
   // Memoize selectedFilters to avoid recreating fetchBatch
-  const selectedFiltersKey = (() => {
+  const selectedFiltersKey = useMemo(() => {
     return JSON.stringify([...selectedFilters].sort());
-  })();
+  }, [selectedFilters]);
 
   // Update ref when selectedFilters actually changes
   useEffect(() => {
@@ -97,7 +97,7 @@ export function useLocationData({
   }, [selectedFiltersKey, selectedFilters]);
 
   // Memoize date range to avoid recreating callback
-  const dateRangeForFetch = (() => {
+  const dateRangeForFetch = useMemo(() => {
     const effectiveFilter = activeMetricsFilter || 'Today';
     if (
       effectiveFilter === 'Custom' &&
@@ -110,14 +110,19 @@ export function useLocationData({
       };
     }
     return undefined;
-  })();
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
   // Fetch a specific batch of locations
-  const fetchBatch = async (page: number = 1, limit: number = 50) => {
+  const fetchBatch = useCallback(
+    async (page: number = 1, limit: number = 50) => {
       const effectiveLicencee = selectedLicencee || '';
       // Use current filter string from ref to avoid dependency on array
       const currentFilterString = selectedFiltersRef.current.length
@@ -139,7 +144,18 @@ export function useLocationData({
         sortOrder,
         selectedStatus === 'Archived'
       );
-    };
+    },
+    [
+      selectedLicencee,
+      activeMetricsFilter,
+      dateRangeForFetch,
+      displayCurrency,
+      selectedStatus,
+      sortBy,
+      sortOrder,
+      // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
+    ]
+  );
 
   // Track fetch to prevent duplicate calls
   const isInitialMountRef = useRef(true);
@@ -148,7 +164,8 @@ export function useLocationData({
   const currentRequestFiltersRef = useRef<string>('');
 
   // Optimized data fetching with better error handling
-  const fetchData = async (page?: number, limit?: number) => {
+  const fetchData = useCallback(
+    async (page?: number, limit?: number) => {
       // Get current filter state at the start of the request
       const currentFilters = selectedFilters.length
         ? selectedFilters.join(',')
@@ -268,7 +285,20 @@ export function useLocationData({
           }
         );
       }
-    };
+    },
+    [
+      debouncedSearchTerm,
+      displayCurrency,
+      selectedLicencee,
+      activeMetricsFilter,
+      dateRangeForFetch,
+      makeRequest,
+      selectedFilters,
+      selectedStatus,
+      sortBy,
+      sortOrder,
+    ]
+  );
 
   // ============================================================================
   // Effects

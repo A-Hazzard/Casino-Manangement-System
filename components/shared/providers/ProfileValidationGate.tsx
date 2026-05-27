@@ -34,7 +34,7 @@ import type {
   ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -71,18 +71,18 @@ export default function ProfileValidationGate({
   const { refetch } = useCurrentUserQuery();
   const { lastLoginPassword, clearLastLoginPassword } = useAuthSessionStore();
   // Use only new fields - memoize to prevent dependency array issues
-  const userLicenceeDeps = (() => {
+  const userLicenceeDeps = useMemo(() => {
     return Array.isArray(user?.assignedLicencees) &&
       user.assignedLicencees.length > 0
       ? user.assignedLicencees
       : [];
-  })();
-  const userLocationDeps = (() => {
+  }, [user?.assignedLicencees]);
+  const userLocationDeps = useMemo(() => {
     return Array.isArray(user?.assignedLocations) &&
       user.assignedLocations.length > 0
       ? user.assignedLocations
       : [];
-  })();
+  }, [user?.assignedLocations]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [invalidFields, setInvalidFields] =
@@ -108,10 +108,10 @@ export default function ProfileValidationGate({
   // ============================================================================
   // Computed
   // ============================================================================
-  const hasInvalidFields = (() => {
+  const hasInvalidFields = useMemo(() => {
     if (!invalidFields) return false;
     return Object.values(invalidFields).some(Boolean);
-  })();
+  }, [invalidFields]);
 
   // ============================================================================
   // Effects

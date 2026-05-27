@@ -44,7 +44,7 @@ import type {
   VaultTransfer,
 } from '@/shared/types/vault';
 import { Clock, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultTransfersMobileCards from './cards/VaultTransfersMobileCards';
 import InterLocationTransferForm from './InterLocationTransferForm';
@@ -116,42 +116,42 @@ export default function VaultTransfersPageContent() {
   /**
    * Filter transfers with pending status
    */
-  const pendingTransfers = (() => {
+  const pendingTransfers = useMemo(() => {
     return transfers.filter(t => t.status === 'pending');
-  })();
+  }, [transfers]);
 
   /**
    * Sum of amounts for all pending transfers
    */
-  const pendingAmount = (() => {
+  const pendingAmount = useMemo(() => {
     return pendingTransfers.reduce((sum, t) => sum + t.amount, 0);
-  })();
+  }, [pendingTransfers]);
 
   /**
    * Count of transfers completed today
    */
-  const completedToday = (() => {
+  const completedToday = useMemo(() => {
     return transfers.filter(t => {
       if (t.status !== 'completed' && t.status !== 'approved') return false;
       const transferDate = new Date(t.date || t.createdAt || '');
       const today = new Date();
       return transferDate.toDateString() === today.toDateString();
     }).length;
-  })();
+  }, [transfers]);
 
   /**
    * Sort all transfers based on sort option and order
    */
-  const sortedTransfers = (() => {
+  const sortedTransfers = useMemo(() => {
     return sortTransfers(transfers, sortOption, sortOrder);
-  })();
+  }, [sortOption, sortOrder, transfers]);
 
   /**
    * Sort pending transfers
    */
-  const sortedPendingTransfers = (() => {
+  const sortedPendingTransfers = useMemo(() => {
     return sortedTransfers.filter(t => t.status === 'pending');
-  })();
+  }, [sortedTransfers]);
 
   // ============================================================================
   // Handlers

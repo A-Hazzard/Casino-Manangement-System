@@ -33,7 +33,7 @@ import type {
   Denomination,
 } from '@/shared/types/vault';
 import { Lock, Plus, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 // Components & Sections
@@ -100,7 +100,7 @@ export default function CashierDashboardPageContent() {
   /**
    * Fetch global shifts (for Admin/Dev view)
    */
-  const fetchGlobalShifts = async () => {
+  const fetchGlobalShifts = useCallback(async () => {
     if (!isAdminOrDev) return;
     try {
       const res = await fetch(
@@ -127,7 +127,7 @@ export default function CashierDashboardPageContent() {
     } catch (err) {
       console.error('Global shifts fetch failed', err);
     }
-  };
+  }, [isAdminOrDev]);
 
   useEffect(() => {
     if (isAdminOrDev) {
@@ -142,7 +142,7 @@ export default function CashierDashboardPageContent() {
   /**
    * Fetch machines for payout selection
    */
-  const fetchMachines = async () => {
+  const fetchMachines = useCallback(async () => {
     if (!shift?.locationId) return;
     try {
       const res = await fetchCabinetsForLocation(
@@ -156,7 +156,7 @@ export default function CashierDashboardPageContent() {
     } catch (error) {
       console.error('Failed to fetch machines', error);
     }
-  };
+  }, [shift?.locationId]);
 
   useEffect(() => {
     if (status === 'active') {

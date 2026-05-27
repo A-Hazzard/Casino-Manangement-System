@@ -24,7 +24,7 @@ import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
 type CashierShiftOpenModalProps = {
@@ -52,7 +52,10 @@ export default function CashierShiftOpenModal({
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
-  const denomsList = getDenominationValues(effectiveLicenceeId);
+  const denomsList = useMemo(
+    () => getDenominationValues(effectiveLicenceeId),
+    [effectiveLicenceeId]
+  );
 
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(
@@ -84,7 +87,10 @@ export default function CashierShiftOpenModal({
     0
   );
 
-  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isAllTouched = useMemo(
+    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    [denomsList, touchedDenominations]
+  );
   const isValidCount = totalAmount > 0 || isAllTouched;
 
   // ============================================================================

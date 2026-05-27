@@ -29,7 +29,7 @@ import { useNotificationStore } from '@/lib/store/notificationStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageSquare, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type FloatingActionButtonsProps = {
   showRefresh: boolean;
@@ -73,7 +73,7 @@ export const FloatingActionButtons = ({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const refreshPendingCount = async () => {
+  const refreshPendingCount = useCallback(async () => {
     if (!isPrivileged) return;
     try {
       const res = await fetch('/api/feedback?status=pending&limit=1');
@@ -82,7 +82,7 @@ export const FloatingActionButtons = ({
     } catch {
       /* ignore */
     }
-  };
+  }, [isPrivileged]);
 
   useEffect(() => {
     refreshPendingCount();

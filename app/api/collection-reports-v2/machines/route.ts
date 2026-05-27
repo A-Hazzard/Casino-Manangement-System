@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
       sasGross,
       resolvedSasMetersIn,
       resolvedSasMetersOut,
+      isSupplemental,
     } = await computeMovement(
       machineId,
       sessionId,
@@ -252,6 +253,7 @@ export async function POST(req: NextRequest) {
       prevSasMetersIn: prevMeters.prevSasMetersIn,
       prevSasMetersOut: prevMeters.prevSasMetersOut,
       movement,
+      isSupplemental,
       ramClear,
       ramClearMetersIn: ramClear ? ramClearIn : undefined,
       ramClearMetersOut: ramClear ? ramClearOut : undefined,
@@ -589,6 +591,7 @@ export async function PATCH(req: NextRequest) {
           sasGross,
           resolvedSasMetersIn,
           resolvedSasMetersOut,
+          isSupplemental,
         } = await computeMovement(
           currentDoc.machineId,
           currentDoc.sessionId,
@@ -646,6 +649,7 @@ export async function PATCH(req: NextRequest) {
         updateData.sasMetersIn = resolvedSasMetersIn;
         updateData.sasMetersOut = resolvedSasMetersOut;
         updateData.sasGross = sasGross;
+        updateData.isSupplemental = isSupplemental;
         updateData.prevSasMetersIn = prevMeters.prevSasMetersIn;
         updateData.prevSasMetersOut = prevMeters.prevSasMetersOut;
         updateData.movement = movement;

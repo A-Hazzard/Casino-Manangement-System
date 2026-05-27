@@ -23,7 +23,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -64,7 +64,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
   // ============================================================================
   // Computed
   // ============================================================================
-  const filteredEntries = (() => {
+  const filteredEntries = useMemo(() => {
     const reversed = collectedMachineEntries.slice().reverse();
     if (!searchQuery.trim()) return reversed;
     const searchTermLower = searchQuery.toLowerCase();
@@ -77,7 +77,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
         (entry.machineId?.toLowerCase() || '').includes(searchTermLower) ||
         (entry.game?.toLowerCase() || '').includes(searchTermLower)
     );
-  })();
+  }, [collectedMachineEntries, searchQuery]);
 
   // ============================================================================
   // Render

@@ -1,7 +1,7 @@
 'use client';
 
 import type { CashierShift, FloatRequest } from '@/shared/types/vault';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export type CashierActivityItem = {
   id: string;
@@ -28,7 +28,8 @@ export function useCashierActivity() {
   // Handlers
   // ============================================================================
 
-  const fetchActivity = async (isSilent = false, startDate?: string, endDate?: string) => {
+  const fetchActivity = useCallback(
+    async (isSilent = false, startDate?: string, endDate?: string) => {
       try {
         if (!isSilent) setLoading(true);
         else setRefreshing(true);
@@ -145,7 +146,9 @@ export function useCashierActivity() {
         setLoading(false);
         setRefreshing(false);
       }
-    };
+    },
+    []
+  );
 
   // ============================================================================
   // Effects

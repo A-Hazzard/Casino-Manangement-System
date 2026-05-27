@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shared/ui/select';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 type ActivityLogDateFilterProps = {
@@ -50,7 +50,7 @@ export default function ActivityLogDateFilter({
   // Computed
   // ============================================================================
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
-    (() => {
+    useMemo(() => {
       const baseButtons = [
         { label: 'Today', value: 'Today' as TimePeriod },
         { label: 'Yesterday', value: 'Yesterday' as TimePeriod },
@@ -65,7 +65,7 @@ export default function ActivityLogDateFilter({
       );
 
       return baseButtons;
-    })();
+    }, []);
 
   // ============================================================================
   // Handlers

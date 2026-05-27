@@ -7,7 +7,7 @@
 'use client';
 
 import { Country } from '@/lib/types/country';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useAdministrationCountries() {
   // ============================================================================
@@ -24,7 +24,7 @@ export function useAdministrationCountries() {
   // Handlers
   // ============================================================================
 
-  const fetchCountries = async () => {
+  const fetchCountries = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/countries');
@@ -41,7 +41,7 @@ export function useAdministrationCountries() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // ============================================================================
   // Effects
@@ -52,33 +52,33 @@ export function useAdministrationCountries() {
     fetchCountries();
   }, [fetchCountries]);
 
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setIsAddModalOpen(true);
-  };
+  }, []);
 
-  const closeAddModal = () => {
+  const closeAddModal = useCallback(() => {
     setIsAddModalOpen(false);
-  };
+  }, []);
 
-  const openEditModal = (country: Country) => {
+  const openEditModal = useCallback((country: Country) => {
     setSelectedCountry(country);
     setIsEditModalOpen(true);
-  };
+  }, []);
 
-  const closeEditModal = () => {
+  const closeEditModal = useCallback(() => {
     setIsEditModalOpen(false);
     setSelectedCountry(null);
-  };
+  }, []);
 
-  const openDeleteModal = (country: Country) => {
+  const openDeleteModal = useCallback((country: Country) => {
     setSelectedCountry(country);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const closeDeleteModal = () => {
+  const closeDeleteModal = useCallback(() => {
     setIsDeleteModalOpen(false);
     setSelectedCountry(null);
-  };
+  }, []);
 
   return {
     isAddModalOpen,

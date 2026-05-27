@@ -11,7 +11,7 @@
 import { useUserStore } from '@/lib/store/userStore';
 import { isShiftStale } from '@/lib/utils/vault/shift';
 import { VaultBalance } from '@/shared/types/vault';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useVaultShift() {
   // ============================================================================
@@ -34,7 +34,8 @@ export function useVaultShift() {
   // Handlers
   // ============================================================================
 
-  const fetchBalance = async (isSilent = false) => {
+  const fetchBalance = useCallback(
+    async (isSilent = false) => {
       if (!locationId) {
         setLoading(false);
         return;
@@ -66,7 +67,9 @@ export function useVaultShift() {
         setLoading(false);
         setRefreshing(false);
       }
-    };
+    },
+    [locationId, setHasActiveVaultShift, setIsVaultReconciled, setGlobalIsStale]
+  );
 
   // ============================================================================
   // Effects
@@ -80,12 +83,18 @@ export function useVaultShift() {
   // Computed
   // ============================================================================
 
-  const isStaleShift = (() => {
+  const isStaleShift = useMemo(() => {
     return vaultBalance?.isStale ?? isShiftStale(vaultBalance?.openedAt);
-  })();
+  }, [vaultBalance?.isStale, vaultBalance?.openedAt]);
 
-  const isActive = !!vaultBalance?.activeShiftId;
-  const isReconciled = !!vaultBalance?.isReconciled;
+  const isActive = useMemo(
+    () => !!vaultBalance?.activeShiftId,
+    [vaultBalance?.activeShiftId]
+  );
+  const isReconciled = useMemo(
+    () => !!vaultBalance?.isReconciled,
+    [vaultBalance?.isReconciled]
+  );
 
   return {
     vaultBalance,

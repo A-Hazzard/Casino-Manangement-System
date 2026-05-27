@@ -3,7 +3,7 @@
  * Handles modal visibility and state management for cabinets page
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 type UseCabinetModalsReturn = {
   isNewMovementRequestModalOpen: boolean;
   isUploadSmibDataModalOpen: boolean;
@@ -29,21 +29,21 @@ export function useCabinetModals(): UseCabinetModalsReturn {
   // ============================================================================
 
   // Modal handlers
-  const openNewMovementRequestModal = () => {
+  const openNewMovementRequestModal = useCallback(() => {
     setIsNewMovementRequestModalOpen(true);
-  };
+  }, []);
 
-  const closeNewMovementRequestModal = () => {
+  const closeNewMovementRequestModal = useCallback(() => {
     setIsNewMovementRequestModalOpen(false);
-  };
+  }, []);
 
-  const openUploadSmibDataModal = () => {
+  const openUploadSmibDataModal = useCallback(() => {
     setIsUploadSmibDataModalOpen(true);
-  };
+  }, []);
 
-  const closeUploadSmibDataModal = () => {
+  const closeUploadSmibDataModal = useCallback(() => {
     setIsUploadSmibDataModalOpen(false);
-  };
+  }, []);
 
   return {
     isNewMovementRequestModalOpen,

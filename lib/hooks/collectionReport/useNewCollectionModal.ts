@@ -39,7 +39,7 @@ import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { validateCollectionReportPayload } from '@/lib/utils/validation';
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -254,10 +254,13 @@ export function useNewCollectionModal({
   /**
    * Find location ID for a given machine using the location name from the collection
    */
-  const getLocationIdFromCollection = (locationName: string) => {
+  const getLocationIdFromCollection = useCallback(
+    (locationName: string) => {
       const found = locations.find(location => location.name === locationName);
       return found ? String(found._id) : null;
-    };
+    },
+    [locations]
+  );
 
   // ==========================================================================
   // Computed
@@ -266,20 +269,26 @@ export function useNewCollectionModal({
   /**
    * Selected location object from locations array
    */
-  const selectedLocation = (() => {
+  const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
     return locations.find(location => String(location._id) === locationIdToUse);
-  })();
+  }, [locations, selectedLocationId, lockedLocationId]);
 
   /**
    * Location's collection balance for calculations
    */
-  const locationCollectionBalance = selectedLocation?.collectionBalance ?? 0;
+  const locationCollectionBalance = useMemo(
+    () => selectedLocation?.collectionBalance ?? 0,
+    [selectedLocation?.collectionBalance]
+  );
 
   /**
    * Location's profit share percentage
    */
-  const locationProfitShare = selectedLocation?.profitShare ?? 50;
+  const locationProfitShare = useMemo(
+    () => selectedLocation?.profitShare ?? 50,
+    [selectedLocation?.profitShare]
+  );
 
   /**
    * Check if any confirmation modal is open
@@ -294,7 +303,7 @@ export function useNewCollectionModal({
   /**
    * Machine being edited or added
    */
-  const machineForDataEntry = (() => {
+  const machineForDataEntry = useMemo(() => {
     let found = machinesOfSelectedLocation.find(
       machine => machine._id === selectedMachineId
     );
@@ -318,12 +327,12 @@ export function useNewCollectionModal({
       }
     }
     return found;
-  })();
+  }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
 
   /**
    * Filter machines based on search term
    */
-  const filteredMachines = (() => {
+  const filteredMachines = useMemo(() => {
     let result = machinesOfSelectedLocation;
     if (machineSearchTerm.trim()) {
       const searchLower = machineSearchTerm.toLowerCase();
@@ -338,30 +347,44 @@ export function useNewCollectionModal({
       );
     }
     return sortMachinesAlphabetically(result);
-  })();
+  }, [machinesOfSelectedLocation, machineSearchTerm]);
 
   /**
    * Whether meter input fields should be enabled
    */
-  const inputsEnabled = !!machineForDataEntry || !!selectedMachineId;
+  const inputsEnabled = useMemo(
+    () => !!machineForDataEntry || !!selectedMachineId,
+    [machineForDataEntry, selectedMachineId]
+  );
 
-  const isMiddleReportWarning = (() => {
-    const targetTime = sasEndTime || currentCollectionTime;
-    if (machineFirstCollectionTime && machineLastCollectionTime && targetTime) {
-      if (
+  const isMiddleReportWarning = useMemo(() => {
+    if (machineFirstCollectionTime && machineLastCollectionTime) {
+      const startInMiddle =
+        sasStartTime &&
+        sasStartTime > machineFirstCollectionTime &&
+        sasStartTime < machineLastCollectionTime;
+      const targetTime = sasEndTime || currentCollectionTime;
+      const endInMiddle =
+        targetTime &&
         targetTime > machineFirstCollectionTime &&
-        targetTime < machineLastCollectionTime
-      ) {
+        targetTime < machineLastCollectionTime;
+      if (startInMiddle || endInMiddle) {
         return true;
       }
     }
     return false;
-  })();
+  }, [
+    machineFirstCollectionTime,
+    machineLastCollectionTime,
+    sasStartTime,
+    sasEndTime,
+    currentCollectionTime,
+  ]);
 
   /**
    * Whether the "Add Machine" button should be enabled
    */
-  const isAddMachineEnabled = (() => {
+  const isAddMachineEnabled = useMemo(() => {
     if (isMiddleReportWarning) return false;
     if (!machineForDataEntry) return false;
     if (!currentMetersIn || !currentMetersOut) return false;
@@ -392,7 +415,19 @@ export function useNewCollectionModal({
     }
 
     return true;
-  })();
+  }, [
+    machineForDataEntry,
+    currentMetersIn,
+    currentMetersOut,
+    currentRamClear,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    storePrevIn,
+    storePrevOut,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime,
+  ]);
 
   // ==========================================================================
   // Debounced Values
@@ -534,7 +569,7 @@ export function useNewCollectionModal({
   /**
    * Calculate amount to collect based on collected machines
    */
-  const calculateAmountToCollect = () => {
+  const calculateAmountToCollect = useCallback(() => {
     if (!collectedMachineEntries.length) {
       setFinancials({ amountToCollect: '0' });
       return;
@@ -600,7 +635,20 @@ export function useNewCollectionModal({
       amountToCollect: amountToCollect.toFixed(2),
       previousBalance: (collectedAmount - amountToCollect).toFixed(2),
     });
-  };
+  }, [
+    collectedMachineEntries,
+    // List only the specific financials fields that are read inside the callback.
+    // Using the entire `financials` object here causes an infinite loop because
+    // setFinancials() creates a new object reference, which recreates this callback,
+    // which triggers the useEffect([calculateAmountToCollect]) to re-run, forever.
+    financials.taxes,
+    financials.variance,
+    financials.advance,
+    financials.balanceCorrection,
+    financials.collectedAmount,
+    locationCollectionBalance,
+    locationProfitShare,
+  ]);
 
   useEffect(() => {
     calculateAmountToCollect();
@@ -609,7 +657,8 @@ export function useNewCollectionModal({
   /**
    * Fetch existing collections when modal opens
    */
-  const fetchExistingCollections = async (locationId?: string) => {
+  const fetchExistingCollections = useCallback(
+    async (locationId?: string) => {
       try {
         console.log('🔄 [NewCollection] fetchExistingCollections starting', {
           locationId,
@@ -666,7 +715,18 @@ export function useNewCollectionModal({
       } finally {
         setIsLoadingExistingCollections(false);
       }
-    };
+    },
+    [
+      locations,
+      userId,
+      setSelectedLocation,
+      setLockedLocation,
+      setCollectedMachineEntries,
+      setCurrentCollectionTime,
+      setFinancials,
+      getLocationIdFromCollection,
+    ]
+  );
 
   useEffect(() => {
     if (show) {
@@ -817,6 +877,8 @@ export function useNewCollectionModal({
             }
           })
           .catch(() => {
+            setMachineFirstCollectionTime(null);
+            setMachineLastCollectionTime(null);
             const machineFromLocation = machinesOfSelectedLocation.find(
               m => String(m._id) === selectedMachineId
             );
@@ -854,6 +916,8 @@ export function useNewCollectionModal({
       selectedMachineId === undefined &&
       machinesOfSelectedLocation.length > 0
     ) {
+      setMachineFirstCollectionTime(null);
+      setMachineLastCollectionTime(null);
       setPrevIn(null);
       setPrevOut(null);
     }
@@ -923,7 +987,8 @@ export function useNewCollectionModal({
   /**
    * Handle location dropdown change
    */
-  const handleLocationChange = (value: string) => {
+  const handleLocationChange = useCallback(
+    (value: string) => {
       const location = locations.find(
         location => String(location._id) === value
       );
@@ -939,19 +1004,21 @@ export function useNewCollectionModal({
           setCurrentCollectionTime(defaultTime);
         }
       }
-    };
+    },
+    [locations, setSelectedLocation, setFinancials, setCurrentCollectionTime]
+  );
 
   /**
    * Handle clicking disabled input field
    */
-  const handleDisabledFieldClick = () => {
+  const handleDisabledFieldClick = useCallback(() => {
     if (!inputsEnabled) {
       toast.warning('Please select a machine first', {
         duration: 3000,
         position: 'top-left',
       });
     }
-  };
+  }, [inputsEnabled]);
 
   // ==========================================================================
   // Handlers
@@ -960,7 +1027,7 @@ export function useNewCollectionModal({
   /**
    * Execute adding a machine entry to the collection
    */
-  const executeAddEntry = async () => {
+  const executeAddEntry = useCallback(async () => {
     try {
       setIsProcessing(true);
       if (!machineForDataEntry || !selectedLocationId) return;
@@ -1116,12 +1183,28 @@ export function useNewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [
+    machineForDataEntry,
+    selectedLocationId,
+    selectedLocationName,
+    currentMetersIn,
+    currentMetersOut,
+    currentCollectionTime,
+    currentRamClear,
+    currentMachineNotes,
+    userId,
+    sasStartTime,
+    sasEndTime,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    logActivityCallback,
+    selectedMachineId,
+  ]);
 
   /**
    * Handle add machine button click (with rollover check)
    */
-  const handleAddEntry = () => {
+  const handleAddEntry = useCallback(() => {
     if (!isAddMachineEnabled || isProcessing) return;
 
     const onConfirm = () => executeAddEntry();
@@ -1137,15 +1220,22 @@ export function useNewCollectionModal({
       return;
     }
     onConfirm();
-  };
+  }, [
+    isAddMachineEnabled,
+    isProcessing,
+    prevIn,
+    currentMetersIn,
+    machineForDataEntry,
+    executeAddEntry,
+  ]);
 
   /**
    * Handle add or update entry based on editing state
    */
-  const handleAddOrUpdateEntry = () => {
+  const handleAddOrUpdateEntry = useCallback(() => {
     if (editingEntryId) setShowUpdateConfirmation(true);
     else handleAddEntry();
-  };
+  }, [editingEntryId, handleAddEntry]);
 
   // ==========================================================================
   // Handlers
@@ -1154,7 +1244,7 @@ export function useNewCollectionModal({
   /**
    * Execute updating an existing machine entry
    */
-  const executeUpdateEntry = async () => {
+  const executeUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
     try {
       setIsProcessing(true);
@@ -1276,12 +1366,27 @@ export function useNewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [
+    editingEntryId,
+    collectedMachineEntries,
+    currentMetersIn,
+    currentMetersOut,
+    currentCollectionTime,
+    currentRamClear,
+    currentMachineNotes,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime,
+    selectedLocationName,
+    logActivityCallback,
+  ]);
 
   /**
    * Confirm update with rollover check
    */
-  const confirmUpdateEntry = async () => {
+  const confirmUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
 
     const onConfirm = () => executeUpdateEntry();
@@ -1298,12 +1403,19 @@ export function useNewCollectionModal({
     }
     onConfirm();
     setShowUpdateConfirmation(false);
-  };
+  }, [
+    editingEntryId,
+    prevIn,
+    currentMetersIn,
+    machineForDataEntry,
+    executeUpdateEntry,
+  ]);
 
   /**
    * Start editing a collected entry
    */
-  const handleEditCollectedEntry = (id: string) => {
+  const handleEditCollectedEntry = useCallback(
+    (id: string) => {
       const entry = collectedMachineEntries.find(
         entry => String(entry._id) === id
       );
@@ -1338,16 +1450,18 @@ export function useNewCollectionModal({
         );
         toast.info('Editing machine collection entry');
       }
-    };
+    },
+    [collectedMachineEntries]
+  );
 
   /**
    * Cancel editing mode
    */
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingEntryId(null);
     resetEntryForm();
     toast.info('Edit cancelled');
-  };
+  }, []);
 
   // ==========================================================================
   // Handlers
@@ -1356,10 +1470,10 @@ export function useNewCollectionModal({
   /**
    * Start delete confirmation for an entry
    */
-  const handleDeleteCollectedEntry = (id: string) => {
+  const handleDeleteCollectedEntry = useCallback((id: string) => {
     setEntryToDelete(id);
     setShowDeleteConfirmation(true);
-  };
+  }, []);
 
   /**
    * Execute deletion of an entry
@@ -1407,18 +1521,18 @@ export function useNewCollectionModal({
   // Handlers
   // ==========================================================================
 
-  const handleConfirmMachineRollover = () => {
+  const handleConfirmMachineRollover = useCallback(() => {
     if (pendingMachineSubmission) {
       pendingMachineSubmission();
       setPendingMachineSubmission(null);
     }
     setShowMachineRolloverWarning(false);
-  };
+  }, [pendingMachineSubmission]);
 
-  const handleCancelMachineRollover = () => {
+  const handleCancelMachineRollover = useCallback(() => {
     setPendingMachineSubmission(null);
     setShowMachineRolloverWarning(false);
-  };
+  }, []);
 
   // ==========================================================================
   // Handlers
@@ -1517,11 +1631,11 @@ export function useNewCollectionModal({
               sum + (Number(machineData.sasGross) || 0),
             0
           ) || 0,
-        // Use earliest timestamp from all machines for the report
+        // Use latest/most recent timestamp from all machines for the report
         timestamp:
           collectedEntries.length > 0
             ? new Date(
-                Math.min(
+                Math.max(
                   ...collectedEntries.map(entry =>
                     entry.timestamp
                       ? new Date(entry.timestamp).getTime()
@@ -1618,7 +1732,7 @@ export function useNewCollectionModal({
   /**
    * Apply SAS times to all collected machines
    */
-  const handleApplyAllDates = async () => {
+  const handleApplyAllDates = useCallback(async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
     if (collectedMachineEntries.length < 2) return;
     try {
@@ -1687,7 +1801,7 @@ export function useNewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
 
   // ==========================================================================
   // Handlers
@@ -1696,7 +1810,7 @@ export function useNewCollectionModal({
   /**
    * Close modal and reset state
    */
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (hasChanges && onRefresh) {
       onRefresh();
     }
@@ -1712,7 +1826,7 @@ export function useNewCollectionModal({
     resetEntryForm();
 
     onClose();
-  };
+  }, [hasChanges, onRefresh, onClose, resetStoreState]);
 
   /**
    * Reset entry form fields

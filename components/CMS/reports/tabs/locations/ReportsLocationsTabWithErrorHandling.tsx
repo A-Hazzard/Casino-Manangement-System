@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useApiWithRetry } from '@/lib/hooks/data/useApiWithRetry';
 import {
   classifyError,
@@ -34,7 +34,7 @@ export default function ReportsLocationsTabWithErrorHandling() {
   // Fetching & Hooks
   // ============================================================================
   // API function for fetching locations data
-  const fetchLocationsData = async () => {
+  const fetchLocationsData = useCallback(async () => {
     const params = new URLSearchParams();
     if (selectedLicencee && selectedLicencee !== 'all') {
       params.append('licencee', selectedLicencee);
@@ -46,7 +46,7 @@ export default function ReportsLocationsTabWithErrorHandling() {
       `/api/reports/locations?${params.toString()}`
     );
     return response;
-  };
+  }, [selectedLicencee]);
 
   // Use the retry hook for API calls
   const { data, loading, execute } = useApiWithRetry(fetchLocationsData, {
@@ -68,7 +68,7 @@ export default function ReportsLocationsTabWithErrorHandling() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     setConnectionError(null);
 
@@ -82,7 +82,7 @@ export default function ReportsLocationsTabWithErrorHandling() {
     } finally {
       setIsRetrying(false);
     }
-  };
+  }, [execute]);
 
   // ============================================================================
   // Computed (Error/Loading States)

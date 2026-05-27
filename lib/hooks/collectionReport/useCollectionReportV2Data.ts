@@ -3,7 +3,7 @@
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 
 // ============================================================================
@@ -73,7 +73,7 @@ export function useCollectionReportV2Data(
   // Handlers
   // ============================================================================
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -131,9 +131,20 @@ export function useCollectionReportV2Data(
         setLoading(false);
       }
     }
-  };
+  }, [
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    currentPage,
+    debouncedSearchTerm,
+    searchType,
+    sortField,
+    sortDirection,
+    showArchived,
+  ]);
 
-  const handleSort = (field: string) => {
+  const handleSort = useCallback(
+    (field: string) => {
       setSortDirection(prevDir => {
         if (sortField === field) {
           return prevDir === 'asc' ? 'desc' : 'asc';
@@ -142,14 +153,16 @@ export function useCollectionReportV2Data(
       });
       setSortField(field);
       setCurrentPage(0);
-    };
+    },
+    [sortField]
+  );
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setCurrentPage(0);
     await fetchSessions();
     setIsRefreshing(false);
-  };
+  }, [fetchSessions]);
 
   // ============================================================================
   // Effects
@@ -163,7 +176,7 @@ export function useCollectionReportV2Data(
   // Computed
   // ============================================================================
 
-  const filteredSessions = (() => {
+  const filteredSessions = useMemo(() => {
     if (!selectedLocation || selectedLocation === 'all') return sessions;
     if (Array.isArray(selectedLocation)) {
       if (selectedLocation.length === 0) return sessions;
@@ -172,9 +185,12 @@ export function useCollectionReportV2Data(
       );
     }
     return sessions.filter(session => session.locationId === selectedLocation);
-  })();
+  }, [sessions, selectedLocation]);
 
-  const totalPages = Math.ceil(totalSessions / ITEMS_PER_PAGE) || 1;
+  const totalPages = useMemo(
+    () => Math.ceil(totalSessions / ITEMS_PER_PAGE) || 1,
+    [totalSessions]
+  );
 
   return {
     sessions: filteredSessions,

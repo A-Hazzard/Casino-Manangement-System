@@ -35,7 +35,7 @@ import {
 import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // Import SVG icons for pre-rendering
 import detailsIcon from '@/public/details.svg';
@@ -102,14 +102,14 @@ export default function CollectionReportCards({
     : false;
 
   // Check if user can edit/delete reports
-  const canEditDelete = (() => {
+  const canEditDelete = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles as UserRole[];
     if (userRoles.includes('collector') || userRoles.includes('technician')) {
       return false;
     }
     return hasManagerAccess(userRoles);
-  })();
+  }, [user]);
 
   // ============================================================================
   // Render

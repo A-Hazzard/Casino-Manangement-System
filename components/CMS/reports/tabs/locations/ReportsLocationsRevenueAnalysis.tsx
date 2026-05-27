@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Trophy,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/shared/ui/button';
@@ -142,7 +143,7 @@ export default function ReportsLocationsRevenueAnalysis({
   // Computed
   // ============================================================================
   // Calculate display totals from selected locations
-  const displayTotals = (() => {
+  const displayTotals = useMemo(() => {
     if (selectedRevenueLocations.length === 0) {
       return metricsTotals;
     }
@@ -169,21 +170,21 @@ export default function ReportsLocationsRevenueAnalysis({
         0
       ),
     };
-  })();
+  }, [selectedRevenueLocations, paginatedLocations, metricsTotals]);
 
   // Check if any displayed location has includeJackpot
-  const anyIncludeJackpot = (() => {
+  const anyIncludeJackpot = useMemo(() => {
     return paginatedLocations.some(loc => loc.includeJackpot);
-  })();
+  }, [paginatedLocations]);
 
   // All locations for dropdown (SAS and non-SAS)
-  const allLocations = (() => {
+  const allLocations = useMemo(() => {
     return allLocationsForDropdown.map(loc => ({
       id: loc.location as string,
       name: loc.locationName,
       sasEnabled: loc.hasSasMachines,
     }));
-  })();
+  }, [allLocationsForDropdown]);
 
   // ============================================================================
   // Render

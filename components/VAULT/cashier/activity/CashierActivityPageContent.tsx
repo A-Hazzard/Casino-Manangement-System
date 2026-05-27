@@ -3,7 +3,7 @@
 // ============================================================================
 // External Dependencies
 // ============================================================================
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DollarSign, History, TrendingUp } from 'lucide-react';
 
 // ============================================================================
@@ -39,7 +39,7 @@ export default function CashierActivityPageContent() {
   // ============================================================================
   // Handlers & Helpers
   // ============================================================================
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!locationId) return;
     try {
       const res = await fetch(
@@ -66,7 +66,7 @@ export default function CashierActivityPageContent() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [locationId, user?._id]);
 
   // ============================================================================
   // Effects

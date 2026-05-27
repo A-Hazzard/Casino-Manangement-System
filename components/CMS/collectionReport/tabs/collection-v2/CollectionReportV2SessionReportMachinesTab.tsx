@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type ReportedMachineMovement = {
@@ -39,6 +39,7 @@ type SessionMachine = {
   metersMatch?: boolean;
   machineGross?: number;
   grossDifference?: number;
+  isSupplemental?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -93,7 +94,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
   // Computed
   // ============================================================================
 
-  const filtered = (() => {
+  const filtered = useMemo(() => {
     if (!searchTerm.trim()) return machines;
 
     const term = searchTerm.toLowerCase();
@@ -106,9 +107,9 @@ export default function CollectionReportV2SessionReportMachinesTab({
       const serial = (machine.serialNumber || '').toLowerCase();
       return name.includes(term) || serial.includes(term);
     });
-  })();
+  }, [machines, searchTerm]);
 
-  const sorted = (() => {
+  const sorted = useMemo(() => {
     const list = [...filtered];
     list.sort((a, b) => {
       let cmp = 0;
@@ -168,20 +169,23 @@ export default function CollectionReportV2SessionReportMachinesTab({
       return sortDirection === 'asc' ? cmp : -cmp;
     });
     return list;
-  })();
+  }, [filtered, sortField, sortDirection]);
 
-  const totalPages = Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1;
+  const totalPages = useMemo(
+    () => Math.ceil(sorted.length / ITEMS_PER_PAGE) || 1,
+    [sorted.length]
+  );
 
-  const paginated = (() => {
+  const paginated = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sorted.slice(start, start + ITEMS_PER_PAGE);
-  })();
+  }, [sorted, currentPage]);
 
-  (() => {
+  useMemo(() => {
     if (currentPage > Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1) {
       setCurrentPage(1);
     }
-  })();
+  }, [filtered.length]);
 
   // ============================================================================
   // Helpers
@@ -251,6 +255,20 @@ export default function CollectionReportV2SessionReportMachinesTab({
     if (parts.length === 0) return null;
     return <p className="text-xs text-gray-500">{parts.join(' · ')}</p>;
   };
+
+  // ============================================================================
+  // Supplemental Badge
+  // ============================================================================
+
+  const SupplementalBadge = () => (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+      title="Supplemental meters: this SMIB cabinet was offline ≥ 3 days. Non-entered lifetime meters were carried forward with a 0 movement delta. Only physical drop meters (Meters In/Out) reflect real movement."
+    >
+      <span aria-hidden="true">📶</span>
+      Supplemental
+    </span>
+  );
 
   // ============================================================================
   // Match Icon
@@ -479,15 +497,18 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         <div className="flex items-center gap-2">
                           <MatchIcon machine={machine} />
                           <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                router.push(`/cabinets/${machine.machineId}`)
-                              }
-                              className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
-                            >
-                              {machine.machineCustomName || machine.machineName}
-                            </button>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  router.push(`/cabinets/${machine.machineId}`)
+                                }
+                                className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
+                              >
+                                {machine.machineCustomName || machine.machineName}
+                              </button>
+                              {machine.isSupplemental && <SupplementalBadge />}
+                            </div>
                             <MachineSubtext machine={machine} />
                           </div>
                         </div>
@@ -599,6 +620,11 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         >
                           {machine.machineCustomName || machine.machineName}
                         </button>
+                        {machine.isSupplemental && (
+                          <div className="mt-1">
+                            <SupplementalBadge />
+                          </div>
+                        )}
                         <MachineSubtext machine={machine} />
                       </div>
                     </div>

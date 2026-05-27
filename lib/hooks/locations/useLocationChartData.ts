@@ -21,7 +21,7 @@ import { isAbortError } from '@/lib/utils/errors';
 
 import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationChartDataProps = {
   locationId: string;
@@ -82,7 +82,7 @@ export function useLocationChartData({
   // ============================================================================
   // Show granularity selector for Today/Yesterday/Custom (only if Custom spans ≤ 1 gaming day)
   // Also show for Quarterly/All Time if data span >= 1 week
-  const showGranularitySelector = (() => {
+  const showGranularitySelector = useMemo(() => {
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -123,7 +123,7 @@ export function useLocationChartData({
       return true;
     }
     return false;
-  })();
+  }, [activeMetricsFilter, customDateRange, availableGranularityOptions]);
 
   // Recalculate default granularity when date filters change
   // Reset manual flag when time period changes so appropriate defaults are used
@@ -220,7 +220,7 @@ export function useLocationChartData({
 
   // Stable key derived from customDateRange so the fetch effect doesn't re-run
   // on every render due to a new object reference from the store.
-  const dateRangeKey = (() => {
+  const dateRangeKey = useMemo(() => {
     if (!customDateRange?.startDate || !customDateRange?.endDate) return '';
     const start =
       customDateRange.startDate instanceof Date
@@ -231,7 +231,7 @@ export function useLocationChartData({
         ? customDateRange.endDate.getTime()
         : new Date(customDateRange.endDate).getTime();
     return `${start}-${end}`;
-  })();
+  }, [customDateRange?.startDate, customDateRange?.endDate]);
 
   // Fetch chart data
   // This effect should only run when core parameters change, not when granularity/selector change
@@ -578,12 +578,12 @@ export function useLocationChartData({
   // ============================================================================
   // Refresh Function
   // ============================================================================
-  const refreshChart = () => {
+  const refreshChart = useCallback(() => {
     // Increment refresh trigger state to force refetch (state change triggers effect)
     setRefreshTrigger(prev => prev + 1);
     // Clear last fetch params to force refetch
     lastFetchParamsRef.current = '';
-  };
+  }, []);
 
   // ============================================================================
   // Return

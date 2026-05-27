@@ -33,7 +33,7 @@ import { safeFormatDate } from '@/lib/utils/date/formatting';
 import { formatActivityType } from '@/lib/utils/formatters';
 import { AnimatePresence, motion } from 'framer-motion';
 import { History, Loader2, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type ActivityLogEntry = {
   _id: string;
@@ -78,7 +78,7 @@ export default function ActivityLogPanel({
   // ============================================================================
   // Effects
   // ============================================================================
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     if (!locationId) return;
 
     setLoading(true);
@@ -105,7 +105,7 @@ export default function ActivityLogPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId, userId, limit, dateRange]);
 
   useEffect(() => {
     fetchActivities();

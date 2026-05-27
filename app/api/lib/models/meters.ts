@@ -37,6 +37,7 @@ const MetersSchema = new Schema(
       default: 'COLLECTION_REPORT',
     },
     isRamClear: { type: Boolean },
+    isSupplemental: { type: Boolean, default: false },
     readAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now },
     deletedAt: { type: Date },

@@ -7,7 +7,7 @@
  */
 
 import { NOTIFICATION_POLL_INTERVAL } from '@/lib/constants/vault';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export type VaultNotification = {
@@ -45,7 +45,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
   // Handlers
   // ============================================================================
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!locationId) return;
 
     try {
@@ -65,7 +65,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     } catch (error) {
       console.error('Failed to fetch notifications', error);
     }
-  };
+  }, [locationId]);
 
   // ============================================================================
   // Effects
@@ -86,7 +86,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     return () => clearInterval(interval);
   }, [locationId, enabled, fetchNotifications]);
 
-  const markAsRead = async (notificationIds: string | string[]) => {
+  const markAsRead = useCallback(async (notificationIds: string | string[]) => {
     const ids = Array.isArray(notificationIds)
       ? notificationIds
       : [notificationIds];
@@ -120,9 +120,10 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
       console.error('Failed to mark notifications as read', error);
       toast.error('Failed to update notifications');
     }
-  };
+  }, []);
 
-  const dismissNotifications = async (notificationIds: string | string[]) => {
+  const dismissNotifications = useCallback(
+    async (notificationIds: string | string[]) => {
       const ids = Array.isArray(notificationIds)
         ? notificationIds
         : [notificationIds];
@@ -158,7 +159,9 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         console.error('Failed to dismiss notifications', error);
         toast.error('Failed to dismiss notifications');
       }
-    };
+    },
+    []
+  );
 
   return {
     notifications,

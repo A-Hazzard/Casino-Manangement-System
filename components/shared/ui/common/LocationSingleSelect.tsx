@@ -17,7 +17,7 @@
  */
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Badge } from '@/components/shared/ui/badge';
 import { Input } from '@/components/shared/ui/input';
@@ -94,7 +94,9 @@ export default function LocationSingleSelect({
   // Computed
   // ============================================================================
   // Prepare options with "All Locations" if enabled
-  const options = includeAllOption
+  const options = useMemo(
+    () =>
+      includeAllOption
         ? [
             {
               id: 'all',
@@ -103,13 +105,19 @@ export default function LocationSingleSelect({
             },
             ...locations,
           ]
-        : locations;
+        : locations,
+    [includeAllOption, allOptionLabel, showSasBadge, locations]
+  );
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option => {
+  const filteredOptions = useMemo(
+    () =>
+      options.filter(option => {
         const name = option.name || '';
         return name.toLowerCase().includes(searchTerm.toLowerCase());
-      });
+      }),
+    [options, searchTerm]
+  );
 
   const selectedOption = options.find(option => option.id === selectedLocation);
   const displayText = selectedOption?.name || placeholder;

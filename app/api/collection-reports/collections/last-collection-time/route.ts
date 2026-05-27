@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     // ordered by collectionTime descending so we get the latest gaming period end.
     const lastCollection = await Collections.findOne(
       { machineId, isCompleted: true },
-      { collectionTime: 1, metersIn: 1, metersOut: 1 }
+      { collectionTime: 1, timestamp: 1, metersIn: 1, metersOut: 1 }
     )
       .sort({ collectionTime: -1 })
       .lean<CollectionDocument | null>();
@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
     // Also find the oldest collection to establish chronological boundaries
     const firstCollection = await Collections.findOne(
       { machineId, isCompleted: true },
-      { collectionTime: 1 }
+      { collectionTime: 1, timestamp: 1 }
     )
       .sort({ collectionTime: 1 })
       .lean<CollectionDocument | null>();
 
-    let collectionTime: Date | null = lastCollection?.collectionTime ?? null;
-    let firstCollectionTime: Date | null = firstCollection?.collectionTime ?? null;
+    let collectionTime: Date | null = lastCollection?.collectionTime ?? lastCollection?.timestamp ?? null;
+    let firstCollectionTime: Date | null = firstCollection?.collectionTime ?? firstCollection?.timestamp ?? null;
     let metersIn: number | null = lastCollection?.metersIn ?? null;
     let metersOut: number | null = lastCollection?.metersOut ?? null;
     const hasPreviousCollection = !!lastCollection;

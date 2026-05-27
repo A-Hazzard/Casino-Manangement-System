@@ -34,7 +34,7 @@ import {
   RefreshCw,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 import VaultOverviewCollectionTallyList from '../sections/VaultOverviewCollectionTallyList';
 
@@ -69,7 +69,10 @@ export default function VaultOverviewCloseShiftModal({
     new Set()
   );
 
-  const denomsList = getDenominationValues(selectedLicencee);
+  const denomsList = useMemo(
+    () => getDenominationValues(selectedLicencee),
+    [selectedLicencee]
+  );
   
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
@@ -91,15 +94,18 @@ export default function VaultOverviewCloseShiftModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const totalAmount = (() => {
+  const totalAmount = useMemo(() => {
     return denominations.reduce(
       (sum, d) => sum + d.denomination * d.quantity,
       0
     );
-  })();
+  }, [denominations]);
 
   const matchesExpected = totalAmount === currentBalance;
-  const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
+  const isAllTouched = useMemo(
+    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    [denomsList, touchedDenominations]
+  );
   const isValid = totalAmount > 0 || isAllTouched;
 
   // ============================================================================

@@ -35,6 +35,7 @@ import {
   formatDisplayDate,
   formatTime12Hour,
 } from '@/shared/utils/dateFormat';
+import { useMemo } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -130,7 +131,7 @@ export function ReportsLocationTrendChart({
   // Computed
   // ============================================================================
   // Determine formatting based on time period (matching dashboard chart logic)
-  const shouldShowTimes = (() => {
+  const shouldShowTimes = useMemo(() => {
     // Explicitly check for 7d and 30d - always use daily format
     if (
       timePeriod === '7d' ||
@@ -162,23 +163,23 @@ export function ReportsLocationTrendChart({
     }
 
     return false; // Show dates for Quarterly, All Time
-  })();
+  }, [timePeriod, data, granularity, isHourly]);
 
   // Detect monthly data by checking if day field matches "YYYY-MM" pattern
-  const hasMonthlyData = (() => {
+  const hasMonthlyData = useMemo(() => {
     return data.some(d => {
       const day = d.day;
       if (!day || typeof day !== 'string') return false;
       // Check if day matches monthly format "YYYY-MM"
       return /^\d{4}-\d{2}$/.test(day);
     });
-  })();
+  }, [data]);
 
   const shouldShowMonths =
     timePeriod === 'Quarterly' || hasMonthlyData || granularity === 'monthly';
 
   // Detect if chart data has minute-level detail (HH:MM format with non-zero minutes)
-  const hasMinuteLevelData = (() => {
+  const hasMinuteLevelData = useMemo(() => {
     return data.some(d => {
       const time = d.time;
       if (!time) return false;
@@ -187,11 +188,11 @@ export function ReportsLocationTrendChart({
       const minutes = parseInt(timeParts[1], 10);
       return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes (not HH:00)
     });
-  })();
+  }, [data]);
 
   // Transform data for the chart
   // If granularity is 'hourly' but data has minute-level detail, aggregate by hour
-  const chartData = (() => {
+  const chartData = useMemo(() => {
     // If granularity is hourly and we have minute-level data, aggregate by hour
     if (granularity === 'hourly' && hasMinuteLevelData && shouldShowTimes) {
       const hourlyData: Record<string, Record<string, string | number>> = {};
@@ -270,13 +271,22 @@ export function ReportsLocationTrendChart({
 
       return transformed;
     });
-  })();
+  }, [
+    data,
+    locations,
+    locationNames,
+    dataKey,
+    isHourly,
+    granularity,
+    hasMinuteLevelData,
+    shouldShowTimes,
+  ]);
 
   // Filter data to exclude $0 values (but keep cents like $0.30)
   // For financial metrics (drop, gross, jackpot, handle, winLoss), filter out $0 but keep cents
   // For non-financial metrics (plays), filter out 0
   // If there's only 1 data point after filtering, include the previous point (even if 0)
-  const filteredData = (() => {
+  const filteredData = useMemo(() => {
     const isFinancialMetric = [
       'drop',
       'gross',
@@ -344,11 +354,11 @@ export function ReportsLocationTrendChart({
     }
 
     return filtered;
-  })();
+  }, [chartData, locations, locationNames, shouldShowTimes, dataKey]);
 
   // Calculate Y-axis domain from all location values to ensure all lines are visible
   // Similar to dashboard chart logic
-  const yAxisDomain = (() => {
+  const yAxisDomain = useMemo(() => {
     const allValues: number[] = [];
     filteredData.forEach(item => {
       locations.forEach(locationId => {
@@ -373,7 +383,7 @@ export function ReportsLocationTrendChart({
     }
 
     return undefined;
-  })();
+  }, [filteredData, locations, locationNames]);
 
   // Calculate width based on data length to ensure points have enough space
   // 60px per data point gives enough room for labels

@@ -58,6 +58,7 @@ export type ReportedMachineDocument = {
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
+  isSupplemental?: boolean;
   sessionStartTime?: Date;
   sessionEndTime?: Date;
   sasStartTime?: Date;
@@ -115,6 +116,7 @@ const reportedMachineSchema = new Schema<ReportedMachineDocument>(
     ramClear: { type: Boolean, default: false },
     ramClearMetersIn: { type: Number },
     ramClearMetersOut: { type: Number },
+    isSupplemental: { type: Boolean, default: false },
     sessionStartTime: { type: Date },
     sessionEndTime: { type: Date },
     sasStartTime: { type: Date },

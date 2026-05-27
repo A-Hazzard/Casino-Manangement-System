@@ -18,7 +18,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { SchedulerTableRow } from '@/lib/types/components';
 import type { SchedulerData } from '@/lib/types/api';
 import type { LocationSelectItem } from '@/lib/types/location';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
 const MANAGE_ROLES = [
@@ -39,7 +39,11 @@ export function useManagerScheduleData(
   // ============================================================================
   // Permission
   // ============================================================================
-  const canManage = user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false;
+  const canManage = useMemo(
+    () =>
+      user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
+    [user]
+  );
 
   // ============================================================================
   // Filter State
@@ -70,17 +74,20 @@ export function useManagerScheduleData(
   // ============================================================================
   // Computed
   // ============================================================================
-  const totalPages = Math.ceil(schedulers.length / ITEMS_PER_PAGE) || 1;
+  const totalPages = useMemo(
+    () => Math.ceil(schedulers.length / ITEMS_PER_PAGE) || 1,
+    [schedulers.length]
+  );
 
-  const paginatedSchedulers = (() => {
+  const paginatedSchedulers = useMemo(() => {
     const skip = currentPage * ITEMS_PER_PAGE;
     return schedulers.slice(skip, skip + ITEMS_PER_PAGE);
-  })();
+  }, [schedulers, currentPage]);
 
   // ============================================================================
   // Data Fetching
   // ============================================================================
-  const fetchSchedules = async () => {
+  const fetchSchedules = useCallback(async () => {
     setLoadingSchedulers(true);
     try {
       const data = await fetchSchedulersWithFilters({
@@ -120,12 +127,18 @@ export function useManagerScheduleData(
     } finally {
       setLoadingSchedulers(false);
     }
-  };
+  }, [
+    selectedLicencee,
+    selectedSchedulerLocation,
+    selectedCollector,
+    selectedStatus,
+  ]);
 
   // ============================================================================
   // Edit Handler
   // ============================================================================
-  const handleEditSave = async (data: { startTime: string; endTime: string; status: string }) => {
+  const handleEditSave = useCallback(
+    async (data: { startTime: string; endTime: string; status: string }) => {
       if (!editingRow) return;
       setSaving(true);
       try {
@@ -137,12 +150,14 @@ export function useManagerScheduleData(
       } finally {
         setSaving(false);
       }
-    };
+    },
+    [editingRow, fetchSchedules]
+  );
 
   // ============================================================================
   // Delete Handler
   // ============================================================================
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingRow) return;
     setDeleting(true);
     try {
@@ -154,13 +169,13 @@ export function useManagerScheduleData(
     } finally {
       setDeleting(false);
     }
-  };
+  }, [deletingRow, fetchSchedules]);
 
-  const onResetSchedulerFilters = () => {
+  const onResetSchedulerFilters = useCallback(() => {
     setSelectedSchedulerLocation('all');
     setSelectedCollector('all');
     setSelectedStatus('all');
-  };
+  }, []);
 
   // ============================================================================
   // Effects

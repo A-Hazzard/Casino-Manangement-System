@@ -3,7 +3,7 @@
 import { Input } from '@/components/shared/ui/input';
 import type { SmibDevice } from '@/shared/types/entities';
 import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type CabinetsSMIBListProps = {
   smibs: SmibDevice[];
@@ -23,7 +23,7 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
   // ============================================================================
   const [search, setSearch] = useState('');
 
-  const filtered = (() => {
+  const filtered = useMemo(() => {
     if (!search.trim()) return smibs;
     const searchLower = (search || '').toLowerCase();
     return smibs.filter(
@@ -33,7 +33,7 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
         (s.game || '').toLowerCase().includes(searchLower) ||
         (s.locationName || '').toLowerCase().includes(searchLower)
     );
-  })();
+  }, [smibs, search]);
 
   const onlineCount = smibs.filter(s => getStatus(s) === 'online').length;
   const offlineCount = smibs.length - onlineCount;

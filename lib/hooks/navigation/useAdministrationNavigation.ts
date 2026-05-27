@@ -5,7 +5,7 @@
 
 import type { AdministrationSection } from '@/lib/constants';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export const useAdministrationNavigation = () => {
   // ============================================================================
@@ -17,7 +17,7 @@ export const useAdministrationNavigation = () => {
   const searchParams = useSearchParams();
 
   // Get active section from URL search params, default to "users"
-  const getActiveSectionFromURL = (): AdministrationSection => {
+  const getActiveSectionFromURL = useCallback((): AdministrationSection => {
     const section = searchParams.get('section');
     console.log('🔄 [ADMIN HOOK] Getting section from URL:', section);
     if (section === 'licencees') return 'licencees';
@@ -25,7 +25,7 @@ export const useAdministrationNavigation = () => {
     if (section === 'activity-logs') return 'activity-logs';
     if (section === 'feedback') return 'feedback';
     return 'users';
-  };
+  }, [searchParams]);
 
   const [activeSection, setActiveSection] = useState<AdministrationSection>(
     getActiveSectionFromURL()
@@ -36,7 +36,8 @@ export const useAdministrationNavigation = () => {
   // ============================================================================
 
   // Handle section changes with URL updates
-  const handleSectionChange = (section: AdministrationSection) => {
+  const handleSectionChange = useCallback(
+    (section: AdministrationSection) => {
       console.log(
         '🔄 [ADMIN HOOK] Changing section from',
         activeSection,
@@ -61,7 +62,9 @@ export const useAdministrationNavigation = () => {
 
       console.log('🔄 [ADMIN HOOK] Navigating to:', newURL);
       router.push(newURL, { scroll: false });
-    };
+    },
+    [activeSection, searchParams, pathname, router]
+  );
 
   // ============================================================================
   // Effects

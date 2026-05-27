@@ -24,7 +24,7 @@ import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export function useCabinetPageData() {
@@ -105,15 +105,15 @@ export function useCabinetPageData() {
   // ============================================================================
   // Computed
   // ============================================================================
-  const canAccessSmibConfig = (() => {
+  const canAccessSmibConfig = useMemo(() => {
     return (
       user?.roles?.some(role =>
         ['technician', 'owner', 'admin', 'developer'].includes(role)
       ) ?? false
     );
-  })();
+  }, [user]);
 
-  const canEditMachines = (() => {
+  const canEditMachines = useMemo(() => {
     if (user?.roles?.includes('collector')) return false;
     return (
       user?.roles?.some(role =>
@@ -127,9 +127,9 @@ export function useCabinetPageData() {
         ].includes(role)
       ) ?? false
     );
-  })();
+  }, [user]);
 
-  const showGranularitySelector = (() => {
+  const showGranularitySelector = useMemo(() => {
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -179,12 +179,13 @@ export function useCabinetPageData() {
       return true;
     }
     return false;
-  })();
+  }, [activeMetricsFilter, customDateRange, availableGranularityOptions]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = useCallback(
+    (tab: string) => {
       setActiveTab(tab);
       const sectionMap: Record<string, string> = {
         'Movement Metrics': '',
@@ -202,9 +203,11 @@ export function useCabinetPageData() {
       else params.delete('section');
 
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    };
+    },
+    [pathname, router, searchParams]
+  );
 
-  const copyToClipboard = async (text: string, label: string) => {
+  const copyToClipboard = useCallback(async (text: string, label: string) => {
     if (!text || text === 'N/A' || text.trim() === '') {
       toast.error(`No ${label} value to copy`);
       return;
@@ -262,7 +265,7 @@ export function useCabinetPageData() {
         `Could not copy ${label}. Please try selecting and copying manually.`
       );
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -364,7 +367,7 @@ export function useCabinetPageData() {
   }, [activeMetricsFilter, dataSpan]);
 
   // Check if Custom range is same-day (warrants minute/hourly granularity control)
-  const isCustomShortPeriod = (() => {
+  const isCustomShortPeriod = useMemo(() => {
     const customStart =
       customDateRange?.startDate ||
       customDateRange?.from ||
@@ -391,10 +394,10 @@ export function useCabinetPageData() {
       sd.getMonth() === ed.getMonth() &&
       sd.getDate() === ed.getDate()
     );
-  })();
+  }, [activeMetricsFilter, customDateRange]);
 
   // Memoize effective granularity - triggers refetch when granularity changes for supported periods
-  const effectiveGranularity = (() => {
+  const effectiveGranularity = useMemo(() => {
     const isShortPeriod =
       activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
     const is30d =
@@ -404,7 +407,7 @@ export function useCabinetPageData() {
     return isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod
       ? chartGranularity
       : null;
-  })();
+  }, [activeMetricsFilter, chartGranularity, isCustomShortPeriod]);
 
   // Fetch chart data
   useEffect(() => {

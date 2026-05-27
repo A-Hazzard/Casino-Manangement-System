@@ -313,6 +313,7 @@ export async function GET(
           ramClear: m.ramClear === true,
           ramClearMetersIn: m.ramClearMetersIn,
           ramClearMetersOut: m.ramClearMetersOut,
+          isSupplemental: m.isSupplemental === true,
           lastCollectionTime: getLastCollectionTime(m.machineId),
           createdAt: m.createdAt,
           updatedAt: m.updatedAt,

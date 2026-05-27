@@ -1,6 +1,6 @@
 import type { MembersTab, MembersView } from '@/shared/types/entities';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../auth';
 
@@ -36,7 +36,8 @@ export function useMembersNavigation(
   /**
    * Update URL when tab changes
    */
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback(
+    (value: string) => {
       const newTab = value as MembersView;
       setActiveTab(newTab);
 
@@ -47,7 +48,9 @@ export function useMembersNavigation(
         const newUrl = `${pathname}?${params.toString()}`;
         router.push(newUrl, { scroll: false });
       }
-    };
+    },
+    [disableUrlSync, router, pathname, searchParams]
+  );
 
   // ============================================================================
   // Effects
@@ -81,22 +84,25 @@ export function useMembersNavigation(
   /**
    * All tabs are available for authenticated users
    */
-  const availableTabs = (() => {
+  const availableTabs = useMemo(() => {
     if (!isAuthenticated || !user) return [];
     return membersTabsConfig;
-  })();
+  }, [isAuthenticated, user, membersTabsConfig]);
 
   /**
    * Handle tab click with permission check
    */
-  const handleTabClick = (tabId: string) => {
+  const handleTabClick = useCallback(
+    (tabId: string) => {
       const targetTab = availableTabs.find(tab => tab.id === tabId);
       if (!targetTab) {
         toast.error("You don't have permission to access this section");
         return;
       }
       handleTabChange(tabId);
-    };
+    },
+    [availableTabs, handleTabChange]
+  );
 
   // ============================================================================
   // Return

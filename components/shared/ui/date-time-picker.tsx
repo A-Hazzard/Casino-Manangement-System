@@ -16,7 +16,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, set } from 'date-fns';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { DayPicker, SelectSingleEventHandler } from 'react-day-picker';
@@ -120,10 +120,10 @@ export function DateTimePicker({
   // ============================================================================
 
   // Format display string
-  const formattedDate = (() => {
+  const formattedDate = useMemo(() => {
     if (!date) return dateOnly ? 'Pick a date' : 'Pick a date and time';
     return format(date, dateOnly ? 'PPP' : 'PPP p');
-  })();
+  }, [date, dateOnly]);
 
   // ============================================================================
   // Render

@@ -14,7 +14,7 @@ import type {
   UseLocationMachineStatsReturn,
 } from '@/lib/types/location';
 import { isAbortError } from '@/lib/utils/errors';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useLocationMachineStats(
   locationId?: string,
@@ -37,7 +37,7 @@ export function useLocationMachineStats(
   // ============================================================================
 
   // Fetch machine stats
-  const fetchMachineStatsData = async () => {
+  const fetchMachineStatsData = useCallback(async () => {
     setMachineStatsLoading(true);
     setError(null);
 
@@ -80,12 +80,19 @@ export function useLocationMachineStats(
     } finally {
       setMachineStatsLoading(false);
     }
-  };
+  }, [
+    selectedLicencee,
+    locationId,
+    machineTypeFilter,
+    search,
+    gameTypeFilter,
+    selectedStatus,
+  ]);
 
   // Refresh machine stats
-  const refreshMachineStats = async () => {
+  const refreshMachineStats = useCallback(async () => {
     await fetchMachineStatsData();
-  };
+  }, [fetchMachineStatsData]);
 
   // ============================================================================
   // Effects

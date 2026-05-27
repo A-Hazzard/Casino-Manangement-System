@@ -34,6 +34,7 @@ import {
   isCashierOnly,
   isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
+import { useMemo } from 'react';
 import { Toaster } from 'sonner';
 
 type VaultLayoutWrapperProps = {
@@ -46,7 +47,7 @@ export default function VaultLayoutWrapper({
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const { user } = useUserStore();
+  const { user, hasActiveVaultShift } = useUserStore();
 
   // ============================================================================
   // Handlers
@@ -63,7 +64,7 @@ export default function VaultLayoutWrapper({
   // Computed
   // ============================================================================
   // Select navigation config based on user's roles
-  const navConfig = (() => {
+  const navConfig = useMemo(() => {
     let config;
     if (hasCmsAccess(user?.roles)) {
       config = getCmsNavigationConfig(user?.roles as string[]);
@@ -76,7 +77,7 @@ export default function VaultLayoutWrapper({
     }
 
     return filterNavItems(config);
-  })();
+  }, [user?.roles, hasActiveVaultShift]);
 
   // ============================================================================
   // Render

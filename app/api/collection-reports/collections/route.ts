@@ -1219,7 +1219,7 @@ export async function PATCH(req: NextRequest) {
         drop: newRamClearMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
         isRamClear: true,
-        readAt: baseReadAt, // at collection time
+        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
         createdAt: baseCreatedAt,
       };
 
@@ -1250,7 +1250,7 @@ export async function PATCH(req: NextRequest) {
         totalWonCredits: 0,
         drop: newMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
-        readAt: new Date(baseReadAt.getTime() + 1000), // 1 second after collection time
+        readAt: baseReadAt, // exactly at collection time
         createdAt: new Date(baseCreatedAt.getTime() + 1000),
       };
 

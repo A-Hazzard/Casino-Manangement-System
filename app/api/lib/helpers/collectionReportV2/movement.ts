@@ -66,6 +66,7 @@ type MovementResult = {
   resolvedSasMetersIn: number | null;
   /** Resolved top-level sasMetersOut (may be overridden for metersMatch false) */
   resolvedSasMetersOut: number | null;
+  isSupplemental?: boolean;
 };
 
 /**
@@ -194,12 +195,13 @@ export async function computeMovement(
   let manualMovIn = 0;
   let manualMovOut = 0;
 
-  // Find machine to get its locationId to check noSMIBLocation
+  // Find machine to get its locationId to check noSMIBLocation and offline status
   const machine = await Machine.findOne(
     { _id: machineId },
-    'gamingLocation'
-  ).lean<{ gamingLocation?: string }>();
+    'gamingLocation relayId lastActivity'
+  ).lean<any>();
   let isNoSMIBLocation = false;
+  let isOffline = false;
   if (machine?.gamingLocation) {
     const { GamingLocations } =
       await import('@/app/api/lib/models/gaminglocations');
@@ -209,6 +211,8 @@ export async function computeMovement(
     ).lean<{ noSMIBLocation?: boolean }>();
     isNoSMIBLocation = locDoc?.noSMIBLocation === true;
   }
+  const hasRelay = !!machine?.relayId;
+  isOffline = hasRelay && (!machine?.lastActivity || (new Date().getTime() - new Date(machine.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
 
   if (isNoSMIBLocation) {
     const effectiveManualIn = currentManualIn ?? currentSasIn;
@@ -321,5 +325,6 @@ export async function computeMovement(
     sasGross,
     resolvedSasMetersIn,
     resolvedSasMetersOut,
+    isSupplemental: isOffline,
   };
 }

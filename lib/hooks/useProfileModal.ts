@@ -8,7 +8,7 @@
 'use client';
 
 import { ChangeEvent } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store/userStore';
@@ -286,12 +286,16 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   // ============================================================================
 
   // Options for multi-select
-  const licenceeOptions: MultiSelectOption[] = licencees.map(licencee => ({
+  const licenceeOptions: MultiSelectOption[] = useMemo(
+    () =>
+      licencees.map(licencee => ({
         id: String(licencee._id),
         label: licencee.name,
-      }));
+      })),
+    [licencees]
+  );
 
-  const availableLocations = (() => {
+  const availableLocations = useMemo(() => {
     if (allLicenceesSelected) return locations;
     return locations.filter(loc => {
       const licId = loc.rel?.licencee || loc.licenceeId || loc.licencee;
@@ -299,12 +303,16 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         ? licId.some(id => selectedLicenceeIds.includes(String(id)))
         : selectedLicenceeIds.includes(String(licId));
     });
-  })();
+  }, [locations, allLicenceesSelected, selectedLicenceeIds]);
 
-  const locationOptions: MultiSelectOption[] = availableLocations.map(location => ({
+  const locationOptions: MultiSelectOption[] = useMemo(
+    () =>
+      availableLocations.map(location => ({
         id: String(location._id),
         label: location.name,
-      }));
+      })),
+    [availableLocations]
+  );
 
   // ============================================================================
   // Handlers

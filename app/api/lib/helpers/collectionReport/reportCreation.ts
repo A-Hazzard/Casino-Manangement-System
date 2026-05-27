@@ -492,6 +492,18 @@ async function createManualMetersForEachMachine(
       `🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`
     );
 
+    const machineDoc = await Machine.findOne({ _id: machine.machineId }).lean<any>();
+    const hasRelay = !!machineDoc?.relayId;
+    const isOffline = hasRelay && (!machineDoc?.lastActivity || (new Date().getTime() - new Date(machineDoc.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
+
+    let prevMeterDoc: any = null;
+    if (isOffline) {
+      prevMeterDoc = await Meters.findOne({
+        machine: machine.machineId,
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      }).sort({ readAt: -1 }).lean();
+    }
+
     const collectionId = machine.collectionId;
     const baseReadAt = finalReadAt;
     const baseCreatedAt = new Date();
@@ -539,19 +551,20 @@ async function createManualMetersForEachMachine(
           totalWonCredits: 0,
           drop: ramClearMovementIn,
         },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
+        coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
+        coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
+        jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
+        totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
+        currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
+        totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
+        gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
+        gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
         totalCancelledCredits: ramClearMetersOut,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
         drop: ramClearMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
         isRamClear: true,
-        readAt: baseReadAt, // This is now sasEndTime if provided
+        isSupplemental: isOffline,
+        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
         createdAt: baseCreatedAt,
       };
 
@@ -566,7 +579,7 @@ async function createManualMetersForEachMachine(
         `🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`
       );
 
-      const currentMeterReadAt = new Date(baseReadAt.getTime() + 1000);
+      const currentMeterReadAt = baseReadAt; // exactly at collection time
       const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
 
       // After a RAM clear the machine resets to 0, so post-reset movement = currentMeters - 0
@@ -600,6 +613,8 @@ async function createManualMetersForEachMachine(
         totalWonCredits: 0,
         drop: currentMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
+        isRamClear: false,
+        isSupplemental: isOffline,
         readAt: currentMeterReadAt,
         createdAt: currentMeterCreatedAt,
       };
@@ -638,17 +653,18 @@ async function createManualMetersForEachMachine(
           totalWonCredits: 0,
           drop: movementIn, // movement.drop
         },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
+        coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
+        coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
+        jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
+        totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
+        currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
+        totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
+        gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
+        gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
         totalCancelledCredits: currentMetersOut, // NOT movementOut
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
         drop: currentMetersIn, // NOT movementIn
         meterSource: 'COLLECTION_REPORT' as const,
+        isSupplemental: isOffline,
         readAt: baseReadAt,
         createdAt: baseCreatedAt,
       };
@@ -760,13 +776,19 @@ export async function updateRegularAndRamClearMeters(
     );
 
     let locationId = '';
+    let isOffline = false;
+    let prevMeterDoc: any = null;
+
     if (collectionDocument.machineId) {
       const machineDoc = await Machine.findOne({
         _id: collectionDocument.machineId,
-      }).lean<GamingMachine>();
+      }).lean<any>();
       if (machineDoc?.gamingLocation) {
         locationId = String(machineDoc.gamingLocation);
       }
+
+      const hasRelay = !!machineDoc?.relayId;
+      isOffline = hasRelay && (!machineDoc?.lastActivity || (new Date().getTime() - new Date(machineDoc.lastActivity).getTime()) >= 3 * 24 * 60 * 60 * 1000);
     }
 
     const isRamClear = !!collectionDocument.ramClear;
@@ -788,6 +810,15 @@ export async function updateRegularAndRamClearMeters(
     if (!meterId) {
       meterId = await generateMongoId();
       newMeterIdGenerated = true;
+    }
+
+    if (isOffline) {
+      prevMeterDoc = await Meters.findOne({
+        machine: collectionDocument.machineId,
+        _id: { $nin: [meterId, ramClearMeterId].filter(Boolean) },
+        readAt: { $lt: newReadAt },
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      }).sort({ readAt: -1 }).lean();
     }
 
     // ============================================================================
@@ -815,40 +846,46 @@ export async function updateRegularAndRamClearMeters(
       );
 
       upsertOperations.push({
-        replaceOne: {
+        updateOne: {
           filter: { _id: ramClearMeterId },
-          replacement: {
-            _id: ramClearMeterId,
-            machine: collectionDocument.machineId,
-            location: locationId,
-            movement: {
-              coinIn: 0,
-              coinOut: 0,
-              jackpot: 0,
-              totalHandPaidCancelledCredits: 0,
-              totalCancelledCredits: ramClearMovementOut,
-              gamesPlayed: 0,
-              gamesWon: 0,
-              currentCredits: 0,
-              totalWonCredits: 0,
-              drop: ramClearMovementIn,
+          update: {
+            $set: {
+              machine: collectionDocument.machineId,
+              location: locationId,
+              movement: {
+                coinIn: 0,
+                coinOut: 0,
+                jackpot: 0,
+                totalHandPaidCancelledCredits: 0,
+                totalCancelledCredits: ramClearMovementOut,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                currentCredits: 0,
+                totalWonCredits: 0,
+                drop: ramClearMovementIn,
+              },
+              coinIn: isOffline && prevMeterDoc ? (prevMeterDoc.coinIn || 0) : 0,
+              coinOut: isOffline && prevMeterDoc ? (prevMeterDoc.coinOut || 0) : 0,
+              jackpot: isOffline && prevMeterDoc ? (prevMeterDoc.jackpot || 0) : 0,
+              totalHandPaidCancelledCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalHandPaidCancelledCredits || 0) : 0,
+              currentCredits: isOffline && prevMeterDoc ? (prevMeterDoc.currentCredits || 0) : 0,
+              totalWonCredits: isOffline && prevMeterDoc ? (prevMeterDoc.totalWonCredits || 0) : 0,
+              gamesPlayed: isOffline && prevMeterDoc ? (prevMeterDoc.gamesPlayed || 0) : 0,
+              gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon || 0) : 0,
+              totalCancelledCredits: ramClearMetersOut,
+              drop: ramClearMetersIn,
+              meterSource: 'COLLECTION_REPORT' as const,
+              isRamClear: true,
+              isSupplemental: isOffline,
+              // RAM clear meter reads 1 second behind the collection time
+              readAt: new Date(newReadAt.getTime() - 1000),
+              updatedAt: now,
             },
-            coinIn: 0,
-            coinOut: 0,
-            jackpot: 0,
-            totalHandPaidCancelledCredits: 0,
-            totalCancelledCredits: ramClearMetersOut,
-            gamesPlayed: 0,
-            gamesWon: 0,
-            currentCredits: 0,
-            totalWonCredits: 0,
-            drop: ramClearMetersIn,
-            meterSource: 'COLLECTION_REPORT' as const,
-            isRamClear: true,
-            // RAM clear meter reads at exactly the collection time
-            readAt: newReadAt,
-            createdAt: now,
-            updatedAt: now,
+            // createdAt is only set when the document is first inserted
+            $setOnInsert: {
+              _id: ramClearMeterId,
+              createdAt: now,
+            },
           },
           upsert: true,
         },
@@ -869,40 +906,45 @@ export async function updateRegularAndRamClearMeters(
       );
 
       upsertOperations.push({
-        replaceOne: {
+        updateOne: {
           filter: { _id: meterId },
-          replacement: {
-            _id: meterId,
-            machine: collectionDocument.machineId,
-            location: locationId,
-            movement: {
-              coinIn: 0,
-              coinOut: 0,
-              jackpot: 0,
-              totalHandPaidCancelledCredits: 0,
-              totalCancelledCredits: movementOut,
-              gamesPlayed: 0,
-              gamesWon: 0,
-              currentCredits: 0,
-              totalWonCredits: 0,
-              drop: movementIn,
+          update: {
+            $set: {
+              machine: collectionDocument.machineId,
+              location: locationId,
+              movement: {
+                coinIn: 0,
+                coinOut: 0,
+                jackpot: 0,
+                totalHandPaidCancelledCredits: 0,
+                totalCancelledCredits: movementOut,
+                gamesPlayed: 0,
+                gamesWon: 0,
+                currentCredits: 0,
+                totalWonCredits: 0,
+                drop: movementIn,
+              },
+              coinIn: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.coinIn || 0)) : 0,
+              coinOut: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.coinOut || 0)) : 0,
+              jackpot: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.jackpot || 0)) : 0,
+              totalHandPaidCancelledCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.totalHandPaidCancelledCredits || 0)) : 0,
+              currentCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.currentCredits || 0)) : 0,
+              totalWonCredits: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.totalWonCredits || 0)) : 0,
+              gamesPlayed: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.gamesPlayed || 0)) : 0,
+              gamesWon: isOffline ? (isRamClear ? 0 : (prevMeterDoc?.gamesWon || 0)) : 0,
+              totalCancelledCredits: currentMetersOut,
+              drop: currentMetersIn,
+              meterSource: 'COLLECTION_REPORT' as const,
+              isSupplemental: isOffline,
+              // Current meter always reads exactly at collection time
+              readAt: newReadAt,
+              updatedAt: now,
             },
-            coinIn: 0,
-            coinOut: 0,
-            jackpot: 0,
-            totalHandPaidCancelledCredits: 0,
-            totalCancelledCredits: currentMetersOut,
-            gamesPlayed: 0,
-            gamesWon: 0,
-            currentCredits: 0,
-            totalWonCredits: 0,
-            drop: currentMetersIn,
-            meterSource: 'COLLECTION_REPORT' as const,
-            // Current meter reads 1 second AFTER collection time for RAM clear,
-            // or exactly at collection time for a regular (non-RAM clear) collection
-            readAt: isRamClear ? new Date(newReadAt.getTime() + 1000) : newReadAt,
-            createdAt: now,
-            updatedAt: now,
+            // createdAt is only set when the document is first inserted
+            $setOnInsert: {
+              _id: meterId,
+              createdAt: now,
+            },
           },
           upsert: true,
         },

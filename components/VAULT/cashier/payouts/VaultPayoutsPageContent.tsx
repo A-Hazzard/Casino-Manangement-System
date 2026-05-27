@@ -37,7 +37,7 @@ import {
   Ticket,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import HandPayForm from './HandPayForm';
 import type { PayoutSortOption } from './tables/VaultPayoutsTable';
@@ -92,7 +92,7 @@ export default function VaultPayoutsPageContent() {
   // Handlers
   // ============================================================================
   // Note: fetchPayouts/fetchMachinesData declared before Effects since useEffect depends on them.
-  const fetchPayouts = async () => {
+  const fetchPayouts = useCallback(async () => {
     setLoading(true);
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) {
@@ -136,9 +136,9 @@ export default function VaultPayoutsPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.assignedLocations]);
 
-  const fetchMachinesData = async () => {
+  const fetchMachinesData = useCallback(async () => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) return;
     try {
@@ -153,7 +153,7 @@ export default function VaultPayoutsPageContent() {
     } catch (error) {
       console.error('Failed to fetch machines', error);
     }
-  };
+  }, [user?.assignedLocations]);
 
   // ============================================================================
   // Effects
@@ -179,17 +179,17 @@ export default function VaultPayoutsPageContent() {
   // ============================================================================
 
   // Raw shift date calculation for display
-  const rawShiftDate = (() => {
+  const rawShiftDate = useMemo(() => {
     if (!shift?.openedAt) return null;
     return new Date(shift.openedAt);
-  })();
+  }, [shift]);
 
-  const shiftDate = (() => {
+  const shiftDate = useMemo(() => {
     if (!rawShiftDate) return null;
     const dateValue = new Date(rawShiftDate);
     dateValue.setHours(23, 59, 59, 999);
     return dateValue;
-  })();
+  }, [rawShiftDate]);
 
   const handlePayout = async (data: CreatePayoutRequest) => {
     if (!shift?._id) {
@@ -243,10 +243,16 @@ export default function VaultPayoutsPageContent() {
   };
 
   // -- Computations --
-  const totalAmount = payouts.reduce((sum, p) => sum + p.amount, 0);
-  const averagePayout = (payouts.length > 0 ? totalAmount / payouts.length : 0);
+  const totalAmount = useMemo(
+    () => payouts.reduce((sum, p) => sum + p.amount, 0),
+    [payouts]
+  );
+  const averagePayout = useMemo(
+    () => (payouts.length > 0 ? totalAmount / payouts.length : 0),
+    [payouts, totalAmount]
+  );
 
-  const sortedPayouts = (() => {
+  const sortedPayouts = useMemo(() => {
     return [...payouts].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -276,7 +282,7 @@ export default function VaultPayoutsPageContent() {
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-  })();
+  }, [payouts, sortOption, sortOrder]);
 
   // ============================================================================
   // Render

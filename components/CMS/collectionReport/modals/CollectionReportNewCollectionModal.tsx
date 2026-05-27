@@ -58,7 +58,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import { formatDate } from '@/lib/utils/formatting';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -107,17 +107,18 @@ export default function CollectionReportNewCollectionModal({
   // Handlers
   // ============================================================================
   // Helper function to get proper user display name for activity logging
-  const getUserDisplayNameCallback = () => {
+  const getUserDisplayNameCallback = useCallback(() => {
     if (!user) return 'Unknown User';
     return getUserDisplayName({
       profile: user.profile,
       username: user.username,
       emailAddress: user.emailAddress,
     });
-  };
+  }, [user]);
 
   // Activity logging function wrapper
-  const logActivityCallback = async (
+  const logActivityCallback = useCallback(
+    async (
       action: string,
       resource: string,
       resourceId: string,
@@ -137,7 +138,9 @@ export default function CollectionReportNewCollectionModal({
         previousData,
         newData
       );
-    };
+    },
+    [user, getUserDisplayNameCallback]
+  );
 
   const {
     locations,
@@ -229,6 +232,18 @@ export default function CollectionReportNewCollectionModal({
     onClose,
     logActivityCallback,
   });
+
+  const resolvedCollectionTime = useMemo(() => {
+    if (collectedMachineEntries && collectedMachineEntries.length > 0) {
+      const times = collectedMachineEntries
+        .map(e => (e.timestamp ? new Date(e.timestamp).getTime() : 0))
+        .filter(t => t > 0);
+      if (times.length > 0) {
+        return new Date(Math.max(...times));
+      }
+    }
+    return currentCollectionTime;
+  }, [collectedMachineEntries, currentCollectionTime]);
 
   // Online/offline status for machines in the selected location
   const availableMachineIds = machinesOfSelectedLocation.map(m =>
@@ -668,7 +683,7 @@ export default function CollectionReportNewCollectionModal({
         message={`You are about to create a collection report for ${
           collectedMachineEntries.length
         } machine(s) with collection time: ${
-          currentCollectionTime ? formatDate(currentCollectionTime) : 'Not set'
+          resolvedCollectionTime ? formatDate(resolvedCollectionTime) : 'Not set'
         }. Do you want to proceed?`}
         confirmText="Yes, Create Report"
         cancelText="Cancel"

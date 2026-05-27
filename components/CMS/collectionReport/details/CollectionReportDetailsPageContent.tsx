@@ -36,7 +36,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { ArrowLeft, Pencil, RefreshCw, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function CollectionReportDetailsPageContent() {
   // ============================================================================
@@ -80,7 +80,7 @@ export default function CollectionReportDetailsPageContent() {
   // ============================================================================
   // Table Interaction & Edit Handlers
   // ============================================================================
-  const handleOpenEdit = async () => {
+  const handleOpenEdit = useCallback(async () => {
     if (loadingLocations) return;
     setLoadingLocations(true);
     try {
@@ -93,7 +93,7 @@ export default function CollectionReportDetailsPageContent() {
       setLoadingLocations(false);
     }
     setShowEditModal(true);
-  };
+  }, [loadingLocations]);
 
   const {
     reportData,

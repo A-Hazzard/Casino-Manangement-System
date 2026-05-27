@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ReactNode } from 'react';
 import { ErrorInfo } from 'react';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
@@ -33,7 +33,7 @@ export default function PageErrorBoundary({
   // Handlers
   // ============================================================================
 
-  const handleRetry = async () => {
+  const handleRetry = useCallback(async () => {
     setIsRetrying(true);
     setError(null);
 
@@ -47,9 +47,10 @@ export default function PageErrorBoundary({
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     setIsRetrying(false);
-  };
+  }, [error]);
 
-  const handleErrorBoundary = (error: Error) => {
+  const handleErrorBoundary = useCallback(
+    (error: Error) => {
       // For ChunkLoadError, automatically reload the page
       if (error.name === 'ChunkLoadError' || error.message?.includes('chunk')) {
         // Small delay to show error message, then reload
@@ -60,7 +61,9 @@ export default function PageErrorBoundary({
       setError(error);
       handleError(error, 'Page Error');
       onError?.(error);
-    };
+    },
+    [handleError, onError]
+  );
 
   // ============================================================================
   // Render

@@ -3,7 +3,7 @@
 import { useDebounce } from '@/lib/utils/hooks';
 import axios from 'axios';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
@@ -76,10 +76,10 @@ export default function MembersListTab({
   const { user } = useUserStore();
 
   // Check if user can edit members (only admin and developer)
-  const canEditMembers = (() => {
+  const canEditMembers = useMemo(() => {
     if (!user || !user.roles) return false;
     return user.roles.some(role => role === 'admin' || role === 'developer');
-  })();
+  }, [user]);
 
   // State management
   const [allMembers, setAllMembers] = useState<Member[]>([]);
@@ -107,15 +107,19 @@ export default function MembersListTab({
   const pagesPerBatch = 1; // 50 / 50
 
   // Calculate which batch we need based on current page
-  const calculateBatchNumber = (page: number) => {
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
       return Math.floor(page / pagesPerBatch) + 1;
-    };
+    },
+    [pagesPerBatch]
+  );
 
   // ============================================================================
   // Fetching & Callbacks
   // ============================================================================
   // Fetch members data with backend pagination
-  const fetchMembers = async (
+  const fetchMembers = useCallback(
+    async (
       batch: number = 1,
       search: string = '',
       sortBy: string = 'name',
@@ -180,10 +184,12 @@ export default function MembersListTab({
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [itemsPerBatch, forcedLocationId, locationFilter]
+  );
 
   // Fetch locations for the filter dropdown (membership-enabled only)
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       const response = await axios.get(
         '/api/cabinets/locations?membershipOnly=true'
@@ -200,10 +206,10 @@ export default function MembersListTab({
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
-  };
+  }, []);
 
   // Fetch summary stats
-  const fetchSummaryStats = async () => {
+  const fetchSummaryStats = useCallback(async () => {
     try {
       const params = new URLSearchParams({
         page: '1',
@@ -226,7 +232,7 @@ export default function MembersListTab({
     } catch (error) {
       console.error('Error fetching summary stats:', error);
     }
-  };
+  }, [forcedLocationId]);
 
   // ============================================================================
   // Effects
@@ -331,19 +337,22 @@ export default function MembersListTab({
   // Handlers
   // ============================================================================
   // Sorting functionality - now handled by backend
-  const handleSort = (column: MemberSortOption) => {
+  const handleSort = useCallback(
+    (column: MemberSortOption) => {
       const newSortOrder =
         sortOption === column && sortOrder === 'asc' ? 'desc' : 'asc';
       setSortOption(column);
       setSortOrder(newSortOrder);
       // fetchMembers will be called via useEffect
-    };
+    },
+    [sortOption, sortOrder]
+  );
 
   // ============================================================================
   // Computed
   // ============================================================================
   // Filter by location and search term (frontend filtering)
-  const filteredMembers = (() => {
+  const filteredMembers = useMemo(() => {
     let filtered = allMembers;
 
     // Apply location filter
@@ -376,10 +385,10 @@ export default function MembersListTab({
     }
 
     return filtered;
-  })();
+  }, [allMembers, locationFilter, forcedLocationId, debouncedSearchTerm]);
 
   // Sort members (backend already sorts, but we keep this for consistency)
-  const sortedMembers = (() => {
+  const sortedMembers = useMemo(() => {
     const sorted = [...filteredMembers].sort((a, b) => {
       let aValue: string | number;
       let bValue: string | number;
@@ -430,14 +439,14 @@ export default function MembersListTab({
     });
 
     return sorted;
-  })();
+  }, [filteredMembers, sortOption, sortOrder]);
 
   // Pagination
-  const paginatedMembers = (() => {
+  const paginatedMembers = useMemo(() => {
     const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return sortedMembers.slice(startIndex, endIndex);
-  })();
+  }, [sortedMembers, currentPage, itemsPerPage]);
 
   // ============================================================================
   // Handlers (Continued)
@@ -467,11 +476,11 @@ export default function MembersListTab({
     }
   };
 
-  const handleNewMember = () => {
+  const handleNewMember = useCallback(() => {
     setIsNewMemberModalOpen(true);
-  };
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshingContext(true);
     setLoading(true);
     setAllMembers([]);
@@ -490,7 +499,16 @@ export default function MembersListTab({
       setLoading(false);
       setRefreshingContext(false);
     }
-  };
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+    setRefreshingContext,
+    forcedLocationId,
+    locationFilter,
+  ]);
 
   // Register handlers with context
   useEffect(() => {
@@ -506,7 +524,7 @@ export default function MembersListTab({
     setIsNewMemberModalOpen(false);
   };
 
-  const handleMemberCreated = async () => {
+  const handleMemberCreated = useCallback(async () => {
     // Reset state and refetch all members (like page load)
     // This ensures the new member appears in the list
     setAllMembers([]);
@@ -520,9 +538,15 @@ export default function MembersListTab({
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+  ]);
 
-  const handleMemberUpdated = async () => {
+  const handleMemberUpdated = useCallback(async () => {
     // Reset state and refetch all members (like page load)
     // This ensures the updated member data is fresh
     setAllMembers([]);
@@ -536,7 +560,13 @@ export default function MembersListTab({
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    debouncedSearchTerm,
+    sortOption,
+    sortOrder,
+    fetchMembers,
+    fetchSummaryStats,
+  ]);
 
   // Date formatting helpers were used for exports only; keep here if needed in future.
 

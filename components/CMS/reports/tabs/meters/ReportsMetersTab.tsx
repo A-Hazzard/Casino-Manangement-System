@@ -48,7 +48,7 @@ import {
   FileText,
   RefreshCw,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import ReportsMetersLocationSelection from './ReportsMetersLocationSelection';
 import ReportsMetersTable from './ReportsMetersTable';
@@ -171,17 +171,20 @@ export default function ReportsMetersTab() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback(
+    (value: string) => {
       setSearchTerm(value);
       setCurrentPage(0);
-    };
+    },
+    [setCurrentPage]
+  );
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setAllMetersData([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     fetchMetersData(1);
-  };
+  }, [setAllMetersData, setLoadedBatches, setCurrentPage, fetchMetersData]);
 
   // Listen for global refresh events from parent PageLayout
   useEffect(() => {
@@ -193,7 +196,8 @@ export default function ReportsMetersTab() {
       window.removeEventListener('refreshReports', handleGlobalRefresh);
   }, [handleRefresh]);
 
-  const handleExport = async (format: 'pdf' | 'excel') => {
+  const handleExport = useCallback(
+    async (format: 'pdf' | 'excel') => {
       await handleExportMeters({
         selectedLocations,
         locations,
@@ -204,12 +208,25 @@ export default function ReportsMetersTab() {
         searchTerm,
         format,
       });
-    };
+    },
+    [
+      selectedLocations,
+      locations,
+      activeMetricsFilter,
+      customDateRange,
+      selectedLicencee,
+      displayCurrency,
+      searchTerm,
+    ]
+  );
 
-  const handleGranularityChange = (newGranularity: 'hourly' | 'minute') => {
+  const handleGranularityChange = useCallback(
+    (newGranularity: 'hourly' | 'minute') => {
       setChartGranularity(newGranularity);
       hasManuallySetGranularityRef.current = true;
-    };
+    },
+    []
+  );
 
   // ============================================================================
   // Render

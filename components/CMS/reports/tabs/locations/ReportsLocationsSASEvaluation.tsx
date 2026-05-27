@@ -28,6 +28,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
@@ -147,7 +148,7 @@ export default function ReportsLocationsSASEvaluation({
   // Computed
   // ============================================================================
   // Calculate display totals from selected locations
-  const displayTotals = (() => {
+  const displayTotals = useMemo(() => {
     if (selectedSasLocations.length === 0) {
       return metricsTotals;
     }
@@ -174,15 +175,15 @@ export default function ReportsLocationsSASEvaluation({
         0
       ),
     };
-  })();
+  }, [selectedSasLocations, paginatedLocations, metricsTotals]);
 
   // Check if any displayed location has includeJackpot
-  const anyIncludeJackpot = (() => {
+  const anyIncludeJackpot = useMemo(() => {
     return paginatedLocations.some(loc => loc.includeJackpot);
-  })();
+  }, [paginatedLocations]);
 
   // Filter SAS locations for dropdown
-  const sasLocations = (() => {
+  const sasLocations = useMemo(() => {
     return allLocationsForDropdown
       .filter(loc => (loc.sasMachines as number) > 0)
       .map(loc => ({
@@ -190,7 +191,7 @@ export default function ReportsLocationsSASEvaluation({
         name: loc.locationName,
         sasEnabled: (loc.sasMachines as number) > 0,
       }));
-  })();
+  }, [allLocationsForDropdown]);
 
   // ============================================================================
   // Render

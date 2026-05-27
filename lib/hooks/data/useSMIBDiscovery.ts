@@ -7,7 +7,7 @@
 import type { DiscoverSmibsResponse } from '@/lib/types/api';
 import type { SmibDevice } from '@/shared/types/entities';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type UseSmibDiscoveryReturn = {
   allSmibs: SmibDevice[];
@@ -32,7 +32,7 @@ export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
   /**
    * Fetch all SMIB devices from database
    */
-  const fetchSmibs = async () => {
+  const fetchSmibs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -57,15 +57,15 @@ export function useSMIBDiscovery(): UseSmibDiscoveryReturn {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Refresh SMIB list
    */
-  const refreshSmibs = async () => {
+  const refreshSmibs = useCallback(async () => {
     console.log('🔄 [SMIB DISCOVERY] Refreshing SMIB list...');
     await fetchSmibs();
-  };
+  }, [fetchSmibs]);
 
   // ============================================================================
   // Effects

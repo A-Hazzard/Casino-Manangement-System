@@ -525,6 +525,7 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={
                 (!inputsEnabled && !editingEntryId) ||
                 isProcessing ||
+                isMiddleReportWarning ||
                 (inputsEnabled && !!sasStartTime && !!sasEndTime && sasStartTime >= sasEndTime)
               }
             >

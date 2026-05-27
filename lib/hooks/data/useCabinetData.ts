@@ -18,7 +18,7 @@ import {
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseCabinetDataProps = {
   selectedLicencee: string;
@@ -143,20 +143,20 @@ export const useCabinetData = ({
 
   // PERFORMANCE OPTIMIZATION: Memoize financial totals calculation (for backward compatibility)
   // Note: This is now only used for table display, metrics cards use metricsTotals from API
-  const financialTotals = (() => {
+  const financialTotals = useMemo(() => {
     // If we have API totals, use those; otherwise fall back to calculated totals
     if (metricsTotals) {
       return metricsTotals;
     }
     return calculateCabinetFinancialTotals(allCabinets);
-  })();
+  }, [allCabinets, metricsTotals]);
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
   // Load locations for filter dropdown
-  const loadLocations = async () => {
+  const loadLocations = useCallback(async () => {
     try {
       console.warn('Loading cabinet locations for licencee:', selectedLicencee);
       const locationsData = await fetchCabinetLocations(selectedLicencee);
@@ -172,10 +172,10 @@ export const useCabinetData = ({
       console.error('Failed to fetch locations:', error);
       setLocations([]);
     }
-  };
+  }, [selectedLicencee]);
 
   // PERFORMANCE OPTIMIZATION: Memoize filtered cabinets calculation
-  const filteredCabinets = (() => {
+  const filteredCabinets = useMemo(() => {
     console.warn('Filtering cabinets:', {
       totalCabinets: allCabinets.length,
       searchTerm,
@@ -231,13 +231,20 @@ export const useCabinetData = ({
 
       return true;
     });
-  })();
+  }, [
+    allCabinets,
+    searchTerm,
+    selectedLocation,
+    selectedGameType,
+    selectedStatus,
+  ]);
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
-  const filterCabinets = () => {};
+  const filterCabinets = useCallback(() => {}, []);
 
   // Load cabinets with proper error handling and logging
-  const loadCabinets = async (
+  const loadCabinets = useCallback(
+    async (
       page?: number,
       limit?: number,
       sortBy?: string,
@@ -458,7 +465,19 @@ export const useCabinetData = ({
           }
         }
       }
-    };
+    },
+    [
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      displayCurrency,
+      debouncedSearchTerm,
+      selectedLocation,
+      selectedStatus,
+      selectedSmibStatus,
+      makeRequest,
+    ]
+  );
 
   // ============================================================================
   // Effects

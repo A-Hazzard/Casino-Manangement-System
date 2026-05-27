@@ -1,4 +1,6 @@
 'use client';
+
+import { useCallback } from 'react';
 import {
   classifyError,
   showErrorNotification,
@@ -14,7 +16,7 @@ export function useGlobalErrorHandler() {
   // Handlers
   // ============================================================================
 
-  const handleError = (error: unknown, context?: string) => {
+  const handleError = useCallback((error: unknown, context?: string) => {
     const apiError = classifyError(error);
 
     // Log error in development
@@ -29,9 +31,10 @@ export function useGlobalErrorHandler() {
     showErrorNotification(apiError, context);
 
     return apiError;
-  };
+  }, []);
 
-  const handleApiCall = async <T>(
+  const handleApiCall = useCallback(
+    async <T>(
       apiCall: () => Promise<T>,
       context?: string
     ): Promise<{ data?: T; error?: ApiError }> => {
@@ -42,9 +45,12 @@ export function useGlobalErrorHandler() {
         const apiError = handleError(error, context);
         return { error: apiError };
       }
-    };
+    },
+    [handleError]
+  );
 
-  const handleApiCallWithRetry = async <T>(
+  const handleApiCallWithRetry = useCallback(
+    async <T>(
       apiCall: () => Promise<T>,
       context?: string,
       maxRetries: number = 3
@@ -94,7 +100,9 @@ export function useGlobalErrorHandler() {
       }
 
       return { error: lastError! };
-    };
+    },
+    [handleError]
+  );
 
   return {
     handleError,
