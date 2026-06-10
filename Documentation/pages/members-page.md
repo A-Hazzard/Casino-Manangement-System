@@ -1,8 +1,8 @@
 # Members Page Implementation (`/members`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -55,7 +55,7 @@ A full-screen profile view accessed by clicking any row in the Members List.
 | **Session History** | `session._id`, `session.duration` | `GET /api/sessions?memberId=[id]` |
 
 - **Tabs within Profile**: `Overview`, `Sessions`, `Points History`, `Documents`, `Win/Loss Report`.
-- **Implementation**: `MemberProfileDetailsPanel` triggered by `handleMemberClick`.
+- **Implementation**: `MembersDetailsPageContent.tsx` triggered by `handleMemberClick`.
 
 ---
 
@@ -72,7 +72,7 @@ A full-screen profile view accessed by clicking any row in the Members List.
 ## 4. PII Masking & Role Detection
 
 - **Managers**: Full visibility — see real phone numbers, National ID numbers, and KYC images.
-- **Cashiers**: Sensitive fields like `National ID` are masked to `XXXX-1234` and `Phone` to `+1 (868) XXX-XXXX` via the `PIIMask` frontend component.
+- **Cashiers**: Sensitive fields like `National ID` are masked to `XXXX-1234` and `Phone` to `+1 (868) XXX-XXXX` via frontend masking logic.
 - **Compliance / Auditors**: Can view and download the original scanned ID document images stored in GridFS.
 
 ---
@@ -88,7 +88,7 @@ A full-screen profile view accessed by clicking any row in the Members List.
 
 ## 6. Technical UI Standards
 
-- **Skeleton UX**: `MembersListSkeleton` and `ProfileSkeleton` are used during data fetch.
+- **Skeleton UX**: `MembersSkeletons` are used during data fetch.
 - **Debounced Search**: 350ms debounce on the search input.
 - **Lazy Loaded Tabs**: Session history and Win/Loss data are only fetched when the user navigates to that specific tab within the 360 Profile view.
 - **Performance**: Member cards use `memo` to prevent re-renders when the global licencee filter changes.

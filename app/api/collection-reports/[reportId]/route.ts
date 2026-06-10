@@ -34,6 +34,7 @@ import {
 } from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { Meters } from '@/app/api/lib/models/meters';
 import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -256,7 +257,78 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     }
 
     const body =
-      (await request.json()) as Partial<CreateCollectionReportPayload>;
+      (await request.json()) as Partial<CreateCollectionReportPayload> & {
+        action?: string;
+      };
+
+    // ============================================================================
+    // STEP 2.5: Handle restore action
+    // ============================================================================
+    if (body.action === 'restore') {
+      const cu = await getUserFromServer();
+      const cuRoles = ((cu as Record<string, unknown>)?.roles || []) as string[];
+      const canRestore =
+        cuRoles.includes('developer') ||
+        cuRoles.includes('owner') ||
+        cuRoles.includes('admin') ||
+        cuRoles.includes('manager') ||
+        cuRoles.includes('location admin');
+      if (!canRestore) {
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions to restore report' },
+          { status: 403 }
+        );
+      }
+
+      const restoredReport = await CollectionReport.findOneAndUpdate(
+        { locationReportId: reportId },
+        { $unset: { deletedAt: 1 } },
+        { new: true }
+      );
+      if (!restoredReport) {
+        return NextResponse.json(
+          { message: 'Failed to restore collection report' },
+          { status: 500 }
+        );
+      }
+
+      const resolvedReportId = restoredReport.locationReportId || reportId;
+
+      await Collections.updateMany(
+        { locationReportId: resolvedReportId },
+        { $unset: { deletedAt: 1 } }
+      );
+
+      // Collections are now restored — query them to collect meterId / ramClearMeterId,
+      // then unset deletedAt on the linked Meters documents.
+      const restoredCollections = await Collections.find({
+        locationReportId: resolvedReportId,
+      }).lean<CollectionDocument[]>();
+
+      const meterIds = restoredCollections
+        .flatMap(col => [col.meterId, col.ramClearMeterId])
+        .filter((id): id is string => !!id);
+
+      if (meterIds.length > 0) {
+        await Meters.updateMany(
+          { _id: { $in: meterIds } },
+          { $unset: { deletedAt: 1 } }
+        );
+      }
+
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        `/api/collection-reports/${reportId}`,
+        1,
+        user,
+        Date.now() - startTime
+      );
+      return NextResponse.json({
+        success: true,
+        message: 'Report restored successfully',
+      });
+    }
 
     // CRITICAL: Do not update the collector field during edit
     delete body.collector;
@@ -522,6 +594,36 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // ============================================================================
+    // STEP 2.5: Role check — same pattern as locations
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    const userRoles = ((currentUser as Record<string, unknown>)?.roles ||
+      []) as string[];
+    const canArchive =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('manager') ||
+      userRoles.includes('location admin');
+    const canPermanentlyDelete =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('location admin');
+    if (archive && !canArchive) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions to archive report' },
+        { status: 403 }
+      );
+    }
+    if (!archive && !canPermanentlyDelete) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions to delete report' },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
     // STEP 3: Find existing report
     // ============================================================================
     let existingReport = await CollectionReport.findOne({
@@ -736,7 +838,6 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 10: Log activity
     // ============================================================================
-    const currentUser = await getUserFromServer();
     if (currentUser) {
       const changes = mapDeletedFieldsToChanges(existingReport || {});
       await logActivity({

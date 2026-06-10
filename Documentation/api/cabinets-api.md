@@ -1,7 +1,9 @@
 # Cabinets API Documentation
 
-**Author:** Aaron Hazzard | Senior Full-Stack Software Engineer
-**Base Path:** `/api/cabinets`
+**Author:** Aaron Hazzard | Senior Full-Stack Software Engineer  
+**Base Path:** `/api/cabinets`  
+**Version:** 4.4.0  
+**Last Updated:** June 5, 2026
 
 This API provides centralized management for all gaming cabinets across property locations. It consolidates legacy machine-related logic and location-scoped routes into a unified, high-performance architecture.
 
@@ -78,13 +80,79 @@ Partial updates for incremental changes, including:
 
 Returns time-series data for operational metrics (Drop, Cancelled Credits, Gross) aggregated by hour or day.
 
-### `GET /api/cabinets/[cabinetId]/collection-history`
+### `PATCH /api/cabinets/[cabinetId]/collection-history`
 
-Lists all lifetime collection events for the cabinet, including physical drop values and meter variations.
+Manages the `collectionMetersHistory` array on a cabinet document. Supports add, update, and delete operations on individual history entries.
+
+**Body fields:**
+
+- `operation`: (Required) `add`, `update`, or `delete`.
+- `entry`: (Required for `add`/`update`) The history entry data with fields: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`, `locationReportId`.
+- `entryId`: (Required for `update`/`delete`) The `_id` of the history entry to modify or remove.
 
 ---
 
-## 4. Technical Constants
+## 4. Additional Routes
+
+### `GET /api/cabinets/status`
+
+Returns machine online/offline status counts. Aggregates across all machines filtered by the user's accessible licencees and locations.
+
+**Query Parameters:**
+
+- `licencee`: (Optional) Filter by licencee name.
+- `locationId`: (Optional) Comma-separated location IDs.
+- `machineTypeFilter`: (Optional) `LocalServersOnly`, `SMIBLocationsOnly`, `NoSMIBLocation`, `MembershipOnly`, `MissingCoordinates`, `HasCoordinates`.
+- `onlineStatus`: (Optional) `online`, `offline`, `never-online`, or `all`.
+- `gameType`: (Optional) Comma-separated game types.
+- `search`: (Optional) Search query for machine fields or location name.
+
+### `GET /api/cabinets/locations`
+
+Returns locations available for the current user, with country name lookup. Used to populate location dropdowns in cabinet views.
+
+**Query Parameters:**
+
+- `licencee`: (Optional) Filter by licencee name.
+- `membershipOnly`: (Optional) `true` to return only membership-enabled locations.
+
+### `GET /api/cabinets/online-status`
+
+Batch lookup for machine online status. Accepts a comma-separated list of machine IDs and returns a map of `machineId → boolean`.
+
+**Query Parameters:**
+
+- `ids`: (Required) Comma-separated machine IDs to check.
+
+### `POST /api/cabinets/[cabinetId]/smib-config`
+
+Updates SMIB configuration on the machine document and pushes the config to the physical SMIB via MQTT. Also supports sending machine control commands.
+
+### `GET /api/cabinets/[cabinetId]/smib-config`
+
+Returns the current SMIB configuration, version metadata, and relay ID for a cabinet.
+
+### `POST /api/cabinets/[cabinetId]/sync-meters`
+
+Triggers a meter sync for a cabinet. Resolves the cabinet's parent location and redirects to `/api/locations/${locationId}/cabinets/${cabinetId}/sync-meters`. See [Sync Meters API](./sync-meters-api.md) for details.
+
+### `GET /api/cabinets/[cabinetId]/refresh`
+
+Triggers a live data refresh for a cabinet. Resolves the cabinet's parent location and redirects to `/api/locations/${locationId}/cabinets/${cabinetId}/refresh`.
+
+### `GET /api/cabinets/[cabinetId]/metrics`
+
+Fetches performance metrics for a cabinet. Resolves the cabinet's parent location and redirects to `/api/locations/${locationId}/cabinets/${cabinetId}/metrics`.
+
+**Query Parameters:**
+
+- `timePeriod`: (Optional) Time period filter (e.g. `today`, `week`).
+- `startDate`: (Optional) ISO start date.
+- `endDate`: (Optional) ISO end date.
+
+---
+
+## 5. Technical Constants
 
 - **Online Calculation**: `lastActivity >= now - 180 seconds` OR `location.aceEnabled === true`.
 - **Currency Strategy**: Centralized conversion via `convertToUSD` / `convertFromUSD` helpers based on the location's `country` or `licencee` setting.

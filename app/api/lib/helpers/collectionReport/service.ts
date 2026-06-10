@@ -54,24 +54,29 @@ export async function getAllCollectionReportsWithMachineCounts(
   } | null,
   locationIds?: string[],
   search?: string,
-  searchType?: string
+  searchType?: string,
+  includeArchived?: boolean
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
-  // Build base match criteria with deletedAt filter
-  // Filter out documents with deletedAt >= 2025 (only return deletedAt < 2025 or null/undefined)
-  const deletedAtFilter = {
-    $or: [
+  // Build match criteria
+  const matchCriteria: Record<string, unknown> = {};
+
+  // Apply deletedAt filter
+  if (includeArchived) {
+    // Show ONLY archived reports
+    matchCriteria.$and = [
+      { deletedAt: { $exists: true } },
+      { deletedAt: { $ne: null } },
+    ];
+  } else {
+    // Show ONLY active reports (filter out archived)
+    matchCriteria.$or = [
       { deletedAt: null },
       { deletedAt: { $exists: false } },
       { deletedAt: { $lt: new Date('2025-01-01') } },
-    ],
-  };
-
-  // Build match criteria combining deletedAt filter with date range if provided
-  const matchCriteria: Record<string, unknown> = {
-    ...deletedAtFilter,
-  };
+    ];
+  }
 
   // Add date range filtering if provided
   if (startDate && endDate) {
@@ -311,7 +316,15 @@ export async function getAllCollectionReportsWithMachineCounts(
     locationReportId?: string;
     locationName?: string;
     location?: string | { _id?: string; id?: string };
-    locationDetails?: { _id?: string; id?: string; slug?: string };
+    locationDetails?: {
+      _id?: string;
+      id?: string;
+      slug?: string;
+      address?: { street?: string; city?: string };
+      country?: string;
+      noSMIBLocation?: boolean;
+      isLocalServer?: boolean;
+    };
     amountCollected?: number;
     partnerProfit?: number;
     currentBalance?: number;
@@ -417,14 +430,14 @@ export async function getAllCollectionReportsWithMachineCounts(
     const moneyOutScale = reviewerScaleUser
       ? getMoneyOutAndJackpotScale(reviewerScaleUser, scaleReferenceDate)
       : 1;
-    const displayVariation = calculatedVariation * moneyInScale;
-    const scaledGross = displayGross * moneyInScale;
-    const scaledCollected = calculatedCollected * moneyInScale;
-    const scaledLocationRevenue = calculatedLocationRevenue * moneyInScale;
-    const scaledBalance = calculatedBalance * moneyOutScale;
+    const displayVariation = Math.round(calculatedVariation * moneyInScale * 100) / 100;
+    const scaledGross = Math.round(displayGross * moneyInScale * 100) / 100;
+    const scaledCollected = Math.round(calculatedCollected * moneyInScale * 100) / 100;
+    const scaledLocationRevenue = Math.round(calculatedLocationRevenue * moneyInScale * 100) / 100;
+    const scaledBalance = Math.round(calculatedBalance * moneyOutScale * 100) / 100;
     const scaledUncollected =
       calculatedUncollected !== null
-        ? calculatedUncollected * moneyInScale
+        ? Math.round(calculatedUncollected * moneyInScale * 100) / 100
         : null;
 
     // Determine collector value (user ID) and display name
@@ -515,6 +528,18 @@ export async function getAllCollectionReportsWithMachineCounts(
           ? doc.location._id
           : ''),
       locationSlug: doc.locationDetails?.slug || '',
+      locationTooltipData: {
+        id: doc.locationDetails?._id || undefined,
+        address: [
+          doc.locationDetails?.address?.street,
+          doc.locationDetails?.address?.city,
+        ]
+          .filter(Boolean)
+          .join(', ') || undefined,
+        country: doc.locationDetails?.country || undefined,
+        noSMIBLocation: doc.locationDetails?.noSMIBLocation || false,
+        isLocalServer: doc.locationDetails?.isLocalServer || false,
+      },
       collector: collectorUserId, // User ID (primary field)
       collectorFullName: collectorDisplayName || undefined, // Display name (username → firstName → email → collectorName)
       collectorFullNameTooltip: collectorFullName || undefined, // Full name for tooltip (firstName + lastName when available)
@@ -560,6 +585,7 @@ export async function getAllCollectionReportsWithMachineCounts(
       })(),
       noSMIBLocation: (doc.noSMIBLocation as boolean) || false,
       isLocalServer: (doc.isLocalServer as boolean) || false,
+      deletedAt: (doc.deletedAt as string | null) || null,
     };
 
     return result;

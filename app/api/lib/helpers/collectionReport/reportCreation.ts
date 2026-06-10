@@ -274,14 +274,20 @@ async function updateMachineCollectionData(
 
   if (!currentMachine) return;
 
-  // Per-machine SMIB check: fetch relayId directly from the Machine document.
+  // Per-machine SMIB check: fetch relayId and lastActivity from the Machine document.
   // A machine with a relayId has a SAS relay; its sasMeters are owned by the relay
-  // and must never be overwritten here.
+  // and must never be overwritten here — UNLESS the relay is offline.
   const machineForRelay = await Machine.findOne(
     { _id: machineId },
-    'relayId'
-  ).lean<{ relayId?: string | null }>();
-  const isNoSasLocation = !machineForRelay?.relayId;
+    'relayId lastActivity'
+  ).lean<{ relayId?: string | null; lastActivity?: Date }>();
+  const isNoSmibMachine = !machineForRelay?.relayId;
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing (TODO: restore 72h)
+  const isOffline =
+    !!machineForRelay?.relayId &&
+    (!machineForRelay.lastActivity ||
+      new Date().getTime() - new Date(machineForRelay.lastActivity).getTime() >=
+        OFFLINE_THRESHOLD_MS);
 
   const currentCollectionMeters = currentMachine.collectionMeters;
   const currentMachineCollectionTime = currentMachine.collectionTime;
@@ -346,9 +352,9 @@ async function updateMachineCollectionData(
     updatedAt: new Date(),
   };
 
-  // CRITICAL: Only update sasMeters directly if it's a "No SAS" location
-  // For SAS locations, these fields must only be updated by the live SMIB relay
-  if (isNoSasLocation) {
+  // Update sasMeters for non-SMIB locations AND offline SMIB locations.
+  // Online SMIB machines have their sasMeters owned by the live relay.
+  if (isNoSmibMachine || isOffline) {
     machineSetUpdate['sasMeters.drop'] = metersIn;
     machineSetUpdate['sasMeters.totalCancelledCredits'] = metersOut;
   }
@@ -417,7 +423,7 @@ async function updateMachineCollectionData(
  * @param {MetersData[]} meters - Array of meters, either with ram clear or not
  * @returns {Promise<{ success: boolean }>}
  */
-async function appendMeterIdsToCollections(
+export async function appendMeterIdsToCollections(
   collectionId: CreateCollectionReportPayload['machines'][number]['collectionId'],
   meters: MetersData[]
 ): Promise<{ success: boolean }> {
@@ -497,22 +503,41 @@ async function createManualMetersForEachMachine(
       `🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`
     );
 
+    // ============================================================================
+    // IDEMPOTENCY: Skip if meters were already pre-created via /pre-create-meters
+    // ============================================================================
+    if (machine.collectionId) {
+      const existingCollection = await Collections.findOne(
+        { _id: machine.collectionId },
+        'meterId'
+      ).lean<{ meterId?: string }>();
+      if (existingCollection?.meterId) {
+        console.log(
+          `⏭️ [createManualMetersForEachMachine] Skipping machine ${machine.machineId} — meters already pre-created (meterId: ${existingCollection.meterId})`
+        );
+        continue;
+      }
+    }
+
     const machineDoc = await Machine.findOne({ _id: machine.machineId }).lean<{
       relayId?: string | null;
       lastActivity?: Date | string;
+      gamingLocation?: string;
     }>();
     const hasRelay = !!machineDoc?.relayId;
+    // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
+    const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
     const isOffline =
       hasRelay &&
       (!machineDoc?.lastActivity ||
         new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
-          3 * 24 * 60 * 60 * 1000);
+          OFFLINE_THRESHOLD_MS);
 
     // SMIB machines have a relay that supplies Meter documents automatically;
-    // only create manual meters for non-relay machines.
-    if (hasRelay) {
+    // only create manual meters for non-relay machines OR offline SMIB machines.
+    if (hasRelay && !isOffline) {
       console.log(
-        `⏭️ [createManualMetersForEachMachine] Skipping SMIB machine ${machine.machineId} (has relayId)`
+        `⏭️ [createManualMetersForEachMachine] Skipping SMIB machine ${machine.machineId} (has relayId, online)`
       );
       continue;
     }
@@ -538,8 +563,17 @@ async function createManualMetersForEachMachine(
     const previousMetersOut = machine.prevMetersOut || 0;
 
     // Standard movement values (used only in non-RAM clear path)
-    const movementIn = currentMetersIn - previousMetersIn;
-    const movementOut = currentMetersOut - previousMetersOut;
+    // When we have a previous meter document (offline SMIB), compute movement
+    // from its absolute values to avoid stale prevIn/prevOut on the collection.
+    let movementIn: number;
+    let movementOut: number;
+    if (isOffline && prevMeterDoc) {
+      movementIn = Math.round((currentMetersIn - (prevMeterDoc.drop || 0)) * 100) / 100;
+      movementOut = Math.round((currentMetersOut - (prevMeterDoc.totalCancelledCredits || 0)) * 100) / 100;
+    } else {
+      movementIn = currentMetersIn - previousMetersIn;
+      movementOut = currentMetersOut - previousMetersOut;
+    }
 
     if (machine.ramClear) {
       // RAM CLEAR: Create 2 meters
@@ -549,8 +583,10 @@ async function createManualMetersForEachMachine(
       const ramClearMetersOut = machine.ramClearMetersOut || 0;
 
       // RAM clear meter movement = peak before reset minus previous collection baseline
-      const ramClearMovementIn = ramClearMetersIn - previousMetersIn;
-      const ramClearMovementOut = ramClearMetersOut - previousMetersOut;
+      const ramClearBaselineIn = isOffline && prevMeterDoc ? (prevMeterDoc.drop || 0) : previousMetersIn;
+      const ramClearBaselineOut = isOffline && prevMeterDoc ? (prevMeterDoc.totalCancelledCredits || 0) : previousMetersOut;
+      const ramClearMovementIn = Math.round((ramClearMetersIn - ramClearBaselineIn) * 100) / 100;
+      const ramClearMovementOut = Math.round((ramClearMetersOut - ramClearBaselineOut) * 100) / 100;
 
       // RAM Clear Meter (holds RAM clear movement values)
       const ramClearMeterId = await generateMongoId();
@@ -561,7 +597,7 @@ async function createManualMetersForEachMachine(
       const ramClearMeter = {
         _id: ramClearMeterId,
         machine: machine.machineId,
-        location: machine.locationId,
+        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -618,7 +654,7 @@ async function createManualMetersForEachMachine(
       const currentMeter = {
         _id: currentMeterId,
         machine: machine.machineId,
-        location: machine.locationId,
+        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -669,7 +705,7 @@ async function createManualMetersForEachMachine(
       const currentMeter = {
         _id: currentMeterId,
         machine: machine.machineId,
-        location: machine.locationId,
+        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
         movement: {
           coinIn: 0,
           coinOut: 0,
@@ -825,17 +861,19 @@ export async function updateRegularAndRamClearMeters(
       }
 
       const hasRelay = !!machineDoc?.relayId;
-      if (hasRelay) {
-        console.log(
-          `⏭️ [updateRegularAndRamClearMeters] Skipping SMIB machine ${collectionDocument.machineId} (has relayId)`
-        );
-        return { success: true };
-      }
+      // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
+      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
       isOffline =
         hasRelay &&
         (!machineDoc?.lastActivity ||
           new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
-            3 * 24 * 60 * 60 * 1000);
+            OFFLINE_THRESHOLD_MS);
+      if (hasRelay && !isOffline && !collectionDocument.meterId && !collectionDocument.ramClearMeterId) {
+        console.log(
+          `⏭️ [updateRegularAndRamClearMeters] Skipping SMIB machine ${collectionDocument.machineId} (has relayId, online, no manual meters)`
+        );
+        return { success: true };
+      }
     }
 
     const isRamClear = !!collectionDocument.ramClear;
@@ -882,12 +920,12 @@ export async function updateRegularAndRamClearMeters(
 
     // 1. RAM clear meter (only when this collection is a RAM clear)
     if (isRamClear && ramClearMeterId) {
-      const prevInVal = collectionDocument.prevIn || 0;
-      const prevOutVal = collectionDocument.prevOut || 0;
+      const prevInVal = isOffline && prevMeterDoc ? (prevMeterDoc.drop || 0) : (collectionDocument.prevIn || 0);
+      const prevOutVal = isOffline && prevMeterDoc ? (prevMeterDoc.totalCancelledCredits || 0) : (collectionDocument.prevOut || 0);
       const ramClearMetersIn = collectionDocument.ramClearMetersIn || 0;
       const ramClearMetersOut = collectionDocument.ramClearMetersOut || 0;
-      const ramClearMovementIn = ramClearMetersIn - prevInVal;
-      const ramClearMovementOut = ramClearMetersOut - prevOutVal;
+      const ramClearMovementIn = Math.round((ramClearMetersIn - prevInVal) * 100) / 100;
+      const ramClearMovementOut = Math.round((ramClearMetersOut - prevOutVal) * 100) / 100;
 
       console.log(
         `[updateRegularAndRamClearMeters] Upserting RAM clear meter ${ramClearMeterId}`
@@ -955,12 +993,12 @@ export async function updateRegularAndRamClearMeters(
 
     // 2. Regular (current) meter — always present
     if (meterId) {
-      const regularPrevIn = isRamClear ? 0 : collectionDocument.prevIn || 0;
-      const regularPrevOut = isRamClear ? 0 : collectionDocument.prevOut || 0;
+      const regularPrevIn = isRamClear ? 0 : (isOffline && prevMeterDoc ? (prevMeterDoc.drop || 0) : (collectionDocument.prevIn || 0));
+      const regularPrevOut = isRamClear ? 0 : (isOffline && prevMeterDoc ? (prevMeterDoc.totalCancelledCredits || 0) : (collectionDocument.prevOut || 0));
       const currentMetersIn = collectionDocument.metersIn || 0;
       const currentMetersOut = collectionDocument.metersOut || 0;
-      const movementIn = currentMetersIn - regularPrevIn;
-      const movementOut = currentMetersOut - regularPrevOut;
+      const movementIn = Math.round((currentMetersIn - regularPrevIn) * 100) / 100;
+      const movementOut = Math.round((currentMetersOut - regularPrevOut) * 100) / 100;
 
       console.log(
         `[updateRegularAndRamClearMeters] Upserting regular meter ${meterId}`

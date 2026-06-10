@@ -5,26 +5,8 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  * Only shows skeletons for membership settings and events sections
  * Used when data is being refetched (e.g., date filter changes)
  */
-const SessionEventsContentSkeleton = () => (
+export const SessionEventsTableSkeleton = () => (
   <>
-    {/* Location Membership Settings Card Skeleton */}
-    <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-row items-center justify-between border-b border-gray-200 p-4 pb-2">
-        <Skeleton className="h-6 w-64" />
-        <Skeleton className="h-8 w-8 rounded" />
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col">
-              <Skeleton className="mb-2 h-3 w-32" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-
     {/* Desktop Table Skeleton */}
     <div className="hidden lg:block">
       <div className="rounded-md border">
@@ -56,7 +38,7 @@ const SessionEventsContentSkeleton = () => (
                   className="border-b transition-colors hover:bg-muted/50"
                 >
                   <td className="p-4 align-middle">
-                    <Skeleton className="h-4 w-40" />
+                     <Skeleton className="h-4 w-40" />
                   </td>
                   <td className="p-4 align-middle">
                     <Skeleton className="h-4 w-32" />
@@ -95,6 +77,30 @@ const SessionEventsContentSkeleton = () => (
         </div>
       ))}
     </div>
+  </>
+);
+
+const SessionEventsContentSkeleton = () => (
+  <>
+    {/* Location Membership Settings Card Skeleton */}
+    <div className="mb-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-row items-center justify-between border-b border-gray-200 p-4 pb-2">
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-8 w-8 rounded" />
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col">
+              <Skeleton className="mb-2 h-3 w-32" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <SessionEventsTableSkeleton />
   </>
 );
 

@@ -1,6 +1,6 @@
 # Collection Report V2 — Movement Calculation Engine
 
-**Last Updated:** 2026-05-21
+**Last Updated:** 2026-06-05
 
 ## Overview
 
@@ -129,12 +129,18 @@ Machine.collectionMeters.metersOut = ReportedMachine.sasMetersOut
 Machine.collectionTime             = ReportedMachine.sasEndTime
 ```
 
-### Conditional `sasMeters` Sync (No SAS Locations)
+### Conditional `sasMeters` Sync (No SAS Locations + Offline SMIB)
 
 To maintain lifetime meter accuracy on machines without a live SMIB connection:
 
 - **If `noSMIBLocation === true`**: The system **also** updates `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` with the captured values.
-- **If `noSMIBLocation === false`**: The `sasMeters` fields are **never** mutated by the collection process, as they are managed by the live SAS relay.
+- **If the machine is offline SMIB** (`relayId` exists but `lastActivity` is stale): The system **also** updates `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` with the collector-entered values, since the live relay is not producing updates.
+- **If the machine is online SMIB** (`relayId` exists and `lastActivity` is recent): The `sasMeters` fields are **never** mutated by the collection process, as they are managed by the live SAS relay.
+
+This applies across both V1 and V2 paths:
+- **V1**: `updateMachineCollectionData()` and `recalculateMachineCollections()` detect offline status via `relayId + lastActivity` threshold.
+- **V2 submit**: Uses the `isSupplemental` flag on `ReportedMachine` (set during capture when the machine is detected as offline).
+- **V2 `cascadeMachineEdit()`**: Re-derives offline status from `relayId + lastActivity` during edit cascade.
 
 This ensures that the next collection report will use the current report's SAS readings as the "previous" baseline, maintaining continuity across collections.
 
@@ -189,7 +195,7 @@ To maintain data integrity across both collection engines, the V1 system has bee
 
 1. **Prioritize `collectionMeters`**: In both V1 and V2, the `Machine.collectionMeters` field is the authoritative source for the initial baseline (when no prior collection documents exist).
 2. **Update on Finalization**: Neither system updates the `Machine` baseline during the individual machine capture/capture phase. Baseline updates to `Machine.collectionMeters` and `Machine.collectionMetersHistory` only occur when the report (V1) or session (V2) is finalized/submitted.
-3. **No SAS Mutation**: The live `Machine.sasMeters` (lifetime totals synced from SMIB) are never mutated by either collection process. They are used solely as fallbacks for baseline lookup.
+3. **No SAS Mutation (Online SMIB Only)**: The live `Machine.sasMeters` (lifetime totals synced from SMIB) are never mutated by either collection process **for online SMIB machines**. For offline SMIB machines and non-SMIB machines, `sasMeters.drop` and `sasMeters.totalCancelledCredits` are updated with the collector-entered values to maintain accuracy when the relay is unreachable.
 
 - **V1 Helper (Creation/Capture):** `app/api/lib/helpers/collectionReport/creation.ts`
 - **V1 Helper (Report Finalization):** `app/api/lib/helpers/collectionReport/reportCreation.ts`

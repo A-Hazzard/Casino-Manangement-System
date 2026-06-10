@@ -52,7 +52,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 3: Parse session ID
+    // STEP 3: Parse session ID and query params
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -62,13 +62,41 @@ export async function GET(
       );
     }
 
+    const { searchParams } = new URL(req.url);
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
+
     // ============================================================================
-    // STEP 4: Fetch all machines for this session
+    // STEP 4: Extract user role / location info
     // ============================================================================
-    const machines = await ReportedMachine.find({
-      sessionId,
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-    })
+    const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
+    const userRoles = (userPayloadRecord.roles as string[]) || [];
+
+    // Guard: only privileged roles may view archived session detail
+    const canViewArchived =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('location admin');
+
+    if (includeDeleted && !canViewArchived) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Insufficient permissions to view archived session',
+        },
+        { status: 403 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Fetch all machines for this session
+    // ============================================================================
+    const sessionMatch: Record<string, unknown> = { sessionId };
+    if (!includeDeleted) {
+      sessionMatch.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
+    }
+
+    const machines = await ReportedMachine.find(sessionMatch)
       .sort({ sequenceOrder: 1 })
       .lean();
 
@@ -80,11 +108,9 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 5: Verify user can access this session's location
+    // STEP 6: Verify user can access this session's location
     // ============================================================================
     const sessionLocationId = machines[0].locationId;
-    const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
-    const userRoles = (userPayloadRecord.roles as string[]) || [];
     const userLicencees =
       (userPayloadRecord.assignedLicencees as string[]) || [];
     const userLocations =
@@ -112,7 +138,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 6: Look up last collection time per machine
+    // STEP 7: Look up last collection time per machine
     // ============================================================================
     // Uses only V2 ReportedMachine records: the sasEndTime of the most recent
     // submitted report for that machine (excluding the current session).
@@ -123,14 +149,21 @@ export async function GET(
       (m as { _id: string })._id.toString()
     );
 
+    const previousSubmissionsMatch: Record<string, unknown> = {
+      machineId: { $in: machineIds },
+      sessionStatus: 'submitted',
+      _id: { $nin: currentMachineIds },
+    };
+    if (!includeDeleted) {
+      previousSubmissionsMatch.$or = [
+        { deletedAt: null },
+        { deletedAt: { $exists: false } },
+      ];
+    }
+
     const previousSubmissions = await ReportedMachine.aggregate([
       {
-        $match: {
-          machineId: { $in: machineIds },
-          sessionStatus: 'submitted',
-          _id: { $nin: currentMachineIds },
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-        },
+        $match: previousSubmissionsMatch,
       },
       { $sort: { sasEndTime: -1 } },
       { $group: { _id: '$machineId', sasEndTime: { $first: '$sasEndTime' } } },
@@ -185,7 +218,7 @@ export async function GET(
       null;
 
     // ============================================================================
-    // STEP 7: Look up collector details
+    // STEP 8: Look up collector details
     // ============================================================================
     const collectorId = machines[0].collector;
     let collectorFirstName: string | undefined;
@@ -206,7 +239,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 8: Build session summary and return
+    // STEP 9: Build session summary and return
     // ============================================================================
     const sessionData = {
       sessionId,
@@ -383,12 +416,35 @@ export async function DELETE(
       );
     }
 
-    // Only developers and admins can delete sessions
+    // Only authorized roles can delete sessions
     const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
     const userRoles = (userPayloadRecord.roles as string[]) || [];
-    if (!userRoles.includes('developer') && !userRoles.includes('admin')) {
+
+    // Parse action from query param (default: permanent)
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get('action') || 'permanent';
+
+    const canArchive =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('manager') ||
+      userRoles.includes('location admin');
+    const canPermanentlyDeleteDb =
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('location admin');
+
+    if (action === 'archive' && !canArchive) {
       return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
+        { success: false, error: 'Insufficient permissions to archive session' },
+        { status: 403 }
+      );
+    }
+    if (action !== 'archive' && !canPermanentlyDeleteDb) {
+      return NextResponse.json(
+        { success: false, error: 'Insufficient permissions to delete session' },
         { status: 403 }
       );
     }
@@ -417,10 +473,6 @@ export async function DELETE(
         { status: 404 }
       );
     }
-
-    // Parse action from query param (default: permanent)
-    const { searchParams } = new URL(req.url);
-    const action = searchParams.get('action') || 'permanent';
 
     // ============================================================================
     // STEP 5: Clean up Google Drive assets
@@ -572,6 +624,21 @@ export async function PATCH(
     // STEP 4: Restore path — unset deletedAt on ReportedMachine and Meters
     // ============================================================================
     if (action === 'restore') {
+      const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
+      const userRoles = (userPayloadRecord.roles as string[]) || [];
+      const canRestore =
+        userRoles.includes('developer') ||
+        userRoles.includes('owner') ||
+        userRoles.includes('admin') ||
+        userRoles.includes('manager') ||
+        userRoles.includes('location admin');
+      if (!canRestore) {
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions to restore session' },
+          { status: 403 }
+        );
+      }
+
       const restoreMachinesResult = await ReportedMachine.updateMany(
         { sessionId },
         { $unset: { deletedAt: 1 } }

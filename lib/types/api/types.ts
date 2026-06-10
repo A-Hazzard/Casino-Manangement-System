@@ -41,6 +41,7 @@ export type ICollectionReport = {
   machinesCollected?: string;
   includeJackpot?: boolean;
   totalVariation?: number;
+  deletedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
@@ -167,6 +168,7 @@ export type CollectionReportMachineSummary = {
   game?: string;
   custom?: { name?: string };
   relayId?: string;
+  lastActivity?: Date | string;
   smibBoard?: string;
   smbId?: string;
   collectionMeters?: {
@@ -247,6 +249,7 @@ export type CollectionReportData = {
   useNetGross?: boolean;
   collector?: string;
   collectorName?: string;
+  deletedAt?: string | null;
 };
 
 export type MachineVariationData = {

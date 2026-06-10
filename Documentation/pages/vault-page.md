@@ -1,8 +1,8 @@
 # Vault Management Page Implementation (`/vault`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -77,6 +77,18 @@ A real-time summary of property-wide liquidity (visible to Vault Managers and ab
 
 - **Formula**: `TotalCashOnPremises = VaultBalance + CashierFloats + MachineMeterDrop(Today)`.
 - **Contextual**: Provides the "Full Picture" of total fiscal exposure across the property for risk management.
+- **Implementation**: `VaultOverviewHealthGrid` component.
+
+### 🏧 Cash Desks Section
+
+Cash desk positions across the property, showing real-time status and shift summaries for each desk.
+| UI Term | Data Element | Source API |
+| :--- | :--- | :--- |
+| **Cashier Name** | `cashierName` | `GET /api/vault/balance?locationId=` |
+| **Shift Status** | `status` (active/closed) | `GET /api/vault/balance?locationId=` |
+| **Current Float** | `openingBalance` | `GET /api/vault/balance?locationId=` |
+
+- **Implementation**: `VaultOverviewCashDesksSection` component.
 
 ### 📜 Recent Activity
 
@@ -125,7 +137,7 @@ The Vault operates in a strict shift-based model:
 
 ## 6. Technical UI Standards
 
-- **Skeleton UX**: `VaultBalanceSkeleton` and `ShiftReviewSkeleton` are used during hydration.
+- **Skeleton UX**: `VaultOverviewSkeleton` is used during hydration.
 - **Optimistic UI**: Approving a float request instantly removes it from the panel while the API request processes in the background.
 - **Polling Strategy**: The Float Requests Panel polls every 5 seconds using a `setInterval` to ensure instant notification for vault managers.
 

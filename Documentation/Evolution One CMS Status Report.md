@@ -68,15 +68,15 @@ The system replaces fragmented, paper-based/excel processes with a single source
 | :-------------- | :--------------------------- | :------ |
 | Framework       | Next.js (App Router)         | 16.x    |
 | Language        | TypeScript                   | 5.x     |
-| Styling         | Tailwind CSS                 | 3.x     |
-| Database        | MongoDB                      | 7.x     |
+| Styling         | Tailwind CSS                 | 4.x     |
+| Database        | MongoDB                      | 8.x     |
 | ODM             | Mongoose                     | 8.x     |
 | State (Global)  | Zustand                      | 4.x     |
 | State (Server)  | TanStack React Query         | 5.x     |
 | UI Components   | Shadcn/UI, Radix UI, MUI     | Latest  |
 | Authentication  | JWT (jose), bcryptjs, otplib | Latest  |
 | Runtime         | Node.js                      | 20.x    |
-| Package Manager | bun                          | 9.x     |
+| Package Manager | bun                          | 1.x     |
 
 3. # **System Architecture**
 
@@ -94,7 +94,7 @@ The system replaces fragmented, paper-based/excel processes with a single source
 
 - **Multi-licencee:** Data scoped to a _Licensee_. Every API response is filtered by access granted.
 
-- **Role Hierarchy:** 9 discrete roles from owner down to reviewer.
+- **Role Hierarchy:** 10 discrete roles from owner down to reviewer.
 
 - **Gaming Day Offset:** Financial periods running based on each location’s gaming day/time.
 

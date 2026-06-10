@@ -115,6 +115,7 @@ type LocationsDetailsCabinetsSectionProps = {
   setSelectedLocationId: (id: string) => void;
   // Handlers
   handleRefresh: () => Promise<void>;
+  onCustomRangeGo?: () => Promise<void>;
   handleFilterChange: (status: string) => void;
   includeJackpot?: boolean;
   handleLocationChangeInPlace: (newLocationId: string) => void;
@@ -166,6 +167,7 @@ export default function LocationsDetailsCabinetsSection({
   setChartGranularity,
   includeJackpot = false,
   handleRefresh,
+  onCustomRangeGo,
   handleFilterChange,
   handleLocationChangeInPlace,
   onRestore,
@@ -357,7 +359,7 @@ export default function LocationsDetailsCabinetsSection({
       <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
         <div className="order-1 flex-1">
           <DateFilters
-            onCustomRangeGo={handleRefresh}
+            onCustomRangeGo={onCustomRangeGo ?? handleRefresh}
             hideAllTime={false}
             showQuarterly={true}
             enableTimeInputs={true}

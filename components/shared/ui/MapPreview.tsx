@@ -738,6 +738,28 @@ export default function MapPreview(props: MapPreviewProps) {
           mapInstance.setView([lat, lon], 15);
           setSearchQuery(location.name || location.locationName || '');
           setShowSearchResults(false);
+
+          // Open popup for the searched location
+          const map = activeMapRef.current as {
+            eachLayer?: (fn: (layer: unknown) => void) => void;
+          };
+          if (typeof map.eachLayer === 'function') {
+            map.eachLayer(layer => {
+              const marker = layer as {
+                getLatLng?: () => { lat: number; lng: number };
+                openPopup?: () => void;
+              };
+              if (
+                typeof marker.getLatLng === 'function' &&
+                typeof marker.openPopup === 'function'
+              ) {
+                const ll = marker.getLatLng();
+                if (ll.lat === lat && ll.lng === lon) {
+                  marker.openPopup();
+                }
+              }
+            });
+          }
         } else {
           console.warn('Map setView method not available');
         }
@@ -817,7 +839,13 @@ export default function MapPreview(props: MapPreviewProps) {
     if (!lon) return null;
 
     return (
-      <Marker key={key} position={[lat, lon]}>
+      <Marker
+        key={key}
+        position={[lat, lon]}
+        eventHandlers={{
+          mouseover: event => event.target.openPopup(),
+        }}
+      >
         <Popup>
           <LocationPopupContent
             location={locationObj}

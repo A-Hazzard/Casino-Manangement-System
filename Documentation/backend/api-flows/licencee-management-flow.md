@@ -53,7 +53,7 @@ Updates an existing licencee.
 
 ### Steps
 
-1.  **Parse Body**: Extracts `_id` and updated May 4, 2026
+1.  **Parse Body**: Extracts `_id` and updated licencee data from the request body.
 2.  **Validation**: Ensures `_id` is provided.
 3.  **Persistence**:
     - Calls the `updateLicenceeHelper` function.

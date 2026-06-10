@@ -172,45 +172,79 @@ export default function CollectionReportMobileNewCollectionModal({
     }
   }, [show, resetCollectionModalStore]);
 
+  // Auto-fill notes for offline SMIB machines when selected
+  useEffect(() => {
+    if (selectedMachine && selectedMachineData && !modalState.editingEntryId) {
+      const isKnown = selectedMachine in machineStatusMap;
+      if (isKnown && machineStatusMap[selectedMachine] === false && !storeFormData.notes) {
+        setStoreFormData({ notes: 'Machine was offline' });
+      }
+    }
+  }, [selectedMachine, machineStatusMap, modalState.editingEntryId, selectedMachineData, storeFormData.notes, setStoreFormData]);
+
   // ============================================================================
   // Handlers
   // ============================================================================
   const handleStartSubmit = async () => {
-    if (collectedMachines.length === 0 || modalState.isProcessing) return;
+    try {
+      if (collectedMachines.length === 0 || modalState.isProcessing) return;
 
-    const locationIdToUse = lockedLocationId || selectedLocation || '';
+      const locationIdToUse = lockedLocationId || selectedLocation || '';
 
-    // Query gaminglocations directly to check noSMIBLocation flag.
-    // If true, skip the /api/collection-reports/check-variations request entirely.
-    const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
-    if (isNoSmib) {
-      setShowCreateReportConfirmation(true);
-      return;
+      // Query gaminglocations directly to check noSMIBLocation flag.
+      // If true, skip the /api/collection-reports/check-variations request entirely.
+      const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
+      if (isNoSmib) {
+        setShowCreateReportConfirmation(true);
+        return;
+      }
+
+      // Trigger variation check
+      setShowVariationCheckPopover(true);
+
+      const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
+        entry => ({
+          machineId: entry.machineId,
+          machineName:
+            entry.machineCustomName ||
+            entry.machineName ||
+            entry.serialNumber ||
+            entry.machineId,
+          metersIn: entry.metersIn || 0,
+          metersOut: entry.metersOut || 0,
+          sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+          sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+          prevMetersIn: entry.prevIn || 0,
+          prevMetersOut: entry.prevOut || 0,
+          movementGross: (entry as { movement?: { gross?: number } }).movement
+            ?.gross,
+        })
+      );
+
+      // Exclude offline/non-SMIB machines — no live SAS data to compare against
+      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+      const offlineMachineIds = new Set(
+        availableMachines
+          .filter(machine => {
+            if (!machine.relayId) return true;
+            if (!machine.lastActivity) return true;
+            return (
+              Date.now() -
+                new Date(machine.lastActivity).getTime() >=
+              OFFLINE_THRESHOLD_MS
+            );
+          })
+          .map(machine => machine._id)
+      );
+      const onlineMachinesForCheck = machinesForCheck.filter(
+        m => !offlineMachineIds.has(m.machineId)
+      );
+
+      checkVariations(locationIdToUse, onlineMachinesForCheck);
+    } catch (e) {
+      console.error('[handleStartSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
+      toast.error('Failed to submit. Please try again.');
     }
-
-    // Trigger variation check
-    setShowVariationCheckPopover(true);
-
-    const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
-      entry => ({
-        machineId: entry.machineId,
-        machineName:
-          entry.machineCustomName ||
-          entry.machineName ||
-          entry.serialNumber ||
-          entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-        movementGross: (entry as { movement?: { gross?: number } }).movement
-          ?.gross,
-      })
-    );
-
-    checkVariations(locationIdToUse, machinesForCheck);
   };
 
   // ============================================================================
@@ -981,7 +1015,27 @@ export default function CollectionReportMobileNewCollectionModal({
                 }));
               const locationIdToUse =
                 lockedLocationId || selectedLocation || '';
-              checkVariations(locationIdToUse, machinesForCheck);
+
+              // Exclude offline machines from retry check
+              const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+              const offlineMachineIds = new Set(
+                availableMachines
+                  .filter(machine => {
+                    if (!machine.relayId) return true;
+                    if (!machine.lastActivity) return true;
+                    return (
+                      Date.now() -
+                        new Date(machine.lastActivity).getTime() >=
+                      OFFLINE_THRESHOLD_MS
+                    );
+                  })
+                  .map(machine => machine._id)
+              );
+              const onlineMachinesForCheck = machinesForCheck.filter(
+                m => !offlineMachineIds.has(m.machineId)
+              );
+
+              checkVariations(locationIdToUse, onlineMachinesForCheck);
             }}
             onClose={() => {
               setShowVariationCheckPopover(false);

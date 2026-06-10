@@ -1,16 +1,11 @@
 /**
- * Collection Report V2 — Edit Session Modal
+ * CollectionReportV2EditSessionModal Component
  *
- * Opens the full session report view inside a full-screen modal overlay so the
- * user stays on the sessions list page.
- *
- * Features:
- * - Same layout as the dedicated /collection-report/report/session/[id] page
- * - "Edit Session" button navigates to the session detail page for the full
- *   capture wizard experience (with per-machine pencil icons, camera, etc.)
- * - "Back" button closes the modal instead of navigating away
- *
+ * Full-screen modal wrapping the read-only session report.
  * Data: fetched from GET /api/collection-reports-v2/sessions/[sessionId]
+ *
+ * @param includeDeleted - When true, appends ?includeDeleted=true to the API
+ *   call so archived (soft-deleted) session data is returned.
  */
 'use client';
 
@@ -75,8 +70,8 @@ type Props = {
   isOpen: boolean;
   sessionId: string;
   onClose: () => void;
-  /** Called when the user wants to enter the full edit wizard for this session. */
   onEdit?: (sessionId: string) => void;
+  includeDeleted?: boolean;
 };
 
 // ============================================================================
@@ -88,6 +83,7 @@ export default function CollectionReportV2EditSessionModal({
   sessionId,
   onClose,
   onEdit,
+  includeDeleted = false,
 }: Props) {
   // ============================================================================
   // State & Hooks
@@ -110,9 +106,10 @@ export default function CollectionReportV2EditSessionModal({
     setError(null);
     setLoading(true);
 
+    const params = includeDeleted ? '?includeDeleted=true' : '';
     axios
       .get<{ success: boolean; data: SessionDetail }>(
-        `/api/collection-reports-v2/sessions/${sessionId}`
+        `/api/collection-reports-v2/sessions/${sessionId}${params}`
       )
       .then(res => {
         if (res.data.success) {
@@ -159,7 +156,7 @@ export default function CollectionReportV2EditSessionModal({
   } as ReturnType<typeof useRouter>;
 
   return (
-    <div className="fixed inset-0 z-[100000] flex flex-col">
+    <div className="fixed inset-0 z-[100000] flex flex-col md:items-center md:justify-center md:p-4">
       {/* Backdrop */}
       <div
         ref={backdropRef}
@@ -171,7 +168,7 @@ export default function CollectionReportV2EditSessionModal({
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none bg-gray-50 shadow-2xl md:my-4 md:rounded-xl"
+        className="relative z-10 mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none bg-gray-50 shadow-2xl md:h-auto md:max-h-[90vh] md:rounded-xl"
         style={{ opacity: 0 }}
         onClick={e => e.stopPropagation()}
       >

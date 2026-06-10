@@ -223,19 +223,19 @@ export function scaleMachineValues(
     hasNoSasData,
   } = values;
 
-  const scaledDrop = drop * moneyInScale;
-  const scaledCancelled = cancelled * moneyOutScale;
-  const scaledMeterGross = meterGross * moneyInScale;
-  const scaledJackpot = jackpot * moneyOutScale;
+  const scaledDrop = Math.round(drop * moneyInScale * 100) / 100;
+  const scaledCancelled = Math.round(cancelled * moneyOutScale * 100) / 100;
+  const scaledMeterGross = Math.round(meterGross * moneyInScale * 100) / 100;
+  const scaledJackpot = Math.round(jackpot * moneyOutScale * 100) / 100;
 
   return {
     drop: scaledDrop,
     cancelled: scaledCancelled,
     meterGross: scaledMeterGross,
     jackpot: scaledJackpot,
-    netGross: scaledMeterGross - scaledJackpot,
-    sasGross: hasNoSasData ? 0 : sasGross * moneyInScale,
-    variation: variation * moneyInScale,
+    netGross: Math.round((scaledMeterGross - scaledJackpot) * 100) / 100,
+    sasGross: hasNoSasData ? 0 : Math.round(sasGross * moneyInScale * 100) / 100,
+    variation: Math.round(variation * moneyInScale * 100) / 100,
   };
 }
 
@@ -287,18 +287,18 @@ export function scaleReportFinancials<T extends ReportFinancials>(
 
   return {
     ...report,
-    amountCollected: (report.amountCollected ?? 0) * moneyInScale,
-    amountToCollect: (report.amountToCollect ?? 0) * moneyInScale,
-    amountUncollected: (report.amountUncollected ?? 0) * moneyInScale,
-    partnerProfit: (report.partnerProfit ?? 0) * moneyInScale,
-    taxes: (report.taxes ?? 0) * moneyOutScale,
-    advance: (report.advance ?? 0) * moneyOutScale,
-    previousBalance: (report.previousBalance ?? 0) * moneyOutScale,
-    balanceCorrection: (report.balanceCorrection ?? 0) * moneyOutScale,
-    currentBalance: (report.currentBalance ?? 0) * moneyOutScale,
+    amountCollected: Math.round((report.amountCollected ?? 0) * moneyInScale * 100) / 100,
+    amountToCollect: Math.round((report.amountToCollect ?? 0) * moneyInScale * 100) / 100,
+    amountUncollected: Math.round((report.amountUncollected ?? 0) * moneyInScale * 100) / 100,
+    partnerProfit: Math.round((report.partnerProfit ?? 0) * moneyInScale * 100) / 100,
+    taxes: Math.round((report.taxes ?? 0) * moneyOutScale * 100) / 100,
+    advance: Math.round((report.advance ?? 0) * moneyOutScale * 100) / 100,
+    previousBalance: Math.round((report.previousBalance ?? 0) * moneyOutScale * 100) / 100,
+    balanceCorrection: Math.round((report.balanceCorrection ?? 0) * moneyOutScale * 100) / 100,
+    currentBalance: Math.round((report.currentBalance ?? 0) * moneyOutScale * 100) / 100,
     variance:
       typeof report.variance === 'number'
-        ? report.variance * moneyInScale
+        ? Math.round(report.variance * moneyInScale * 100) / 100
         : report.variance,
   };
 }

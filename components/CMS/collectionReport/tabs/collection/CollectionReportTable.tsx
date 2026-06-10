@@ -47,6 +47,7 @@ import {
   ChevronDown,
   ChevronUp,
   Edit3,
+  RotateCcw,
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -60,6 +61,10 @@ export default function CollectionReportTable({
   reportIssues,
   onEdit,
   onDelete,
+  onRestore,
+  onPermanentDelete,
+  canManage,
+  canPermanentlyDelete,
   sortField = 'time',
   sortDirection = 'desc',
   onSort,
@@ -283,7 +288,7 @@ export default function CollectionReportTable({
                 }-${row?.time || 'unknown'}-${index}`}
                 className={`hover:bg-lighterGreenHighlight ${
                   hasIssues ? 'border-l-4 border-l-yellow-500 bg-yellow-50' : ''
-                }`}
+                } ${row.deletedAt ? 'bg-amber-50 opacity-80' : ''}`}
                 onContextMenu={e => {
                   e.preventDefault();
                   window.open(
@@ -357,16 +362,60 @@ export default function CollectionReportTable({
                   </div>
                 </TableCell>
                 <TableCell centered={false}>
-                  {row?.locationSlug ? (
-                    <Link
-                      href={`/locations/${row.locationSlug}`}
-                      className="text-buttonActive hover:underline"
-                    >
-                      {row?.location || '-'}
-                    </Link>
-                  ) : (
-                    row?.location || '-'
-                  )}
+                  <div className="group relative inline-block">
+                    {(row?.locationSlug || row?.locationId) ? (
+                      <Link
+                        href={`/locations/${row.locationSlug || row.locationId}`}
+                        className="border-b border-dotted border-gray-400 text-buttonActive hover:underline"
+                      >
+                        {row?.location || '-'}
+                      </Link>
+                    ) : (
+                      <span className="cursor-help border-b border-dotted border-gray-400">
+                        {row?.location || '-'}
+                      </span>
+                    )}
+                    {row.locationTooltipData && (
+                      <div className="absolute left-0 top-full z-50 mt-1 hidden w-max max-w-xs rounded bg-gray-800 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                        <div className="space-y-1">
+                          {row.locationTooltipData.address && (
+                            <div className="font-medium">
+                              {row.locationTooltipData.address}
+                            </div>
+                          )}
+                          {row.locationTooltipData.country && (
+                            <div className="text-gray-300">
+                              {row.locationTooltipData.country}
+                            </div>
+                          )}
+                          {(row.locationTooltipData.noSMIBLocation ||
+                            row.locationTooltipData.isLocalServer ||
+                            row.noSMIBLocation ||
+                            row.isLocalServer) && (
+                            <div className="flex gap-1 pt-0.5">
+                              {(row.locationTooltipData.noSMIBLocation ||
+                                row.noSMIBLocation) && (
+                                <span className="rounded bg-gray-600 px-1.5 py-0.5">
+                                  No SMIB
+                                </span>
+                              )}
+                              {(row.locationTooltipData.isLocalServer ||
+                                row.isLocalServer) && (
+                                <span className="rounded bg-gray-600 px-1.5 py-0.5">
+                                  Local Server
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {row.locationTooltipData.id && (
+                            <div className="pt-0.5 text-[10px] text-gray-500">
+                              ID: {row.locationTooltipData.id}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell centered={true}>
                   <span
@@ -413,49 +462,82 @@ export default function CollectionReportTable({
                         {issueCount} issue{issueCount !== 1 ? 's' : ''}
                       </Badge>
                     )}
-                    <Link
-                      href={`/collection-report/report/${row?.locationReportId || row?._id || ''}`}
-                      className="group inline-flex h-8 w-8 items-center justify-center rounded-md p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white"
-                      aria-label="View Details"
-                    >
-                      <Image
-                        src={detailsIcon}
-                        alt="Details"
-                        className="h-4 w-4 group-hover:brightness-0 group-hover:invert"
-                        width={16}
-                        height={16}
-                      />
-                    </Link>
-                    {canEditDelete &&
-                      (!editableReportIds ||
-                        editableReportIds.has(row?.locationReportId || '')) && (
-                        <div className="flex gap-1">
-                          {onEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
-                              onClick={() => onEdit(row?._id || '')}
-                              aria-label="Edit Report"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
+                    {row.deletedAt ? (
+                      <div className="flex gap-1">
+                        {onRestore && canManage && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-green-600 hover:bg-green-100"
+                            onClick={() =>
+                              onRestore(row?.locationReportId || row?._id || '')
+                            }
+                            aria-label="Restore Report"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {onPermanentDelete && canPermanentlyDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                            onClick={() =>
+                              onPermanentDelete(row?.locationReportId || row?._id || '')
+                            }
+                            aria-label="Permanently Delete Report"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <Link
+                          href={`/collection-report/report/${row?.locationReportId || row?._id || ''}`}
+                          className="group inline-flex h-8 w-8 items-center justify-center rounded-md p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white"
+                          aria-label="View Details"
+                        >
+                          <Image
+                            src={detailsIcon}
+                            alt="Details"
+                            className="h-4 w-4 group-hover:brightness-0 group-hover:invert"
+                            width={16}
+                            height={16}
+                          />
+                        </Link>
+                        {canEditDelete &&
+                          (!editableReportIds ||
+                            editableReportIds.has(row?.locationReportId || '')) && (
+                            <div className="flex gap-1">
+                              {onEdit && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-100"
+                                  onClick={() => onEdit(row?._id || '')}
+                                  aria-label="Edit Report"
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {onDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                                  onClick={() =>
+                                    onDelete(row?.locationReportId || '')
+                                  }
+                                  aria-label="Delete Report"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           )}
-                          {onDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
-                              onClick={() =>
-                                onDelete(row?.locationReportId || '')
-                              }
-                              aria-label="Delete Report"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

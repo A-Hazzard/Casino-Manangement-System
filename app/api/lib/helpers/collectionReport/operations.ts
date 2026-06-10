@@ -436,26 +436,39 @@ export async function deleteManualMetersPerCollection(
   }
 
   try {
-    const collections = await Collections.find({ locationReportId }).lean<
-      CollectionDocument[]
-    >();
+    // Use raw MongoDB collection access to bypass the Mongoose soft-delete pre-hook.
+    // This ensures permanently deleting an already-archived report still removes its meters.
+    const rawDocs = await Collections.collection
+      .find({ locationReportId: String(locationReportId) })
+      .toArray();
+    const collections = rawDocs as unknown as CollectionDocument[];
     console.log(
       `[deleteManualMetersPerCollection] Found ${collections.length} collections to clean up meters for`
     );
 
     for (const collection of collections) {
-      // Check if machine is SMIB machine
+      // Check if machine is an online SMIB machine — skip if it is, because
+      // the relay manages its meters. For offline SMIB machines we created
+      // manual meters during collection, so they still need cleanup.
       let hasRelay = false;
+      let isOffline = false;
       if (collection.machineId) {
         const machineDoc = await Machine.findOne(
           { _id: collection.machineId },
-          'relayId'
-        ).lean<{ relayId?: string | null }>();
+          'relayId lastActivity'
+        ).lean<{ relayId?: string | null; lastActivity?: Date | string | null }>();
         hasRelay = !!machineDoc?.relayId;
+        if (hasRelay) {
+          const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+          isOffline =
+            !machineDoc?.lastActivity ||
+            Date.now() - new Date(machineDoc.lastActivity).getTime() >=
+              OFFLINE_THRESHOLD_MS;
+        }
       }
-      if (hasRelay) {
+      if (hasRelay && !isOffline && !collection.meterId && !collection.ramClearMeterId) {
         console.log(
-          `⏭️ [deleteManualMetersPerCollection] Skipping SMIB machine ${collection.machineId} (has relayId)`
+          `⏭️ [deleteManualMetersPerCollection] Skipping online SMIB machine ${collection.machineId} (has relayId, online, no manual meters)`
         );
         continue;
       }

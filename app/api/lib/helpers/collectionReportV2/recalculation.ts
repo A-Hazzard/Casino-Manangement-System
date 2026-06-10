@@ -48,13 +48,22 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
     prevSasMetersOut,
   } = input;
 
-  // Per-machine SMIB check: look up the machine's relayId directly.
+  // Per-machine SMIB check: look up the machine's relayId and lastActivity.
   // If the machine has a relayId it has a SAS relay and manual meters should
   // NOT be written to Meter documents. Non-relay machines behave like noSMIB.
-  const machineDoc = await Machine.findOne({ _id: machineId }, 'relayId').lean<{
+  // Offline SMIB machines (relay present but stale lastActivity) also get updated.
+  const machineDoc = await Machine.findOne({ _id: machineId }, 'relayId lastActivity gamingLocation').lean<{
     relayId?: string | null;
+    lastActivity?: Date;
+    gamingLocation?: string;
   }>();
   const isNoSMIBLocation = !machineDoc?.relayId;
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing (TODO: restore 72h)
+  const isOffline =
+    !!machineDoc?.relayId &&
+    (!machineDoc.lastActivity ||
+      new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
+        OFFLINE_THRESHOLD_MS);
 
   const targetMetersIn = isNoSMIBLocation
     ? (manualMetersIn ?? input.sasMetersIn)
@@ -68,7 +77,7 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
   const prevIn = prevSasMetersIn ?? 0;
   const prevOut = prevSasMetersOut ?? 0;
 
-  if (isNoSMIBLocation) {
+  if (isNoSMIBLocation || isOffline) {
     // Delete existing meters for this machine and session
     await Meters.deleteMany({
       machine: machineId,
@@ -94,7 +103,7 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
       const ramClearMeterDoc = {
         _id: ramClearMeterId,
         machine: machineId,
-        location: locationId,
+        location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
         isRamClear: true,
         movement: {
@@ -136,7 +145,7 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
       const currentMeterDoc = {
         _id: currentMeterId,
         machine: machineId,
-        location: locationId,
+        location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
         isRamClear: false,
         movement: {
@@ -178,7 +187,7 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
       const meterDoc = {
         _id: meterId,
         machine: machineId,
-        location: locationId,
+        location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
         movement: {
           coinIn: 0,
@@ -275,10 +284,11 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
         'collectionMeters.metersOut': targetMetersOut ?? null,
       };
 
-      // For noSMIB locations mirror the entered values into sasMeters so
-      // dashboard queries (which read sasMeters.drop / totalCancelledCredits)
-      // stay in sync. SMIB locations own these fields via the live relay.
-      if (isNoSMIBLocation) {
+      // For noSMIB locations AND offline SMIB locations, mirror the entered values
+      // into sasMeters so dashboard queries (which read sasMeters.drop /
+      // totalCancelledCredits) stay in sync. Online SMIB machines own these fields
+      // via the live relay.
+      if (isNoSMIBLocation || isOffline) {
         mostRecentFields['sasMeters.drop'] = targetMetersIn ?? null;
         mostRecentFields['sasMeters.totalCancelledCredits'] =
           targetMetersOut ?? null;

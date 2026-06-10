@@ -1,159 +1,87 @@
-# Custom Hooks Organization
+# Custom Hooks
 
-This directory contains all custom React hooks organized by functionality for better maintainability and discoverability.
+All custom React hooks, grouped by domain/feature for discoverability. Hooks encapsulate data fetching, filtering, pagination, modal state, and navigation so that `*PageContent` components stay lean.
 
-## Folder Structure
-
-### `/auth` - Authentication & User Management
-
-- `useAuth.ts` - Main authentication hook with role-based access control
-- `useUserProfileValidation.ts` - User profile validation logic
-- `useUserValidation.ts` - Comprehensive user validation with API integration
-
-### `/data` - Data Fetching & State Management
-
-- `useAcceptedBills.ts` - Bill validator data fetching
-- `useAdministrationData.ts` - Administration data fetching (users, licencees, activity logs)
-- `useAdministrationModals.ts` - Administration modal state management
-- `useCabinetData.ts` - Cabinet data management and filtering
-- `useCabinetDetailsData.ts` - Cabinet details data fetching
-- `useCabinetFilters.ts` - Cabinet search and filter state management
-- `useCabinetModals.ts` - Cabinet modal state management
-- `useCabinetSorting.ts` - Cabinet sorting and pagination logic
-- `useCollectionReportModals.ts` - Collection report modal state management
-- `useDashboardData.ts` - Dashboard data fetching and state
-- `useDashboardFilters.ts` - Dashboard filter state and logic
-- `useDashboardRefresh.ts` - Dashboard refresh functionality
-- `useDashboardScroll.ts` - Dashboard scroll behavior and floating button
-- `useLocationData.ts` - Location data fetching and search
-- `useLocationDetails.ts` - Location details data management
-- `useLocationMachineStats.ts` - Location machine statistics management
-- `useLocationModals.ts` - Location modal state management
-- `useLocationPagination.ts` - Location pagination logic
-- `useLocationSorting.ts` - Location sorting and filtering
-- `useMembersTabContent.ts` - Members tab content rendering and state
-- `useReportsTabContent.ts` - Reports tab content rendering and state
-- `useSessions.ts` - Sessions data fetching and pagination
-- `useSessionsFilters.ts` - Sessions filtering and search functionality
-- `useSessionsNavigation.ts` - Sessions navigation and routing
-- `useSmibConfiguration.ts` - SMIB configuration state management
-
-### `/navigation` - Navigation & Routing
-
-- `useCabinetNavigation.ts` - Cabinet section navigation
-- `useCollectionNavigation.ts` - Collection report navigation
-- `useMembersNavigation.ts` - Members page navigation with permissions
-- `useReportsNavigation.ts` - Reports navigation with role-based access
-
-### `/reports` - Reports & Analytics
-
-- `useDashboardReports.ts` - Dashboard analytics data
-- `useGenerateCustomReport.ts` - Custom report generation
-- `useLocationsReports.ts` - Location-based reports
-- `useLogisticsReports.ts` - Logistics and movement reports
-- `useMachinesReports.ts` - Machine performance reports
-
-### `/ui` - UI & Utility Hooks
-
-- `useHasMounted.ts` - Client-side mounting detection
-- `useSafeGSAPAnimation.ts` - Safe GSAP animations for React 19
-
-### `/validation` - Validation Hooks
-
-- Reserved for future validation hooks
-- User validation hooks are in the `/auth` folder
-
-## Usage
-
-### Import from specific categories:
-
-```typescript
-// Data hooks
-import {
-  useCabinetData,
-  useLocationData,
-  useDashboardFilters,
-  useLocationMachineStats,
-  useSessionsFilters,
-} from '@/lib/hooks/data';
-
-// Navigation hooks
-import {
-  useCabinetNavigation,
-  useReportsNavigation,
-} from '@/lib/hooks/navigation';
-
-// Auth hooks
-import { useAuth, useUserValidation } from '@/lib/hooks/auth';
-
-// Reports hooks
-import {
-  useGenerateCustomReport,
-  useDashboardReports,
-} from '@/lib/hooks/reports';
-
-// UI hooks
-import { useHasMounted, useSafeGSAPAnimation } from '@/lib/hooks/ui';
-```
-
-### Import from main index:
-
-```typescript
-// All hooks
-import { useAuth, useCabinetData, useCabinetNavigation } from '@/lib/hooks';
-```
-
-## Benefits of This Organization
-
-1. **Logical Grouping**: Hooks are grouped by functionality, making them easier to find
-2. **Reduced Import Paths**: Shorter, more semantic import paths
-3. **Better Maintainability**: Related hooks are co-located
-4. **Clear Separation**: Different concerns are separated into different folders
-5. **Scalability**: Easy to add new hooks to appropriate categories
-6. **Type Safety**: All exports are properly typed and documented
-
-## Adding New Hooks
-
-When adding new hooks, follow these guidelines:
-
-1. **Choose the right folder** based on the hook's primary purpose
-2. **Update the folder's index.ts** to export the new hook
-3. **Update the main index.ts** if needed
-4. **Follow naming conventions**: `use[Purpose][Function]`
-5. **Add proper TypeScript types** and JSDoc comments
-6. **Test the hook** thoroughly before committing
-
-## Key Features in Hooks
-
-### Gaming Day Offset Support
-
-Many data hooks (particularly dashboard, location, and cabinet hooks) support gaming day offset functionality:
-
-- Default gaming day starts at 8 AM (configurable per location)
-- Local time (Trinidad UTC-4) is converted to UTC for database queries
-- Custom date ranges with time inputs for precise filtering
-
-### Financial Calculations
-
-Data hooks use the **Movement Delta Method** for all financial calculations:
-
-- Sum of `movement.drop` for money in
-- Sum of `movement.totalCancelledCredits` for money out
-- Gross = Drop - Total Cancelled Credits
-
-### Authentication & Permissions
-
-Auth hooks implement comprehensive role-based access control (RBAC):
-
-- Super Admin, Admin, Manager, Collector, Viewer roles
-- Granular permissions for all actions
-- Automatic session management and token refresh
-
-## Migration Notes
-
-All existing imports have been updated to use the new organized structure. The old individual hook imports have been replaced with category-based imports for better maintainability.
+> Hook **structure** (section order, state grouping) is mandated in [`CLAUDE.md`](../../CLAUDE.md) and `.instructions/rules/nextjs-rules.md` §4.4. Reference implementation: `collectionReport/useNewCollectionModal.ts`.
 
 ---
 
-**Last Updated**: November 4th, 2025  
-**Version**: 2.0.0
+## Folder structure
+
+Hooks are organized into domain subfolders, with a handful of cross-cutting hooks at the root.
+
+| Folder | Purpose |
+| --- | --- |
+| `auth/` | Authentication, RBAC, profile/user validation (`useAuth`, `useUserValidation`) |
+| `data/` | Data fetching + filter/sort/pagination/modal state per domain (dashboard, location, cabinet, SMIB config, sessions, administration, …) |
+| `navigation/` | Page/section navigation with permission gating (cabinets, collection, members, reports) |
+| `reports/` | Report generation and analytics data (dashboard, locations, machines, logistics) |
+| `cabinets/` | Cabinet-specific hooks (e.g. `useCabinetAccountingData`) |
+| `collectionReport/` | Collection report modal + flow hooks (new, edit, mobile variants) |
+| `locations/` | Location detail and management hooks |
+| `machines/` | Machine-level data hooks |
+| `members/` | Members tab/detail hooks |
+| `administration/` | Administration data + modal hooks (users, licencees, activity logs) |
+| `vault/` | Vault / cashier domain hooks |
+| `ui/` | UI utilities (`useHasMounted`, animations) |
+
+### Root-level cross-cutting hooks
+
+These don't belong to a single domain:
+
+- `useAuth.ts` — primary auth/role hook
+- `useCurrentUserQuery.ts` — current-user React Query
+- `useCurrencyFormat.ts` — display currency + `formatCurrencyWithCodeString` binding
+- `useCashierShift.ts` — active cashier shift state
+- `useMachineOnlineStatus.ts` — SMIB online/offline derivation
+- `useDebounce.ts`, `useMediaQuery.ts`, `useTextOverflow.ts`, `useAbortableRequest.ts` — generic utilities
+- `useProfileModal.ts` — profile modal state
+
+---
+
+## Importing
+
+```typescript
+// Domain hooks via their folder
+import { useCabinetData, useLocationData } from '@/lib/hooks/data';
+import { useCabinetNavigation } from '@/lib/hooks/navigation';
+import { useAuth, useUserValidation } from '@/lib/hooks/auth';
+
+// Cross-cutting root hooks
+import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+```
+
+---
+
+## Adding a hook
+
+1. **Pick the right folder** by primary domain (or root if genuinely cross-cutting).
+2. **Name it** `use[Domain][Purpose]` (e.g. `useCabinetFilters`).
+3. **Follow the section order** from `nextjs-rules.md` §4.4: External deps → Types → Helpers → Main hook → Store state → Local state (grouped by concern) → Form bindings → Computed → Debounced → Refs → Effects → Handlers (grouped) → Return.
+4. **Type everything** — no `any`; props/return types from `lib/types/` or `shared/types/`.
+5. **Update the folder's `index.ts`** so the hook is exported.
+
+---
+
+## Cross-cutting behaviors
+
+### Gaming day offset
+
+Dashboard/location/cabinet/report data hooks apply the **8 AM Trinidad (UTC-4) gaming day**. Default offset 8, configurable per location, resolved with `??` (not `||`). Local time converts to UTC for queries. See `lib/utils/gamingDayRange.ts`.
+
+### Financial calculations
+
+Financial hooks use the **Movement Delta Method**: money in = Σ `movement.drop`, money out = Σ `movement.totalCancelledCredits`, gross = drop − cancelled. Net Gross = gross − jackpot.
+
+### Authentication & permissions
+
+Auth hooks implement the 10-role hierarchy: **developer → owner → admin → manager → location admin → vault-manager → cashier → technician → collector → reviewer**. Access is the intersection of assigned licencees and assigned locations (managers see all locations in their licencees). See `lib/utils/permissions/client.ts`.
+
+### Currency
+
+Display hooks format via `useCurrencyFormat()` + `formatCurrencyWithCodeString` — components display, the server converts (pass `?currency=`).
+
+---
+
+**Last Updated:** June 2026

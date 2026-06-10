@@ -22,6 +22,7 @@ type Props = {
   onClose: () => void;
   onArchive: (sessionId: string) => Promise<void>;
   onDelete: (sessionId: string) => Promise<void>;
+  isArchived?: boolean;
 };
 
 export default function CollectionReportV2DeleteSessionModal({
@@ -30,6 +31,7 @@ export default function CollectionReportV2DeleteSessionModal({
   onClose,
   onArchive,
   onDelete,
+  isArchived = false,
 }: Props) {
   // ============================================================================
   // State & Hooks
@@ -45,7 +47,7 @@ export default function CollectionReportV2DeleteSessionModal({
 
   useEffect(() => {
     if (isOpen && modalRef.current && backdropRef.current) {
-      setStep('choose');
+      setStep(isArchived ? 'confirmDelete' : 'choose');
       setLoading(false);
 
       gsap.fromTo(

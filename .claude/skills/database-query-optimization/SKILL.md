@@ -1,5 +1,5 @@
 ---
-name: Database Query Optimization
+name: database-query-optimization
 description: Use .cursor() for Meters, direct location field access, eliminate N+1 patterns, handle gaming day offsets.
 ---
 

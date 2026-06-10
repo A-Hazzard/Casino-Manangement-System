@@ -54,7 +54,7 @@ Caddy must bind to ports 80 and 443, which requires **Administrator privileges**
 1. Open **PowerShell as Administrator**.
 2. Navigate to the project root:
    ```powershell
-   cd C:\Users\pc\Documents\Github\evolution-one-cms
+   cd /path/to/evolution-one-cms
    ```
 3. Start Caddy:
    ```powershell

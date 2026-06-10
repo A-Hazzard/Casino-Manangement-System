@@ -1,5 +1,5 @@
 ---
-name: File Organization
+name: file-organization
 description: Directory structure for shared code, frontend, backend, components, and utilities across the application.
 ---
 

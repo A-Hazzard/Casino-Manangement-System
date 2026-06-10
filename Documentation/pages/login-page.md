@@ -1,5 +1,11 @@
 # Login Page Implementation (`/login`)
 
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
+
+---
+
 **User Flow:**
 
 1. **Credentials**: Validates Username/Password via `POST /api/auth/login`.
@@ -9,4 +15,4 @@
 **State Management:**
 
 - `useAuth` hook manages the multi-step login state.
-- Post-login, user is redirected based on role (`/vault` for cashiers, `/` for managers).
+- Post-login, user is redirected based on role (`/vault/cashier/payouts` for cashiers, `/vault/management` for vault-managers, `/` for managers).

@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ## Table of Contents
 
@@ -72,7 +72,8 @@ Machine {
   _id: string;
   serialNumber: string;           // Machine identification
   gamingLocation: string;         // Links to GamingLocation
-  status: "online" | "offline";   // Machine status for UI display
+  loggedIn: boolean;              // Machine login state (online/offline for UI)
+  machineStatus: string;          // Operational status (separate from login state)
   relayId: string;               // SMIB controller identifier
   smibConfig: SmibConfig;        // Device configuration
   smibVersion: {
@@ -123,7 +124,6 @@ Meter {
 
   // ⚠️ CRITICAL: Use readAt for date filtering (NOT timestamp or createdAt)
   readAt: Date;                   // Date filtering field used by ALL aggregation APIs
-  timestamp: Date;                // Original meter timestamp (fallback)
 
   // ⚠️ CRITICAL: movement field is REQUIRED for aggregation APIs
   movement: {

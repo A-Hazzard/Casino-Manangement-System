@@ -485,6 +485,7 @@ export async function PATCH(
           }).lean<{
             relayId?: string | null;
             collectionTime?: Date;
+            gamingLocation?: string;
             collectionMeters?: { metersIn?: number; metersOut?: number };
             collectionMetersHistory?: Array<{
               _id?: string;
@@ -520,7 +521,9 @@ export async function PATCH(
             ? (m.manualMetersOut ?? m.sasMetersOut)
             : m.sasMetersOut;
 
-          const locationId = m.locationId as string | undefined;
+          const meterLocationId = String(
+            currentMachine?.gamingLocation || m.locationId || sessionLocationId || ''
+          );
 
           console.log(
             `[${functionName}] Persisting machine meters:`,
@@ -528,7 +531,7 @@ export async function PATCH(
               {
                 machineId: m.machineId,
                 locationName: m.locationName,
-                isNoSasLocation: !machineHasRelay,
+                isNoSmibMachine: !machineHasRelay,
                 reportedSasIn: m.sasMetersIn,
                 reportedSasOut: m.sasMetersOut,
                 reportedManualIn: m.manualMetersIn,
@@ -549,11 +552,10 @@ export async function PATCH(
             updatedAt: new Date(),
           };
 
-          // For non-relay machines: mirror the collector's entered values into
-          // sasMeters so dashboard queries (which read sasMeters) reflect the
-          // correct figures. For SMIB machines these fields are owned by the
-          // live relay and must never be overwritten here.
-          if (!machineHasRelay) {
+          // For non-relay machines AND offline SMIB (supplemental) machines: mirror the
+          // collector's entered values into sasMeters so dashboard queries reflect the
+          // correct figures. Online SMIB machines have these fields owned by the live relay.
+          if (!machineHasRelay || m.isSupplemental === true) {
             updateFields['sasMeters.drop'] = targetMetersIn ?? null;
             updateFields['sasMeters.totalCancelledCredits'] =
               targetMetersOut ?? null;
@@ -680,7 +682,7 @@ export async function PATCH(
               const ramClearMeterDoc = {
                 _id: ramClearMeterId,
                 machine: m.machineId,
-                location: m.locationId || locationId,
+                location: meterLocationId,
                 locationSession: sessionId,
                 isRamClear: true,
                 movement: {
@@ -753,7 +755,7 @@ export async function PATCH(
               const currentMeterDoc = {
                 _id: currentMeterId,
                 machine: m.machineId,
-                location: m.locationId || locationId,
+                location: meterLocationId,
                 locationSession: sessionId,
                 isRamClear: false,
                 movement: {
@@ -796,7 +798,7 @@ export async function PATCH(
               const meterDoc = {
                 _id: meterId,
                 machine: m.machineId,
-                location: m.locationId || locationId,
+                location: meterLocationId,
                 locationSession: sessionId,
                 movement: {
                   coinIn: 0,

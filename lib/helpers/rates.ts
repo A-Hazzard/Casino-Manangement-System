@@ -113,6 +113,8 @@ export function convertToUSD(
     return value;
   }
 
+  // No rounding here — intermediate helper. Rounding happens in convertCurrency
+  // or at the final display point to avoid precision loss in double-conversion chains.
   return value / rate;
 }
 
@@ -137,6 +139,8 @@ export function convertFromUSD(
     return value;
   }
 
+  // No rounding here — intermediate helper. Rounding happens in convertCurrency
+  // or at the final display point to avoid precision loss in double-conversion chains.
   return value * rate;
 }
 
@@ -155,7 +159,9 @@ export function convertCurrency(
   // Convert to USD first, then to target currency
   const usdValue =
     fromCurrency === 'USD' ? value : value / FIXED_RATES[fromCurrency];
-  return toCurrency === 'USD' ? usdValue : usdValue * FIXED_RATES[toCurrency];
+  return toCurrency === 'USD'
+    ? Math.round(usdValue * 100) / 100
+    : Math.round((usdValue * FIXED_RATES[toCurrency]) * 100) / 100;
 }
 
 /**

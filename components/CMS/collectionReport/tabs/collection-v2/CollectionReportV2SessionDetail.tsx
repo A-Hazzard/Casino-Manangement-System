@@ -10,6 +10,9 @@
 import axios from 'axios';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import CameraOverlay from './CameraOverlay';
 import CollectionReportV2SessionDetailSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionDetailSkeleton';
@@ -107,6 +110,110 @@ type CaptureState = {
 };
 
 // ============================================================================
+// Submit Progress Overlay
+// ============================================================================
+
+type SubmitProgressOverlayProps = {
+  submitPhase: 'idle' | 'pre-creating' | 'submitting' | 'error';
+  machineName: string | null;
+  error: string | null;
+  onClose: () => void;
+};
+
+function SubmitProgressOverlay({
+  submitPhase,
+  machineName,
+  error,
+  onClose,
+}: SubmitProgressOverlayProps) {
+  if (submitPhase === 'idle') return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="submit-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100010] flex items-center justify-center bg-black/50 p-4"
+      >
+        <motion.div
+          className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+          initial={{ scale: 0.95, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.95, y: 20 }}
+        >
+          {/* Pre-creating meters */}
+          {submitPhase === 'pre-creating' && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="h-12 w-12 text-blue-500" />
+              </motion.div>
+              <p className="text-center text-lg font-semibold text-gray-800">
+                Creating Manual Meters for{' '}
+                <span className="font-bold">{machineName ?? 'Machine'}</span>
+              </p>
+              <p className="text-center text-sm text-gray-600">Please wait...</p>
+            </div>
+          )}
+
+          {/* Submitting */}
+          {submitPhase === 'submitting' && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="h-12 w-12 text-blue-500" />
+              </motion.div>
+              <p className="text-center text-lg font-semibold text-gray-800">
+                Submitting session...
+              </p>
+              <p className="text-center text-sm text-gray-600">Please wait</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {submitPhase === 'error' && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+              >
+                <AlertCircle className="h-12 w-12 text-red-500" />
+              </motion.div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-800">
+                  {machineName
+                    ? `Failed to create meters for ${machineName}`
+                    : 'Submission failed'}
+                </p>
+                {error && (
+                  <p className="mt-1 text-sm text-gray-600">{error}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -141,6 +248,13 @@ export default function CollectionReportV2SessionDetail({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<
+    'idle' | 'pre-creating' | 'submitting' | 'error'
+  >('idle');
+  const [submitMeterMachineName, setSubmitMeterMachineName] = useState<
+    string | null
+  >(null);
+  const [submitMeterError, setSubmitMeterError] = useState<string | null>(null);
   const [mode, setMode] = useState<WizardMode>('capture');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -876,13 +990,81 @@ export default function CollectionReportV2SessionDetail({
   };
 
   const handleSubmit = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !session) return;
+
     setSubmitting(true);
+    setSubmitPhase('idle');
+    setSubmitMeterMachineName(null);
+    setSubmitMeterError(null);
+
     try {
+      // ============================================================================
+      // Phase 1: Pre-create meter documents for offline/non-SMIB machines.
+      // The variation check is not part of V2 — this is purely for progress display
+      // and to ensure meter docs exist before the submit endpoint fires.
+      // The submit endpoint's deleteMany+recreate still runs to handle re-submits.
+      // ============================================================================
+      const offlineMachines = (session.machines ?? []).filter(
+        m => !m.hasRelay || m.isSupplemental
+      );
+
+      if (offlineMachines.length > 0) {
+        setSubmitPhase('pre-creating');
+
+        for (const machine of offlineMachines) {
+          const displayName = machine.machineCustomName || machine.machineName || 'Machine';
+          setSubmitMeterMachineName(displayName);
+
+          const metersIn = machine.manualMetersIn ?? machine.sasMetersIn ?? 0;
+          const metersOut = machine.manualMetersOut ?? machine.sasMetersOut ?? 0;
+          const prevMetersIn = machine.prevManualMetersIn ?? machine.prevsasMetersIn ?? 0;
+          const prevMetersOut = machine.prevManualMetersOut ?? machine.prevsasMetersOut ?? 0;
+
+          try {
+            const response = await axios.post(
+              '/api/collection-reports/pre-create-meters',
+              {
+                machineId: machine.machineId,
+                locationId: session.locationId,
+                sessionId,
+                metersIn,
+                metersOut,
+                prevMetersIn,
+                prevMetersOut,
+                ramClear: machine.ramClear,
+                ramClearMetersIn: machine.ramClearMetersIn,
+                ramClearMetersOut: machine.ramClearMetersOut,
+                sasEndTime: machine.sasEndTime ?? session.sessionEndTime,
+              }
+            );
+
+            if (!response.data.success && !response.data.skipped) {
+              setSubmitMeterError(
+                response.data.error ?? 'Meter creation failed'
+              );
+              setSubmitPhase('error');
+              return;
+            }
+          } catch (err) {
+            setSubmitMeterError(
+              err instanceof Error ? err.message : 'Failed to create meter'
+            );
+            setSubmitPhase('error');
+            return;
+          }
+        }
+      }
+
+      // ============================================================================
+      // Phase 2: Submit the session
       // Images are already stored as tempImageData in MongoDB from each save.
       // The submit endpoint automatically discovers and uploads them to Drive.
+      // ============================================================================
+      setSubmitPhase('submitting');
+      setSubmitMeterMachineName(null);
+
       const payload: Record<string, unknown> = {};
-      if (session?.sessionStartTime) {
+      if (session.sessionStartTime) {
         payload.sessionStartTime = session.sessionStartTime;
       }
 
@@ -896,7 +1078,11 @@ export default function CollectionReportV2SessionDetail({
       // the auto-enter-edit-mode effect and bounce the user back to machine 1.
       handleBackToReports();
     } catch (err) {
-      console.error('Failed to submit session:', err);
+      console.error('[handleSubmit] Failed to submit session:', err);
+      setSubmitMeterError(
+        err instanceof Error ? err.message : 'Submission failed'
+      );
+      setSubmitPhase('error');
     } finally {
       setSubmitting(false);
     }
@@ -993,21 +1179,33 @@ export default function CollectionReportV2SessionDetail({
 
   if (mode === 'review') {
     return (
-      <ReviewView
-        session={session}
-        submitting={submitting}
-        onBackToReports={handleBackToReports}
-        onBack={() => {
-          setCurrentIndex(0);
-          setMode('capture');
-        }}
-        onSubmit={() => handleSubmit()}
-        onEditMachine={index => {
-          setCurrentIndex(index);
-          setMode('capture');
-        }}
-        router={router}
-      />
+      <>
+        <ReviewView
+          session={session}
+          submitting={submitting}
+          onBackToReports={handleBackToReports}
+          onBack={() => {
+            setCurrentIndex(0);
+            setMode('capture');
+          }}
+          onSubmit={() => handleSubmit()}
+          onEditMachine={index => {
+            setCurrentIndex(index);
+            setMode('capture');
+          }}
+          router={router}
+        />
+        <SubmitProgressOverlay
+          submitPhase={submitPhase}
+          machineName={submitMeterMachineName}
+          error={submitMeterError}
+          onClose={() => {
+            setSubmitPhase('idle');
+            setSubmitMeterError(null);
+            setSubmitting(false);
+          }}
+        />
+      </>
     );
   }
 
@@ -1018,17 +1216,29 @@ export default function CollectionReportV2SessionDetail({
   if (!currentMachine) {
     // All machines done, switch to review
     return (
-      <ReviewView
-        session={session}
-        submitting={submitting}
-        onBackToReports={handleBackToReports}
-        onSubmit={() => handleSubmit()}
-        onEditMachine={index => {
-          setCurrentIndex(index);
-          setMode('capture');
-        }}
-        router={router}
-      />
+      <>
+        <ReviewView
+          session={session}
+          submitting={submitting}
+          onBackToReports={handleBackToReports}
+          onSubmit={() => handleSubmit()}
+          onEditMachine={index => {
+            setCurrentIndex(index);
+            setMode('capture');
+          }}
+          router={router}
+        />
+        <SubmitProgressOverlay
+          submitPhase={submitPhase}
+          machineName={submitMeterMachineName}
+          error={submitMeterError}
+          onClose={() => {
+            setSubmitPhase('idle');
+            setSubmitMeterError(null);
+            setSubmitting(false);
+          }}
+        />
+      </>
     );
   }
 

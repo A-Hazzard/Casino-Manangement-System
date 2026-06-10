@@ -891,9 +891,15 @@ function aggregateMetricsWithConversion(
         nativeCurrency
       );
 
-      const convertedDrop = convertFromUSD(dropUSD, displayCurrency);
-      const convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
-      const convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      const convertedDrop = nativeCurrency !== displayCurrency
+        ? Math.round(convertFromUSD(dropUSD, displayCurrency) * 100) / 100
+        : Number(metric.drop) || 0;
+      const convertedCancelled = nativeCurrency !== displayCurrency
+        ? Math.round(convertFromUSD(cancelledUSD, displayCurrency) * 100) / 100
+        : Number(metric.totalCancelledCredits) || 0;
+      const convertedJackpot = nativeCurrency !== displayCurrency
+        ? Math.round(convertFromUSD(jackpotUSD, displayCurrency) * 100) / 100
+        : Number(metric.jackpot) || 0;
 
       const scaledDrop = convertedDrop * moneyInScale;
       const scaledCancelled = convertedCancelled * moneyOutScale;

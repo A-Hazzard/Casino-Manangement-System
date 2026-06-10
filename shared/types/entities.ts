@@ -493,6 +493,7 @@ export type MetersData = {
   drop?: number;
   meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'OTHER';
   isRamClear?: boolean;
+  isSupplemental?: boolean;
   readAt?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;

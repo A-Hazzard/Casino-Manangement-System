@@ -127,8 +127,16 @@ const CabinetsDetailsUnifiedBillValidator = ({
         currentDateRange?.from &&
         currentDateRange?.to
       ) {
-        params.append('startDate', currentDateRange.from.toISOString());
-        params.append('endDate', currentDateRange.to.toISOString());
+        const startDate =
+          currentDateRange.from instanceof Date
+            ? currentDateRange.from
+            : new Date(currentDateRange.from);
+        const endDate =
+          currentDateRange.to instanceof Date
+            ? currentDateRange.to
+            : new Date(currentDateRange.to);
+        params.append('startDate', startDate.toISOString());
+        params.append('endDate', endDate.toISOString());
       }
 
       try {

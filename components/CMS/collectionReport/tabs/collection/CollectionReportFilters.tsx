@@ -60,6 +60,8 @@ export default function CollectionReportFilters({
   onSearchSubmit,
   showUncollectedOnly,
   onShowUncollectedOnlyChange,
+  showArchived,
+  onShowArchivedChange,
   selectedFilters,
   onFilterChange,
   onClearFilters,
@@ -70,6 +72,7 @@ export default function CollectionReportFilters({
   console.warn(`  - locations count: ${locations.length}`);
   console.warn(`  - search: "${search}"`);
   console.warn(`  - showUncollectedOnly: ${showUncollectedOnly}`);
+  console.warn(`  - showArchived: ${showArchived}`);
 
   // ============================================================================
   // State & Hooks
@@ -77,6 +80,7 @@ export default function CollectionReportFilters({
   const filterRef = useRef<HTMLDivElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
+  const archivedRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
   // Effects
@@ -203,26 +207,61 @@ export default function CollectionReportFilters({
               </span>
             </label>
           </div>
+
+          {/* View Archived Checkbox - far right */}
+          <div ref={archivedRef} className="flex items-center">
+            <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
+              <Checkbox
+                id="view-archived"
+                checked={showArchived}
+                onCheckedChange={checked =>
+                  onShowArchivedChange(!!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <span className="whitespace-nowrap text-sm font-medium">
+                VIEW ARCHIVED
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
       {/* Bottom row - Checkboxes and Clear Button (for mobile and tablet) */}
       <div className="flex flex-col gap-y-3 lg:hidden">
-        {/* Uncollected Only Checkbox - only visible on mobile and tablet */}
-        <div ref={checkboxRef} className="flex w-full items-center">
-          <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
-            <Checkbox
-              id="uncollected-only-mobile"
-              checked={showUncollectedOnly}
-              onCheckedChange={checked =>
-                onShowUncollectedOnlyChange(!!checked)
-              }
-              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
-            />
-            <span className="whitespace-nowrap text-sm font-medium">
-              SHOW UNCOLLECTED ONLY
-            </span>
-          </label>
+        {/* Uncollected Only + View Archived Checkboxes - only visible on mobile and tablet */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div ref={checkboxRef} className="flex items-center">
+            <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
+              <Checkbox
+                id="uncollected-only-mobile"
+                checked={showUncollectedOnly}
+                onCheckedChange={checked =>
+                  onShowUncollectedOnlyChange(!!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <span className="whitespace-nowrap text-sm font-medium">
+                SHOW UNCOLLECTED ONLY
+              </span>
+            </label>
+          </div>
+
+          <div ref={archivedRef} className="flex items-center">
+            <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
+              <Checkbox
+                id="view-archived-mobile"
+                checked={showArchived}
+                onCheckedChange={checked =>
+                  onShowArchivedChange(!!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <span className="whitespace-nowrap text-sm font-medium">
+                VIEW ARCHIVED
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* SMIB Filter Checkboxes - Better layout for md screens */}

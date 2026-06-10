@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useMemo, useState, useEffect, ChangeEvent } from 'react';
 import { isWithinInterval, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { toast } from 'sonner';
 
 // === Types ===
 type MuiDateCalendarProps = {
@@ -296,6 +297,24 @@ export function MuiDateCalendar({
   // ============================================================================
   // Computed
   // ============================================================================
+  const isInvalidRange = useMemo(() => {
+    const start = new Date(fromDate);
+    if (showTime) {
+      start.setHours(fromTime.hours, fromTime.minutes, 0, 0);
+    } else {
+      start.setHours(0, 0, 0, 0);
+    }
+
+    const end = new Date(mode === 'range' ? toDate : fromDate);
+    if (showTime) {
+      end.setHours(toTime.hours, toTime.minutes, 59, 999);
+    } else {
+      end.setHours(23, 59, 59, 999);
+    }
+
+    return start > end;
+  }, [fromDate, toDate, fromTime, toTime, showTime, mode]);
+
   const theme = useMemo(
     () =>
       createTheme({
@@ -312,6 +331,11 @@ export function MuiDateCalendar({
   // Handlers
   // ============================================================================
   const handleApply = () => {
+    if (isInvalidRange) {
+      toast.warning('Start time cannot be later than end time. Please adjust your date range.');
+      return;
+    }
+
     const finalStart = new Date(fromDate);
     if (showTime) {
       finalStart.setHours(fromTime.hours, fromTime.minutes, 0, 0);
@@ -502,7 +526,10 @@ export function MuiDateCalendar({
                   textTransform: 'none',
                   fontWeight: 800,
                   fontSize: '1rem',
-                  boxShadow: '0 4px 14px rgba(26, 115, 232, 0.4)',
+                  boxShadow: isInvalidRange ? 'none' : '0 4px 14px rgba(26, 115, 232, 0.4)',
+                  opacity: isInvalidRange ? 0.5 : 1,
+                  cursor: isInvalidRange ? 'not-allowed' : 'pointer',
+                  '&.Mui-disabled': { opacity: 1 },
                 }}
               >
                 {buttonLabel}
@@ -528,6 +555,9 @@ export function MuiDateCalendar({
                 textTransform: 'none',
                 fontWeight: 800,
                 fontSize: '1.1rem',
+                opacity: isInvalidRange ? 0.5 : 1,
+                cursor: isInvalidRange ? 'not-allowed' : 'pointer',
+                '&.Mui-disabled': { opacity: 1 },
               }}
             >
               {buttonLabel}

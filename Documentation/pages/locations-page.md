@@ -1,7 +1,7 @@
 # Locations Page Implementation (`/locations`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** May 7, 2026  
+**Last Updated:** June 5, 2026  
 **Version:** 4.4.0
 
 ---
@@ -24,7 +24,7 @@ Summary of the total financial and operational footprint across the selected sco
 | **Gross** | `gross` | `GET /api/locationAggregation` |
 
 - **Filters**: Responsive to `timePeriod`, `licencee`, and `search` (Location Name).
-- **Implementation**: `fetchDashboardTotals` helper within the `useLocationsPageData` hook.
+- **Implementation**: `useLocationsPageData` hook.
 
 ### 📋 Locations Inventory Table
 
@@ -48,7 +48,7 @@ Real-time operational health of the property fleet.
 | **Total Members** | `membershipCount` | `GET /api/locations/membership-count` |
 
 - **Filtering**: Clicking the "Offline" pill automatically filters the table to show only properties with reported hardware issues.
-- **Implementation**: `CabinetStatusWidget` component.
+- **Implementation**: Rendered inline within the Locations page content component.
 
 ### 🗺️ Interactive Property Map
 
@@ -89,7 +89,7 @@ Geospatial visualization of the property portfolio.
 
 ## 6. Technical UI Standards
 
-- **Skeleton UX**: `LocationsTableSkeleton` and `StatsSkeleton` are used during initial data hydration.
+- **Skeleton UX**: Skeletons from `components/shared/ui/skeletons/LocationsSkeletons.tsx` are used during initial data hydration (e.g. `LocationsSASEvaluationSkeleton`, `LocationsRevenueAnalysisSkeleton`).
 - **Debounced Search**: Search input has a 300ms debounce to prevent API thrashing.
 - **Responsive Design**: The map is hidden on mobile devices, replaced by a "List View" optimized for one-handed operation.
 

@@ -29,6 +29,7 @@ import {
 } from '@/components/shared/ui/dateRangePicker';
 import { Label } from '@/components/shared/ui/label';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 // ============================================================================
 // Types & Helper Components
@@ -322,6 +323,40 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   );
 
   // ============================================================================
+  // Computed
+  // ============================================================================
+  const isInvalidRange = useMemo(() => {
+    if (!value?.from || !value?.to) return false;
+
+    const start = new Date(value.from);
+    const end = new Date(value.to);
+
+    if (enableTimeInputs) {
+      const [startH, startM] = startTime.split(':').map(Number);
+      const [endH, endM] = endTime.split(':').map(Number);
+      start.setHours(startH, startM, 0, 0);
+      end.setHours(endH, endM, 59, 999);
+    }
+
+    return start > end;
+  }, [value?.from, value?.to, startTime, endTime, enableTimeInputs]);
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+  const handleGo = useCallback(() => {
+    if (!value?.from || !value?.to) {
+      toast.warning('Please select both start and end dates.');
+      return;
+    }
+    if (isInvalidRange) {
+      toast.warning('Start time cannot be later than end time. Please adjust your date range.');
+      return;
+    }
+    onGo();
+  }, [value?.from, value?.to, isInvalidRange, onGo]);
+
+  // ============================================================================
   // Render
   // ============================================================================
   return (
@@ -376,9 +411,12 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
         <div className="flex w-full items-center justify-center gap-2">
           {!hideGoButton && (
             <button
-              className="rounded-lg bg-lighterBlueHighlight px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              onClick={onGo}
-              disabled={!value?.from || !value?.to}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity ${
+                !value?.from || !value?.to || isInvalidRange
+                  ? 'cursor-not-allowed bg-lighterBlueHighlight opacity-50'
+                  : 'bg-lighterBlueHighlight hover:bg-lighterBlueHighlight/90'
+              }`}
+              onClick={handleGo}
             >
               {goLabel}
             </button>

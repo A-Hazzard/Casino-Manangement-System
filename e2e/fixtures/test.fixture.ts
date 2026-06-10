@@ -32,6 +32,8 @@ import { LocationDetailPage } from '../pages/LocationDetailPage';
 import { CabinetsPage } from '../pages/CabinetsPage';
 import { CabinetDetailPage } from '../pages/CabinetDetailPage';
 import { AdministrationPage } from '../pages/AdministrationPage';
+import { CollectionReportPage } from '../pages/CollectionReportPage';
+import { CollectionReportDetailPage } from '../pages/CollectionReportDetailPage';
 
 // ─── Fixture type definitions ─────────────────────────────────────────────────
 
@@ -43,6 +45,8 @@ type PageObjectFixtures = {
   cabinetsPage: CabinetsPage;
   cabinetDetailPage: CabinetDetailPage;
   administrationPage: AdministrationPage;
+  collectionReportPage: CollectionReportPage;
+  collectionReportDetailPage: CollectionReportDetailPage;
 };
 
 // ─── Extended test object ────────────────────────────────────────────────────
@@ -74,6 +78,14 @@ export const test = base.extend<PageObjectFixtures>({
 
   administrationPage: async ({ page }, use) => {
     await use(new AdministrationPage(page));
+  },
+
+  collectionReportPage: async ({ page }, use) => {
+    await use(new CollectionReportPage(page));
+  },
+
+  collectionReportDetailPage: async ({ page }, use) => {
+    await use(new CollectionReportDetailPage(page));
   },
 });
 

@@ -1,8 +1,8 @@
-# Administration & Core IAM API (`/api/administration`)
+# Administration & Core IAM API (`/api/users` & `/api/licencees`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -12,7 +12,24 @@ The Administration API handles the platform's multi-tenant hierarchy. It manages
 
 ---
 
-## 2. Core Endpoints
+## 2. Route Map
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/users` | Personnel directory with RBAC scoping |
+| POST | `/api/users` | Create a new user |
+| PUT | `/api/users` | Update an existing user |
+| DELETE | `/api/users` | Soft-delete a user |
+| GET | `/api/users/[id]` | Get user by ID |
+| GET | `/api/users/counts` | Role/status counts |
+| GET | `/api/users/check-username` | Validate username availability |
+| GET | `/api/users/check-password` | Validate password strength |
+| GET | `/api/users/[id]/test-assignments` | Get test role assignments |
+| GET | `/api/licencees` | Corporate entity profiles |
+
+---
+
+## 3. Core Endpoints
 
 ### 👥 `GET /api/users`
 
@@ -108,10 +125,22 @@ Returns the system-wide mutation audit stream.
 
 ---
 
-## 3. Role Hierarchy (RBAC)
+## 4. Role Hierarchy (RBAC)
 
-The system enforces a strict vertical hierarchy:
-`Developer > Admin > Manager > Location Admin > Vault Manager > Cashier > User`
+The system enforces a strict vertical hierarchy (10 roles):
+
+| Rank | Role | Typical Scope |
+|------|------|---------------|
+| 1 | Developer | Full system access |
+| 2 | Owner | Full licencee access |
+| 3 | Admin | Full licencee access |
+| 4 | Manager | All locations under assigned licencees |
+| 5 | Location Admin | Assigned locations only |
+| 6 | Vault Manager | Cash desk operations |
+| 7 | Cashier | Cashier shift operations |
+| 8 | Technician | Machine maintenance |
+| 9 | Collector | Collection data entry |
+| 10 | Reviewer | Read-only (financially scaled) |
 
 - You **cannot** create, edit, or assign a role ranked above your own.
 - Attempts return `403 Forbidden`.

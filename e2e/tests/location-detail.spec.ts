@@ -21,11 +21,18 @@ import {
   MOCK_MACHINE_CREATE_SUCCESS,
   MOCK_MACHINE_UPDATE_SUCCESS,
   MOCK_MACHINE_DELETE_SUCCESS,
+  MOCK_LOCATIONS_LIST,
   MOCK_LICENCEES_LIST,
+  MOCK_LOCATION_MEMBERS,
 } from '../mocks/locations.mocks';
-import { MOCK_MANUFACTURERS } from '../mocks/cabinets.mocks';
+import {
+  MOCK_MANUFACTURERS,
+  MOCK_CABINET_DETAIL,
+  MOCK_METER_HISTORY,
+} from '../mocks/cabinets.mocks';
 import {
   MOCK_CURRENT_USER,
+  MOCK_USER_PAYLOAD,
   MOCK_USER_TECHNICIAN,
   MOCK_USER_MANAGER,
   MOCK_USER_LOCATION_ADMIN,
@@ -41,21 +48,105 @@ const LOCATION_ID = 'loc_001';
 
 async function mockLocationDetailAPIs(
   page: Page,
-  machinesPayload = MOCK_LOCATION_MACHINES
+  machinesPayload = MOCK_LOCATION_MACHINES,
+  userPayload = MOCK_USER_PAYLOAD
 ) {
+  // Seed Zustand store so ProtectedRoute has the user immediately
+  const userStoreJSON = JSON.stringify({
+    state: {
+      user: {
+        _id: userPayload._id,
+        username: userPayload.username,
+        emailAddress: userPayload.emailAddress,
+        profile: userPayload.profile,
+        roles: userPayload.roles,
+        isEnabled: userPayload.isEnabled,
+        assignedLocations: userPayload.assignedLocations,
+        assignedLicencees: userPayload.assignedLicencees,
+      },
+      isInitialized: true,
+      hasActiveVaultShift: false,
+      isVaultReconciled: false,
+      isStaleShift: false,
+    },
+    version: 0,
+  });
+  const activeLicencee = userPayload.assignedLicencees[0] ?? '';
+  const dashboardStoreJSON = JSON.stringify({
+    state: {
+      selectedLicencee: activeLicencee,
+      activeMetricsFilter: 'Today',
+      displayCurrency: 'TTD',
+      gameDayOffset: 8,
+      customDateRange: {
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+      },
+    },
+    version: 0,
+  });
+  await page.addInitScript(`
+    localStorage.setItem('user-auth-store', ${JSON.stringify(userStoreJSON)});
+    localStorage.setItem('dashboard-store', ${JSON.stringify(dashboardStoreJSON)});
+  `);
+
   await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  // Fetching the same location but potentially with nameOnly or other params
+  await page.route('**/api/auth/token**', route =>
+    route.fulfill({ status: 200, json: { userId: userPayload._id } })
+  );
+  await page.route(`**/api/users/${userPayload._id}**`, route =>
+    route.fulfill({ status: 200, json: { success: true, user: MOCK_CURRENT_USER.user } })
+  );
+  // Location detail
   await page.route(`**/api/locations/${LOCATION_ID}**`, route =>
     route.fulfill({ status: 200, json: MOCK_LOCATION_DETAIL })
   );
-  // Machine list for this location
-  await page.route(`**/api/cabinets?locationId=${LOCATION_ID}**`, route =>
+  // Location list (used by location dropdown)
+  await page.route('**/api/locations?**', route =>
+    route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST })
+  );
+  await page.route('**/api/locations', route =>
+    route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST })
+  );
+  // Single cabinet detail — Edit modal calls fetchCabinetById → GET /api/cabinets/{id}?timePeriod=...
+  // Added BEFORE aggregation/status so those more-specific routes (added after) take priority.
+  await page.route('**/api/cabinets/mach_001**', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, json: { success: true, data: (machinesPayload.data as Array<unknown>)[0] } });
+    } else {
+      await route.fallback();
+    }
+  });
+  await page.route('**/api/cabinets/mach_002**', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, json: { success: true, data: (machinesPayload.data as Array<unknown>)[1] } });
+    } else {
+      await route.fallback();
+    }
+  });
+  // Machine list — component calls /api/cabinets/aggregation
+  await page.route('**/api/cabinets/aggregation**', route =>
     route.fulfill({ status: 200, json: machinesPayload })
   );
-  await page.route(`**/api/cabinets**`, route =>
-    route.fulfill({ status: 200, json: machinesPayload })
+  // Machine status counts
+  await page.route('**/api/cabinets/status**', route =>
+    route.fulfill({ status: 200, json: { success: true, data: { totalMachines: 2, onlineMachines: 1, offlineMachines: 1 } } })
+  );
+  // Location trends (chart data)
+  await page.route('**/api/analytics/location-trends**', route =>
+    route.fulfill({ status: 200, json: { success: true, data: [] } })
+  );
+  // Membership count — real route returns { memberCount: N } at top level (no data wrapper)
+  await page.route('**/api/members/count**', route =>
+    route.fulfill({ status: 200, json: { memberCount: 5 } })
+  );
+  await page.route('**/api/feedback**', route =>
+    route.fulfill({ status: 200, json: { success: true, data: { feedback: [] } } })
+  );
+  await page.route('**/api/install/status**', route =>
+    route.fulfill({ status: 200, json: { success: true, data: { installed: true } } })
   );
   await page.route('**/api/manufacturers**', route =>
     route.fulfill({ status: 200, json: MOCK_MANUFACTURERS })
@@ -85,7 +176,9 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Assert the location name is shown in the page heading', async () => {
-      await expect(page.getByText('Grand Casino North')).toBeVisible();
+      // The location name lives in a flex/truncate heading; assert on body text
+      // rather than element visibility to avoid overflow-hidden false negatives.
+      await expect(page.locator('body')).toContainText('Grand Casino North');
     });
   });
 
@@ -139,7 +232,7 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('After creation, return updated machine list', async () => {
-      await page.route('**/api/cabinets**', route =>
+      await page.route('**/api/cabinets/aggregation**', route =>
         route.fulfill({ status: 200, json: MOCK_LOCATION_MACHINES_AFTER_ADD })
       );
     });
@@ -157,7 +250,6 @@ test.describe('Location Detail', () => {
         serialNumber: 'SN-NEW001',
         game: 'Golden Bells',
         gameType: 'slot',
-        relayId: '3',
         manufacturer: 'IGT',
         customName: 'Test Machine',
       });
@@ -217,42 +309,33 @@ test.describe('Location Detail', () => {
       await mockLocationDetailAPIs(page);
     });
 
-    await test.step('Intercept PUT machine update endpoint', async () => {
-      await page.route('**/api/cabinets/**', async route => {
-        if (route.request().method() === 'PUT') {
-          await route.fulfill({
-            status: 200,
-            json: MOCK_MACHINE_UPDATE_SUCCESS,
-          });
-        } else {
-          await route.continue();
-        }
-      });
-    });
-
-    await test.step('After edit, return updated machine list', async () => {
-      await page.route('**/api/cabinets**', route =>
-        route.fulfill({
-          status: 200,
-          json: {
-            ...MOCK_LOCATION_MACHINES,
-            data: {
-              ...MOCK_LOCATION_MACHINES.data,
-              machines: [
-                {
-                  ...MOCK_LOCATION_MACHINES.data.machines[0],
-                  custom: { name: 'Lucky Dragon (Updated)' },
-                },
-                MOCK_LOCATION_MACHINES.data.machines[1],
-              ],
-            },
-          },
-        })
-      );
-    });
-
+    // Navigate BEFORE registering the PUT mock so the initial page load uses the
+    // original aggregation data (Lucky Dragon), not the post-edit data.
     await test.step('Navigate to location detail', async () => {
       await locationDetailPage.goto(LOCATION_ID);
+    });
+
+    await test.step('Intercept PUT and queue updated list after save', async () => {
+      const editedFirst = {
+        ...(MOCK_LOCATION_MACHINES.data as Array<object>)[0],
+        custom: { name: 'Lucky Dragon (Updated)' },
+      };
+      const secondOne = (MOCK_LOCATION_MACHINES.data as Array<object>)[1];
+      await page.route('**/api/cabinets/**', async route => {
+        if (route.request().method() === 'PUT') {
+          // Upgrade the aggregation mock right before responding so the component
+          // gets updated data on the refresh that follows the save.
+          await page.route('**/api/cabinets/aggregation**', r =>
+            r.fulfill({
+              status: 200,
+              json: { ...MOCK_LOCATION_MACHINES, data: [editedFirst, secondOne] },
+            })
+          );
+          await route.fulfill({ status: 200, json: MOCK_MACHINE_UPDATE_SUCCESS });
+        } else {
+          await route.fallback();
+        }
+      });
     });
 
     await test.step('Click Edit on the first machine row', async () => {
@@ -288,21 +371,25 @@ test.describe('Location Detail', () => {
       await mockLocationDetailAPIs(page);
     });
 
+    // Navigate BEFORE registering the DELETE mock so the initial page load uses
+    // only the clean mocks from mockLocationDetailAPIs.
+    await test.step('Navigate to location detail', async () => {
+      await locationDetailPage.goto(LOCATION_ID);
+    });
+
     await test.step('Intercept DELETE machine endpoint', async () => {
-      await page.route('**/api/cabinets/**', async route => {
+      // Pattern WITHOUT trailing / so it also matches DELETE /api/cabinets?id=mach_001
+      await page.route('**/api/cabinets**', async route => {
         if (route.request().method() === 'DELETE') {
           await route.fulfill({
             status: 200,
             json: MOCK_MACHINE_DELETE_SUCCESS,
           });
         } else {
-          await route.continue();
+          // fallback (not continue) so other mock handlers still apply
+          await route.fallback();
         }
       });
-    });
-
-    await test.step('Navigate to location detail', async () => {
-      await locationDetailPage.goto(LOCATION_ID);
     });
 
     await test.step('Click Delete on the first row (SN-10001)', async () => {
@@ -314,15 +401,14 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Confirm deletion and update the mocked machine list', async () => {
-      await page.route('**/api/cabinets**', route =>
+      const remainingOne = (MOCK_LOCATION_MACHINES.data as Array<object>)[1];
+      await page.route('**/api/cabinets/aggregation**', route =>
         route.fulfill({
           status: 200,
           json: {
             ...MOCK_LOCATION_MACHINES,
-            data: {
-              machines: [MOCK_LOCATION_MACHINES.data.machines[1]],
-              pagination: { page: 1, limit: 10, totalCount: 1, totalPages: 1 },
-            },
+            data: [remainingOne],
+            pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
           },
         })
       );
@@ -344,17 +430,22 @@ test.describe('Location Detail', () => {
   }) => {
     await test.step('Mock APIs — location has membershipEnabled: true', async () => {
       await mockLocationDetailAPIs(page);
-      // Members endpoint
-      await page.route(`**/api/members**`, route =>
-        route.fulfill({
-          status: 200,
-          json: {
-            success: true,
-            data: { members: [], pagination: { page: 1, totalCount: 0 } },
-            timestamp: new Date().toISOString(),
-          },
-        })
-      );
+      // Members list endpoint — use fallback for /count so the count mock in
+      // mockLocationDetailAPIs still applies (avoids LIFO priority override).
+      await page.route(`**/api/members**`, async route => {
+        if (route.request().url().includes('/count')) {
+          await route.fallback();
+        } else {
+          await route.fulfill({
+            status: 200,
+            json: {
+              success: true,
+              data: { members: [], pagination: { page: 1, totalCount: 0 } },
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+      });
     });
 
     await test.step('Navigate to location detail', async () => {
@@ -375,30 +466,98 @@ test.describe('Location Detail', () => {
     });
   });
 
-  test('8. Meter data section is visible when a machine row is expanded or navigated to', async ({
+  test('7b. Members tab lists actual members for a membership location', async ({
     page,
     locationDetailPage,
   }) => {
-    await test.step('Mock APIs with machine data including meter readings', async () => {
+    await test.step('Mock APIs — membership location WITH a member in the list', async () => {
       await mockLocationDetailAPIs(page);
+      // Return a populated members list; keep the /count mock via fallback.
+      await page.route('**/api/members**', async route => {
+        if (route.request().url().includes('/count')) {
+          await route.fallback();
+        } else {
+          await route.fulfill({ status: 200, json: MOCK_LOCATION_MEMBERS });
+        }
+      });
     });
 
     await test.step('Navigate to location detail', async () => {
       await locationDetailPage.goto(LOCATION_ID);
     });
 
-    await test.step('Click the View icon on the first machine to expand / navigate', async () => {
-      // Either expands inline or navigates to /cabinets/[id]; handle both
-      const viewButton = locationDetailPage.machineRows
-        .nth(0)
-        .locator('[aria-label*="view" i], [aria-label*="eye" i], a');
-      await viewButton.click();
+    await test.step('Switch to the Members tab', async () => {
+      await locationDetailPage.expectMembersTabVisible();
+      await locationDetailPage.switchTab('Members');
     });
 
-    await test.step('Assert meter data is displayed on the resulting view', async () => {
-      // Works for both inline expand and cabinet-detail navigation
+    await test.step('Assert the mocked member is shown in the members view', async () => {
+      // The name renders in BOTH a mobile card (<h3>, hidden at desktop, first in DOM)
+      // and the desktop table (<div>) — filter to the visible copy.
       await expect(
-        page.getByText(/SAS Meter|Meter Data|Coin In/i).first()
+        page
+          .getByText('John Player', { exact: false })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step('Assert the members sub-navigation (Summary Report) is present', async () => {
+      await expect(
+        page.getByText(/Summary Report/i).first()
+      ).toBeVisible({ timeout: 8_000 });
+    });
+
+    await test.step('Assert the member total count reflects the mocked data', async () => {
+      await expect(
+        page.getByText(/Members List For/i).first()
+      ).toBeVisible({ timeout: 8_000 });
+    });
+  });
+
+  test('8. Meter data section is visible when a machine row is expanded or navigated to', async ({
+    page,
+    locationDetailPage,
+  }) => {
+    await test.step('Mock location detail APIs', async () => {
+      await mockLocationDetailAPIs(page);
+      // Meters and analytics endpoints needed by the cabinet detail page
+      // (mach_001 single GET is already covered by mockLocationDetailAPIs)
+      await page.route('**/api/meters**', route =>
+        route.fulfill({ status: 200, json: MOCK_METER_HISTORY })
+      );
+      await page.route('**/api/analytics/**', route =>
+        route.fulfill({ status: 200, json: { success: true, data: [] } })
+      );
+    });
+
+    await test.step('Navigate to location detail', async () => {
+      await locationDetailPage.goto(LOCATION_ID);
+    });
+
+    await test.step('Add cabinet-detail-specific mocks now that the location page is loaded', async () => {
+      // Broad cabinet mock only takes effect after navigation away from the location page.
+      // Registering it here means it can't interfere with the aggregation request above.
+      await page.route('**/api/cabinets/**', route =>
+        route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
+      );
+    });
+
+    await test.step('Click the View (Eye) link on the first machine row', async () => {
+      // The Eye button is a <Link title="View details"> that navigates to /cabinets/[id]
+      const viewLink = locationDetailPage.machineRows
+        .nth(0)
+        .locator('a[title="View details"]');
+      await viewLink.click();
+      // Wait for the cabinet detail page to load
+      await page.waitForURL(/\/cabinets\//, { timeout: 15_000 });
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Assert accounting data is shown on the cabinet detail page', async () => {
+      // The default Movements tab shows Money In / Money Out / Gross / Jackpot headings
+      await expect(
+        page.getByText(/Money In|Accounting Details|Movements/i).first()
       ).toBeVisible({ timeout: 10_000 });
     });
   });

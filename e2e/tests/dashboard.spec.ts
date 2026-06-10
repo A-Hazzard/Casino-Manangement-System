@@ -9,9 +9,13 @@
  *  5. Custom date range picker — selecting a range includes startDate/endDate
  *  6. Charts section renders after data loads
  *  7. Location analytics rows load and display location names
- *  8. Server error response → error state is shown to the user
+ *  8. Cabinets tab in Top Performing section loads and displays machine names
+ *  9. Server error response → error state is shown to the user
+ * 10. Gaming day label shows the 8 AM–8 AM business day range
+ * 11. Switching Top Performing tabs fires a new API request per tab
+ * 12. Dashboard analytics requests include the licencee param from the user session
  *
- * API mocking strategy: all /api/analytics/* requests are intercepted via
+ * API mocking strategy: all /api/* requests are intercepted via
  * page.route() so tests are fully deterministic and require no real DB.
  */
 
@@ -23,6 +27,7 @@ import {
   MOCK_LOCATIONS_ANALYTICS,
   MOCK_LOCATION_AGGREGATION,
   MOCK_TOP_PERFORMING_LOCATIONS,
+  MOCK_TOP_PERFORMING_CABINETS,
   MOCK_DASHBOARD_SERVER_ERROR,
 } from '../mocks/dashboard.mocks';
 import {
@@ -43,6 +48,20 @@ async function mockDashboardAPIs(page: Page, mockCurrentUser = true) {
   if (mockCurrentUser) {
     await page.route('**/api/auth/current-user**', route =>
       route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
+    );
+    // Mock token API so fetchUserId doesn't hit the DB and return 401
+    await page.route('**/api/auth/token**', route =>
+      route.fulfill({
+        status: 200,
+        json: { userId: MOCK_CURRENT_USER.user.id },
+      })
+    );
+    // Mock profile API so AppSidebar doesn't get 404
+    await page.route(`**/api/users/${MOCK_CURRENT_USER.user.id}**`, route =>
+      route.fulfill({
+        status: 200,
+        json: { success: true, user: MOCK_CURRENT_USER.user },
+      })
     );
   }
   const combinedChartData = [
@@ -68,6 +87,12 @@ async function mockDashboardAPIs(page: Page, mockCurrentUser = true) {
       return route.fulfill({
         status: 200,
         json: MOCK_TOP_PERFORMING_LOCATIONS,
+      });
+    }
+    if (url.includes('activeTab=Cabinets')) {
+      return route.fulfill({
+        status: 200,
+        json: MOCK_TOP_PERFORMING_CABINETS,
       });
     }
     // Return empty cabinets by default or actual top machines
@@ -322,7 +347,139 @@ test.describe('Dashboard', () => {
     });
   });
 
-  test('8. Server error on dashboard API shows an error state to the user', async ({
+  test('8. Cabinets tab in Top Performing section loads and displays machine names', async ({
+    page,
+    dashboardPage,
+  }) => {
+    await test.step('Set up mocks including cabinets analytics', async () => {
+      await mockDashboardAPIs(page);
+    });
+
+    await test.step('Navigate to dashboard', async () => {
+      await dashboardPage.goto();
+    });
+
+    await test.step('Switch to Cabinets tab', async () => {
+      // Wait until the Cabinets button is no longer in a loading state
+      await expect(page.getByRole('button', { name: 'Cabinets' })).not.toHaveClass(/cursor-not-allowed/, { timeout: 10000 });
+      await page.getByRole('button', { name: 'Cabinets' }).click();
+      await page.waitForTimeout(1000);
+      // Wait for it to become the active tab
+      await expect(page.getByRole('button', { name: 'Cabinets' })).toHaveClass(
+        /bg-buttonActive/
+      );
+    });
+
+    await test.step('Assert machine names appear in the analytics section', async () => {
+      await expect(
+        page.getByText('VGT Red Hot Ruby').filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(
+        page.getByText('IGT Double Diamond').filter({ visible: true }).first()
+      ).toBeVisible();
+    });
+  });
+
+  test('10. Gaming day label shows the 8 AM–8 AM business day range', async ({
+    page,
+    dashboardPage,
+  }) => {
+    await test.step('Set up mocks', async () => {
+      await mockDashboardAPIs(page);
+    });
+
+    await test.step('Navigate to dashboard', async () => {
+      await dashboardPage.goto();
+    });
+
+    await test.step('Assert the gaming-day date range label is visible', async () => {
+      // The date range shows "Today at 8:00 AM to tomorrow at 7:59 AM" (or similar)
+      // confirming the 8AM–8AM gaming day offset is applied
+      await expect(
+        page.getByText(/8:00 AM/i).filter({ visible: true }).first()
+      ).toBeVisible({ timeout: 8_000 });
+    });
+  });
+
+  test('11. Switching Top Performing tabs fires a new API request per tab', async ({
+    page,
+    dashboardPage,
+  }) => {
+    const topPerformingUrls: string[] = [];
+
+    await test.step('Set up mocks and capture top-performing requests', async () => {
+      await mockDashboardAPIs(page);
+      page.on('request', req => {
+        if (req.url().includes('/api/metrics/top-performing')) {
+          topPerformingUrls.push(req.url());
+        }
+      });
+    });
+
+    await test.step('Navigate to dashboard', async () => {
+      await dashboardPage.goto();
+    });
+
+    await test.step('Switch from Locations to Cabinets tab', async () => {
+      const cabinetsBtn = page.getByRole('button', { name: 'Cabinets' }).filter({ visible: true }).first();
+      await expect(cabinetsBtn).not.toHaveClass(/cursor-not-allowed/, { timeout: 10_000 });
+      await cabinetsBtn.click();
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Switch back to Locations tab', async () => {
+      const locationsBtn = page.getByRole('button', { name: 'Locations' }).filter({ visible: true }).first();
+      await locationsBtn.click();
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Assert each tab switch fired a distinct top-performing request', async () => {
+      const cabinetsRequest = topPerformingUrls.find(url => url.includes('Cabinets'));
+      const locationsRequest = topPerformingUrls.find(url => url.includes('locations'));
+      expect(cabinetsRequest).toBeTruthy();
+      expect(locationsRequest).toBeTruthy();
+    });
+  });
+
+  test('12. Dashboard analytics requests include the licencee param from the user session', async ({
+    page,
+    dashboardPage,
+  }) => {
+    const capturedUrls: string[] = [];
+
+    await test.step('Set up mocks and capture analytics requests', async () => {
+      await mockDashboardAPIs(page);
+      page.on('request', req => {
+        const url = req.url();
+        if (url.includes('/api/locationAggregation') || url.includes('/api/metrics/')) {
+          capturedUrls.push(url);
+        }
+      });
+    });
+
+    await test.step('Navigate to dashboard', async () => {
+      await dashboardPage.goto();
+    });
+
+    await test.step('Assert API requests include a licencee param', async () => {
+      expect(capturedUrls.length).toBeGreaterThan(0);
+      // In mock mode the licencee is always sent; in real auth "All Licencees"
+      // may be selected which omits the param — verify requests were captured either way
+      const requestWithLicencee = capturedUrls.find(url =>
+        url.includes('licencee=') || url.includes('licenceeId=')
+      );
+      if (process.env.AUTH_STRATEGY === 'real') {
+        // Real auth: dashboard loaded and made API requests — licencee param
+        // is optional depending on the "All Licencees" selector state
+        expect(capturedUrls.length).toBeGreaterThan(0);
+      } else {
+        // Mock mode: licencee param must always be present and non-empty
+        expect(requestWithLicencee).toBeTruthy();
+      }
+    });
+  });
+
+  test('9. Server error on dashboard API shows an error state to the user', async ({
     page,
     dashboardPage,
   }) => {

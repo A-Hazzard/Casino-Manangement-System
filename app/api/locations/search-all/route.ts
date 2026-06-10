@@ -796,15 +796,24 @@ export async function GET(request: NextRequest) {
             : 'USD';
 
           // Convert from country's native currency to display currency
+          const r = (v: number) => Math.round(v * 100) / 100;
+          if (nativeCurrency === displayCurrency) {
+            return {
+              ...loc,
+              moneyIn: r(loc.moneyIn),
+              moneyOut: r(loc.moneyOut),
+              gross: r(loc.gross),
+            };
+          }
           const moneyInUSD = convertToUSD(loc.moneyIn, nativeCurrency);
           const moneyOutUSD = convertToUSD(loc.moneyOut, nativeCurrency);
           const grossUSD = convertToUSD(loc.gross, nativeCurrency);
 
           return {
             ...loc,
-            moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
-            moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
-            gross: convertFromUSD(grossUSD, displayCurrency),
+            moneyIn: r(convertFromUSD(moneyInUSD, displayCurrency)),
+            moneyOut: r(convertFromUSD(moneyOutUSD, displayCurrency)),
+            gross: r(convertFromUSD(grossUSD, displayCurrency)),
           };
         }
 
@@ -812,6 +821,16 @@ export async function GET(request: NextRequest) {
           licenceeIdToName.get(licenceeId.toString()) || 'Unknown';
 
         // Convert from licencee's native currency to USD, then to display currency
+        const r2 = (v: number) => Math.round(v * 100) / 100;
+        if (licenceeName === displayCurrency) {
+          return {
+            ...loc,
+            moneyIn: r2(loc.moneyIn),
+            moneyOut: r2(loc.moneyOut),
+            jackpot: r2(loc.jackpot),
+            gross: r2(loc.gross),
+          };
+        }
         const moneyInUSD = convertToUSD(loc.moneyIn, licenceeName);
         const moneyOutUSD = convertToUSD(loc.moneyOut, licenceeName);
         const jackpotUSD = convertToUSD(loc.jackpot, licenceeName);
@@ -819,10 +838,10 @@ export async function GET(request: NextRequest) {
 
         return {
           ...loc,
-          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
-          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
-          jackpot: convertFromUSD(jackpotUSD, displayCurrency),
-          gross: convertFromUSD(grossUSD, displayCurrency),
+          moneyIn: r2(convertFromUSD(moneyInUSD, displayCurrency)),
+          moneyOut: r2(convertFromUSD(moneyOutUSD, displayCurrency)),
+          jackpot: r2(convertFromUSD(jackpotUSD, displayCurrency)),
+          gross: r2(convertFromUSD(grossUSD, displayCurrency)),
         };
       });
     }

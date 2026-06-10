@@ -39,6 +39,7 @@ export default function DateFilters({
   customRangeGoLabel = 'Get Meters',
   hideAllTime,
   showQuarterly = false,
+  enableTimeInputs = false,
   mode = 'auto',
   hideIndicator = false,
   showIndicatorOnly = false,
@@ -257,6 +258,7 @@ export default function DateFilters({
                 date={useDashBoardStore.getState().customDateRange?.startDate}
                 gameDayOffset={gameDayOffset}
                 buttonLabel={customRangeGoLabel}
+                showTime={enableTimeInputs}
                 onSelect={range => {
                   if (range) {
                     setCustomDateRange({
@@ -326,6 +328,7 @@ export default function DateFilters({
                   date={useDashBoardStore.getState().customDateRange?.startDate}
                   gameDayOffset={gameDayOffset}
                   buttonLabel={customRangeGoLabel}
+                  showTime={enableTimeInputs}
                   onSelect={range => {
                     if (range) {
                       setCustomDateRange({

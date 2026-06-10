@@ -632,21 +632,24 @@ export async function GET(request: NextRequest) {
       }
 
       // Convert from native currency to USD, then to display currency
-      convertedChartData = chartData.map(item => {
-        const dropUSD = convertToUSD(item.drop || 0, nativeCurrency);
-        const cancelledUSD = convertToUSD(
-          item.totalCancelledCredits || 0,
-          nativeCurrency
-        );
-        const grossUSD = convertToUSD(item.gross || 0, nativeCurrency);
+      // Skip conversion when currencies match to avoid double-conversion precision loss
+      if (nativeCurrency !== displayCurrency) {
+        convertedChartData = chartData.map(item => {
+          const dropUSD = convertToUSD(item.drop || 0, nativeCurrency);
+          const cancelledUSD = convertToUSD(
+            item.totalCancelledCredits || 0,
+            nativeCurrency
+          );
+          const grossUSD = convertToUSD(item.gross || 0, nativeCurrency);
 
-        return {
-          ...item,
-          drop: convertFromUSD(dropUSD, displayCurrency),
-          totalCancelledCredits: convertFromUSD(cancelledUSD, displayCurrency),
-          gross: convertFromUSD(grossUSD, displayCurrency),
-        };
-      });
+          return {
+            ...item,
+            drop: Math.round(convertFromUSD(dropUSD, displayCurrency) * 100) / 100,
+            totalCancelledCredits: Math.round(convertFromUSD(cancelledUSD, displayCurrency) * 100) / 100,
+            gross: Math.round(convertFromUSD(grossUSD, displayCurrency) * 100) / 100,
+          };
+        });
+      }
     }
 
     // ============================================================================

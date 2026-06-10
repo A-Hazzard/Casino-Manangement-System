@@ -685,10 +685,8 @@ function applyChartsCurrencyConversion(
     const convertedItem = { ...item };
     financialFields.forEach(field => {
       if (typeof item[field] === 'number') {
-        (convertedItem as Record<string, unknown>)[field] = convertFromUSD(
-          item[field] as number,
-          displayCurrency
-        );
+        (convertedItem as Record<string, unknown>)[field] =
+          Math.round(convertFromUSD(item[field] as number, displayCurrency) * 100) / 100;
       }
     });
     return convertedItem;
@@ -1047,11 +1045,18 @@ export async function getTopLocationsAnalytics(
         nativeCurrency
       );
 
+      const r = (v: number) => Math.round(v * 100) / 100;
       return {
         ...location,
-        totalDrop: convertFromUSD(totalDropUSD, displayCurrency),
-        cancelledCredits: convertFromUSD(cancelledCreditsUSD, displayCurrency),
-        gross: convertFromUSD(grossUSD, displayCurrency),
+        totalDrop: nativeCurrency !== displayCurrency
+          ? r(convertFromUSD(totalDropUSD, displayCurrency))
+          : location.totalDrop,
+        cancelledCredits: nativeCurrency !== displayCurrency
+          ? r(convertFromUSD(cancelledCreditsUSD, displayCurrency))
+          : location.cancelledCredits || 0,
+        gross: nativeCurrency !== displayCurrency
+          ? r(convertFromUSD(grossUSD, displayCurrency))
+          : location.gross,
       };
     });
   }

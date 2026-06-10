@@ -82,6 +82,7 @@ export function useCollectionReportPageData() {
   // ==========================================================================
   // Local State - Search & Filter
   // ==========================================================================
+  const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<
     | 'collector'
@@ -340,10 +341,11 @@ export function useCollectionReportPageData() {
             ? filters.selectedLocation
             : filters.selectedLocation !== 'all'
               ? [filters.selectedLocation]
-              : undefined
+              : undefined,
+          showArchived
         );
 
-        if (result) {
+        if (result && !controller.signal.aborted) {
           setAllReports(prev => {
             const existingIds = new Set(prev.map(report => report._id));
             const uniqueNewReports = result.data.filter(
@@ -377,6 +379,7 @@ export function useCollectionReportPageData() {
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
+      showArchived,
     ]
   );
 
@@ -478,6 +481,20 @@ export function useCollectionReportPageData() {
       }
     },
     [searchTerm]
+  );
+
+  const handleShowArchivedChange = useCallback(
+    (value: boolean) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setShowArchived(value);
+      setAllReports([]);
+      setTotalReports(0);
+      setLoadedBatches(new Set());
+      setCurrentPage(0);
+    },
+    []
   );
 
   // ==========================================================================
@@ -606,6 +623,7 @@ export function useCollectionReportPageData() {
     currentPage,
     totalPages,
     totalReports,
+    showArchived,
     searchTerm,
     searchType,
     locations,
@@ -633,6 +651,7 @@ export function useCollectionReportPageData() {
     // Setters
     setSearchTerm: handleSetSearchTerm,
     setSearchType,
+    handleShowArchivedChange,
     setCurrentPage,
     setShowNewCollectionMobile,
     setShowNewCollectionDesktop,

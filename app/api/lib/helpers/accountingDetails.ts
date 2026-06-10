@@ -689,6 +689,7 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
+    deletedAt: report.deletedAt?.toISOString() || null,
     includeJackpot: includeJackpot,
     useNetGross: includeJackpot,
     collector: report.collector,

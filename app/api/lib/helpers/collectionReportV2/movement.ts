@@ -206,11 +206,13 @@ export async function computeMovement(
   }>();
   const hasRelay = !!machine?.relayId;
   // A relay machine is considered offline if lastActivity is >3 days ago.
+  // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
   const isOffline =
     hasRelay &&
     (!machine?.lastActivity ||
       new Date().getTime() - new Date(machine.lastActivity).getTime() >=
-        3 * 24 * 60 * 60 * 1000);
+        OFFLINE_THRESHOLD_MS);
   // Non-relay machines (no relayId) behave like noSMIB: manual meters used.
   const isNoSMIBLocation = !hasRelay;
 

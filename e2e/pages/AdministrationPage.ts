@@ -74,6 +74,14 @@ export class AdministrationPage {
   readonly usernameError: Locator;
   readonly emailError: Locator;
   readonly passwordError: Locator;
+  readonly confirmPasswordError: Locator;
+
+  // ─── Edit Licencee modal — additional fields ───────────────────────────────
+  readonly licenceeNameInput: Locator;
+  readonly licenceeCountrySelect: Locator;
+  readonly licenceeStartDateInput: Locator;
+  readonly licenceeExpiryDateInput: Locator;
+  readonly licenceeDescriptionInput: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -97,9 +105,10 @@ export class AdministrationPage {
     this.tableRows = page.locator('table tbody tr');
 
     // ── Add User modal ──────────────────────────────────────────────────────────
-    this.addUserModal = page.locator('[role="dialog"]').filter({
-      hasText: /add.*user|create.*user|invite.*user/i,
-    });
+    // AdministrationAddUserModal is a custom div.fixed (no role="dialog")
+    this.addUserModal = page.locator('div').filter({
+      has: page.getByRole('heading', { name: /create new user|add new user/i }),
+    }).first();
 
     // Account fields — modals separate "Account" and "Profile" sections
     this.usernameInput = this.addUserModal.locator(
@@ -108,11 +117,13 @@ export class AdministrationPage {
     this.emailInput = this.addUserModal.locator(
       'input[name="email"], input[name="emailAddress"], #email'
     );
+    // id="new-password" in AdministrationAddUserModal
     this.passwordInput = this.addUserModal
-      .locator('input[name="password"], #password')
+      .locator('input[name="password"], #password, #new-password')
       .first();
+    // id="confirm-password" in AdministrationAddUserModal
     this.confirmPasswordInput = this.addUserModal.locator(
-      'input[name="confirmPassword"], #confirmPassword'
+      'input[name="confirmPassword"], #confirmPassword, #confirm-password'
     );
 
     // Profile fields
@@ -143,18 +154,23 @@ export class AdministrationPage {
 
     this.submitCreateButton = this.addUserModal.getByRole('button', {
       name: /create user|add user|save|submit/i,
-    });
+    }).last(); // Use last() since there may be multiple buttons; "Create User" is the primary CTA
     this.cancelCreateButton = this.addUserModal.getByRole('button', {
       name: /cancel/i,
     });
 
     // ── Edit modal ──────────────────────────────────────────────────────────────
-    // The edit modal reuses AdministrationUserModal — distinguish by its open state
+    // AdministrationUserModal is a custom div.fixed.inset-0 (no role="dialog").
+    // Scope to the fixed container so locators don't bleed into the table behind it
+    // (e.g. row "Edit" buttons share the same accessible name as the header toggle).
     this.editModal = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: /edit.*user|update.*user/i });
+      .locator('div.fixed.inset-0')
+      .filter({
+        has: page.getByRole('heading', { name: /edit user|user profile/i }),
+      })
+      .first();
     this.editEmailInput = this.editModal.locator(
-      'input[name="email"], input[name="emailAddress"]'
+      'input[name="email"], input[name="emailAddress"], #email'
     );
     this.editFirstNameInput = this.editModal.locator(
       'input[name="firstName"], #firstName'
@@ -166,20 +182,29 @@ export class AdministrationPage {
       name: /cancel/i,
     });
 
-    // Enabled toggle — may appear inside edit modal or in the table row
+    // Enabled toggle — a shadcn Checkbox (id="isEnabled") rendered inside the
+    // edit user modal once it is in edit mode.
     this.enabledToggle = page
-      .locator(
-        '[role="switch"][aria-label*="enabled" i], input[name="isEnabled"]'
-      )
-      .first();
+      .locator('div')
+      .filter({
+        has: page.getByRole('heading', { name: /edit user|user profile/i }),
+      })
+      .first()
+      .locator('#isEnabled');
 
     // ── Delete dialog ───────────────────────────────────────────────────────────
+    // AdministrationDeleteUserModal is a custom div.fixed.inset-0 (no role="dialog").
+    // Scope to the fixed container so the confirm button doesn't collide with the
+    // table's per-row "Delete" buttons behind the overlay.
     this.deleteDialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: /are you absolutely sure/i });
+      .locator('div.fixed.inset-0')
+      .filter({
+        has: page.getByRole('heading', { name: /delete user/i }),
+      })
+      .first();
     this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
       name: /delete/i,
-    });
+    }).last();
     this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
       name: /cancel/i,
     });
@@ -203,15 +228,37 @@ export class AdministrationPage {
     });
 
     // ── Edit Licencee modal ─────────────────────────────────────────────────────
-    this.editLicenceeModal = page.locator('[role="dialog"]').filter({
-      hasText: /edit.*licencee|update.*licencee/i,
-    });
+    // AdministrationEditLicenceeModal is a custom div.fixed (no role="dialog")
+    this.editLicenceeModal = page.locator('div').filter({
+      has: page.getByRole('heading', { name: /edit licencee/i }),
+    }).first();
+    // AdministrationEditLicenceeModal renders the checkbox as id="editIncludeJackpot"
     this.includeJackpotCheckbox = this.editLicenceeModal.locator(
-      '#includeJackpot, input[name="includeJackpot"]'
+      '#editIncludeJackpot, #includeJackpot, input[name="includeJackpot"]'
+    );
+    this.licenceeNameInput = this.editLicenceeModal.locator(
+      'input[name="name"], #licencee-name'
+    );
+    this.licenceeCountrySelect = this.editLicenceeModal.locator(
+      'select[name="country"], #licencee-country'
+    );
+    this.licenceeStartDateInput = this.editLicenceeModal.locator(
+      'input[name="startDate"], input[placeholder*="start" i]'
+    );
+    this.licenceeExpiryDateInput = this.editLicenceeModal.locator(
+      'input[name="expiryDate"], input[placeholder*="expir" i]'
+    );
+    this.licenceeDescriptionInput = this.editLicenceeModal.locator(
+      'textarea[name="description"], #licencee-description'
     );
     this.submitEditLicenceeButton = this.editLicenceeModal.getByRole('button', {
       name: /save|update/i,
     });
+
+    // ── Confirm password / extra validation locators ────────────────────────────
+    this.confirmPasswordError = this.addUserModal.locator(
+      '#confirmPassword-error, [id*="confirmPassword"][id*="error"], [id*="confirm"][id*="error"]'
+    );
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -243,16 +290,29 @@ export class AdministrationPage {
 
   async clickEditUser(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row
-      .locator('button[aria-label*="edit" i], img[alt*="edit" i]')
-      .click();
+    // The ghost Button takes its accessible name from the <Image alt="Edit">.
+    await row.getByRole('button', { name: /^edit$/i }).first().click();
   }
 
   async clickDeleteUser(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row
-      .locator('button[aria-label*="delete" i], img[alt*="delete" i]')
+    await row.getByRole('button', { name: /^delete$/i }).first().click();
+  }
+
+  // ─── Edit User modal — enter edit mode ───────────────────────────────────────
+
+  /**
+   * The user modal opens in read-only "User Profile" mode. Clicking the internal
+   * "Edit" button switches it to "Edit User" mode where the form fields
+   * (#email, #firstName, #isEnabled) become editable.
+   */
+  async enterUserEditMode() {
+    await this.editModal
+      .getByRole('button', { name: /^edit$/i })
+      .first()
       .click();
+    // The editable email field only renders once in edit mode
+    await expect(this.editFirstNameInput).toBeVisible({ timeout: 10_000 });
   }
 
   // ─── Add User modal actions ──────────────────────────────────────────────────
@@ -284,17 +344,32 @@ export class AdministrationPage {
     if (data.phone) await this.phoneInput.fill(data.phone);
 
     if (data.roles && data.roles.length > 0) {
-      await this.rolesDropdown.click();
+      // Roles are individual shadcn checkboxes; each sits inside a <label> whose
+      // text is the role label (e.g. "Technician"). Clicking the label toggles it.
       for (const role of data.roles) {
-        // Each role is a labelled checkbox inside the dropdown list
-        await this.page
-          .getByRole('option', { name: new RegExp(role, 'i') })
-          .or(this.page.locator(`label:has-text("${role}")`))
+        await this.addUserModal
+          .locator('label')
+          .filter({ hasText: new RegExp(`^\\s*${role}\\s*$`, 'i') })
+          .first()
           .click();
       }
-      // Close the dropdown by pressing Escape or clicking outside
-      await this.page.keyboard.press('Escape');
+      // Selecting a role unlocks the licencee/location assignment section.
+      // Assign all licencees so the "Create User" button becomes enabled
+      // (it is disabled until at least one licencee is assigned).
+      await this.selectAllLicencees();
     }
+  }
+
+  /**
+   * Clicks the "All Licencees" checkbox in the Add User modal. Only effective
+   * after a role has been selected (the section is gated behind role selection).
+   */
+  async selectAllLicencees() {
+    await this.addUserModal
+      .locator('label')
+      .filter({ hasText: /^\s*All Licencees\s*$/i })
+      .first()
+      .click();
   }
 
   async submitUserForm() {
@@ -310,12 +385,13 @@ export class AdministrationPage {
   // ─── Edit modal actions ──────────────────────────────────────────────────────
 
   async fillEditUserForm(updates: { email?: string; firstName?: string }) {
+    // fill() replaces the field value atomically — do NOT clear() first, as the
+    // transient empty value trips inline validation (e.g. "First name must be at
+    // least 3 characters") which then blocks the save.
     if (updates.email) {
-      await this.editEmailInput.clear();
       await this.editEmailInput.fill(updates.email);
     }
     if (updates.firstName) {
-      await this.editFirstNameInput.clear();
       await this.editFirstNameInput.fill(updates.firstName);
     }
   }
@@ -366,8 +442,12 @@ export class AdministrationPage {
   }
 
   async expectUsernameError(message: string) {
-    await expect(this.usernameError).toBeVisible();
-    await expect(this.usernameError).toContainText(message);
+    // Duplicate-username feedback renders as inline red text (no id) driven by
+    // the /api/users/check-username availability check.
+    const inline = this.addUserModal
+      .getByText(new RegExp(message, 'i'))
+      .or(this.usernameError);
+    await expect(inline.first()).toBeVisible({ timeout: 8_000 });
   }
 
   async expectEmailError(message: string) {
@@ -377,13 +457,27 @@ export class AdministrationPage {
 
   async expectUserRowDisabled(username: string) {
     const row = this.rowByUsername(username);
-    // Disabled users typically have a visual indicator — a badge or text "Inactive"
-    await expect(row).toContainText(/inactive|disabled/i);
+    // The ENABLED column renders the literal text "False" for disabled users.
+    await expect(row).toContainText(/False/);
   }
 
   async expectUserRowEnabled(username: string) {
     const row = this.rowByUsername(username);
-    await expect(row).toContainText(/active/i);
+    // The ENABLED column renders the literal text "True" for enabled users.
+    await expect(row).toContainText(/True/);
+  }
+
+  /**
+   * Asserts a specific password-strength requirement row shows the unmet marker
+   * (✗ for length/case/number requirements, ! for the special-character one).
+   * The inline strength checklist only renders while the password field is non-empty.
+   */
+  async expectPasswordRequirementUnmet(label: string) {
+    const row = this.addUserModal
+      .locator('div.flex.items-center.gap-2')
+      .filter({ hasText: label })
+      .first();
+    await expect(row).toContainText(/[✗!]/, { timeout: 5_000 });
   }
 
   // ─── Licencee assertions ─────────────────────────────────────────────────────
@@ -394,22 +488,26 @@ export class AdministrationPage {
    * @param expected - `true` expects "Yes", `false` expects "No"
    */
   async expectIncludeJackpot(licenceeName: string, expected: boolean) {
-    // The licencee may be rendered as a table row or a mobile card — look for either
-    const licenceeContainer = this.page
-      .locator('tr, [class*="card"]')
+    // The includeJackpot badge is a <span> with text exactly "Yes" or "No"
+    // inside the licencee's table row. We scope to the row first.
+    const row = this.page
+      .locator('tr')
       .filter({ hasText: licenceeName })
       .first();
-    await expect(licenceeContainer).toContainText(
-      expected ? /\bYes\b/i : /\bNo\b/i
-    );
+    const badge = row
+      .locator('span')
+      .filter({ hasText: expected ? /^Yes$/i : /^No$/i })
+      .first();
+    await expect(badge).toBeVisible({ timeout: 8_000 });
   }
 
   /**
    * Opens the edit modal for the licencee at the given table row index.
+   * The licencee table uses <Image alt="Edit"> (not a button with aria-label).
    */
   async clickEditLicencee(rowIndex: number) {
     const row = this.licenceeTableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="edit" i]').click();
+    await row.locator('img[alt*="edit" i]').click();
   }
 
   /**
@@ -425,5 +523,53 @@ export class AdministrationPage {
   async submitEditLicenceeForm() {
     await this.submitEditLicenceeButton.click();
     await this.page.waitForLoadState('networkidle');
+  }
+
+  async fillEditLicenceeForm(data: {
+    name?: string;
+    country?: string;
+    startDate?: string;
+    expiryDate?: string;
+    description?: string;
+  }) {
+    if (data.name) {
+      await this.licenceeNameInput.clear();
+      await this.licenceeNameInput.fill(data.name);
+    }
+    if (data.country) await this.licenceeCountrySelect.selectOption({ label: data.country });
+    if (data.startDate) {
+      await this.licenceeStartDateInput.clear();
+      await this.licenceeStartDateInput.fill(data.startDate);
+    }
+    if (data.expiryDate) {
+      await this.licenceeExpiryDateInput.clear();
+      await this.licenceeExpiryDateInput.fill(data.expiryDate);
+    }
+    if (data.description) {
+      await this.licenceeDescriptionInput.clear();
+      await this.licenceeDescriptionInput.fill(data.description);
+    }
+  }
+
+  async expectPasswordStrengthError() {
+    // Password strength errors appear as inline text or toast — check both
+    const inlineError = this.passwordError;
+    const toastError = this.page.getByText(/password must|at least 8|uppercase|lowercase|number|special/i).first();
+    await expect(inlineError.or(toastError)).toBeVisible({ timeout: 5_000 });
+  }
+
+  async expectConfirmPasswordError() {
+    // Mismatch renders inline ("Passwords do not match") as soon as the confirm
+    // field diverges from the password field — no submit required.
+    const inlineError = this.addUserModal
+      .getByText(/passwords do not match/i)
+      .or(this.confirmPasswordError);
+    await expect(inlineError.first()).toBeVisible({ timeout: 5_000 });
+  }
+
+  async expectEmailDuplicateError() {
+    const inlineError = this.emailError;
+    const toastError = this.page.getByText(/email.*already|duplicate.*email/i).first();
+    await expect(inlineError.or(toastError)).toBeVisible({ timeout: 5_000 });
   }
 }

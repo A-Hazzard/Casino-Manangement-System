@@ -1,8 +1,8 @@
 # Dashboard Page Implementation (`/`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -25,7 +25,7 @@ The top-of-page summary showing aggregate performance.
 | **Machines Online** | `onlineCount` | `GET /api/analytics/dashboard` |
 
 - **Filters**: Responsive to `timePeriod`, `licencee`, and `currency`.
-- **Implementation**: Uses `FinancialMetrics` component with `DashboardTotalsSkeleton`.
+- **Implementation**: Uses `FinancialMetricsCards` component with `DashboardFinancialMetricsSkeleton`.
 
 ### 📈 Performance Chart
 
@@ -36,7 +36,7 @@ Visualizes revenue trends over time.
 | **Granularity** | `Hourly`, `Daily`, `Weekly`, `Monthly` | `GET /api/metrics/meters` |
 
 - **Interactive**: Hovering over the line highlights specific data points with a custom Recharts Tooltip.
-- **Implementation**: `DashboardChart` component using `useMeterTrends` hook.
+- **Implementation**: `DashboardChart` component.
 
 ### 🗺️ Location Map
 
@@ -47,7 +47,7 @@ Geospatial view of all properties in the selected scope.
 | **Marker Context** | `gross`, `onlineCount` | `GET /api/locationAggregation` |
 
 - **Visuals**: Markers are color-coded (Green for 100% online, Amber for partial, Gray for offline).
-- **Implementation**: `MapPreview` using `react-leaflet` and `useLocationAggregation` hook.
+- **Implementation**: `MapPreview` using `react-leaflet`.
 
 ### 🏆 Property Leaderboard
 
@@ -58,7 +58,7 @@ Rankings of the highest-performing assets.
 | **Top Machines** | `serialNumber`, `gross` | `GET /api/analytics/top-machines` |
 
 - **Tabs**: Users can toggle between "Locations" and "Machines".
-- **Implementation**: `LeaderboardGrid` with `TopPerformingItem` sub-components.
+- **Implementation**: `DashboardTopPerformingSection` component.
 
 ---
 
@@ -79,7 +79,7 @@ Rankings of the highest-performing assets.
 
 ## 5. Performance & UX
 
-- **Skeleton Loading**: Every section has a custom skeleton (`StatsSkeleton`, `ChartSkeleton`, `MapSkeleton`) to prevent layout shift during data fetching.
+- **Skeleton Loading**: Every section has a custom skeleton (`DashboardFinancialMetricsSkeleton`, `ChartSkeleton`, `MapSkeleton`) to prevent layout shift during data fetching.
 - **Debounced Updates**: Rapidly switching filters (e.g. clicking "Today" then "7d" quickly) is debounced to avoid resource-heavy API overlaps.
 - **Polling**: Data is automatically refreshed every 180 seconds to ensure the dashboard remains "live" without manual intervention.
 

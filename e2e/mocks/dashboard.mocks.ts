@@ -142,6 +142,15 @@ export const MOCK_TOP_PERFORMING_LOCATIONS = {
   timestamp: new Date().toISOString(),
 };
 
+export const MOCK_TOP_PERFORMING_CABINETS = {
+  success: true,
+  data: [
+    { name: 'VGT Red Hot Ruby', totalDrop: 15_000, locationId: 'loc_001', cabinetId: 'cab_001' },
+    { name: 'IGT Double Diamond', totalDrop: 12_500, locationId: 'loc_002', cabinetId: 'cab_002' },
+  ],
+  timestamp: new Date().toISOString(),
+};
+
 // ─── Location aggregation (provides moneyIn / moneyOut / gross for metric cards) ─
 
 export const MOCK_LOCATION_AGGREGATION = {
@@ -197,6 +206,20 @@ export const MOCK_LOCATION_AGGREGATION = {
   hasMore: false,
   currency: 'TTD',
   converted: false,
+};
+
+// ─── Dashboard metrics summary (used by non-dashboard pages that show metric cards) ─
+
+export const MOCK_METRICS_DASHBOARD = {
+  success: true,
+  data: {
+    moneyIn: 712_901.5,
+    moneyOut: 64_960.0,
+    gross: 647_941.5,
+    jackpot: 12_300.0,
+    netGross: 635_641.5,
+  },
+  timestamp: new Date().toISOString(),
 };
 
 // ─── Error response ───────────────────────────────────────────────────────────

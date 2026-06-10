@@ -67,7 +67,16 @@
       "Bash(mkdir -p \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\\\\api\\\\collection-reports-v2\\\\sessions\\\\[sessionId]\\\\submit\")",
       "Bash(Get-Content \"C:\\\\Users\\\\pc\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-pc-Documents-Github-evolution-one-cms\\\\64012079-6bea-4a35-9f8d-2420a44fb205\\\\tasks\\\\bttdavnwa.output\" -Wait)",
       "Bash(Select-String -Pattern \"error|warning|✓|✗|passed|failed|Done|Errors|Warnings\" -SimpleMatch)",
-      "Bash(del \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\docs\\\\collection-report.md\")"
+      "Bash(del \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\docs\\\\collection-report.md\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ahazzard.DYNAMIC1\" -Filter \"*antigravity*\" -Recurse -Depth 4 -ErrorAction SilentlyContinue)",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object FullName, LastWriteTime)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(cd \"C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\"; Start-Process -FilePath \"bun\" -ArgumentList \"run dev\" -WindowStyle Hidden; Start-Sleep -Seconds 15; $response = try { Invoke-WebRequest -Uri \"http://localhost:3000\" -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop; \"UP\" } catch { \"DOWN\" }; Write-Output \"Server: $response\")",
+      "Read(//mnt/c/Users/ahazzard.DYNAMIC1/OneDrive/Documents/Github/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000 --max-time 3)",
+      "Bash(dir C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms -Recurse -Directory)",
+      "PowerShell($r = try { Invoke-WebRequest -Uri \"http://localhost:3000/administration\" -TimeoutSec 8 -UseBasicParsing; \"UP $\\($r.StatusCode\\)\" } catch { \"DOWN: $_\" }; Write-Output $r)"
     ]
   }
 }

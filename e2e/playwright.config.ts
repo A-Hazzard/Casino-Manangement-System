@@ -34,13 +34,13 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL so we can use relative URLs like page.goto('/locations') */
-    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     /* Collect trace, screenshot, and video on failure */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
-    /* Default navigation timeout */
-    navigationTimeout: 15_000,
+    /* Default navigation timeout — generous to handle OneDrive cold-compile on first load */
+    navigationTimeout: 60_000,
     /* Default action timeout (clicks, fills, etc.) */
     actionTimeout: 10_000,
   },
@@ -81,8 +81,8 @@ export default defineConfig({
     },
   ],
 
-  /* Global test timeout */
-  timeout: 30_000,
+  /* Global test timeout — accounts for OneDrive cold-compile on first page hit */
+  timeout: 60_000,
   /* Expect assertion timeout */
   expect: {
     timeout: 8_000,

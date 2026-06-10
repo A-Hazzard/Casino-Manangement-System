@@ -222,9 +222,37 @@ export default function CabinetsDetailsSMIBManagementSection({
           )}
         </div>
 
-        {/* Right Side: Get Config Button or Toggle */}
-        <div className="flex w-full items-center justify-end sm:w-auto">
-          {hasConfigBeenFetched ? (
+        {/* Right Side: Get Config Button + Toggle */}
+        <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+          {canAccessSmibConfig && (
+            <Button
+              onClick={() => cabinet && onFetchConfig(cabinet.relayId!)}
+              disabled={isManuallyFetching}
+              className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+            >
+              {isManuallyFetching ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                  Fetching...
+                </>
+              ) : hasConfigBeenFetched ? (
+                <>
+                  <span className="hidden sm:inline">
+                    Get New Configuration
+                  </span>
+                  <span className="sm:hidden">Get New Config</span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden sm:inline">
+                    Get SMIB Configuration
+                  </span>
+                  <span className="sm:hidden">Get SMIB Config</span>
+                </>
+              )}
+            </Button>
+          )}
+          {hasConfigBeenFetched && (
             <motion.div
               className="cursor-pointer"
               animate={{ rotate: smibConfigExpanded ? 180 : 0 }}
@@ -233,29 +261,6 @@ export default function CabinetsDetailsSMIBManagementSection({
             >
               <ChevronDownIcon className="h-5 w-5 text-gray-500" />
             </motion.div>
-          ) : (
-            canAccessSmibConfig && (
-              <Button
-                onClick={() => cabinet && onFetchConfig(cabinet.relayId!)}
-                disabled={isManuallyFetching}
-                className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
-              >
-                {isManuallyFetching ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                    <span className="hidden sm:inline">Fetching...</span>
-                    <span className="sm:hidden">Fetching...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">
-                      Get SMIB Configuration
-                    </span>
-                    <span className="sm:hidden">Get SMIB Config</span>
-                  </>
-                )}
-              </Button>
-            )
           )}
         </div>
       </div>

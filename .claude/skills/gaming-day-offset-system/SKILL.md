@@ -1,5 +1,5 @@
 ---
-name: Gaming Day Offset System
+name: gaming-day-offset-system
 description: 8 AM to 8 AM business day (Trinidad UTC-4), gaming day calculations, custom date handling, per-location offsets.
 ---
 

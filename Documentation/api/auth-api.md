@@ -1,8 +1,8 @@
 # Identity & Authentication API (`/api/auth`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -89,19 +89,20 @@ The JWT embeds a hash of the current `MONGODB_URI`. The middleware validates thi
 
 ---
 
-## 4. Roles (9 Total)
+## 4. Roles (10 Total)
 
 | Role             | Level       | Key Permissions                                          |
 | :--------------- | :---------- | :------------------------------------------------------- |
 | `developer`      | 1 (highest) | Full access, system config, migrations                   |
-| `admin`          | 2           | User management, licencee management, all reports        |
-| `manager`        | 3           | Location reports, collection approval, vault oversight   |
-| `location admin` | 4           | Location-scoped management                               |
-| `vault-manager`  | 5           | Vault shifts, float approval, cash management            |
-| `cashier`        | 6           | Cashier shifts, payouts, float requests                  |
-| `technician`     | 7           | Machine configuration, SMIB, firmware                    |
-| `collector`      | 8           | Collection report creation                               |
-| `reviewer`       | 9 (lowest)  | Read-only financial views with multiplier-scaled figures |
+| `owner`          | 2           | Business owner, full licencee management                 |
+| `admin`          | 3           | User management, licencee management, all reports        |
+| `manager`        | 4           | Location reports, collection approval, vault oversight   |
+| `location admin` | 5           | Location-scoped management                               |
+| `vault-manager`  | 6           | Vault shifts, float approval, cash management            |
+| `cashier`        | 7           | Cashier shifts, payouts, float requests                  |
+| `technician`     | 8           | Machine configuration, SMIB, firmware                    |
+| `collector`      | 9           | Collection report creation                               |
+| `reviewer`       | 10 (lowest) | Read-only financial views with multiplier-scaled figures |
 
 ---
 

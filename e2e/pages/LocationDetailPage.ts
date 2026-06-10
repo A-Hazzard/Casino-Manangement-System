@@ -1,14 +1,5 @@
 import { type Page, type Locator, expect } from '@playwright/test';
 
-/**
- * Page Object for the Location Detail page (/locations/[locationId]).
- *
- * The page renders:
- *   - A tab bar: Machines (default), Members (if membershipEnabled)
- *   - A table of machines (cabinets) assigned to the location
- *   - Action buttons: Add Machine, Edit, Delete per row
- *   - Date filters above the table
- */
 export class LocationDetailPage {
   readonly page: Page;
 
@@ -46,15 +37,24 @@ export class LocationDetailPage {
   readonly confirmDeleteButton: Locator;
   readonly cancelDeleteButton: Locator;
 
-  // ─── Meter data section ────────────────────────────────────────────────────
-  readonly meterDataSection: Locator;
+  // ── Select helpers for shadcn comboboxes ───────────────────────────────
+  private placeholderCombobox(placeholderText: string): Locator {
+    return this.page.locator('button[role="combobox"]').filter({ hasText: new RegExp(placeholderText, 'i') });
+  }
+
+  private async selectShadcnOption(triggerLocator: Locator, optionText: string) {
+    await triggerLocator.click();
+    const option = this.page.getByRole('option', { name: new RegExp(optionText, 'i') });
+    await option.waitFor({ state: 'visible', timeout: 5000 });
+    await option.click();
+  }
 
   constructor(page: Page) {
     this.page = page;
 
-    // Tabs
-    this.machinesTab = page.getByRole('tab', { name: /machines/i });
-    this.membersTab = page.getByRole('tab', { name: /members/i });
+    // Tabs — rendered as <button> elements with icon + text
+    this.machinesTab = page.getByRole('button', { name: /machines/i });
+    this.membersTab = page.getByRole('button', { name: /members/i });
 
     // Machine table
     this.machineTableBody = page.locator('table tbody');
@@ -65,63 +65,76 @@ export class LocationDetailPage {
       name: /add machine|create machine|new machine/i,
     });
     this.settingsButton = page.getByRole('button', { name: /settings/i });
-    this.backButton = page.getByRole('link', { name: /back|locations/i });
+    this.backButton = page.locator('a[href="/locations"]');
 
-    // Machine modal — identified by "Add" or "Edit" in its title
-    this.machineModal = page.locator('[role="dialog"]').filter({
-      hasText:
-        /add.*machine|create.*machine|edit.*machine|new.*cabinet|add.*cabinet/i,
-    });
+    // Machine modal — scoped to fixed overlay so page-level headings can't match.
+    // "New Cabinet" heading is exact; Edit heading is "Edit <serial> Details".
+    // Only one modal is in the DOM at a time (both return null when closed).
+    this.machineModal = page
+      .locator('div.fixed.inset-0')
+      .filter({ has: page.locator('h2').filter({ hasText: /new cabinet|edit .+ details/i }) })
+      .locator('h2')
+      .filter({ hasText: /new cabinet|edit .+ details/i })
+      .first()
+      .locator('..')
+      .locator('..');
 
+    // New Cabinet uses #serialNumber; Edit Cabinet uses #assetNumber (same concept)
     this.serialNumberInput = this.machineModal.locator(
-      'input[name="serialNumber"], #serialNumber'
+      'input[name="serialNumber"], #serialNumber, input[name="assetNumber"], #assetNumber'
     );
-    this.gameInput = this.machineModal.locator('input[name="game"], #game');
-    this.gameTypeSelect = this.machineModal.locator(
-      'select[name="gameType"], #gameType'
+    // New Cabinet uses #game; Edit Cabinet uses #installedGame
+    this.gameInput = this.machineModal.locator(
+      'input[name="game"], #game, input[name="installedGame"], #installedGame'
     );
-    this.relayIdInput = this.machineModal.locator(
-      'input[name="relayId"], #relayId'
-    );
-    this.manufacturerSelect = this.machineModal.locator(
-      'select[name="manufacturer"], #manufacturer'
-    );
+    // Game type: form initialises to 'slot', so button shows "Slot" not the placeholder.
+    // Match both the placeholder and the possible selected values.
+    this.gameTypeSelect = this.machineModal
+      .locator('button[role="combobox"]')
+      .filter({ hasText: /select game type|^slot$|^roulette$|^pulse$|^other$/i })
+      .first();
+    this.relayIdInput = this.machineModal.locator('input[name="relayId"], #relayId');
+    this.manufacturerSelect = this.placeholderCombobox('Select Manufacturer');
+    // Scope to the Basic Information section to avoid the fallback #customName in
+    // EditCabinetLocationConfig (which only renders when assetNumber is missing).
     this.customNameInput = this.machineModal.locator(
-      'input[name="custom.name"], input[name="customName"], #customName'
+      'input[placeholder="Enter Custom Name (Optional)"], input[placeholder="Enter custom machine name"]'
     );
-    this.cabinetTypeSelect = this.machineModal.locator(
-      'select[name="cabinetType"], #cabinetType'
-    );
-    this.assetStatusSelect = this.machineModal.locator(
-      'select[name="assetStatus"], #assetStatus'
-    );
+    // Cabinet type initialises to 'Standing'; status to 'functional' → handle both states.
+    this.cabinetTypeSelect = this.machineModal
+      .locator('button[role="combobox"]')
+      .filter({ hasText: /select cabinet type|^standing$|^slant top$|^bar top$/i })
+      .first();
+    this.assetStatusSelect = this.machineModal
+      .locator('button[role="combobox"]')
+      .filter({ hasText: /select status|^functional$|^non.functional$/i })
+      .first();
 
-    this.submitMachineButton = this.machineModal.getByRole('button', {
+    this.submitMachineButton = page.getByRole('button', {
       name: /create cabinet|add machine|save|update/i,
     });
-    this.cancelMachineButton = this.machineModal.getByRole('button', {
+    this.cancelMachineButton = page.getByRole('button', {
       name: /cancel/i,
     });
 
-    this.serialNumberError = this.machineModal.locator(
-      '#serialNumber-error, [id*="serialNumber"][id*="error"]'
+    this.serialNumberError = page.locator(
+      'div:has(> #serialNumber) p.text-red-500'
     );
 
-    // Delete dialog
+    // Delete dialog — heading is "Remove Cabinet" (choose step) or "Archive Cabinet" (confirm step)
     this.deleteDialog = page
-      .locator('[role="dialog"]')
-      .filter({ hasText: /are you absolutely sure/i });
-    this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
-      name: /delete/i,
+      .locator('h2')
+      .filter({ hasText: /remove cabinet|archive cabinet/i })
+      .first()
+      .locator('..')
+      .locator('..')
+      .locator('..');
+    this.confirmDeleteButton = page.getByRole('button', {
+      name: /archive/i,
     });
-    this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
+    this.cancelDeleteButton = page.getByRole('button', {
       name: /cancel/i,
     });
-
-    // Meter data section
-    this.meterDataSection = page
-      .locator('[data-testid="meter-data"], text=Meter Data, text=SAS Meters')
-      .locator('..');
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
@@ -147,20 +160,12 @@ export class LocationDetailPage {
 
   async clickMachineEdit(rowIndex: number) {
     const row = this.machineRows.nth(rowIndex);
-    await row
-      .locator(
-        'button[aria-label*="edit" i], img[alt*="edit" i], [title*="edit" i]'
-      )
-      .click();
+    await row.locator('button[title="Edit"]').click();
   }
 
   async clickMachineDelete(rowIndex: number) {
     const row = this.machineRows.nth(rowIndex);
-    await row
-      .locator(
-        'button[aria-label*="delete" i], img[alt*="delete" i], [title*="delete" i]'
-      )
-      .click();
+    await row.locator('button[title="Delete"]').click();
   }
 
   // ─── Add machine modal actions ──────────────────────────────────────────────
@@ -168,6 +173,8 @@ export class LocationDetailPage {
   async openAddMachineModal() {
     await this.addMachineButton.click();
     await expect(this.machineModal).toBeVisible();
+    // Wait for the form to be ready — Select comboboxes need time to render
+    await this.page.waitForTimeout(500);
   }
 
   async fillMachineForm(data: {
@@ -182,15 +189,12 @@ export class LocationDetailPage {
   }) {
     await this.serialNumberInput.fill(data.serialNumber);
     if (data.game) await this.gameInput.fill(data.game);
-    if (data.gameType) await this.gameTypeSelect.selectOption(data.gameType);
+    if (data.gameType) await this.selectShadcnOption(this.gameTypeSelect, data.gameType);
     if (data.relayId) await this.relayIdInput.fill(data.relayId);
-    if (data.manufacturer)
-      await this.manufacturerSelect.selectOption({ label: data.manufacturer });
+    if (data.manufacturer) await this.selectShadcnOption(this.manufacturerSelect, data.manufacturer);
     if (data.customName) await this.customNameInput.fill(data.customName);
-    if (data.cabinetType)
-      await this.cabinetTypeSelect.selectOption(data.cabinetType);
-    if (data.assetStatus)
-      await this.assetStatusSelect.selectOption(data.assetStatus);
+    if (data.cabinetType) await this.selectShadcnOption(this.cabinetTypeSelect, data.cabinetType);
+    if (data.assetStatus) await this.selectShadcnOption(this.assetStatusSelect, data.assetStatus);
   }
 
   async submitMachineForm() {
@@ -206,7 +210,11 @@ export class LocationDetailPage {
   // ─── Delete actions ─────────────────────────────────────────────────────────
 
   async confirmDeleteMachine() {
-    await this.confirmDeleteButton.click();
+    // Step 1: click "Archive" option button in the choose screen
+    await this.page.getByRole('button', { name: /archive/i }).first().click();
+    // Step 2: wait for confirm heading then click "Archive" to submit
+    await this.page.locator('h2:has-text("Archive Cabinet")').waitFor();
+    await this.page.getByRole('button', { name: /^archive$/i }).click();
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -225,11 +233,7 @@ export class LocationDetailPage {
   }
 
   async expectMachinesTabActive() {
-    await expect(this.machinesTab)
-      .toHaveAttribute('data-state', 'active')
-      .catch(async () => {
-        await expect(this.machinesTab).toHaveClass(/active|selected/);
-      });
+    await expect(this.machinesTab).toHaveClass(/border-blue-600/);
   }
 
   async expectMembersTabVisible() {
@@ -241,9 +245,5 @@ export class LocationDetailPage {
     await expect(this.serialNumberError).toContainText(
       /3 characters|required/i
     );
-  }
-
-  async expectMeterDataVisible() {
-    await expect(this.meterDataSection).toBeVisible();
   }
 }

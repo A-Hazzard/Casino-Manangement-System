@@ -63,6 +63,7 @@ export type CollectionDocument = {
   sasStartTime?: Date;
   sasEndTime?: Date;
   serialNumber?: string;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   __v: number;

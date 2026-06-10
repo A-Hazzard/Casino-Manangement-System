@@ -13,7 +13,8 @@
 'use client';
 
 import { FC, FormEvent, useEffect } from 'react';
-import { Button } from '@/components/shared/ui/button';
+import { Button, buttonVariants } from '@/components/shared/ui/button';
+import { cn } from '@/lib/utils';
 import {
   Card,
   CardContent,
@@ -61,7 +62,6 @@ import {
   Edit,
   Trash2,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import type { DateRange } from 'react-day-picker';
@@ -151,7 +151,6 @@ export function CabinetsDetailsCollectionHistoryTable({
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const router = useRouter();
   const user = useUserStore(state => state.user);
   const isDeveloper = (user?.roles || []).includes('developer');
   const isAdmin = (user?.roles || []).includes('admin');
@@ -618,18 +617,12 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </TableCell>
                   <TableCell className="truncate px-2 text-left">
                     {row.locationReportId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="px-2 py-1 text-xs"
-                        onClick={() =>
-                          router.push(
-                            `/collection-report/report/${row.locationReportId}`
-                          )
-                        }
+                      <a
+                        href={`/collection-report/report/${row.locationReportId}`}
+                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'px-2 py-1 text-xs')}
                       >
                         VIEW REPORT
-                      </Button>
+                      </a>
                     )}
                   </TableCell>
                   {canModifyHistory && (
@@ -723,18 +716,12 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </div>
                 </div>
                 {row.locationReportId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() =>
-                      router.push(
-                        `/collection-report/report/${row.locationReportId}`
-                      )
-                    }
+                  <a
+                    href={`/collection-report/report/${row.locationReportId}`}
+                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full')}
                   >
                     VIEW REPORT
-                  </Button>
+                  </a>
                 )}
                 {canModifyHistory && (
                   <div className="flex gap-2">

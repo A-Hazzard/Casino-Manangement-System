@@ -110,6 +110,7 @@ export default function CollectionReportMobileCollectedListPanel({
   onToggleView,
   financials,
   isProcessing,
+  isCreateReportsEnabled = true,
   newMachineIds = [],
   updateAllSasStartDate,
   onUpdateAllSasStartDate,
@@ -423,14 +424,14 @@ export default function CollectionReportMobileCollectedListPanel({
                   </div>
                 </div>
 
-                {/* Financial Form Footer */}
+                  {/* Financial Form Footer */}
                 {showSubmitButton && (
                   <div className="border-t bg-gray-50 p-4">
                     <button
                       onClick={onCreateReport}
-                      disabled={isProcessing}
+                      disabled={isProcessing || !isCreateReportsEnabled}
                       className={`w-full rounded-lg py-3 font-semibold transition-colors ${
-                        !isProcessing
+                        !isProcessing && isCreateReportsEnabled
                           ? 'bg-green-600 text-white hover:bg-green-700'
                           : 'cursor-not-allowed bg-gray-400 text-gray-200'
                       }`}
@@ -669,9 +670,9 @@ export default function CollectionReportMobileCollectedListPanel({
                 <div className="shrink-0 border-t bg-white/90 p-4 backdrop-blur-md">
                   <button
                     onClick={onCreateReport}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !isCreateReportsEnabled}
                     className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
-                      !isProcessing
+                      !isProcessing && isCreateReportsEnabled
                         ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-600/20'
                         : 'cursor-not-allowed bg-gray-400 text-gray-200'
                     }`}

@@ -23,6 +23,7 @@ type V2DesktopProps = {
   loading: boolean;
   isRefreshing?: boolean;
   canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
@@ -72,6 +73,7 @@ function CollectorHover({ session }: { session: V2Session }) {
 function SessionRow({
   session,
   canManage,
+  canPermanentlyDelete,
   showArchived,
   onViewSession,
   onEditSession,
@@ -82,6 +84,7 @@ function SessionRow({
 }: {
   session: V2Session;
   canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
@@ -189,7 +192,7 @@ function SessionRow({
                 <RotateCcw className="h-3.5 w-3.5" />
                 Restore
               </button>
-              {canManage && (
+              {canPermanentlyDelete && (
                 <button
                   type="button"
                   onClick={() => onPermanentDeleteSession?.(session.sessionId)}
@@ -297,6 +300,7 @@ export default function CollectionReportV2Desktop({
   sessions,
   loading,
   canManage,
+  canPermanentlyDelete,
   showArchived,
   onViewSession,
   onEditSession,
@@ -385,6 +389,7 @@ export default function CollectionReportV2Desktop({
               key={session.sessionId}
               session={session}
               canManage={canManage}
+              canPermanentlyDelete={canPermanentlyDelete}
               showArchived={showArchived}
               onViewSession={onViewSession}
               onEditSession={onEditSession}

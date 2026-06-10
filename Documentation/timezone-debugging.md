@@ -1,5 +1,9 @@
 # Timezone Logic for Cabinet Details Queries
 
+**Status: RESOLVED** — The issue described below has been fixed. `formatLocalDateTimeString` now defaults to `TRINIDAD_TIMEZONE_OFFSET` (hardcoded UTC-4) in `shared/utils/dateFormat.ts`. This document is retained for historical reference.
+
+---
+
 This document explains the timezone handling in the cabinet details page and why queries from different timezone regions may return different or unexpected results.
 
 ---

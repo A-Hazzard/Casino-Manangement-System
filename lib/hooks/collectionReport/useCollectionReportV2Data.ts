@@ -117,7 +117,7 @@ export function useCollectionReportV2Data(
         `/api/collection-reports-v2/sessions?${params.toString()}`,
         { signal: controller.signal }
       );
-      if (res.data?.success) {
+      if (res.data?.success && !controller.signal.aborted) {
         setSessions(res.data.data);
         setTotalSessions(res.data.pagination?.total ?? 0);
       }
@@ -145,6 +145,16 @@ export function useCollectionReportV2Data(
     sortDirection,
     showArchived,
   ]);
+
+  const handleShowArchivedChange = useCallback((value: boolean) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setSessions([]);
+    setTotalSessions(0);
+    setCurrentPage(0);
+    setShowArchived(value);
+  }, []);
 
   const handleSort = useCallback(
     (field: string) => {
@@ -218,5 +228,6 @@ export function useCollectionReportV2Data(
     handleSort,
     showArchived,
     setShowArchived,
+    handleShowArchivedChange,
   };
 }

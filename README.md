@@ -72,7 +72,7 @@
 | IoT            | MQTT                       | 5.14.1          |
 | Export         | jsPDF + xlsx               | 3.0.2 / 0.18.5  |
 | Validation     | Zod                        | 3.25.76         |
-| Testing        | Jest + Playwright          | 30.2.0 / 1.58.2 |
+| E2E Testing    | Playwright (active suite)  | 1.58.2          |
 
 ## ⚙️ Installation & Setup
 
@@ -167,22 +167,23 @@ docker run --rm -p 3000:3000 \
 | `bun run type-check`    | TypeScript type checking (tsc --noEmit)   |
 | `bun run format`        | Prettier formatting                       |
 | `bun run check`         | type-check && lint                        |
-| `bun run test`          | Run Jest tests                            |
-| `bun run test:watch`    | Jest in watch mode                        |
-| `bun run test:coverage` | Jest with coverage                        |
+| `bun run test:e2e`      | Run Playwright E2E suite                  |
+| `bun run test:e2e:ui`   | Playwright interactive UI (debugging)     |
+| `bun run test:e2e:api`  | API-management spec only (Chromium)       |
 
-## 🧪 Testing & Development Tools
+## 🧪 Testing
 
-### Go MongoDB Query Tool (`test/`)
-
-A Go-based interactive CLI for database debugging without affecting the application.
+End-to-end tests live in [`e2e/`](e2e/README.md) and run on **Playwright**. This is the active, maintained suite. (Jest is present in `devDependencies` for unit tests but has no configured script yet.)
 
 ```bash
-cd test/
-go run main.go
+bun run test:e2e          # All specs, all browsers (auto-starts the dev server)
+bun run test:e2e:ui       # Interactive debugging UI
+
+# Single spec, Chromium only
+bunx playwright test e2e/tests/cabinets.spec.ts -c e2e/playwright.config.ts --project=chromium
 ```
 
-**Capabilities:** Machine search, meter data analysis by date range, licencee/location filtering, aggregation pipeline testing, performance measurement.
+For repeated local runs, start `bun run dev` first (Playwright reuses it) and add `--workers=1` to avoid OneDrive cold-compile flakiness. See [`e2e/README.md`](e2e/README.md) for the full layout, auth/mocking conventions, and page-object patterns.
 
 ## 🏗️ Development Guidelines
 
@@ -242,9 +243,10 @@ Evolution1 CMS/
 │   │   ├── analytics/         # Dashboard metrics, charts, revenue
 │   │   ├── reports/           # Location & machine reports
 │   │   ├── locations/         # Location management
-│   │   ├── machines/          # Machine/cabinet details and aggregation
+│   │   ├── cabinets/          # Cabinet/machine details and aggregation
 │   │   ├── collections/       # Last collection time, check first collection
-│   │   ├── collection-reports/ # Collection report CRUD
+│   │   ├── collection-reports/   # Collection report CRUD (V1)
+│   │   ├── collection-reports-v2/ # Session-based capture wizard (V2)
 │   │   ├── vault/             # Vault transactions, shifts, float requests
 │   │   ├── cashier/           # Cashier operations
 │   │   ├── users/             # User CRUD
@@ -284,9 +286,18 @@ Evolution1 CMS/
 │   ├── api/                   # Per-endpoint backend documentation
 │   ├── pillars/               # High-level architectural guides
 │   └── backend/               # Database model documentation
-├── test/                      # Go-based MongoDB query tool
+├── e2e/                       # Playwright end-to-end test suite
 └── proxy.ts                   # Next.js Edge middleware (auth guard)
 ```
+
+> **Per-directory READMEs** document local conventions next to the code:
+> [`app/api/lib/models/`](app/api/lib/models/README.md) ·
+> [`components/`](components/README.md) ·
+> [`lib/hooks/`](lib/hooks/README.md) ·
+> [`lib/store/`](lib/store/README.md) ·
+> [`e2e/`](e2e/README.md) ·
+> [`Documentation/backend/`](Documentation/backend/README.md).
+> AI/agent contributors: see [`CLAUDE.md`](CLAUDE.md) for architectural invariants and coding standards.
 
 ## 📊 Documentation Index
 
@@ -337,4 +348,4 @@ Evolution1 CMS/
 
 ---
 
-**Last Updated:** April 2026
+**Last Updated:** June 2026

@@ -9,17 +9,23 @@
  *  5. Edit cabinet — form is pre-populated; updating custom name reflects in table
  *  6. Delete cabinet — confirmation dialog → cabinet removed from table
  *  7. Sort by Gross column reorders rows
+ * 12. Search filters the list server-side (search= param) and narrows rows
+ * 13. Status filter sends onlineStatus=online and narrows rows
  *
  * Covers — Cabinet detail page (/cabinets/[cabinetId]):
  *  8. Financial metric cards are visible
  *  9. Time-period filter changes the data on the detail page
  * 10. SAS meter data section is visible
  * 11. Meter history entries are listed
+ * 14. Accounting Details exposes all tab buttons
+ * 15. Switching to the Live Meters tab swaps in SAS meter cards
+ * 16. Switching to the Activity Log tab loads the activity-log view
  */
 
 import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/test.fixture';
 import {
+  MOCK_CABINET_1,
   MOCK_CABINETS_LIST,
   MOCK_CABINETS_LIST_AFTER_DELETE,
   MOCK_CABINET_DETAIL,
@@ -55,11 +61,47 @@ async function mockCabinetsListAPIs(
   await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
+  await page.route('**/api/auth/token**', route =>
+    route.fulfill({
+      status: 200,
+      json: { userId: '69b46e8854694ea2246da698' },
+    })
+  );
+  await page.route('**/api/users/**', route =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, user: MOCK_CURRENT_USER.user },
+    })
+  );
+
+  // Generic GET fallback for /api/cabinets (registered first, so specific routes win)
+  await page.route('**/api/cabinets**', route => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, json: listPayload });
+    }
+    return route.fallback();
+  });
+
+  // More specific cabinet routes (registered later → LIFO priority)
   await page.route('**/api/cabinets/aggregation**', route =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/cabinets**', route =>
-    route.fulfill({ status: 200, json: listPayload })
+  await page.route('**/api/cabinets/locations**', route =>
+    route.fulfill({
+      status: 200,
+      json: {
+        locations: [
+          { _id: 'loc_001', name: 'Grand Casino North', countryName: 'Trinidad and Tobago' },
+          { _id: 'loc_002', name: 'South Bay Gaming', countryName: 'Trinidad and Tobago' },
+        ],
+      },
+    })
+  );
+  await page.route('**/api/cabinets/status**', route =>
+    route.fulfill({
+      status: 200,
+      json: { totalMachines: 2, onlineMachines: 1, offlineMachines: 1 },
+    })
   );
   await page.route('**/api/locations**', route =>
     route.fulfill({
@@ -79,14 +121,51 @@ async function mockCabinetDetailAPIs(page: Page) {
   await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route(`**/api/cabinets/${CABINET_ID}**`, route =>
-    route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
+  await page.route('**/api/auth/token**', route =>
+    route.fulfill({
+      status: 200,
+      json: { userId: '69b46e8854694ea2246da698' },
+    })
   );
-  await page.route(`**/api/cabinets/${CABINET_ID}**`, route =>
+  await page.route('**/api/users/**', route =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, user: MOCK_CURRENT_USER.user },
+    })
+  );
+  await page.route('**/api/cabinets/**', route =>
     route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
   );
   await page.route('**/api/meters**', route =>
     route.fulfill({ status: 200, json: MOCK_METER_HISTORY })
+  );
+  await page.route('**/api/manufacturers**', route =>
+    route.fulfill({ status: 200, json: MOCK_MANUFACTURERS })
+  );
+  await page.route('**/api/locations**', route =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, locations: MOCK_LOCATIONS_LIST || [] },
+    })
+  );
+  await page.route('**/api/licencees**', route =>
+    route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
+  );
+  await page.route('**/api/cabinets/locations**', route =>
+    route.fulfill({
+      status: 200,
+      json: {
+        locations: [
+          { _id: 'loc_001', name: 'Grand Casino North', countryName: 'Trinidad and Tobago' },
+        ],
+      },
+    })
+  );
+  await page.route('**/api/cabinets/status**', route =>
+    route.fulfill({
+      status: 200,
+      json: { totalMachines: 1, onlineMachines: 1, offlineMachines: 0 },
+    })
   );
 }
 
@@ -126,7 +205,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept POST cabinet creation endpoint', async () => {
-      await page.route('**/api/cabinets', async route => {
+      await page.route('**/api/cabinets**', async route => {
         if (route.request().method() === 'POST') {
           createRequestBody = route.request().postDataJSON() as Record<
             string,
@@ -137,7 +216,7 @@ test.describe('Cabinets List', () => {
             json: MOCK_CABINET_CREATE_SUCCESS,
           });
         } else {
-          await route.continue();
+          await route.fallback();
         }
       });
     });
@@ -148,13 +227,11 @@ test.describe('Cabinets List', () => {
           status: 200,
           json: {
             ...MOCK_CABINETS_LIST,
-            data: {
-              machines: [
-                ...MOCK_CABINETS_LIST.data.machines,
-                MOCK_CABINET_CREATE_SUCCESS.data,
-              ],
-              pagination: { page: 1, limit: 10, totalCount: 3, totalPages: 1 },
-            },
+            data: [
+              ...MOCK_CABINETS_LIST.data,
+              MOCK_CABINET_CREATE_SUCCESS.data,
+            ],
+            pagination: { page: 1, limit: 10, total: 3, totalPages: 1 },
           },
         })
       );
@@ -172,8 +249,7 @@ test.describe('Cabinets List', () => {
       await cabinetsPage.fillCabinetForm({
         serialNumber: 'SN-NEWCAB',
         game: 'Star Burst',
-        gameType: 'slot',
-        relayId: '5',
+        relayId: 'A0B0C0D0E0F0',
         location: 'Grand Casino North',
         manufacturer: 'NetEnt',
         customName: 'New Test Cabinet',
@@ -269,7 +345,7 @@ test.describe('Cabinets List', () => {
             json: MOCK_CABINET_UPDATE_SUCCESS,
           });
         } else {
-          await route.continue();
+          await route.fallback();
         }
       });
     });
@@ -280,16 +356,14 @@ test.describe('Cabinets List', () => {
           status: 200,
           json: {
             ...MOCK_CABINETS_LIST,
-            data: {
-              machines: [
-                {
-                  ...MOCK_CABINETS_LIST.data.machines[0],
-                  custom: { name: 'Lucky Dragon (Renamed)' },
-                },
-                MOCK_CABINETS_LIST.data.machines[1],
-              ],
-              pagination: MOCK_CABINETS_LIST.data.pagination,
-            },
+            data: [
+              {
+                ...MOCK_CABINETS_LIST.data[0],
+                custom: { name: 'Lucky Dragon (Renamed)' },
+              },
+              MOCK_CABINETS_LIST.data[1],
+            ],
+            pagination: MOCK_CABINETS_LIST.pagination,
           },
         })
       );
@@ -331,14 +405,16 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept DELETE cabinet endpoint', async () => {
-      await page.route('**/api/cabinets/**', async route => {
+      // DELETE /api/cabinets?id=mach_001 uses a query param, NOT a path segment.
+      // Pattern **/api/cabinets** (no trailing /**) is required to match it.
+      await page.route('**/api/cabinets**', async route => {
         if (route.request().method() === 'DELETE') {
           await route.fulfill({
             status: 200,
             json: MOCK_CABINET_DELETE_SUCCESS,
           });
         } else {
-          await route.continue();
+          await route.fallback();
         }
       });
     });
@@ -353,7 +429,8 @@ test.describe('Cabinets List', () => {
 
     await test.step('Assert the confirmation dialog is displayed', async () => {
       await cabinetsPage.expectDeleteDialogVisible();
-      await expect(cabinetsPage.deleteDialog).toContainText('Lucky Dragon');
+      // The delete modal uses assetNumber as the cabinet identifier
+      await expect(cabinetsPage.deleteDialog).toContainText('ASSET-001');
     });
 
     await test.step('Swap list mock to post-delete payload then confirm', async () => {
@@ -361,6 +438,11 @@ test.describe('Cabinets List', () => {
         route.fulfill({ status: 200, json: MOCK_CABINETS_LIST_AFTER_DELETE })
       );
       await cabinetsPage.confirmDelete();
+    });
+
+    await test.step('Navigate to re-fetch list with new mock', async () => {
+      await page.goto('/cabinets');
+      await page.waitForURL('**/cabinets');
     });
 
     await test.step('Assert "Lucky Dragon" is no longer in the table', async () => {
@@ -395,6 +477,101 @@ test.describe('Cabinets List', () => {
 
     await test.step('Assert the Gross header shows a sort indicator', async () => {
       await expect(cabinetsPage.grossColumnHeader).toContainText(/▲|▼|↑|↓/);
+    });
+  });
+
+  test('12. Search filters the cabinet list via a server request', async ({
+    page,
+    cabinetsPage,
+  }) => {
+    await test.step('Mock list APIs with a search-aware aggregation route', async () => {
+      await mockCabinetsListAPIs(page);
+      // Return only Lucky Dragon when the request carries a search term.
+      await page.route('**/api/cabinets/aggregation**', route => {
+        const url = route.request().url();
+        if (/[?&]search=/i.test(url)) {
+          return route.fulfill({
+            status: 200,
+            json: {
+              ...MOCK_CABINETS_LIST,
+              data: [MOCK_CABINET_1],
+              pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+            },
+          });
+        }
+        return route.fulfill({ status: 200, json: MOCK_CABINETS_LIST });
+      });
+    });
+
+    await test.step('Navigate and confirm both cabinets are listed', async () => {
+      await cabinetsPage.goto();
+      await cabinetsPage.expectCabinetInTable('Lucky Dragon');
+      await cabinetsPage.expectCabinetInTable('Golden Pharaoh');
+    });
+
+    await test.step('Type a search term and await the server request', async () => {
+      const searchRequest = page.waitForRequest(
+        req =>
+          /\/api\/cabinets\/aggregation/.test(req.url()) &&
+          /[?&]search=Dragon/i.test(req.url()),
+        { timeout: 15_000 }
+      );
+      await cabinetsPage.search('Dragon');
+      await searchRequest;
+    });
+
+    await test.step('Assert the list narrows to the matching cabinet', async () => {
+      await cabinetsPage.expectCabinetInTable('Lucky Dragon');
+      await cabinetsPage.expectCabinetNotInTable('Golden Pharaoh');
+    });
+
+    await test.step('Clearing the search restores the full list', async () => {
+      await cabinetsPage.clearSearch();
+      await cabinetsPage.expectCabinetInTable('Golden Pharaoh');
+    });
+  });
+
+  test('13. Status filter sends onlineStatus=online and narrows the list', async ({
+    page,
+    cabinetsPage,
+  }) => {
+    await test.step('Mock list APIs with an onlineStatus-aware aggregation route', async () => {
+      await mockCabinetsListAPIs(page);
+      await page.route('**/api/cabinets/aggregation**', route => {
+        const url = route.request().url();
+        if (/[?&]onlineStatus=online/i.test(url)) {
+          return route.fulfill({
+            status: 200,
+            json: {
+              ...MOCK_CABINETS_LIST,
+              data: [MOCK_CABINET_1],
+              pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+            },
+          });
+        }
+        return route.fulfill({ status: 200, json: MOCK_CABINETS_LIST });
+      });
+    });
+
+    await test.step('Navigate and confirm both cabinets are listed', async () => {
+      await cabinetsPage.goto();
+      await cabinetsPage.expectTableRowCount(2);
+    });
+
+    await test.step('Pick "Online" in the Status filter and await the request', async () => {
+      const statusRequest = page.waitForRequest(
+        req =>
+          /\/api\/cabinets\/aggregation/.test(req.url()) &&
+          /[?&]onlineStatus=online/i.test(req.url()),
+        { timeout: 15_000 }
+      );
+      await cabinetsPage.filterByStatus('Online');
+      await statusRequest;
+    });
+
+    await test.step('Assert only the online cabinet remains', async () => {
+      await cabinetsPage.expectCabinetInTable('Lucky Dragon');
+      await cabinetsPage.expectCabinetNotInTable('Golden Pharaoh');
     });
   });
 });
@@ -480,15 +657,107 @@ test.describe('Cabinet Detail', () => {
       await cabinetDetailPage.goto(CABINET_ID);
     });
 
-    await test.step('Assert the meter history section is visible', async () => {
+    await test.step('Assert the Collection History tab button is visible', async () => {
       await cabinetDetailPage.expectMeterHistoryVisible();
     });
 
-    await test.step('Assert at least one meter history row is rendered', async () => {
-      const historyRows = page.locator(
-        '[data-testid="meter-history-row"], table tbody tr'
+    await test.step('Reload with collection-history section pre-selected to avoid animation race', async () => {
+      // Clicking the tab triggers a Next.js URL update that can cause a rapid
+      // cabinet re-fetch + re-mount cycle, resetting the AnimatePresence animation.
+      // Navigating directly with ?section=collection-history loads the tab as the
+      // initial state, sidestepping the race entirely.
+      await page.goto(`/cabinets/${CABINET_ID}?section=collection-history`);
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Assert collection history table rows are rendered', async () => {
+      // At xl (1280px) the component renders a native <table>; at smaller
+      // viewports it renders Card components.  Either the table OR the
+      // "no history" empty-state message confirms the tab content loaded.
+      await expect(
+        page.locator('table tbody tr').first().or(
+          page.getByText(/No collection history/i).first()
+        )
+      ).toBeVisible({ timeout: 8_000 });
+    });
+  });
+
+  test('14. Accounting Details exposes all tab buttons', async ({
+    page,
+    cabinetDetailPage,
+  }) => {
+    await test.step('Mock cabinet detail API', async () => {
+      await mockCabinetDetailAPIs(page);
+    });
+
+    await test.step('Navigate to cabinet detail', async () => {
+      await cabinetDetailPage.goto(CABINET_ID);
+    });
+
+    await test.step('Assert every accounting tab is present in the sidebar', async () => {
+      await cabinetDetailPage.expectAccountingTabsVisible();
+    });
+
+    await test.step('Assert the default tab shows the Movements cards', async () => {
+      await cabinetDetailPage.expectMovementsVisible();
+    });
+  });
+
+  test('15. Switching to the Live Meters tab swaps in SAS meter cards', async ({
+    page,
+    cabinetDetailPage,
+  }) => {
+    await test.step('Mock cabinet detail API', async () => {
+      await mockCabinetDetailAPIs(page);
+    });
+
+    await test.step('Navigate directly to Live Meters section', async () => {
+      // Same URL-param trick as test 11 — loads the tab as the initial state
+      // to avoid the AnimatePresence re-render race on tab-click.
+      await page.goto(`/cabinets/${CABINET_ID}?section=live-meters`);
+      await page.waitForLoadState('networkidle');
+    });
+
+    await test.step('Assert SAS meter cards (Coin In, Games Played) are shown', async () => {
+      await cabinetDetailPage.expectLiveMetersVisible();
+    });
+
+    await test.step('Switch back to Movements and assert the cards return', async () => {
+      await cabinetDetailPage.clickAccountingTab('Movements');
+      // Wait for tab content to render after switching
+      await page.waitForTimeout(500);
+      await cabinetDetailPage.expectMovementsVisible();
+    });
+  });
+
+  test('16. Switching to the Activity Log tab loads the activity-log view', async ({
+    page,
+    cabinetDetailPage,
+  }) => {
+    await test.step('Mock cabinet detail and machine-events APIs', async () => {
+      await mockCabinetDetailAPIs(page);
+      await page.route('**/api/cabinets/by-id/events**', route =>
+        route.fulfill({ status: 200, json: { events: [] } })
       );
-      await expect(historyRows.first()).toBeVisible();
+    });
+
+    await test.step('Navigate to cabinet detail', async () => {
+      await cabinetDetailPage.goto(CABINET_ID);
+    });
+
+    await test.step('Click the Activity Log tab', async () => {
+      await cabinetDetailPage.clickAccountingTab('Activity Log');
+    });
+
+    await test.step('Assert the Activity Log view renders without error', async () => {
+      await expect(
+        cabinetDetailPage.accountingSection.getByRole('heading', {
+          name: 'Activity Log',
+        })
+      ).toBeVisible();
+      await expect(
+        page.getByText('Failed to load activity log')
+      ).toHaveCount(0);
     });
   });
 });

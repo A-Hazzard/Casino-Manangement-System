@@ -1269,40 +1269,7 @@ export async function GET(req: NextRequest) {
             addSuffix: true,
           });
           actualOfflineTime = actualDuration;
-
-          const locationId = (machine as Record<string, unknown>).locationId;
-          const range = gamingDayRanges.get(String(locationId));
-
-          if (range) {
-            // If it went offline BEFORE the range start, we clamp the label for 7d/30d/Custom
-            if (
-              lastActivity < range.rangeStart &&
-              (timePeriod === '7d' ||
-                timePeriod === '30d' ||
-                timePeriod === 'Custom' ||
-                timePeriod === 'last7days' ||
-                timePeriod === 'last30days')
-            ) {
-              const days =
-                timePeriod === '7d' || timePeriod === 'last7days'
-                  ? '7'
-                  : timePeriod === '30d' || timePeriod === 'last30days'
-                    ? '30'
-                    : undefined;
-              if (days) {
-                offlineTimeLabel = `within the last ${days} days`;
-              } else {
-                // For Custom, use distance to rangeStart?
-                // Let's just say "within the selected period"
-                const diffMs =
-                  range.rangeEnd.getTime() - range.rangeStart.getTime();
-                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                offlineTimeLabel = `within the last ${diffDays} days`;
-              }
-            } else {
-              offlineTimeLabel = actualDuration;
-            }
-          }
+          offlineTimeLabel = actualDuration;
         } else if (!isOnline && !lastActivity) {
           actualOfflineTime = 'Never';
           offlineTimeLabel = 'Never';
@@ -1452,6 +1419,35 @@ export async function GET(req: NextRequest) {
 
           // Convert from native currency to USD, then to display currency
           const machineRecord = machine as Record<string, unknown>;
+          const r = (v: number) => Math.round(v * 100) / 100;
+
+          if (nativeCurrency === displayCurrency) {
+            // Same currency — skip conversion, just round final values
+            const moneyIn = r((machineRecord.moneyIn as number) || 0);
+            const baseMoneyOut = r((machineRecord.cancelledCredits as number) || 0);
+            const jackpot = r((machineRecord.jackpot as number) || 0);
+            const includeJackpot =
+              (machineLicenceeId &&
+                licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) ||
+              false;
+            const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
+            const gross = r(moneyIn - moneyOut);
+            const netGross = r(moneyIn - baseMoneyOut - jackpot);
+
+            return {
+              ...machine,
+              moneyIn,
+              moneyOut,
+              cancelledCredits: baseMoneyOut,
+              jackpot,
+              gross,
+              netGross,
+              coinIn: r((machineRecord.coinIn as number) || 0),
+              coinOut: r((machineRecord.coinOut as number) || 0),
+              includeJackpot,
+            };
+          }
+
           const moneyInUSD = convertToUSD(
             (machineRecord.moneyIn as number) || 0,
             nativeCurrency
@@ -1475,15 +1471,12 @@ export async function GET(req: NextRequest) {
             nativeCurrency
           );
 
-          const moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+          const moneyIn = r(convertFromUSD(moneyInUSD, displayCurrency));
           // machine.moneyOut coming in already conditionally includes jackpot (set in batch/sequential step).
           // machine.cancelledCredits = rawMoneyOut (base only, no jackpot).
           // Re-derive moneyOut from the base so we don't double-add jackpot.
-          const baseMoneyOut = convertFromUSD(
-            cancelledCreditsUSD,
-            displayCurrency
-          ); // raw base, no jackpot
-          const jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+          const baseMoneyOut = r(convertFromUSD(cancelledCreditsUSD, displayCurrency));
+          const jackpot = r(convertFromUSD(jackpotUSD, displayCurrency));
           const includeJackpot =
             (machineLicenceeId &&
               licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) ||
@@ -1491,22 +1484,19 @@ export async function GET(req: NextRequest) {
 
           // moneyOut = base + jackpot (if includeJackpot) — same pattern as batch/sequential
           const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
-          const gross = moneyIn - moneyOut;
-          const netGross = moneyIn - baseMoneyOut - jackpot;
+          const gross = r(moneyIn - moneyOut);
+          const netGross = r(moneyIn - baseMoneyOut - jackpot);
 
           return {
             ...machine,
             moneyIn,
             moneyOut,
-            cancelledCredits: convertFromUSD(
-              cancelledCreditsUSD,
-              displayCurrency
-            ),
+            cancelledCredits: r(convertFromUSD(cancelledCreditsUSD, displayCurrency)),
             jackpot,
             gross,
             netGross,
-            coinIn: convertFromUSD(coinInUSD, displayCurrency),
-            coinOut: convertFromUSD(coinOutUSD, displayCurrency),
+            coinIn: r(convertFromUSD(coinInUSD, displayCurrency)),
+            coinOut: r(convertFromUSD(coinOutUSD, displayCurrency)),
             includeJackpot,
           };
         });

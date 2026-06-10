@@ -1,8 +1,8 @@
 # Frontend Architecture & Standards
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -20,7 +20,7 @@ Every page in the CMS must follow the **Lean Page Pattern**:
 2. **Computed State**: (Memoized totals, filtered lists)
 3. **Handlers**: (Submit, Toggle, Delete)
 4. **Effects**: (Logging, Analytics)
-5. **Render**: (JSX with specific semantic sections)
+5. **Return**: (JSX with specific semantic sections)
 
 ---
 
@@ -28,7 +28,7 @@ Every page in the CMS must follow the **Lean Page Pattern**:
 
 **Rule:** Generic spinners or "Loading..." text are prohibited.
 
-- **How it works**: Every feature has a corresponding skeleton in `@/components/ui/skeletons/`.
+- **How it works**: Every feature has a corresponding skeleton. Most live in `components/shared/ui/skeletons/`, with vault/collection-specific skeletons in `components/ui/skeletons/`.
 - **Accuracy**: The skeleton must match the layout (Table, Grid, or Card) within 5px accuracy to prevent "Layout Shift" (CLS).
 
 ---

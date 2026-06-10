@@ -1,8 +1,8 @@
 # MQTT & Real-Time Logistics Architecture
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** May 4, 2026  
+**Version:** 4.3.0
 
 ---
 
@@ -14,22 +14,22 @@ The MQTT bus is the "Central Nervous System" of the CMS. It facilitates low-late
 
 ## 2. Topic Structure
 
-Every device follows a strict hierarchical naming convention:
+### 📤 Publish (Backend -> Device)
 
-### 💓 Telemetry (Machine -> Backend)
+- **`sas/relay/{relayId}`** (env: `MQTT_PUB_TOPIC`, default: `sas/relay/`): Commands sent to individual SMIB relays (Lock/Unlock, Sync, firmware updates). The `{relayId}` identifies the target device.
 
-- **`sunbox/[clientId]/heartbeat`**: Periodic ping (60s) used for Online/Offline status.
-- **`sunbox/[clientId]/meters`**: Real-time SAS meter snapshots (Bill counts, coin flow).
-- **`sunbox/[clientId]/events`**: Instant alerts (Card-In, Door Open, Jackpot Hit).
+### 📥 Subscribe (Device -> Backend)
 
-### ⌨️ Command (Backend -> Machine)
+- **`sas/gy/server`** (env: `MQTT_SUB_TOPIC`, default: `sas/gy/server`): Primary topic for device responses — SAS meter snapshots, events, heartbeat, and status messages from all SMIBs.
+- **`sas/server`** (hardcoded): Additional subscribe topic used for server-wide notifications.
 
-- **`config/[clientId]/command`**: Used for Lock/Unlock or Sync requests.
-- **`config/[clientId]/firmware`**: Channel for delivering software update instructions.
+### ⚙️ Config
 
-### 🐞 Debug (The Raw Stream)
+- **`smib/config`** (env: `MQTT_CFG_TOPIC`, default: `smib/config`): Configuration channel for device provisioning and parameter updates.
 
-- **`raw/[clientId]/sas`**: A HEX-stream of the raw SAS-05 communication between the SMIB and the slot machine cabinet. Used by Technicians for forensic troubleshooting.
+### 🐞 GLI Integration
+
+- **`sas/gli/server/{relayId}`** (env: `MQTT_GLI_TOPIC`, default: `sas/gli/server/`): Dedicated topic for GLI (Gaming Laboratories International) server communication with specific relays.
 
 ---
 

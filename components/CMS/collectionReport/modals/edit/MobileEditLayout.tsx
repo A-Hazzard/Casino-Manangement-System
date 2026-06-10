@@ -7,6 +7,7 @@ import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { Calculator, ClipboardList } from 'lucide-react';
+import { useEffect } from 'react';
 import { MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import {
   MachineVariationData,
@@ -111,6 +112,25 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
   };
 
   /* handleMachineUnselect removed as it is unused */
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  // Auto-fill notes for offline SMIB machines when a new machine is selected
+  useEffect(() => {
+    const selectedMachine = modalState.selectedMachineData;
+    const machineId = selectedMachine?._id ? String(selectedMachine._id) : null;
+    const isEditing = modalState.editingEntryId;
+    const currentNotes = modalState.formData?.notes;
+
+    if (machineId && !isEditing) {
+      const isKnown = machineId in machineStatusMap;
+      if (isKnown && machineStatusMap[machineId] === false && !currentNotes) {
+        onFormDataChange({ notes: 'Machine was offline' });
+      }
+    }
+  }, [modalState.selectedMachineData, modalState.editingEntryId, modalState.formData?.notes, machineStatusMap, onFormDataChange]);
 
   // ============================================================================
   // Render

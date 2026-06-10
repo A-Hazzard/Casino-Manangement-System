@@ -1,8 +1,8 @@
 # Sessions & Operations Page Implementation (`/sessions`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -37,7 +37,7 @@ The side-drawer or modal providing a deep-dive into a specific record.
 | **Status** | `active` / `completed` | `GET /api/sessions/[sessionId]` |
 
 - **Forensic Feed**: Lists every discrete MQTT event (Card-In, Spin, Win, Card-Out) associated with the session ID.
-- **Implementation**: `SessionDetailsDrawer` component triggered by row selection.
+- **Implementation**: Triggered by row selection within `SessionsPageContent`.
 
 ### ⚙️ Member Loyalty Settings
 
@@ -55,11 +55,11 @@ Displays the jurisdictional and loyalty parameters active during the play sessio
 Live feed of floor activity for instant situational awareness.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Live Event** | `eventType`, `machineId`, `timestamp` | `SSE /api/analytics/machines/stream` |
+| **Live Event** | `eventType`, `machineId`, `timestamp` | `GET /api/analytics/dashboard` |
 | **Active Count** | `currentlyPlaying` | `GET /api/analytics/dashboard` |
 
 - **Function**: Pushes real-time alerts for Jackpots, Door Opens, and High-Value Card-Ins without requiring a page refresh.
-- **Implementation**: `LiveTicker` component subscribed to the Server-Sent Events (SSE) bus.
+- **Implementation**: Real-time updates via polling of the dashboard analytics endpoint.
 
 ---
 
@@ -83,7 +83,7 @@ Live feed of floor activity for instant situational awareness.
 
 ## 5. Technical UI Standards
 
-- **Skeleton UX**: Uses `SessionTableSkeleton` during initial data load.
+- **Skeleton UX**: Uses `SessionsSkeletons` during initial data load.
 - **Auto-Refresh**: The table data is periodically invalidated via React Query to keep the list current (refresh interval: 120s).
 - **Responsive Design**: The table collapses into a "Mobile-Card" view on smaller screens, prioritizing `MachineAsset` and `Status`.
 

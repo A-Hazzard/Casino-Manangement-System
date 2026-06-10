@@ -1,8 +1,8 @@
 # Sync Meters & Telemetry API (`/api/cabinets/[cabinetId]/sync-meters`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Version:** 4.4.0  
+**Last Updated:** June 5, 2026
 
 ---
 
@@ -14,23 +14,20 @@ The Sync Meters API is the real-time gateway that bridges the gap between the da
 
 ## 2. Core Endpoints
 
-### 📡 `GET /api/cabinets/[cabinetId]/sync-meters`
+### 📡 `POST /api/cabinets/[cabinetId]/sync-meters`
 
-Triggers a live SAS poll for a specific machine.
+Triggers a live SAS poll for a specific machine. This is a **POST** endpoint because it initiates a mutation (sync operation).
 
-- **How it works (The Handshake)**:
-  1. The API receives a request for `Machine-X`.
-  2. It identifies the target SMIB via its `MQTTClientID`.
-  3. It publishes a `GET_METERS` command to the `sunbox/[id]/config` topic.
-  4. It waits 3000ms for an inbound MQTT response.
-  5. If successful, it returns the raw integer meters (Drop, Coin-In, Win).
+**How it works:**
+
+1. The API receives a POST request for `cabinetId`.
+2. It resolves the cabinet's parent location via `Machine.gamingLocation`.
+3. It **redirects** to the location-specific endpoint: `/api/locations/${locationId}/cabinets/${cabinetId}/sync-meters`.
+4. The location-specific handler performs the actual SAS poll via MQTT.
+5. If successful, it returns the raw integer meters (Drop, Coin-In, Win).
 - **Fallback**: If the machine is offline, it returns the `lastKnownSafe` meters from the database with a `status: "offline"` payload.
 
-### 📤 `POST /api/cabinets/[cabinetId]/sync-meters/all`
-
-Bulk sync for an entire Location floor.
-
-- **Concurrency Control**: To prevent saturating the property's network, the API processes machines in parallel batches of 10.
+> **Note:** There is no `/sync-meters/all` endpoint. Each cabinet must be synced individually.
 
 ---
 

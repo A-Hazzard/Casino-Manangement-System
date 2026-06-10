@@ -423,7 +423,7 @@ If updates show `matchedCount: 0`:
 
 ---
 
-## 7. CR V2 — RAM Clear & Meter Creation (No-SMIB Locations)
+## 7. CR V2 — RAM Clear & Meter Creation (No-SMIB + Offline SMIB Locations)
 
 The V2 capture system follows the same RAM clear math as V1 but stores intermediate state on `ReportedMachine` and only writes `Meters` docs at session submit.
 
@@ -450,16 +450,18 @@ The V2 capture system follows the same RAM clear math as V1 but stores intermedi
 
 ### 7.2 Submit (PATCH `/api/collection-reports-v2/sessions/[sessionId]/submit`)
 
-For **no-SMIB locations only**, the submit route creates `Meters` docs:
+For **no-SMIB locations and offline SMIB machines**, the submit route creates `Meters` docs and updates `Machine.sasMeters`:
 
 | `ramClear` | Docs created | Movement fields                                                                                                                                            |
 | ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `false`    | 1            | `movement.drop = manualMetersIn - prevIn`, `movement.totalCancelledCredits = manualMetersOut - prevOut`                                                    |
 | `true`     | 2            | RAM clear meter (`isRamClear: true`): `movement.drop = ramClearMetersIn - prevIn`. Post-reset meter: `movement.drop = manualMetersIn` (prev treated as 0). |
 
+For **offline SMIB machines** (`!machineHasRelay || isSupplemental`), `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` are also updated with the collector-entered values, since the live relay is unreachable.
+
 The post-reset meter's `readAt` is offset by `+1000ms` to preserve chronological order. On re-submit, `Meters.deleteMany({ machine, locationSession })` clears the existing docs first so there are never duplicates.
 
-For **SMIB locations**, no `Meters` docs are created — the SAS relay handles that. RAM clear still updates `ReportedMachine.movement` identically.
+For **online SMIB locations**, no `Meters` docs are created — the SAS relay handles that. RAM clear still updates `ReportedMachine.movement` identically.
 
 ### 7.3 Toggling RAM Clear in Edit Mode (PATCH machines route)
 
@@ -473,4 +475,4 @@ For sessions already in `submitted` state, `cascadeMachineEdit` propagates the n
 ---
 
 _Document Version: 1.1_
-_Last Updated: May 21, 2026_
+_Last Updated: June 5, 2026_

@@ -86,8 +86,8 @@ export function calculateMovement(
   const gross = metersIn - metersOut;
 
   return {
-    metersIn,
-    metersOut,
-    gross,
+    metersIn: Math.round(metersIn * 100) / 100,
+    metersOut: Math.round(metersOut * 100) / 100,
+    gross: Math.round(gross * 100) / 100,
   };
 }

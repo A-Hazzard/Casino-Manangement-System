@@ -286,6 +286,16 @@ export default function ReportsLocationsMapImplementation({
     mapRef.current.setView([lat, lon], 15);
     setSearchQuery(location.name);
     setShowSearchResults(false);
+
+    // Open popup for the searched location
+    mapRef.current.eachLayer(layer => {
+      if (layer instanceof L.Marker) {
+        const ll = layer.getLatLng();
+        if (ll.lat === lat && ll.lng === lon) {
+          layer.openPopup();
+        }
+      }
+    });
   };
 
   const handleMapReady = useCallback((map: L.Map) => {
@@ -308,7 +318,13 @@ export default function ReportsLocationsMapImplementation({
     if (!location.coordinates) return null;
     const [lat, lon] = location.coordinates;
     return (
-      <Marker key={key} position={[lat, lon]}>
+      <Marker
+        key={key}
+        position={[lat, lon]}
+        eventHandlers={{
+          mouseover: event => event.target.openPopup(),
+        }}
+      >
         <Popup>
           <LocationPopupContent
             location={location}

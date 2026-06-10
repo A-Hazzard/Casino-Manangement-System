@@ -1,5 +1,5 @@
 ---
-name: Loading States & Skeleton Loaders
+name: skeleton-loaders
 description: Content-specific skeleton loaders that exactly match real content layout. NEVER use generic spinners or "Loading..." text.
 ---
 

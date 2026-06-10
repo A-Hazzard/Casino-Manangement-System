@@ -1,8 +1,8 @@
 # Executive Reporting API (`/api/reports`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -30,10 +30,10 @@ Performance ranking of all machines within a property.
 
 ### 🧾 `GET /api/reports/meters`
 
-Forensic audit comparing SAS meter readings against physical soft counts.
+Full meter trends endpoint supporting both SAS and SMIB machine data, with currency conversion, gaming day alignment, and online/offline filtering.
 
-- **Variance Highlighting**: Flags any gaming day where the electronic-to-physical variance exceeded 1% of total drop.
-- **Aggregation**: Queries the `Meters` collection with a daily `$group` stage per machine, then joins against the `Collections` collection.
+- **Filters**: Supports `licencee`, `locationId`, `startDate`, `endDate`, `machineType` (SAS/SMIB), `onlineStatus`, and `currency` conversion.
+- **Aggregation**: Queries the `Meters` collection directly with a daily `$group` stage per machine, applying gaming day offsets for accurate period alignment.
 
 ### 💰 `GET /api/reports/vault-activity`
 
@@ -57,10 +57,10 @@ Individual cashier performance report for payroll and accountability tracking.
 
 Large reports (30+ days across many machines) can query millions of rows.
 
-- **The Solution**: The API uses a pre-aggregation strategy.
-  1. It first queries the `DailyMetricSummary` collection (Pre-aggregated totals).
-  2. If data is missing (e.g. for Today), it falls back to a live scan of the `Meters` collection.
-  3. Uses `Promise.all` to fetch the metadata for multiple machines simultaneously.
+- **The Solution**: The API uses cursor-based aggregation to stream results and prevent memory spikes.
+  1. Queries the `Meters` collection using `.cursor({ batchSize: 1000 })` for streaming.
+  2. Uses `allowDiskUse` for large aggregation pipelines.
+  3. Uses `Promise.all` to batch-fetch metadata for multiple machines simultaneously.
 
 ### 📐 Export Formatting
 

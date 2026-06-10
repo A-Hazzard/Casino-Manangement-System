@@ -169,6 +169,7 @@ export type CollectionReportDocument = {
   locationProfitPerc?: number;
   machinesCollected?: string;
   totalVariation?: number;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   __v?: number;
@@ -215,6 +216,7 @@ export type CollectionDocument = {
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
   serialNumber?: string;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   __v?: number;

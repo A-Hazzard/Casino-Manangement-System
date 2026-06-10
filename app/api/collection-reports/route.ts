@@ -267,6 +267,8 @@ export async function GET(req: NextRequest) {
     const { searchParams: apiSearchParams } = new URL(req.url);
     const search = apiSearchParams.get('search') || undefined;
     const searchType = apiSearchParams.get('searchType') || undefined;
+    const includeArchived =
+      apiSearchParams.get('includeArchived') === 'true';
 
     const { reports, total } = await getAllCollectionReportsWithMachineCounts(
       licencee,
@@ -282,7 +284,8 @@ export async function GET(req: NextRequest) {
       },
       locationIds || (locationId ? [locationId] : undefined),
       search,
-      searchType
+      searchType,
+      includeArchived
     );
 
     if (!reports || !Array.isArray(reports)) {

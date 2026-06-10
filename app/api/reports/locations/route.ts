@@ -10,6 +10,7 @@ import {
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
+import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import type { GamingMachine, LicenceeDocument } from '@shared/types';
 import type { LocationDocument } from '@/lib/types/common';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -108,8 +109,12 @@ export async function GET(req: NextRequest) {
               { error: 'Missing dates' },
               { status: 400 }
             );
-          customStartDate = new Date(start);
-          customEndDate = new Date(end);
+          customStartDate = start.includes('T')
+            ? new Date(start)
+            : new Date(start + 'T00:00:00.000Z');
+          customEndDate = end.includes('T')
+            ? new Date(end)
+            : new Date(end + 'T00:00:00.000Z');
         }
 
         const userLocationPermissions =
@@ -526,12 +531,20 @@ export async function GET(req: NextRequest) {
         }
 
         const memberCountMap = await getMemberCountsPerLocation(allLocationIds);
+        const licenceeIds = Array.from(
+          new Set(
+            locations
+              .map(loc => {
+                const licenceeRef = loc.rel?.licencee;
+                return Array.isArray(licenceeRef)
+                  ? licenceeRef[0] ? String(licenceeRef[0]) : ''
+                  : licenceeRef ? String(licenceeRef) : '';
+              })
+              .filter(Boolean)
+          )
+        );
         const licencees = await Licencee.find({
-          _id: {
-            $in: Array.from(
-              new Set(locations.map(l => l.rel?.licencee).filter(Boolean))
-            ),
-          },
+          _id: { $in: licenceeIds },
         }).lean<LicenceeDocument[]>();
         const licenceeIncludeJackpotMap = new Map(
           licencees.map(l => [String(l._id), !!l.includeJackpot])
@@ -566,8 +579,33 @@ export async function GET(req: NextRequest) {
           const scaledCancelled =
             (metrics.totalCancelledCredits || 0) * moneyOutScale;
           const scaledJackpot = (metrics.totalJackpot || 0) * moneyOutScale;
-          const includeJackpot =
-            licenceeIncludeJackpotMap.get(String(loc.rel?.licencee)) || false;
+
+          const licenceeRef = loc.rel?.licencee;
+          const licenceeId = Array.isArray(licenceeRef)
+            ? licenceeRef[0] ? String(licenceeRef[0]) : ''
+            : licenceeRef ? String(licenceeRef) : '';
+          const includeJackpot = licenceeId
+            ? licenceeIncludeJackpotMap.get(licenceeId) || false
+            : false;
+
+          const eligibleMachines = machines.filter(
+            m => m.relayId && String(m.relayId).trim().length > 0
+          );
+          const onlineThreshold = Date.now() - 3 * 60 * 1000;
+          const onlineMachines = loc.aceEnabled
+            ? eligibleMachines.length
+            : eligibleMachines.filter(m => {
+                if (!m.lastActivity) return false;
+                try {
+                  const activityDate =
+                    m.lastActivity instanceof Date
+                      ? m.lastActivity
+                      : new Date(String(m.lastActivity).replace(' ', 'T'));
+                  return activityDate.getTime() >= onlineThreshold;
+                } catch {
+                  return false;
+                }
+              }).length;
 
           return {
             _id: locId,
@@ -587,15 +625,7 @@ export async function GET(req: NextRequest) {
               ) / 100,
             jackpot: Math.round(scaledJackpot * 100) / 100,
             totalMachines: machines.length,
-            onlineMachines: loc.aceEnabled
-              ? machines.length
-              : machines.filter(
-                  m =>
-                    (m.lastActivity
-                      ? new Date(m.lastActivity as Date).getTime()
-                      : 0) >
-                    Date.now() - 3 * 60 * 1000
-                ).length,
+            onlineMachines,
             sasMachines: machines.filter(m => m.isSasMachine).length,
             nonSasMachines: machines.filter(m => !m.isSasMachine).length,
             hasSasMachines: machines.some(m => m.isSasMachine),
@@ -629,6 +659,43 @@ export async function GET(req: NextRequest) {
             gamesPlayed: 0,
           } as AggregatedLocation;
         });
+
+        // ============================================================================
+        // STEP 5.5: Non-SMIB Offline Collection Override
+        // Mark NON-SMIB locations as offline if no collection report in past 3 months
+        // ============================================================================
+        const nonSmibLocations = locationResults.filter(
+          loc => loc.sasMachines === 0 || loc.noSMIBLocation
+        );
+
+        if (nonSmibLocations.length > 0) {
+          const threeMonthsAgo = new Date();
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+          const nonSmibLocationIds = nonSmibLocations.map(loc => loc._id);
+          const recentCollectionReports = await CollectionReport.find({
+            location: { $in: nonSmibLocationIds },
+            timestamp: { $gte: threeMonthsAgo },
+          })
+            .select('location timestamp')
+            .lean();
+
+          const locationsWithRecentReports = new Set<string>();
+          recentCollectionReports.forEach(report => {
+            if (report.location) {
+              locationsWithRecentReports.add(String(report.location));
+            }
+          });
+
+          locationResults.forEach(loc => {
+            if (
+              (loc.sasMachines === 0 || loc.noSMIBLocation) &&
+              !locationsWithRecentReports.has(loc._id || '')
+            ) {
+              loc.onlineMachines = 0;
+            }
+          });
+        }
 
         // ============================================================================
         // STEP 6: Filter and Sort results
