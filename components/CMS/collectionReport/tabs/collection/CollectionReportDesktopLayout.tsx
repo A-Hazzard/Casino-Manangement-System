@@ -97,6 +97,8 @@ export default function CollectionReportDesktopLayout(
         onSearchSubmit={props.onSearchSubmit}
         showUncollectedOnly={props.showUncollectedOnly}
         onShowUncollectedOnlyChange={props.onShowUncollectedOnlyChange}
+        showArchived={props.showArchived}
+        onShowArchivedChange={props.onShowArchivedChange}
         selectedFilters={props.selectedFilters}
         onFilterChange={props.onFilterChange}
         onClearFilters={props.onClearFilters}
@@ -108,6 +110,10 @@ export default function CollectionReportDesktopLayout(
           loading={props.loading}
           onEdit={props.onEdit}
           onDelete={props.onDelete}
+          onRestore={props.onRestore}
+          onPermanentDelete={props.onPermanentDelete}
+          canManage={props.canManage}
+          canPermanentlyDelete={props.canPermanentlyDelete}
           sortField={props.sortField}
           sortDirection={props.sortDirection}
           onSort={props.onSort}

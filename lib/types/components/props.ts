@@ -136,6 +136,10 @@ export type CollectionReportTableProps = {
   reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  onRestore?: (reportId: string) => void;
+  onPermanentDelete?: (reportId: string) => void;
+  canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
@@ -149,6 +153,10 @@ export type CollectionReportCardsProps = {
   reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  onRestore?: (reportId: string) => void;
+  onPermanentDelete?: (reportId: string) => void;
+  canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   editableReportIds?: Set<string>;
   loading?: boolean;
   onRefresh?: () => void;
@@ -183,6 +191,8 @@ export type CollectionReportDesktopUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  showArchived: boolean;
+  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
@@ -190,6 +200,10 @@ export type CollectionReportDesktopUIProps = {
   reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  onRestore?: (reportId: string) => void;
+  onPermanentDelete?: (reportId: string) => void;
+  canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
@@ -226,6 +240,8 @@ export type CollectionReportMobileUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  showArchived: boolean;
+  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
@@ -233,6 +249,10 @@ export type CollectionReportMobileUIProps = {
   reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
+  onRestore?: (reportId: string) => void;
+  onPermanentDelete?: (reportId: string) => void;
+  canManage?: boolean;
+  canPermanentlyDelete?: boolean;
   selectedLicencee?: string;
   editableReportIds?: Set<string>;
 };
@@ -448,6 +468,8 @@ export type CollectionReportFiltersProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
+  showArchived: boolean;
+  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
