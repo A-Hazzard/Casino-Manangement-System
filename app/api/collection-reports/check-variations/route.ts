@@ -38,7 +38,7 @@ import type {
   MongooseId,
 } from '@/shared/types';
 import type { GamingLocationDocument } from '@/shared/types';
-interface CheckVariationsRequest {
+type CheckVariationsRequest = {
   locationId: string;
   machines: Array<{
     machineId: string;
@@ -49,15 +49,12 @@ interface CheckVariationsRequest {
     sasEndTime?: string;
     prevMetersIn?: number;
     prevMetersOut?: number;
-    /** Pre-calculated movement gross from a saved collection document.
-     * When provided, used as meterGross instead of recalculating from raw meters.
-     * Ensures RAM-clear entries match the report detail page calculation. */
     movementGross?: number;
   }>;
   includeJackpot?: boolean;
-}
+};
 
-interface MachineVariationData {
+type MachineVariationData = {
   machineId: string;
   machineName: string;
   variation: number | string;
@@ -65,13 +62,13 @@ interface MachineVariationData {
   meterGross: number;
   sasStartTime?: string | null;
   sasEndTime?: string | null;
-}
+};
 
-interface CheckVariationsResponse {
+type CheckVariationsResponse = {
   hasVariations: boolean;
   totalVariation: number;
   machines: MachineVariationData[];
-}
+};
 
 /**
  * Main POST handler for checking collection report variations

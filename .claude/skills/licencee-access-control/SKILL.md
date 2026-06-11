@@ -1,5 +1,5 @@
 ---
-name: Licencee Access Control
+name: licencee-access-control
 description: Multi-tenant access control, role-based permissions, location filtering, session invalidation on permission changes.
 ---
 

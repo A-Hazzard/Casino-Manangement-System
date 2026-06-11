@@ -1,8 +1,8 @@
 # Financial Calculation Engine (The Core)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -61,7 +61,7 @@ const netGross = moneyIn - rawMoneyOut - jackpot;
 Casino operations do not end at midnight. The engine uses a "Gaming Day" logic:
 
 - **How it works**: A session occurring at 3 AM on Tuesday is attributed to the "Monday Gaming Day."
-- **Logic**: Implementation resides in `getGamingDayRangeForPeriod.ts`. It shifts the audit window by `-8 hours` before querying the database.
+- **Logic**: Implementation resides in `lib/utils/gamingDayRange.ts`. It shifts the audit window by `-8 hours` before querying the database.
 
 ### 🌐 Single Source of Truth Logic
 

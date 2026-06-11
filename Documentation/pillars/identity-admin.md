@@ -1,8 +1,8 @@
 # Identity & Administration Pillar (Identity)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -51,8 +51,8 @@ The Administration module handles corporate hierarchy, user enrollment, and juri
 | Feature          | Logic Location                          | Context                       |
 | :--------------- | :-------------------------------------- | :---------------------------- |
 | **Login Flow**   | `app/api/auth/login/route.ts`           | Multi-step verification.      |
-| **User CRUD**    | `app/api/administration/users/route.ts` | Filtered by requester roles.  |
-| **Activity Log** | `lib/helpers/activityLog.ts`            | Standardized internal logger. |
+| **User CRUD**    | `app/api/users/route.ts`                | Filtered by requester roles.  |
+| **Activity Log** | `app/api/lib/helpers/activityLogger.ts` | Standardized internal logger. |
 
 ---
 

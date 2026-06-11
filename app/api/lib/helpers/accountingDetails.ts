@@ -689,6 +689,7 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
+    deletedAt: report.deletedAt?.toISOString() || null,
     includeJackpot: includeJackpot,
     useNetGross: includeJackpot,
     collector: report.collector,
@@ -796,6 +797,10 @@ export async function getCollectionReportById(
         machineId: machineDisplayName,
         actualMachineId: collection.machineId,
         dropCancelled: `${formatSmartDecimal(scaled.drop)} / ${formatSmartDecimal(scaled.cancelled)}`,
+        metersIn: Math.round((collection.metersIn ?? 0) * 100) / 100,
+        metersOut: Math.round((collection.metersOut ?? 0) * 100) / 100,
+        prevIn: Math.round((collection.prevIn ?? 0) * 100) / 100,
+        prevOut: Math.round((collection.prevOut ?? 0) * 100) / 100,
         metersGross: scaled.meterGross,
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,

@@ -174,7 +174,7 @@ export default function VaultOverviewFloatRequestsPanel({
                   </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {vaultInventory
-                      .filter(d => d.quantity > 0)
+                      .filter(denom => denom.quantity > 0)
                       .map(d => (
                         <span key={d.denomination} className="text-gray-600">
                           ${d.denomination}:{' '}

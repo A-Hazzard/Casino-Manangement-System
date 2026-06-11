@@ -84,7 +84,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
-export interface EndOfDayReportData {
+export type EndOfDayReportData = {
   denominationBreakdown: Record<string, number>;
   midDaySoftCounts: Array<SoftCount & { location: string; variance: number }>;
   endOfDaySoftCounts: Array<SoftCount & { location: string; variance: number }>;

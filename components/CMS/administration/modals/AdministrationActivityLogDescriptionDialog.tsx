@@ -66,18 +66,18 @@ function RenderAuditValue({
         <div className="border-gray-150/70 overflow-hidden rounded border bg-white shadow-sm">
           <table className="w-full table-fixed text-[10px] leading-tight">
             <tbody>
-              {pairs.map((p, idx) => (
+              {pairs.map((pair, index) => (
                 <tr
-                  key={idx}
+                  key={index}
                   className="border-b border-gray-100 last:border-b-0 hover:bg-slate-50/50"
                 >
                   <td className="w-5/12 break-words border-r border-gray-100 bg-gray-50/30 px-2 py-1.5 font-semibold text-gray-500">
-                    {p.key || 'Item'}
+                    {pair.key || 'Item'}
                   </td>
                   <td
                     className={`w-7/12 break-words px-2 py-1.5 font-medium ${type === 'before' ? 'bg-rose-50/10 text-rose-700' : 'bg-emerald-50/10 text-emerald-700'}`}
                   >
-                    {p.val}
+                    {pair.val}
                   </td>
                 </tr>
               ))}
@@ -324,11 +324,11 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
   }> = [];
 
   if (hasNewData && Array.isArray(data.machines)) {
-    machinesList = (data.machines as Array<Record<string, unknown>>).map(m => {
-      const customName = String(m.customName || m.machineCustomName || '');
-      const manuf = String(m.manuf || '');
-      const serialNumber = String(m.serialNumber || '');
-      let resolvedName = String(m.displayName || '');
+    machinesList = (data.machines as Array<Record<string, unknown>>).map(machine => {
+      const customName = String(machine.customName || machine.machineCustomName || '');
+      const manuf = String(machine.manuf || '');
+      const serialNumber = String(machine.serialNumber || '');
+      let resolvedName = String(machine.displayName || '');
       if (!resolvedName && serialNumber) {
         const parts = [customName, manuf].filter(Boolean);
         resolvedName =
@@ -337,33 +337,33 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
             : serialNumber;
       }
       if (!resolvedName)
-        resolvedName = String(m.machineName || m.machineId || 'Machine');
+        resolvedName = String(machine.machineName || machine.machineId || 'Machine');
       return {
         name: resolvedName,
-        metersIn: Number(m.metersIn || 0),
-        metersOut: Number(m.metersOut || 0),
+        metersIn: Number(machine.metersIn || 0),
+        metersOut: Number(machine.metersOut || 0),
         prevIn:
-          m.prevMetersIn !== undefined
-            ? Number(m.prevMetersIn)
-            : m.prevIn !== undefined
-              ? Number(m.prevIn)
+          machine.prevMetersIn !== undefined
+            ? Number(machine.prevMetersIn)
+            : machine.prevIn !== undefined
+              ? Number(machine.prevIn)
               : undefined,
         prevOut:
-          m.prevMetersOut !== undefined
-            ? Number(m.prevMetersOut)
-            : m.prevOut !== undefined
-              ? Number(m.prevOut)
+          machine.prevMetersOut !== undefined
+            ? Number(machine.prevMetersOut)
+            : machine.prevOut !== undefined
+              ? Number(machine.prevOut)
               : undefined,
-        ramClear: Boolean(m.ramClear || false),
+        ramClear: Boolean(machine.ramClear || false),
         ramClearMetersIn:
-          m.ramClearMetersIn !== undefined
-            ? Number(m.ramClearMetersIn)
+          machine.ramClearMetersIn !== undefined
+            ? Number(machine.ramClearMetersIn)
             : undefined,
         ramClearMetersOut:
-          m.ramClearMetersOut !== undefined
-            ? Number(m.ramClearMetersOut)
+          machine.ramClearMetersOut !== undefined
+            ? Number(machine.ramClearMetersOut)
             : undefined,
-        notes: m.notes ? String(m.notes) : null,
+        notes: machine.notes ? String(machine.notes) : null,
       };
     });
   } else {
@@ -567,16 +567,16 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
         </h4>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {machinesList.map((m, i) => (
+          {machinesList.map((machine, index) => (
             <div
-              key={i}
+              key={index}
               className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm transition-all hover:bg-white hover:shadow-md"
             >
               <div className="mb-2 flex items-center justify-between border-b border-indigo-200 pb-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
-                  {m.name}
+                  {machine.name}
                 </span>
-                {m.ramClear && (
+                {machine.ramClear && (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-red-700 ring-1 ring-red-500/20">
                     RAM Clear
                   </span>
@@ -589,11 +589,11 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
                     Current In
                   </p>
                   <p className="font-mono font-medium text-gray-800">
-                    {m.metersIn.toLocaleString()}
+                    {machine.metersIn.toLocaleString()}
                   </p>
-                  {m.prevIn !== undefined && (
+                  {machine.prevIn !== undefined && (
                     <p className="font-mono text-[9px] text-gray-400">
-                      Prev: {m.prevIn.toLocaleString()}
+                      Prev: {machine.prevIn.toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -602,40 +602,40 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
                     Current Out
                   </p>
                   <p className="font-mono font-medium text-gray-800">
-                    {m.metersOut.toLocaleString()}
+                    {machine.metersOut.toLocaleString()}
                   </p>
-                  {m.prevOut !== undefined && (
+                  {machine.prevOut !== undefined && (
                     <p className="font-mono text-[9px] text-gray-400">
-                      Prev: {m.prevOut.toLocaleString()}
+                      Prev: {machine.prevOut.toLocaleString()}
                     </p>
                   )}
                 </div>
 
-                {m.ramClear &&
-                  (m.ramClearMetersIn !== undefined ||
-                    m.ramClearMetersOut !== undefined) && (
+                {machine.ramClear &&
+                  (machine.ramClearMetersIn !== undefined ||
+                    machine.ramClearMetersOut !== undefined) && (
                     <div className="col-span-2 mt-1 rounded border border-red-100/50 bg-red-50/50 p-2 text-[10px]">
                       <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
                         Meters Before RAM Clear
                       </p>
                       <div className="grid grid-cols-2 gap-2 font-mono">
                         <div>
-                          In: {m.ramClearMetersIn?.toLocaleString() || '—'}
+                          In: {machine.ramClearMetersIn?.toLocaleString() || '—'}
                         </div>
                         <div>
-                          Out: {m.ramClearMetersOut?.toLocaleString() || '—'}
+                          Out: {machine.ramClearMetersOut?.toLocaleString() || '—'}
                         </div>
                       </div>
                     </div>
                   )}
 
-                {m.notes && (
+                {machine.notes && (
                   <div className="col-span-2 mt-1 rounded border border-amber-100/50 bg-amber-50/50 p-2 text-[10px]">
                     <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-600">
                       Machine Notes
                     </p>
                     <p className="italic leading-relaxed text-amber-900">
-                      "{m.notes}"
+                      "{machine.notes}"
                     </p>
                   </div>
                 )}

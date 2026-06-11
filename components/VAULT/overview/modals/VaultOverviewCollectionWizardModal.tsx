@@ -53,7 +53,7 @@ import VaultOverviewCollectionMachineHistory from '@/components/VAULT/overview/m
 import VaultOverviewCollectionMachineSelector from '@/components/VAULT/overview/modals/wizard/VaultOverviewCollectionMachineSelector';
 import VaultOverviewCollectionSessionList from '@/components/VAULT/overview/modals/wizard/VaultOverviewCollectionSessionList';
 
-interface VaultOverviewCollectionWizardModalProps {
+type VaultOverviewCollectionWizardModalProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void; // Triggered after successful session finalize
@@ -104,7 +104,7 @@ export default function VaultOverviewCollectionWizardModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const selectedMachine = machines.find(m => m._id === selectedMachineId);
+  const selectedMachine = machines.find(machine => machine._id === selectedMachineId);
   const collectedMachineIds = entries.map(e => e.machineId);
 
   // Mobile UI States

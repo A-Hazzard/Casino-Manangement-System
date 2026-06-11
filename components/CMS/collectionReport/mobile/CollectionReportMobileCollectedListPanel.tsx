@@ -42,6 +42,7 @@ type MobileCollectedListPanelProps = {
   updateAllSasEndDate: Date | undefined;
   onUpdateAllSasEndDate: (date: Date | undefined) => void;
   onApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
 
   // Callbacks
   formatMachineDisplay: (machine: {
@@ -110,12 +111,14 @@ export default function CollectionReportMobileCollectedListPanel({
   onToggleView,
   financials,
   isProcessing,
+  isCreateReportsEnabled = true,
   newMachineIds = [],
   updateAllSasStartDate,
   onUpdateAllSasStartDate,
   updateAllSasEndDate,
   onUpdateAllSasEndDate,
   onApplyAllDates,
+  sasUpdateProgress,
   formatDate,
   sortMachines,
   onEditMachine,
@@ -423,14 +426,14 @@ export default function CollectionReportMobileCollectedListPanel({
                   </div>
                 </div>
 
-                {/* Financial Form Footer */}
+                  {/* Financial Form Footer */}
                 {showSubmitButton && (
                   <div className="border-t bg-gray-50 p-4">
                     <button
                       onClick={onCreateReport}
-                      disabled={isProcessing}
+                      disabled={isProcessing || !isCreateReportsEnabled}
                       className={`w-full rounded-lg py-3 font-semibold transition-colors ${
-                        !isProcessing
+                        !isProcessing && isCreateReportsEnabled
                           ? 'bg-green-600 text-white hover:bg-green-700'
                           : 'cursor-not-allowed bg-gray-400 text-gray-200'
                       }`}
@@ -522,6 +525,33 @@ export default function CollectionReportMobileCollectedListPanel({
                         >
                           {isProcessing ? 'Updating...' : 'Apply Times to All'}
                         </button>
+
+                        {sasUpdateProgress && (
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-semibold text-blue-700">
+                              <span>
+                                {sasUpdateProgress.completed}/
+                                {sasUpdateProgress.total}
+                              </span>
+                              <span>
+                                {Math.round(
+                                  (sasUpdateProgress.completed /
+                                    sasUpdateProgress.total) *
+                                    100
+                                )}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-blue-200">
+                              <div
+                                className="h-full rounded-full bg-blue-600 transition-all duration-200"
+                                style={{
+                                  width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -669,9 +699,9 @@ export default function CollectionReportMobileCollectedListPanel({
                 <div className="shrink-0 border-t bg-white/90 p-4 backdrop-blur-md">
                   <button
                     onClick={onCreateReport}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !isCreateReportsEnabled}
                     className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
-                      !isProcessing
+                      !isProcessing && isCreateReportsEnabled
                         ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-600/20'
                         : 'cursor-not-allowed bg-gray-400 text-gray-200'
                     }`}

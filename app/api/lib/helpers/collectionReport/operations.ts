@@ -15,6 +15,8 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import { GamingLocations } from '../../models/gaminglocations';
 import { CollectionReportDocument } from '../../types';
 import { Meters } from '../../models/meters';
+import type { MeterDocument } from '@/shared/types';
+import { fixSmibMeterAfterSupplementalDeletion } from './smibMeterFix';
 
 /**
  * Updates collection report timestamp and cascades changes to related collections and gaming locations
@@ -425,8 +427,7 @@ export async function updateCollectionReport(
  * @returns {Promise<{success: boolean; error?: string}>} - Returns success or error message
  */
 export async function deleteManualMetersPerCollection(
-  locationReportId: CollectionReportDocument['locationReportId'],
-  archive?: boolean
+  locationReportId: CollectionReportDocument['locationReportId']
 ): Promise<{ success: boolean; error?: string }> {
   if (!locationReportId) {
     console.error(
@@ -436,76 +437,101 @@ export async function deleteManualMetersPerCollection(
   }
 
   try {
-    const collections = await Collections.find({ locationReportId }).lean<
-      CollectionDocument[]
-    >();
+    // Use raw MongoDB collection access to bypass the Mongoose soft-delete pre-hook.
+    // This ensures permanently deleting an already-archived report still removes its meters.
+    const rawDocs = await Collections.collection
+      .find({ locationReportId: String(locationReportId) })
+      .toArray();
+    const collections = rawDocs as unknown as CollectionDocument[];
     console.log(
       `[deleteManualMetersPerCollection] Found ${collections.length} collections to clean up meters for`
     );
 
     for (const collection of collections) {
-      // Check if machine is SMIB machine
+      // Check if machine is an online SMIB machine — skip if it is, because
+      // the relay manages its meters. For offline SMIB machines we created
+      // manual meters during collection, so they still need cleanup.
       let hasRelay = false;
+      let isOffline = false;
       if (collection.machineId) {
         const machineDoc = await Machine.findOne(
           { _id: collection.machineId },
-          'relayId'
-        ).lean<{ relayId?: string | null }>();
+          'relayId lastActivity'
+        ).lean<{ relayId?: string | null; lastActivity?: Date | string | null }>();
         hasRelay = !!machineDoc?.relayId;
+        if (hasRelay) {
+          const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+          isOffline =
+            !machineDoc?.lastActivity ||
+            Date.now() - new Date(machineDoc.lastActivity).getTime() >=
+              OFFLINE_THRESHOLD_MS;
+        }
       }
-      if (hasRelay) {
+      if (hasRelay && !isOffline && !collection.meterId && !collection.ramClearMeterId) {
         console.log(
-          `⏭️ [deleteManualMetersPerCollection] Skipping SMIB machine ${collection.machineId} (has relayId)`
+          `⏭️ [deleteManualMetersPerCollection] Skipping online SMIB machine ${collection.machineId} (has relayId, online, no manual meters)`
         );
         continue;
       }
 
+      // Before deleting supplemental meters, fix the SMIB meter that follows them.
+      // When the machine came back online after an offline CR, the SMIB pushed a
+      // SAS_READ meter whose movement.drop was calculated against the supplemental
+      // meter (same lifetime value), yielding 0. After we remove the supplemental,
+      // that SMIB meter needs its movement recalculated against the pre-offline meter.
+      if (collection.meterId && collection.machineId) {
+        const supplementalMeter = await Meters.findOne(
+          { _id: collection.meterId }
+        ).lean<MeterDocument>();
+
+        if (supplementalMeter?.isSupplemental) {
+          let earliestSupplementalReadAt: Date = supplementalMeter.readAt;
+
+          if (collection.ramClearMeterId) {
+            const ramMeter = await Meters.findOne(
+              { _id: collection.ramClearMeterId }
+            ).lean<MeterDocument>();
+            if (ramMeter?.readAt && new Date(ramMeter.readAt) < new Date(earliestSupplementalReadAt)) {
+              earliestSupplementalReadAt = ramMeter.readAt;
+            }
+          }
+
+          await fixSmibMeterAfterSupplementalDeletion(
+            collection.machineId,
+            supplementalMeter.readAt,
+            earliestSupplementalReadAt
+          );
+        }
+      }
+
       // Delete RAM clear meter if it exists (only for collections with RAM clear)
       if (collection.ramClearMeterId) {
-        let ramClearResult;
-        if (archive) {
-          ramClearResult = await Meters.findOneAndUpdate(
-            { _id: collection.ramClearMeterId },
-            { $set: { deletedAt: new Date() } },
-            { new: true }
-          );
-        } else {
-          ramClearResult = await Meters.findOneAndDelete({
-            _id: collection.ramClearMeterId,
-          });
-        }
+        const ramClearResult = await Meters.findOneAndDelete({
+          _id: collection.ramClearMeterId,
+        });
         if (ramClearResult) {
           console.log(
-            `[deleteManualMetersPerCollection] ${archive ? 'Archived' : 'Deleted'} ramClear meter ${collection.ramClearMeterId}`
+            `[deleteManualMetersPerCollection] Deleted ramClear meter ${collection.ramClearMeterId}`
           );
         } else {
           console.warn(
-            `[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted/archived`
+            `[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted`
           );
         }
       }
 
       // Delete regular meter (all collections should have this)
       if (collection.meterId) {
-        let meterResult;
-        if (archive) {
-          meterResult = await Meters.findOneAndUpdate(
-            { _id: collection.meterId },
-            { $set: { deletedAt: new Date() } },
-            { new: true }
-          );
-        } else {
-          meterResult = await Meters.findOneAndDelete({
-            _id: collection.meterId,
-          });
-        }
+        const meterResult = await Meters.findOneAndDelete({
+          _id: collection.meterId,
+        });
         if (meterResult) {
           console.log(
-            `[deleteManualMetersPerCollection] ${archive ? 'Archived' : 'Deleted'} meter ${collection.meterId}`
+            `[deleteManualMetersPerCollection] Deleted meter ${collection.meterId}`
           );
         } else {
           console.warn(
-            `[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted/archived`
+            `[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted`
           );
         }
       } else {
@@ -522,3 +548,4 @@ export async function deleteManualMetersPerCollection(
 
   return { success: true };
 }
+

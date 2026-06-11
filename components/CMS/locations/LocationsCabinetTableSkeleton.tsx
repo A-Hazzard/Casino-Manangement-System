@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
-interface LocationsCabinetTableSkeletonProps {
+type LocationsCabinetTableSkeletonProps = {
   includeJackpot?: boolean;
 }
 

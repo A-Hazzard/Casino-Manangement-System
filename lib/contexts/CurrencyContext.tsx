@@ -27,9 +27,17 @@ type CurrencyProviderProps = {
   initialCurrency?: CurrencyCode;
 };
 
+// ============================================================================
+// Context Definition
+// ============================================================================
+
 const CurrencyContext = createContext<CurrencyContextType | undefined>(
   undefined
 );
+
+// ============================================================================
+// CurrencyProvider Component
+// ============================================================================
 
 export function CurrencyProvider({
   children,
@@ -321,6 +329,10 @@ export function CurrencyProvider({
     </CurrencyContext.Provider>
   );
 }
+
+// ============================================================================
+// Consumer Hook
+// ============================================================================
 
 export function useCurrency(): CurrencyContextType {
   const context = useContext(CurrencyContext);

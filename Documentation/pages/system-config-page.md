@@ -1,8 +1,10 @@
 # System Configuration Page Implementation
 
+**⚠️ ARCHIVED**: This page route (`/system-config`) no longer exists in the codebase. The referenced API endpoints (`/api/firmwares/jobs`, `/api/firmwares/jobs/[id]`) are also missing. This document is retained for historical reference only.
+
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** May 4, 2026  
+**Version:** 4.3.0
 
 ---
 

@@ -108,7 +108,7 @@ export default function LocationsCabinetCardMobile({
             </Badge>
           )}
         </div>
-        {!isArchived && (
+        {!isArchived && (cabinet.relayId || cabinet.smbId || cabinet.smibBoard) && (
           <span
             ref={statusRef}
             className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
@@ -139,8 +139,8 @@ export default function LocationsCabinetCardMobile({
         </div>
       )}
 
-      {/* Offline Status - Show when offline */}
-      {!cabinet.isOnline && !isArchived && (
+      {/* Offline Status - Show when offline and machine has a SMIB */}
+      {!cabinet.isOnline && !isArchived && (cabinet.relayId || cabinet.smbId || cabinet.smibBoard) && (
         <div className="mb-3 flex flex-col gap-1 text-xs font-medium text-red-600">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />

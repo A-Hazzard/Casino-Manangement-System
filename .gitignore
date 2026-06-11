@@ -56,3 +56,6 @@ certificates
 # Google service account keys (secrets — NEVER commit)
 *-service-account*.json
 *google-cloud*.json
+
+test-results
+test-results/

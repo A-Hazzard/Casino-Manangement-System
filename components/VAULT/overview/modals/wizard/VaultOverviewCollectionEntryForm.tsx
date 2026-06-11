@@ -33,7 +33,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-interface VaultOverviewCollectionEntryFormProps {
+type VaultOverviewCollectionEntryFormProps = {
   machine: GamingMachine;
   onSave: (data: {
     totalAmount: number;
@@ -94,8 +94,8 @@ export default function VaultOverviewCollectionEntryForm({
   // ============================================================================
   useEffect(() => {
     setDenominations(
-      denomsList.map((d: string | number) => ({
-        denomination: Number(d) as Denomination['denomination'],
+      denomsList.map((value: string | number) => ({
+        denomination: Number(value) as Denomination['denomination'],
         quantity: 0,
       }))
     );
@@ -112,8 +112,8 @@ export default function VaultOverviewCollectionEntryForm({
       gross: 0,
     });
     setDenominations(
-      denomsList.map((d: string | number) => ({
-        denomination: Number(d) as Denomination['denomination'],
+      denomsList.map((value: string | number) => ({
+        denomination: Number(value) as Denomination['denomination'],
         quantity: 0,
       }))
     );
@@ -187,8 +187,8 @@ export default function VaultOverviewCollectionEntryForm({
     });
   };
 
-  const isAllTouched = denomsList.every((d: string | number) =>
-    touchedDenominations.has(Number(d))
+  const isAllTouched = denomsList.every((value: string | number) =>
+    touchedDenominations.has(Number(value))
   );
   const isValidCount = totalPhysical > 0 || isAllTouched;
 
@@ -445,7 +445,7 @@ export default function VaultOverviewCollectionEntryForm({
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-                {denominations.map((denom, idx) => (
+                {denominations.map((denom, index) => (
                   <div
                     key={denom.denomination}
                     className={cn(
@@ -474,7 +474,7 @@ export default function VaultOverviewCollectionEntryForm({
                         size="icon"
                         className="h-8 w-8 rounded-md text-gray-400 transition-all hover:bg-white hover:text-red-500"
                         onClick={() =>
-                          updateQuantity(idx, (denom.quantity || 0) - 1)
+                          updateQuantity(index, (denom.quantity || 0) - 1)
                         }
                         disabled={!denom.quantity}
                       >
@@ -490,7 +490,7 @@ export default function VaultOverviewCollectionEntryForm({
                         value={denom.quantity || ''}
                         placeholder="0"
                         onChange={e =>
-                          updateQuantity(idx, parseInt(e.target.value) || 0)
+                          updateQuantity(index, parseInt(e.target.value) || 0)
                         }
                       />
                       <Button
@@ -498,7 +498,7 @@ export default function VaultOverviewCollectionEntryForm({
                         size="icon"
                         className="h-8 w-8 rounded-md text-gray-400 transition-all hover:bg-white hover:text-emerald-500"
                         onClick={() =>
-                          updateQuantity(idx, (denom.quantity || 0) + 1)
+                          updateQuantity(index, (denom.quantity || 0) + 1)
                         }
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -582,7 +582,7 @@ export default function VaultOverviewCollectionEntryForm({
           onClick={() =>
             onSave({
               totalAmount: totalPhysical,
-              denominations: denominations.filter(d => d.quantity > 0),
+              denominations: denominations.filter(denom => denom.quantity > 0),
               meters: {
                 billIn: parseFloat(meters.billIn) || 0,
                 ticketIn: parseFloat(meters.ticketIn) || 0,

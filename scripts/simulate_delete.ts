@@ -49,8 +49,7 @@ async function main() {
 
     console.log('5. Deleting manual meters...');
     const deleteMetersResult = await deleteManualMetersPerCollection(
-      resolvedReportId,
-      false
+      resolvedReportId
     );
     console.log('Delete manual meters result:', deleteMetersResult);
   } catch (error) {

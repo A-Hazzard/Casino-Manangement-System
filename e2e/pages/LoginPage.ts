@@ -29,12 +29,18 @@ export class LoginPage {
     this.passwordInput = page.locator('#password');
     this.submitButton = page.locator('button[type="submit"]');
     this.rememberMeCheckbox = page.locator('#rememberMe');
-    this.errorAlert = page.locator('[role="alert"]');
+    // Exclude the Next.js route announcer (role="alert" aria-live="assertive")
+    // which conflicts with strict mode when our form alert is also present.
+    this.errorAlert = page.locator('[role="alert"][aria-live="polite"]');
     this.identifierError = page.locator('#identifier-error');
     this.passwordError = page.locator('#password-error');
-    // Password visibility toggle button sits alongside the password input
+    // Password visibility toggle sits inside the password wrapper as a
+    // <button type="button"> with an Eye/EyeOff icon and no aria-label.
+    // Target it as the sibling button next to the password input.
     this.passwordToggle = page
-      .locator('button[aria-label*="password"], button[aria-label*="Password"]')
+      .locator('#password')
+      .locator('..')
+      .locator('button[type="button"]')
       .first();
   }
 

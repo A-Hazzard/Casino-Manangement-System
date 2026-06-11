@@ -1,5 +1,5 @@
 ---
-name: React & TypeScript Rules
+name: react-typescript-rules
 description: React imports, TypeScript discipline, state management patterns, and type organization rules.
 ---
 

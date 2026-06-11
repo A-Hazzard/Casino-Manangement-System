@@ -1,19 +1,23 @@
 /**
  * Cabinets Details Activity Log Table Component
- * Table component for displaying machine activity logs with filtering and time selection.
+ *
+ * Displays machine activity logs with server-side filtering, pagination, and
+ * event-code cursor seek. All filter changes trigger a callback to the parent
+ * which re-fetches from the API — no client-side filtering or pagination.
  *
  * Features:
- * - Machine event log display
- * - Event type filtering
- * - Time picker for filtering by time
- * - Expandable event sequences
- * - Command and description display
- * - Date and time formatting
- * - Success/failure indicators
+ * - Machine event log display with expandable sequence details
+ * - Quick-filter buttons (Critical, Warning, INFO, SAS Event)
+ * - Time picker for filtering by time-of-day window
+ * - Event type dropdown from server-returned filter options
+ * - Event code input for cursor seek (jump to first page where code appears)
+ * - Server-side PaginationControls
+ * - Success/failure indicators on sequence steps
  */
 
-import { FC } from 'react';
+import { FC, Fragment, useRef, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
+import { Input } from '@/components/shared/ui/input';
 import {
   Select,
   SelectContent,
@@ -33,7 +37,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { CheckIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
-import { Fragment, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 // ============================================================================
@@ -75,55 +80,91 @@ export type CabinetsDetailsMachineEvent = {
   eventSuccess?: boolean;
 };
 
-type CabinetsDetailsActivityLogTableProps = {
-  data: CabinetsDetailsMachineEvent[];
-  onFilterChange?: (filters: {
-    startTime?: string;
-    endTime?: string;
-    eventType?: string;
-    type?: string;
-  }) => void;
+type ActivityLogFilters = {
+  eventType: string;
+  type: string;
+  event: string;
+  game: string;
+  command: string;
 };
 
+type ActivityLogPagination = {
+  currentPage: number;
+  totalPages: number;
+  totalEvents: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  cursorResolved: boolean;
+};
+
+type ActivityLogFilterOptions = {
+  eventTypes: string[];
+  eventLogLevels: string[];
+  games: string[];
+};
+
+type CabinetsDetailsActivityLogTableProps = {
+  data: CabinetsDetailsMachineEvent[];
+  pagination: ActivityLogPagination | null;
+  displayPage: number;
+  totalDisplayPages: number;
+  filters: ActivityLogFilters;
+  filterOptions: ActivityLogFilterOptions;
+  loading?: boolean;
+  onFilterChange: (filters: Partial<ActivityLogFilters>) => void;
+  onPageChange: (globalZeroBased: number) => void;
+  /** time-of-day window applied locally (no server round-trip needed for time filter) */
+  onTimeWindowChange?: (startTime: string, endTime: string) => void;
+};
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function formatDate(dateString: string | Date) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+}
+
 /**
- * Renders the Activity Log table with simplified structure and no filters.
- * @param data - Array of MachineEvent objects.
- * @returns Activity log table component.
+ * Renders the Activity Log table with server-side pagination and filters.
  */
 export const CabinetsDetailsActivityLogTable: FC<
   CabinetsDetailsActivityLogTableProps
-> = ({ data, onFilterChange }) => {
+> = ({
+  data,
+  pagination,
+  displayPage,
+  totalDisplayPages,
+  filters,
+  filterOptions,
+  loading = false,
+  onFilterChange,
+  onPageChange,
+}) => {
   // ============================================================================
-  // State & Hooks
+  // State
   // ============================================================================
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
     new Set()
   );
-  const [filters, setFilters] = useState({
-    startTime: '',
-    endTime: '',
-    eventType: '',
-    type: '',
-  });
-  const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 20;
 
-  // ============================================================================
-  // Helpers
-  // ============================================================================
-  const formatDate = (dateString: string | Date) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
-  };
+  // Local time-of-day window (applied to displayed rows only — too fine-grained for a server round-trip)
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+
+  // Local command code input before submitting the cursor seek
+  const [commandInput, setCommandInput] = useState(filters.command);
+  const commandInputRef = useRef<HTMLInputElement>(null);
 
   // ============================================================================
   // Handlers
@@ -138,107 +179,74 @@ export const CabinetsDetailsActivityLogTable: FC<
     setExpandedSequences(newExpanded);
   };
 
-  const handleFilterChange = (key: string, value: string) => {
-    // Treat "all" as empty string for filtering purposes
-    const filterValue = value === 'all' ? '' : value;
-    const newFilters = { ...filters, [key]: filterValue };
-    setFilters(newFilters);
-    setCurrentPage(0); // Reset to first page when filters change
-    onFilterChange?.(newFilters);
+  const handleQuickFilter = (type: string) => {
+    const newType = filters.type === type ? '' : type;
+    onFilterChange({ type: newType });
   };
 
-  const clearFilters = () => {
-    const clearedFilters = {
-      startTime: '',
-      endTime: '',
-      eventType: '',
-      type: '',
-    };
-    setFilters(clearedFilters);
-    setCurrentPage(0);
-    onFilterChange?.(clearedFilters);
+  const handleEventTypeChange = (value: string) => {
+    onFilterChange({ eventType: value === 'all' ? '' : value });
+  };
+
+  const handleLogLevelChange = (value: string) => {
+    onFilterChange({ type: value === 'all' ? '' : value });
+  };
+
+  const handleGameChange = (value: string) => {
+    onFilterChange({ game: value === 'all' ? '' : value });
+  };
+
+  const handleCommandSeek = () => {
+    onFilterChange({ command: commandInput.trim() });
+  };
+
+  const handleCommandKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCommandSeek();
+    }
+  };
+
+  const handleClearCommandSeek = () => {
+    setCommandInput('');
+    onFilterChange({ command: '' });
+  };
+
+  const handleClearAllFilters = () => {
+    setCommandInput('');
+    setStartTime('');
+    setEndTime('');
+    onFilterChange({ eventType: '', type: '', event: '', game: '', command: '' });
+  };
+
+  const handlePageChange = (zeroBased: number) => {
+    onPageChange(zeroBased);
   };
 
   // ============================================================================
-  // Computed
+  // Computed — local time-of-day window filter (cosmetic only, no refetch)
   // ============================================================================
-  // Get unique event types and types from data
-  const uniqueEventTypes = useMemo(() => {
-    const eventTypes = new Set<string>();
-    data.forEach(item => {
-      if (item.eventType) {
-        eventTypes.add(item.eventType);
-      }
-    });
-    return Array.from(eventTypes).sort();
-  }, [data]);
+  const displayedData = data.filter(item => {
+    if (!startTime && !endTime) return true;
+    const itemDate = new Date(item.date);
+    if (isNaN(itemDate.getTime())) return false;
+    const itemMinutes = itemDate.getHours() * 60 + itemDate.getMinutes();
+    if (startTime) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      if (itemMinutes < sh * 60 + sm) return false;
+    }
+    if (endTime) {
+      const [eh, em] = endTime.split(':').map(Number);
+      if (itemMinutes > eh * 60 + em) return false;
+    }
+    return true;
+  });
 
-  // Filter and paginate data
-  const filteredAndPaginatedData = useMemo(() => {
-    const filtered = data.filter(item => {
-      // Time filtering - fix the time comparison logic
-      if (filters.startTime || filters.endTime) {
-        const itemDate = new Date(item.date);
-
-        // Check if the date is valid
-        if (isNaN(itemDate.getTime())) {
-          return false;
-        }
-
-        const itemTime = itemDate.getHours() * 60 + itemDate.getMinutes();
-
-        if (filters.startTime) {
-          const [startHour, startMin] = filters.startTime
-            .split(':')
-            .map(Number);
-          const startTime = startHour * 60 + startMin;
-          if (itemTime < startTime) return false;
-        }
-
-        if (filters.endTime) {
-          const [endHour, endMin] = filters.endTime.split(':').map(Number);
-          const endTime = endHour * 60 + endMin;
-          if (itemTime > endTime) return false;
-        }
-      }
-
-      // Event type filtering
-      if (filters.eventType && filters.eventType !== 'all') {
-        const itemEventType = (item.eventType || '').toLowerCase();
-        const filterTypeTerm = (filters.eventType || '').toLowerCase();
-        if (itemEventType !== filterTypeTerm) {
-          return false;
-        }
-      }
-
-      // Type filtering
-      if (filters.type && filters.type !== 'all') {
-        const itemType = (item.eventLogLevel || 'General').toLowerCase();
-        const filterType = (filters.type || '').toLowerCase();
-
-        // Handle common mappings
-        if (filterType === 'warning' || filterType === 'warn') {
-          if (itemType !== 'warning' && itemType !== 'warn') return false;
-        } else if (itemType !== filterType) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Calculate pagination
-    const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    const startIndex = currentPage * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedData = filtered.slice(startIndex, endIndex);
-
-    return {
-      data: paginatedData,
-      totalPages,
-      totalItems: filtered.length,
-    };
-  }, [data, filters, currentPage, itemsPerPage]);
+  const hasActiveFilters =
+    filters.eventType ||
+    filters.type ||
+    filters.event ||
+    filters.game ||
+    filters.command;
 
   // ============================================================================
   // Render
@@ -247,16 +255,17 @@ export const CabinetsDetailsActivityLogTable: FC<
     <LocalizationProvider dateAdapter={AdapterDateFns}>
       <div className="w-full">
         {/* Filter Controls */}
-        <div className="mb-4 rounded-lg bg-gray-50 p-4">
+        <div className="mb-4 rounded-lg bg-gray-50 p-4 space-y-4">
+
           {/* Quick Filters */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="mr-2 text-sm font-medium text-gray-500">
               Quick Filters:
             </span>
             <Button
               variant={filters.type === 'Critical' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handleFilterChange('type', 'Critical')}
+              onClick={() => handleQuickFilter('Critical')}
               className={
                 filters.type === 'Critical'
                   ? 'bg-red-600 hover:bg-red-700'
@@ -272,7 +281,7 @@ export const CabinetsDetailsActivityLogTable: FC<
                   : 'outline'
               }
               size="sm"
-              onClick={() => handleFilterChange('type', 'Warning')}
+              onClick={() => handleQuickFilter('Warning')}
               className={
                 filters.type === 'Warning' || filters.type === 'WARN'
                   ? 'bg-orange-500 hover:bg-orange-600'
@@ -284,7 +293,7 @@ export const CabinetsDetailsActivityLogTable: FC<
             <Button
               variant={filters.type === 'INFO' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => handleFilterChange('type', 'INFO')}
+              onClick={() => handleQuickFilter('INFO')}
               className={
                 filters.type === 'INFO'
                   ? 'bg-blue-500 hover:bg-blue-600'
@@ -298,7 +307,12 @@ export const CabinetsDetailsActivityLogTable: FC<
                 filters.eventType === 'SAS Event' ? 'default' : 'outline'
               }
               size="sm"
-              onClick={() => handleFilterChange('eventType', 'SAS Event')}
+              onClick={() =>
+                onFilterChange({
+                  eventType:
+                    filters.eventType === 'SAS Event' ? '' : 'SAS Event',
+                })
+              }
               className={
                 filters.eventType === 'SAS Event'
                   ? 'bg-purple-600 hover:bg-purple-700'
@@ -307,34 +321,28 @@ export const CabinetsDetailsActivityLogTable: FC<
             >
               SAS Event
             </Button>
-            <Button
-              variant={
-                !filters.type && !filters.eventType ? 'default' : 'outline'
-              }
-              size="sm"
-              onClick={clearFilters}
-              className={
-                !filters.type && !filters.eventType ? 'bg-gray-600' : ''
-              }
-            >
-              All
-            </Button>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearAllFilters}
+              >
+                Clear All
+              </Button>
+            )}
           </div>
 
+          {/* Granular Filters Grid */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Start Time picker */}
             <div>
               <TimePicker
                 label="Start Time"
-                value={
-                  filters.startTime
-                    ? new Date(`2000-01-01T${filters.startTime}`)
-                    : null
-                }
+                value={startTime ? new Date(`2000-01-01T${startTime}`) : null}
                 onChange={newValue => {
-                  const timeString = newValue
-                    ? newValue.toTimeString().slice(0, 5)
-                    : '';
-                  handleFilterChange('startTime', timeString);
+                  setStartTime(
+                    newValue ? newValue.toTimeString().slice(0, 5) : ''
+                  );
                 }}
                 slotProps={{
                   textField: {
@@ -352,12 +360,8 @@ export const CabinetsDetailsActivityLogTable: FC<
                           display: 'flex',
                           alignItems: 'center',
                         },
-                        '& fieldset': {
-                          borderColor: '#d1d5db',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#9ca3af',
-                        },
+                        '& fieldset': { borderColor: '#d1d5db' },
+                        '&:hover fieldset': { borderColor: '#9ca3af' },
                         '&.Mui-focused fieldset': {
                           borderColor: '#3b82f6',
                           borderWidth: '2px',
@@ -366,28 +370,23 @@ export const CabinetsDetailsActivityLogTable: FC<
                       '& .MuiInputLabel-root': {
                         fontSize: '14px',
                         color: '#6b7280',
-                        '&.Mui-focused': {
-                          color: '#3b82f6',
-                        },
+                        '&.Mui-focused': { color: '#3b82f6' },
                       },
                     },
                   },
                 }}
               />
             </div>
+
+            {/* End Time picker */}
             <div>
               <TimePicker
                 label="End Time"
-                value={
-                  filters.endTime
-                    ? new Date(`2000-01-01T${filters.endTime}`)
-                    : null
-                }
+                value={endTime ? new Date(`2000-01-01T${endTime}`) : null}
                 onChange={newValue => {
-                  const timeString = newValue
-                    ? newValue.toTimeString().slice(0, 5)
-                    : '';
-                  handleFilterChange('endTime', timeString);
+                  setEndTime(
+                    newValue ? newValue.toTimeString().slice(0, 5) : ''
+                  );
                 }}
                 slotProps={{
                   textField: {
@@ -405,12 +404,8 @@ export const CabinetsDetailsActivityLogTable: FC<
                           display: 'flex',
                           alignItems: 'center',
                         },
-                        '& fieldset': {
-                          borderColor: '#d1d5db',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: '#9ca3af',
-                        },
+                        '& fieldset': { borderColor: '#d1d5db' },
+                        '&:hover fieldset': { borderColor: '#9ca3af' },
                         '&.Mui-focused fieldset': {
                           borderColor: '#3b82f6',
                           borderWidth: '2px',
@@ -419,42 +414,120 @@ export const CabinetsDetailsActivityLogTable: FC<
                       '& .MuiInputLabel-root': {
                         fontSize: '14px',
                         color: '#6b7280',
-                        '&.Mui-focused': {
-                          color: '#3b82f6',
-                        },
+                        '&.Mui-focused': { color: '#3b82f6' },
                       },
                     },
                   },
                 }}
               />
             </div>
+
+            {/* Event Type dropdown */}
             <div>
               <Select
                 value={filters.eventType || 'all'}
-                onValueChange={value => handleFilterChange('eventType', value)}
+                onValueChange={handleEventTypeChange}
               >
                 <SelectTrigger className="h-10">
-                  <SelectValue placeholder="All Events" />
+                  <SelectValue placeholder="All Event Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  {uniqueEventTypes.map(eventType => (
-                    <SelectItem key={eventType} value={eventType}>
-                      {eventType}
+                  <SelectItem value="all">All Event Types</SelectItem>
+                  {filterOptions.eventTypes.map(et => (
+                    <SelectItem key={et} value={et}>
+                      {et}
                     </SelectItem>
                   ))}
-                  {!uniqueEventTypes.includes('SAS Event') && (
+                  {!filterOptions.eventTypes.includes('SAS Event') && (
                     <SelectItem value="SAS Event">SAS Event</SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Log Level dropdown */}
+            <div>
+              <Select
+                value={filters.type || 'all'}
+                onValueChange={handleLogLevelChange}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="All Levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Levels</SelectItem>
+                  {filterOptions.eventLogLevels.map(lvl => (
+                    <SelectItem key={lvl} value={lvl}>
+                      {lvl}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="mt-3 flex justify-end">
-            <Button variant="outline" onClick={clearFilters} size="sm">
-              Clear Filters
-            </Button>
+
+          {/* Second filter row: Game + Event Code cursor */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Game dropdown */}
+            <div>
+              <Select
+                value={filters.game || 'all'}
+                onValueChange={handleGameChange}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="All Games" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Games</SelectItem>
+                  {filterOptions.games.map(g => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Event Code cursor seek */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  ref={commandInputRef}
+                  placeholder="Jump to event code (e.g. 67, 1F)…"
+                  value={commandInput}
+                  onChange={e => setCommandInput(e.target.value)}
+                  onKeyDown={handleCommandKeyDown}
+                  className="h-10 pl-8"
+                />
+              </div>
+              <Button
+                size="sm"
+                className="h-10 shrink-0"
+                onClick={handleCommandSeek}
+                disabled={loading || !commandInput.trim()}
+              >
+                Jump
+              </Button>
+              {filters.command && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 shrink-0"
+                  onClick={handleClearCommandSeek}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Cursor seek indicator */}
+          {pagination?.cursorResolved && (
+            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-800">
+              Jumped to page {pagination.currentPage} of {pagination.totalPages} — first occurrence of code &ldquo;{filters.command}&rdquo;
+            </div>
+          )}
         </div>
 
         {/* Desktop Table View */}
@@ -469,7 +542,14 @@ export const CabinetsDetailsActivityLogTable: FC<
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndPaginatedData.data.map((row, idx) => {
+              {displayedData.length === 0 && !loading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-12 text-center text-gray-400">
+                    No activity log data found for the selected filters.
+                  </TableCell>
+                </TableRow>
+              )}
+              {displayedData.map((row, idx) => {
                 const logLevel = row.eventLogLevel || 'General';
                 const rowBgClass =
                   logLevel === 'Critical'
@@ -505,7 +585,7 @@ export const CabinetsDetailsActivityLogTable: FC<
                             </Button>
                           )}
                         </div>
-                        {/* Sequence Dropdown within the same cell */}
+                        {/* Sequence Dropdown */}
                         {expandedSequences.has(row._id) &&
                           row.sequence &&
                           row.sequence.length > 0 && (
@@ -556,7 +636,7 @@ export const CabinetsDetailsActivityLogTable: FC<
 
         {/* Mobile Cards View */}
         <div className="block w-full space-y-4 lg:hidden">
-          {filteredAndPaginatedData.data.map((row, idx) => (
+          {displayedData.map((row, idx) => (
             <div
               key={row._id || idx}
               className="w-full overflow-hidden rounded-lg border border-border bg-container shadow-md"
@@ -637,15 +717,19 @@ export const CabinetsDetailsActivityLogTable: FC<
               </div>
             </div>
           ))}
+          {displayedData.length === 0 && !loading && (
+            <div className="flex h-32 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400">
+              No activity log data found for the selected filters.
+            </div>
+          )}
         </div>
 
         {/* Pagination controls */}
         <PaginationControls
-          currentPage={currentPage}
-          totalPages={filteredAndPaginatedData.totalPages}
-          totalCount={filteredAndPaginatedData.totalItems}
-          setCurrentPage={setCurrentPage}
-          showTotalCount
+          currentPage={displayPage}
+          totalPages={totalDisplayPages}
+          totalCount={pagination?.totalEvents ?? 0}
+          setCurrentPage={handlePageChange}
         />
       </div>
     </LocalizationProvider>

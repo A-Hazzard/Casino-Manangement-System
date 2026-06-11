@@ -76,14 +76,14 @@ export default function CollectionReportMobileMachineList({
           <Skeleton className="h-20 w-full" />
         ) : (
           machines
-            .filter(m => {
+            .filter(machine => {
               if (!searchTerm.trim()) return true;
               const term = searchTerm.toLowerCase();
               return (
-                (m.name && m.name.toLowerCase().includes(term)) ||
-                (m.serialNumber &&
-                  m.serialNumber.toLowerCase().includes(term)) ||
-                (m.custom?.name && m.custom.name.toLowerCase().includes(term))
+                (machine.name && machine.name.toLowerCase().includes(term)) ||
+                (machine.serialNumber &&
+                  machine.serialNumber.toLowerCase().includes(term)) ||
+                (machine.custom?.name && machine.custom.name.toLowerCase().includes(term))
               );
             })
             .map(machine => (

@@ -1,17 +1,19 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama (local)",
-      "options": {
-        "baseURL": "http://localhost:11434/v1"
-      },
-      "models": {
-        "gemma4:latest": {
-          "name": "Gemma 4"
-        }
-      }
-    }
-  }
+  "instructions": [
+    ".instructions/rules/ARCHITECTURE.md",
+    ".instructions/rules/type-safety.md",
+    ".instructions/rules/nextjs-rules.md",
+    ".instructions/rules/naming-conventions.md",
+    ".instructions/rules/mongoose-query-typing.md",
+    ".instructions/rules/http-https-cookie-rules.md",
+    ".instructions/rules/guidlines.md",
+    ".instructions/rules/currency-display.md",
+    ".instructions/rules/application-context.md",
+    ".instructions/authorization.md",
+    ".instructions/collection-reports-guidelines.md",
+    ".instructions/gaming-day-offset-system.md",
+    ".instructions/isediting-system.md",
+    ".instructions/licencee-access-context.md"
+  ]
 }

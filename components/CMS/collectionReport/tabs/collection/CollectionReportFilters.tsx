@@ -203,27 +203,29 @@ export default function CollectionReportFilters({
               </span>
             </label>
           </div>
+
         </div>
       </div>
 
       {/* Bottom row - Checkboxes and Clear Button (for mobile and tablet) */}
       <div className="flex flex-col gap-y-3 lg:hidden">
-        {/* Uncollected Only Checkbox - only visible on mobile and tablet */}
-        <div ref={checkboxRef} className="flex w-full items-center">
-          <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
-            <Checkbox
-              id="uncollected-only-mobile"
-              checked={showUncollectedOnly}
-              onCheckedChange={checked =>
-                onShowUncollectedOnlyChange(!!checked)
-              }
-              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
-            />
-            <span className="whitespace-nowrap text-sm font-medium">
-              SHOW UNCOLLECTED ONLY
-            </span>
-          </label>
-        </div>
+        {/* Uncollected Only + View Archived Checkboxes - only visible on mobile and tablet */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div ref={checkboxRef} className="flex items-center">
+            <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
+              <Checkbox
+                id="uncollected-only-mobile"
+                checked={showUncollectedOnly}
+                onCheckedChange={checked =>
+                  onShowUncollectedOnlyChange(!!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <span className="whitespace-nowrap text-sm font-medium">
+                SHOW UNCOLLECTED ONLY
+              </span>
+            </label>
+          </div>
 
         {/* SMIB Filter Checkboxes - Better layout for md screens */}
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -288,6 +290,7 @@ export default function CollectionReportFilters({
               Clear Filters
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </div>

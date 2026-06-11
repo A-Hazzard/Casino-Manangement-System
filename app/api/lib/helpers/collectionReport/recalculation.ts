@@ -73,7 +73,14 @@ export async function recalculateMachineCollections(
 
   // Per-machine SMIB check: the machine has a relay if it has a relayId.
   // Non-relay machines mirror their meter values into sasMeters.
-  const isNoSasLocation = !machine.relayId;
+  // Offline SMIB machines (relay present but stale lastActivity) also get updated.
+  const isNoSmibMachine = !machine.relayId;
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing (TODO: restore 72h)
+  const isOffline =
+    !!machine.relayId &&
+    (!machine.lastActivity ||
+      new Date().getTime() - new Date(machine.lastActivity).getTime() >=
+        OFFLINE_THRESHOLD_MS);
 
   const collections = await Collections.find({
     machineId,
@@ -163,11 +170,11 @@ export async function recalculateMachineCollections(
     updatedAt: new Date(),
   };
 
-  // For noSMIB locations, mirror the final values into sasMeters so dashboard
-  // queries stay in sync — but ONLY when called from a finalising path.
-  // During mid-wizard per-machine saves the report is still open, so sasMeters
-  // must not be touched until the collector presses Submit.
-  if (isNoSasLocation && writeSasMeters) {
+  // For noSMIB locations AND offline SMIB locations, mirror the final values into
+  // sasMeters so dashboard queries stay in sync — but ONLY when called from a
+  // finalising path. During mid-wizard per-machine saves the report is still
+  // open, so sasMeters must not be touched until the collector presses Submit.
+  if ((isNoSmibMachine || isOffline) && writeSasMeters) {
     machineSetUpdate['sasMeters.drop'] = finalMetersIn;
     machineSetUpdate['sasMeters.totalCancelledCredits'] = finalMetersOut;
   }

@@ -79,6 +79,9 @@ export async function fetchAllGamingLocations(licencee?: string) {
             (rel?.licencee as string) ||
             (rel?.licencee as string) ||
             '',
+          membershipEnabled:
+            (locObj.membershipEnabled as boolean) === true ||
+            (locObj.enableMembership as boolean) === true,
         };
       });
       // Sort alphabetically by name as additional safeguard

@@ -55,7 +55,7 @@ Updates existing user details.
 
 1.  **ID Verification**: Ensures `_id` is provided in the body.
 2.  **Helper Call**: Uses `updateUserHelper` to handle the update logic.
-3.  **Post-processing**: Converts the updated May 4, 2026
+3.  **Post-processing**: Converts the updated user document to a sanitized response.
 
 ---
 

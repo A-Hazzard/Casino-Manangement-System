@@ -1,6 +1,21 @@
 # Location Management API Flow
 
-This document details the high-level logic for managing gaming locations via the `/api/gaming-locations` route.
+This document details the high-level logic for managing gaming locations via the `/api/locations` route.
+
+## Sub-Routes
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/locations` | GET/POST | List or create locations |
+| `/api/locations/[locationId]` | GET/PATCH/DELETE | Fetch, update, or delete a single location |
+| `/api/locations/search` | GET | Search locations with filters |
+| `/api/locations/search-all` | GET | Unrestricted search across all locations |
+| `/api/locations/membership-count` | GET | Get member counts per location |
+| `/api/locations/[locationId]/smib-restart` | POST | Restart SMIB for a location |
+| `/api/locations/[locationId]/smib-ota` | POST | Trigger SMIB OTA update |
+| `/api/locations/[locationId]/smib-meters` | GET | Fetch SMIB meter data |
+| `/api/locations/[locationId]/smib-configs` | GET | Fetch SMIB configurations |
+| `/api/locations/[locationId]/no-smib-check` | GET | Check if location has no SMIB |
 
 ## General Pattern
 

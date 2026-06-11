@@ -120,7 +120,7 @@ export default function InterLocationTransferForm({
       alert('Please specify at least one denomination with quantity > 0');
       return;
     }
-    const filteredDenominations = denominations.filter(d => d.quantity > 0);
+    const filteredDenominations = denominations.filter(denom => denom.quantity > 0);
     try {
       await onSubmit(
         fromLocation.trim(),

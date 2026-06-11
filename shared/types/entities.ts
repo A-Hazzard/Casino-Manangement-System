@@ -127,7 +127,7 @@ export type UpdateLocationData = {
   billValidatorOptions?: Record<string, boolean>;
   membershipEnabled?: boolean;
   aceEnabled?: boolean;
-  locationMembershipSettings?: Record<string, unknown>;
+  locationMembershipSettings?: LocationMembershipSettings;
   googleMapsLink?: string;
   googleMapsIframe?: string;
   updatedAt?: Date;
@@ -464,23 +464,25 @@ export type Firmware = {
 
 export type MachineDocument = GamingMachine;
 
+export type MeterMovement = {
+  coinIn?: number;
+  coinOut?: number;
+  jackpot?: number;
+  totalHandPaidCancelledCredits?: number;
+  totalCancelledCredits?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  currentCredits?: number;
+  totalWonCredits?: number;
+  drop?: number;
+};
+
 export type MetersData = {
   _id?: string;
   machine?: string;
   location?: string;
   locationSession?: string;
-  movement?: {
-    coinIn?: number;
-    coinOut?: number;
-    jackpot?: number;
-    totalHandPaidCancelledCredits?: number;
-    totalCancelledCredits?: number;
-    gamesPlayed?: number;
-    gamesWon?: number;
-    currentCredits?: number;
-    totalWonCredits?: number;
-    drop?: number;
-  };
+  movement?: MeterMovement;
   coinIn?: number;
   coinOut?: number;
   jackpot?: number;
@@ -493,9 +495,25 @@ export type MetersData = {
   drop?: number;
   meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'OTHER';
   isRamClear?: boolean;
+  isSupplemental?: boolean;
   readAt?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+};
+
+export type BillMovement = {
+  dollar1?: number;
+  dollar2?: number;
+  dollar5?: number;
+  dollar10?: number;
+  dollar20?: number;
+  dollar50?: number;
+  dollar100?: number;
+  dollar500?: number;
+  dollar1000?: number;
+  dollar2000?: number;
+  dollar5000?: number;
+  dollarTotal?: number;
 };
 
 export type BillMetersData = {
@@ -503,20 +521,7 @@ export type BillMetersData = {
   machineSession?: string;
   machine?: string;
   location?: string;
-  movement?: {
-    dollar1?: number;
-    dollar2?: number;
-    dollar5?: number;
-    dollar10?: number;
-    dollar20?: number;
-    dollar50?: number;
-    dollar100?: number;
-    dollar500?: number;
-    dollar1000?: number;
-    dollar2000?: number;
-    dollar5000?: number;
-    dollarTotal?: number;
-  };
+  movement?: BillMovement;
   dollar1?: number;
   dollar2?: number;
   dollar5?: number;
@@ -610,6 +615,27 @@ export type NewCabinetFormData = {
   };
 };
 
+export type CollectionIssueValues = {
+  sasStartTime?: string | Date | null;
+  sasEndTime?: string | Date | null;
+  prevIn?: number;
+  prevOut?: number;
+  prevMetersIn?: number;
+  prevMetersOut?: number;
+  expectedPrevIn?: number;
+  expectedPrevOut?: number;
+  previousCollectionTime?: Date;
+  movementMetersIn?: number;
+  movementMetersOut?: number;
+  movementGross?: number;
+  entryIndex?: number;
+  machineId?: string;
+  metersIn?: number;
+  metersOut?: number;
+  locationReportId?: string;
+  explanation?: string;
+};
+
 export type CollectionIssue = {
   collectionId: string;
   machineName: string;
@@ -623,8 +649,8 @@ export type CollectionIssue = {
     | 'history_mismatch'
     | 'machine_time_mismatch';
   details: {
-    current: Record<string, unknown> | null;
-    expected: Record<string, unknown> | null;
+    current: CollectionIssueValues | null;
+    expected: CollectionIssueValues | null;
     explanation: string;
   };
 };
@@ -644,7 +670,7 @@ export type TransformedCabinet = {
   locationName: string;
   assetNumber: string;
   serialNumber: string;
-  custom?: Record<string, unknown>;
+  custom?: { name?: string };
   relayId: string;
   smibBoard: string;
   smbId: string;
@@ -668,9 +694,9 @@ export type TransformedCabinet = {
   gamesWon?: number;
   metersData: {
     readAt: Date | null;
-    movement: Record<string, unknown> | null;
+    movement: MeterMovement | null;
   } | null;
-  sasMeters: Record<string, unknown> | null;
+  sasMeters: SasMeters | null;
   online?: boolean;
   includeJackpot?: boolean;
 };

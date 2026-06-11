@@ -143,10 +143,10 @@ export default function NotificationBell({
       // Initialize edited denominations from request
       const requested = viewDetails.metadata?.requestedDenominations || [];
       const denomsList = getDenominationValues(selectedLicencee);
-      const initialDenoms: Denomination[] = denomsList.map(d => ({
-        denomination: d as Denomination['denomination'],
+      const initialDenoms: Denomination[] = denomsList.map(value => ({
+        denomination: value as Denomination['denomination'],
         quantity:
-          requested.find(r => Number(r.denomination) === d)?.quantity || 0,
+          requested.find(req => Number(req.denomination) === value)?.quantity || 0,
       }));
       setEditedDenominations(initialDenoms);
       setRejectionReason('');
@@ -244,7 +244,7 @@ export default function NotificationBell({
 
     // Use edited denominations if editing, otherwise original request
     const denomsToCheck = isEditing
-      ? editedDenominations.filter(d => d.quantity > 0)
+      ? editedDenominations.filter(denom => denom.quantity > 0)
       : viewDetails.metadata?.requestedDenominations || [];
 
     const shortages = denomsToCheck.filter(req => {
@@ -716,9 +716,9 @@ export default function NotificationBell({
                                   length:
                                     getDenominationValues(selectedLicencee)
                                       .length,
-                                }).map((_, i) => (
+                                }).map((_, index) => (
                                   <div
-                                    key={i}
+                                    key={index}
                                     className="flex items-center justify-between rounded border border-dashed border-gray-200 bg-gray-50/50 p-2"
                                   >
                                     <span className="h-4 w-10 animate-pulse rounded bg-gray-200" />
@@ -857,20 +857,20 @@ export default function NotificationBell({
                             ) : (
                               // View Mode: Show Only Requested Items
                               <>
-                                {requested.map((d, i: number) => {
-                                  const stock =
-                                    vaultInventory.find(
-                                      v =>
-                                        Number(v.denomination) ===
-                                        Number(d.denomination)
-                                    )?.quantity || 0;
-                                  const isShort =
-                                    viewDetails.metadata?.requestType !==
-                                      'decrease' &&
-                                    Number(d.quantity) > Number(stock);
-                                  return (
-                                    <div
-                                      key={i}
+                                 {requested.map((data, index: number) => {
+                                   const stock =
+                                     vaultInventory.find(
+                                       v =>
+                                         Number(v.denomination) ===
+                                         Number(data.denomination)
+                                     )?.quantity || 0;
+                                   const isShort =
+                                     viewDetails.metadata?.requestType !==
+                                       'decrease' &&
+                                     Number(data.quantity) > Number(stock);
+                                   return (
+                                     <div
+                                       key={index}
                                       className={`flex justify-between rounded border p-2 transition-colors ${
                                         isShort
                                           ? 'border-red-200 bg-red-50'
@@ -884,16 +884,16 @@ export default function NotificationBell({
                                         <span
                                           className={`font-medium ${isShort ? 'text-red-700' : 'text-blue-700'}`}
                                         >
-                                          ${d.denomination}
+                                          ${data.denomination}
                                         </span>
                                       </div>
                                       <div className="text-right">
                                         <span className="font-bold">
-                                          x {d.quantity}
+                                          x {data.quantity}
                                         </span>
                                         {isShort && (
                                           <p className="-mt-1 text-[10px] font-bold text-red-500">
-                                            Shortage: {d.quantity - stock}
+                                            Shortage: {data.quantity - stock}
                                           </p>
                                         )}
                                       </div>
@@ -999,7 +999,7 @@ export default function NotificationBell({
                                     // Only pass if isEditing is true
                                     const denoms = isEditing
                                       ? editedDenominations.filter(
-                                          d => d.quantity > 0
+                                          denom => denom.quantity > 0
                                         )
                                       : undefined;
                                     await onApprove(targetId, denoms);

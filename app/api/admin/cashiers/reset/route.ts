@@ -19,9 +19,9 @@ import {
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 
-interface ResetPasswordRequest {
+type ResetPasswordRequest = {
   cashierId: string;
-}
+};
 
 /**
  * POST /api/admin/cashiers/reset

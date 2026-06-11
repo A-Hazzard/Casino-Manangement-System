@@ -175,6 +175,10 @@ export function useMobileEditCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
@@ -1597,6 +1601,29 @@ export function useMobileEditCollectionModal({
       .filter(Boolean);
   }, [collectedMachines, modalState.originalCollections]);
 
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (collectedMachines.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [collectedMachines]);
+
   return {
     // State
     modalState,
@@ -1731,13 +1758,24 @@ export function useMobileEditCollectionModal({
         if (startTimeISO) patchData.sasStartTime = startTimeISO;
         if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
+        const total = modalState.collectedMachines.length;
+        setSasUpdateProgress({ completed: 0, total });
         const results = await Promise.allSettled(
           modalState.collectedMachines.map(async entry => {
-            if (!entry._id) return;
-            return await axios.patch(
-              `/api/collection-reports/collections?id=${entry._id}`,
+            if (!entry._id) {
+              setSasUpdateProgress(prev =>
+                prev ? { ...prev, completed: prev.completed + 1 } : null
+              );
+              return;
+            }
+            const result = await axios.patch(
+              `/api/collection-reports/collections/${entry._id}`,
               patchData
             );
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return result;
           })
         );
         const failed = results.filter(
@@ -1755,12 +1793,14 @@ export function useMobileEditCollectionModal({
           ...entry,
           sasMeters: {
             ...entry.sasMeters,
-            sasStartTime:
-              typeof entry.sasMeters?.sasStartTime === 'string'
+            sasStartTime: startTimeISO
+              ? new Date(startTimeISO)
+              : typeof entry.sasMeters?.sasStartTime === 'string'
                 ? new Date(entry.sasMeters.sasStartTime)
                 : entry.sasMeters?.sasStartTime,
-            sasEndTime:
-              typeof entry.sasMeters?.sasEndTime === 'string'
+            sasEndTime: endTimeISO
+              ? new Date(endTimeISO)
+              : typeof entry.sasMeters?.sasEndTime === 'string'
                 ? new Date(entry.sasMeters.sasEndTime)
                 : entry.sasMeters?.sasEndTime,
           },
@@ -1779,8 +1819,10 @@ export function useMobileEditCollectionModal({
         toast.error('Failed to update SAS times');
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
+        setSasUpdateProgress(null);
       }
     },
+    sasUpdateProgress,
 
     // Store actions
     setStoreSelectedLocation,

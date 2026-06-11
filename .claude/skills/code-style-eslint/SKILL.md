@@ -1,5 +1,5 @@
 ---
-name: Code Style & ESLint
+name: code-style-eslint
 description: Never ignore ESLint violations, run lint regularly, file-level documentation, remove redundant comments.
 ---
 

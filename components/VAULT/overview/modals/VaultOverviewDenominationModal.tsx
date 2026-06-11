@@ -42,7 +42,7 @@ export default function VaultOverviewDenominationModal({
   // Computed
   // ============================================================================
   // Filter out zero quantities for cleaner view
-  const activeDenoms = denominations.filter(d => d.quantity > 0);
+  const activeDenoms = denominations.filter(denom => denom.quantity > 0);
 
   // ============================================================================
   // Render

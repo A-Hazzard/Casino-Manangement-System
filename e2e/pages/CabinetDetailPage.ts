@@ -36,6 +36,13 @@ export class CabinetDetailPage {
   readonly meterHistorySection: Locator;
   readonly billValidatorSection: Locator;
 
+  // ─── Accounting Details tabbed section ───────────────────────────────────────
+  // "Accounting Details" card holds a left sidebar (desktop, lg+) of tab buttons:
+  // Movements · Live Meters · Bill Validator · Activity Log · Collection History ·
+  // Collection Settings · Configurations. Each switches the right-hand content.
+  readonly accountingSection: Locator;
+  readonly accountingSidebar: Locator;
+
   // ─── Navigation ────────────────────────────────────────────────────────────
   readonly backToCabinetsLink: Locator;
 
@@ -66,19 +73,16 @@ export class CabinetDetailPage {
     this.jackpotCard = page.locator('text=Jackpot').locator('..').first();
     this.grossCard = page.locator('text=Gross').locator('..').first();
 
-    // Sections
-    this.meterDataSection = page
-      .locator('[data-testid="meter-data"], text=SAS Meters, text=Meter Data')
-      .first()
+    // Sections — the SMIB Configuration heading and the Collection History tab
+    this.meterDataSection = page.locator('h2:has-text("SMIB Configuration")').first();
+    this.meterHistorySection = page.getByRole('button', { name: 'Collection History' }).first();
+    this.billValidatorSection = page.getByRole('button', { name: 'Bill Validator' }).first();
+
+    // Accounting Details card + its desktop tab sidebar
+    this.accountingSection = page
+      .locator('h2:has-text("Accounting Details")')
       .locator('..');
-    this.meterHistorySection = page
-      .locator('[data-testid="meter-history"], text=Meter History')
-      .first()
-      .locator('..');
-    this.billValidatorSection = page
-      .locator('[data-testid="bill-validator"], text=Bill Validator')
-      .first()
-      .locator('..');
+    this.accountingSidebar = this.accountingSection.locator('aside');
 
     // Back link
     this.backToCabinetsLink = page.getByRole('link', {
@@ -117,6 +121,22 @@ export class CabinetDetailPage {
     await this.page.waitForLoadState('networkidle');
   }
 
+  // ─── Accounting Details tabs ──────────────────────────────────────────────────
+
+  /** A tab button in the Accounting Details sidebar, by exact label. */
+  accountingTab(label: string): Locator {
+    return this.accountingSidebar.getByRole('button', {
+      name: label,
+      exact: true,
+    });
+  }
+
+  async clickAccountingTab(label: string) {
+    await this.accountingTab(label).click();
+    // Allow the framer-motion AnimatePresence tab swap to settle.
+    await this.page.waitForTimeout(400);
+  }
+
   // ─── Assertions ──────────────────────────────────────────────────────────────
 
   async expectFinancialMetricsVisible() {
@@ -135,6 +155,41 @@ export class CabinetDetailPage {
 
   async expectBillValidatorVisible() {
     await expect(this.billValidatorSection).toBeVisible();
+  }
+
+  async expectAccountingTabsVisible() {
+    const tabs = [
+      'Movements',
+      'Live Meters',
+      'Bill Validator',
+      'Activity Log',
+      'Collection History',
+      'Collection Settings',
+      'Configurations',
+    ];
+    for (const tab of tabs) {
+      await expect(this.accountingTab(tab)).toBeVisible();
+    }
+  }
+
+  /** Live Meters tab content — SAS meter cards unique to this tab. */
+  async expectLiveMetersVisible() {
+    await expect(
+      this.accountingSection.getByText('Coin In', { exact: true }).first()
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      this.accountingSection.getByText('Games Played', { exact: true }).first()
+    ).toBeVisible({ timeout: 10_000 });
+  }
+
+  /** Movements (default) tab content — the financial movement cards. */
+  async expectMovementsVisible() {
+    await expect(
+      this.accountingSection.getByText('Money In', { exact: true }).first()
+    ).toBeVisible();
+    await expect(
+      this.accountingSection.getByText('Gross', { exact: true }).first()
+    ).toBeVisible();
   }
 
   async expectMetricValue(

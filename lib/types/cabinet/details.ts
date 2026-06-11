@@ -18,6 +18,7 @@ export type AccountingDetailsProps = {
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
   onRefresh?: () => void;
+  isDeveloper?: boolean;
 };
 
 export type CabinetsCabinetSearchFiltersProps = {

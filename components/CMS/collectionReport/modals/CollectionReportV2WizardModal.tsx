@@ -70,7 +70,7 @@ export default function CollectionReportV2WizardModal({
         style={{ opacity: 0 }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex-1 overflow-y-auto md:flex-none">
+        <div className="flex-1 overflow-y-auto">
           <CollectionReportV2SessionDetail
             sessionId={sessionId}
             onClose={onClose}

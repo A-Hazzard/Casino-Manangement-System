@@ -340,10 +340,10 @@ export function useCollectionReportPageData() {
             ? filters.selectedLocation
             : filters.selectedLocation !== 'all'
               ? [filters.selectedLocation]
-              : undefined
+              : undefined,
         );
 
-        if (result) {
+        if (result && !controller.signal.aborted) {
           setAllReports(prev => {
             const existingIds = new Set(prev.map(report => report._id));
             const uniqueNewReports = result.data.filter(
@@ -441,18 +441,16 @@ export function useCollectionReportPageData() {
   /**
    * Execute report deletion
    */
-  const confirmDelete = async (archive?: boolean) => {
+  const confirmDelete = async () => {
     if (!reportToDelete) return;
     setIsDeleting(true);
     try {
-      const url = `/api/collection-reports/${reportToDelete}${archive ? '?action=archive' : ''}`;
+      const url = `/api/collection-reports/${reportToDelete}`;
       await axios.delete(url);
-      toast.success(archive ? 'Report archived' : 'Report deleted');
+      toast.success('Report deleted');
       refreshReports();
     } catch {
-      toast.error(
-        archive ? 'Failed to archive report' : 'Failed to delete report'
-      );
+      toast.error('Failed to delete report');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirmation(false);

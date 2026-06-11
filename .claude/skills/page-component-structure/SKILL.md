@@ -1,5 +1,5 @@
 ---
-name: Page & Component Structure
+name: page-component-structure
 description: page.tsx thin wrappers, component organization with section comments, and JSX formatting patterns.
 ---
 

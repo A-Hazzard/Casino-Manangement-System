@@ -68,7 +68,7 @@ Updates an existing gaming machine.
     - Uses `findOneAndUpdate({ _id: id }, { $set: data }, { new: true })`.
     - Returns 404 if the machine doesn't exist.
 3.  **Cache Revalidation**: Triggers `revalidatePath`.
-4.  **Response**: Returns the updated May 4, 2026
+4.  **Response**: Returns the updated machine document.
 
 ---
 

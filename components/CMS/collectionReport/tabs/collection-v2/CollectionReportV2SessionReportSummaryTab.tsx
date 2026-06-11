@@ -62,7 +62,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
   // ============================================================================
   // Computed
   // ============================================================================
-  const withPhotos = session.machines.filter(m => m.imageData).length;
+  const withPhotos = session.machines.filter(machine => machine.imageData).length;
   const withoutPhotos = session.machinesTotal - withPhotos;
 
   // Compute machine breakdown from individual machine statuses
@@ -78,13 +78,13 @@ export default function CollectionReportV2SessionReportSummaryTab({
 
   // Compute the SAS collection period from individual machine times
   const sasStartTimes = session.machines
-    .map(m => m.sasStartTime)
-    .filter((t): t is string => !!t)
-    .map(t => new Date(t).getTime());
+    .map(machine => machine.sasStartTime)
+    .filter((timeString): timeString is string => !!timeString)
+    .map(timeString => new Date(timeString).getTime());
   const sasEndTimes = session.machines
-    .map(m => m.sasEndTime)
-    .filter((t): t is string => !!t)
-    .map(t => new Date(t).getTime());
+    .map(machine => machine.sasEndTime)
+    .filter((timeString): timeString is string => !!timeString)
+    .map(timeString => new Date(timeString).getTime());
 
   const earliestSasStart =
     sasStartTimes.length > 0
@@ -199,9 +199,9 @@ export default function CollectionReportV2SessionReportSummaryTab({
       </div>
 
       {/* Gross Summary */}
-      {(session.machines.some(m => m.machineGross !== undefined) ||
+      {(session.machines.some(machine => machine.machineGross !== undefined) ||
         (!session.noSMIBLocation &&
-          session.machines.some(m => m.sasGross !== undefined))) && (
+          session.machines.some(machine => machine.sasGross !== undefined))) && (
         <GrossSummary session={session} />
       )}
     </div>

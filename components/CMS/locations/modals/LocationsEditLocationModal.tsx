@@ -841,9 +841,8 @@ export default function LocationsEditLocationModal({
             parent === 'billValidatorOptions' ||
             parent === 'locationMembershipSettings'
           ) {
-            updatePayload[parent] = (formData as Record<string, unknown>)[
-              parent
-            ];
+            updatePayload[parent] =
+              formData[parent as keyof typeof formData];
           } else {
             // For other nested fields (like address.street), build nested object
             if (!updatePayload[parent]) {

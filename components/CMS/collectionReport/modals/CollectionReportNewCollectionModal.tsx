@@ -53,6 +53,7 @@ import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
 import {
   useCollectionReportVariationCheck,
   type CheckVariationsMachine,
+  type PreCreateMeterPayload,
 } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import { useUserStore } from '@/lib/store/userStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
@@ -90,7 +91,11 @@ export default function CollectionReportNewCollectionModal({
     variationsData,
     error: variationError,
     isMinimized,
+    isPreCreating,
+    currentMeterMachineName,
+    meterCreationError,
     checkVariations,
+    preCreateThenCheck,
     toggleMinimize,
     reset: resetVariationCheck,
   } = useCollectionReportVariationCheck();
@@ -222,6 +227,7 @@ export default function CollectionReportNewCollectionModal({
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
   } = useNewCollectionModal({
     show,
     locations: propLocations,
@@ -246,8 +252,8 @@ export default function CollectionReportNewCollectionModal({
   }, [collectedMachineEntries, currentCollectionTime]);
 
   // Online/offline status for machines in the selected location
-  const availableMachineIds = machinesOfSelectedLocation.map(m =>
-    String(m._id)
+  const availableMachineIds = machinesOfSelectedLocation.map(machine =>
+    String(machine._id)
   );
   const machineStatusMap = useMachineOnlineStatus(availableMachineIds);
 
@@ -271,6 +277,16 @@ export default function CollectionReportNewCollectionModal({
       resetCollectionModalStore();
     }
   }, [show, resetCollectionModalStore]);
+
+  // Auto-fill notes for offline SMIB machines when selected
+  useEffect(() => {
+    if (selectedMachineId && machineForDataEntry && !editingEntryId) {
+      const isKnown = selectedMachineId in machineStatusMap;
+      if (isKnown && machineStatusMap[selectedMachineId] === false && !currentMachineNotes) {
+        setCurrentMachineNotes('Machine was offline');
+      }
+    }
+  }, [selectedMachineId, machineStatusMap, editingEntryId, machineForDataEntry, currentMachineNotes, setCurrentMachineNotes]);
 
   // ============================================================================
   // Render
@@ -545,11 +561,12 @@ export default function CollectionReportNewCollectionModal({
                 updateAllSasEndDate={updateAllSasEndDate}
                 setUpdateAllSasEndDate={setUpdateAllSasEndDate}
                 onApplyAllDates={handleApplyAllDates}
+                sasUpdateProgress={sasUpdateProgress}
                 variationMachineIds={variationsData?.machines
                   .filter(
-                    m => typeof m.variation === 'number' && m.variation !== 0
+                    machine => typeof machine.variation === 'number' && machine.variation !== 0
                   )
-                  .map(m => m.machineId)}
+                  .map(machine => machine.machineId)}
               />
             </div>
           </div>
@@ -557,11 +574,6 @@ export default function CollectionReportNewCollectionModal({
           <DialogFooter className="flex justify-center border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4">
             <Button
               onClick={async () => {
-                console.warn('🚀 Create Report button clicked:', {
-                  isProcessing,
-                  collectedMachineEntriesCount: collectedMachineEntries.length,
-                  currentCollectionTime: currentCollectionTime,
-                });
                 if (collectedMachineEntries.length === 0 || isProcessing)
                   return;
 
@@ -615,9 +627,64 @@ export default function CollectionReportNewCollectionModal({
                       .movement?.gross,
                   }));
 
-                // Run variation check which will determine if we show modal or proceed directly
+                // Build pre-create payloads only for machines that actually
+                // need manual meters. Skip when:
+                //   (a) The collection already has a meterId (idempotency — meter exists)
+                //   (b) The machine is online SMIB (relayId + recent lastActivity)
+                // A machine needs one when:
+                //   (c) It has no relayId (non-SMIB — relay doesn't supply meters), OR
+                //   (d) It has a relayId but is offline (lastActivity > 3 min ago)
+                const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+                const preCreatePayloads: PreCreateMeterPayload[] =
+                  collectedMachineEntries
+                    .filter(entry => {
+                      if (entry.meterId) return false;
+                      const machine = machinesOfSelectedLocation.find(
+                        m => m._id === entry.machineId
+                      );
+                      if (!machine) return true;
+                      if (!machine.relayId) return true;
+                      if (!machine.lastActivity) return true;
+                      const lastActivityAgo =
+                        Date.now() -
+                        new Date(machine.lastActivity).getTime();
+                      return lastActivityAgo >= OFFLINE_THRESHOLD_MS;
+                    })
+                    .map(entry => ({
+                      machineId: entry.machineId,
+                      collectionId: entry._id,
+                      locationId: entry.location || locationIdToUse,
+                      metersIn: entry.metersIn || 0,
+                      metersOut: entry.metersOut || 0,
+                      prevMetersIn: entry.prevIn || 0,
+                      prevMetersOut: entry.prevOut || 0,
+                      customName: entry.machineCustomName || entry.machineId,
+                      ramClear: entry.ramClear,
+                      ramClearMetersIn: entry.ramClearMetersIn,
+                      ramClearMetersOut: entry.ramClearMetersOut,
+                      sasEndTime: entry.sasMeters?.sasEndTime
+                        ? new Date(entry.sasMeters.sasEndTime).toISOString()
+                        : undefined,
+                    }));
+
+                // Filter machines for variation check — exclude offline/non-SMIB
+                // machines that got manual meters pre-created. Those machines
+                // have no live SAS data to compare against, so variation checks
+                // on them are meaningless.
+                const offlineMachineIds = new Set(
+                  preCreatePayloads.map(payload => payload.machineId)
+                );
+                const onlineMachinesForCheck = machinesForCheck.filter(
+                  machine => !offlineMachineIds.has(machine.machineId)
+                );
+
+                // Open popover immediately and kick off pre-create → variation check
                 setShowVariationCheckPopover(true);
-                checkVariations(locationIdToUse, machinesForCheck);
+                preCreateThenCheck(
+                  locationIdToUse,
+                  onlineMachinesForCheck,
+                  preCreatePayloads
+                );
               }}
               className={`w-auto bg-button px-8 py-3 text-base hover:bg-buttonActive ${
                 collectedMachineEntries.length === 0 || isProcessing
@@ -693,11 +760,14 @@ export default function CollectionReportNewCollectionModal({
       />
       {/* Variation Check Popover */}
       <VariationCheckPopover
-        isOpen={showVariationCheckPopover && !isMinimized}
+        isOpen={showVariationCheckPopover && (!isMinimized || isPreCreating || !!meterCreationError)}
         isChecking={isChecking}
         hasVariations={hasVariations}
         error={variationError}
         variationsData={variationsData}
+        isPreCreating={isPreCreating}
+        currentMeterMachineName={currentMeterMachineName}
+        meterCreationError={meterCreationError}
         onMinimize={() => {
           toggleMinimize();
         }}

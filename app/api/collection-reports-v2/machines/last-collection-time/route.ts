@@ -19,6 +19,7 @@ import {
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
+import type { ReportedMachineDocument } from '@/app/api/lib/models/reportedMachines';
 import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -80,14 +81,14 @@ export async function GET(request: NextRequest) {
       manualMetersOut: 1,
     })
       .sort({ sasEndTime: -1 })
-      .lean();
+      .lean<ReportedMachineDocument>();
 
     // Find the oldest submitted collection to establish chronological boundaries
     const firstCollection = await ReportedMachine.findOne(baseFilter, {
       sasEndTime: 1,
     })
       .sort({ sasEndTime: 1 })
-      .lean();
+      .lean<ReportedMachineDocument>();
 
     let collectionTime: Date | null = lastCollection?.sasEndTime ?? null;
     let firstCollectionTime: Date | null = firstCollection?.sasEndTime ?? null;

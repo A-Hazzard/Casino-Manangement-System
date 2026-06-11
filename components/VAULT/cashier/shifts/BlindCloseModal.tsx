@@ -116,7 +116,7 @@ export default function BlindCloseModal({
   };
 
   const handleAuthVerified = async () => {
-    const filteredDenominations = denominations.filter(d => d.quantity > 0);
+    const filteredDenominations = denominations.filter(denom => denom.quantity > 0);
     try {
       await onSubmit(totalAmount, filteredDenominations);
     } catch {

@@ -104,8 +104,8 @@ function createReportableRow(
       case 'actualHold':
         row[fieldId] =
           (machine.drop || 0) > 0
-            ? ((machine.drop || 0) - (machine.totalCancelledCredits || 0)) /
-              (machine.drop || 0)
+            ? Math.round((((machine.drop || 0) - (machine.totalCancelledCredits || 0)) /
+              (machine.drop || 0)) * 10000) / 100
             : 0;
         break;
       case 'gamesPlayed':
@@ -114,7 +114,7 @@ function createReportableRow(
       case 'averageWager':
         row[fieldId] =
           machine.gamesPlayed > 0
-            ? (machine.coinIn || 0) / machine.gamesPlayed
+            ? Math.round(((machine.coinIn || 0) / machine.gamesPlayed) * 100) / 100
             : 0;
         break;
       case 'jackpot':

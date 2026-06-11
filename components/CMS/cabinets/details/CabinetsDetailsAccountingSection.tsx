@@ -44,6 +44,7 @@ export default function CabinetsDetailsAccountingSection({
   // Computed
   // ============================================================================
   const isTechnicianOnly = user?.roles?.[0] == 'technician';
+  const isDeveloper = user?.roles?.includes('developer') ?? false;
 
   // ============================================================================
   // Render
@@ -77,6 +78,7 @@ export default function CabinetsDetailsAccountingSection({
           loading={loading}
           activeMetricsTabContent={activeTab}
           setActiveMetricsTabContent={onTabChange}
+          isDeveloper={isDeveloper}
         />
       </div>
     </div>

@@ -12,7 +12,7 @@ import { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 
-interface StaleShiftDetectedBlockProps {
+type StaleShiftDetectedBlockProps = {
   isStale: boolean;
   openedAt: Date | string | null | undefined;
   type: 'cashier' | 'vault';

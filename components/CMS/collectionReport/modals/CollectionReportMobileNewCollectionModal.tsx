@@ -122,6 +122,7 @@ export default function CollectionReportMobileNewCollectionModal({
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
   } = useMobileCollectionModal({
     show,
     locations: propLocations,
@@ -130,7 +131,7 @@ export default function CollectionReportMobileNewCollectionModal({
   });
 
   // Online/offline status for available machines
-  const mobileMachineIds = availableMachines.map(m => String(m._id));
+  const mobileMachineIds = availableMachines.map(machine => String(machine._id));
   const machineStatusMap = useMachineOnlineStatus(mobileMachineIds);
 
   // Variation checking state
@@ -172,45 +173,79 @@ export default function CollectionReportMobileNewCollectionModal({
     }
   }, [show, resetCollectionModalStore]);
 
+  // Auto-fill notes for offline SMIB machines when selected
+  useEffect(() => {
+    if (selectedMachine && selectedMachineData && !modalState.editingEntryId) {
+      const isKnown = selectedMachine in machineStatusMap;
+      if (isKnown && machineStatusMap[selectedMachine] === false && !storeFormData.notes) {
+        setStoreFormData({ notes: 'Machine was offline' });
+      }
+    }
+  }, [selectedMachine, machineStatusMap, modalState.editingEntryId, selectedMachineData, storeFormData.notes, setStoreFormData]);
+
   // ============================================================================
   // Handlers
   // ============================================================================
   const handleStartSubmit = async () => {
-    if (collectedMachines.length === 0 || modalState.isProcessing) return;
+    try {
+      if (collectedMachines.length === 0 || modalState.isProcessing) return;
 
-    const locationIdToUse = lockedLocationId || selectedLocation || '';
+      const locationIdToUse = lockedLocationId || selectedLocation || '';
 
-    // Query gaminglocations directly to check noSMIBLocation flag.
-    // If true, skip the /api/collection-reports/check-variations request entirely.
-    const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
-    if (isNoSmib) {
-      setShowCreateReportConfirmation(true);
-      return;
+      // Query gaminglocations directly to check noSMIBLocation flag.
+      // If true, skip the /api/collection-reports/check-variations request entirely.
+      const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
+      if (isNoSmib) {
+        setShowCreateReportConfirmation(true);
+        return;
+      }
+
+      // Trigger variation check
+      setShowVariationCheckPopover(true);
+
+      const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
+        entry => ({
+          machineId: entry.machineId,
+          machineName:
+            entry.machineCustomName ||
+            entry.machineName ||
+            entry.serialNumber ||
+            entry.machineId,
+          metersIn: entry.metersIn || 0,
+          metersOut: entry.metersOut || 0,
+          sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+          sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+          prevMetersIn: entry.prevIn || 0,
+          prevMetersOut: entry.prevOut || 0,
+          movementGross: (entry as { movement?: { gross?: number } }).movement
+            ?.gross,
+        })
+      );
+
+      // Exclude offline/non-SMIB machines — no live SAS data to compare against
+      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+      const offlineMachineIds = new Set(
+        availableMachines
+          .filter(machine => {
+            if (!machine.relayId) return true;
+            if (!machine.lastActivity) return true;
+            return (
+              Date.now() -
+                new Date(machine.lastActivity).getTime() >=
+              OFFLINE_THRESHOLD_MS
+            );
+          })
+          .map(machine => machine._id)
+      );
+      const onlineMachinesForCheck = machinesForCheck.filter(
+        m => !offlineMachineIds.has(m.machineId)
+      );
+
+      checkVariations(locationIdToUse, onlineMachinesForCheck);
+    } catch (e) {
+      console.error('[handleStartSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
+      toast.error('Failed to submit. Please try again.');
     }
-
-    // Trigger variation check
-    setShowVariationCheckPopover(true);
-
-    const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
-      entry => ({
-        machineId: entry.machineId,
-        machineName:
-          entry.machineCustomName ||
-          entry.machineName ||
-          entry.serialNumber ||
-          entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-        movementGross: (entry as { movement?: { gross?: number } }).movement
-          ?.gross,
-      })
-    );
-
-    checkVariations(locationIdToUse, machinesForCheck);
   };
 
   // ============================================================================
@@ -902,9 +937,10 @@ export default function CollectionReportMobileNewCollectionModal({
               updateAllSasEndDate={updateAllSasEndDate}
               onUpdateAllSasEndDate={setUpdateAllSasEndDate}
               onApplyAllDates={handleApplyAllDates}
+              sasUpdateProgress={sasUpdateProgress}
               variationMachineIds={variationsData?.machines
-                .filter(m => typeof m.variation === 'number')
-                .map(m => m.machineId)}
+                .filter(machine => typeof machine.variation === 'number')
+                .map(machine => machine.machineId)}
               formatMachineDisplay={machine => {
                 const doc = machine as unknown as CollectionDocument;
                 return formatMachineDisplayNameWithBold({
@@ -952,7 +988,7 @@ export default function CollectionReportMobileNewCollectionModal({
               // Filter out machines with "No SMIB" (no relayId)
               const machinesWithSmib =
                 variationsData?.machines.filter(
-                  m => typeof m.variation === 'number'
+                  machine => typeof machine.variation === 'number'
                 ) || [];
 
               // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
@@ -974,14 +1010,35 @@ export default function CollectionReportMobileNewCollectionModal({
                     entry.machineId,
                   metersIn: entry.metersIn || 0,
                   metersOut: entry.metersOut || 0,
-                  sasStartTime: entry.sasStartTime || undefined,
-                  sasEndTime: entry.sasEndTime || undefined,
+                  sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+                  sasEndTime: entry.sasMeters?.sasEndTime || undefined,
                   prevMetersIn: entry.prevIn || 0,
                   prevMetersOut: entry.prevOut || 0,
+                  movementGross: entry.movement?.gross,
                 }));
               const locationIdToUse =
                 lockedLocationId || selectedLocation || '';
-              checkVariations(locationIdToUse, machinesForCheck);
+
+              // Exclude offline machines from retry check
+              const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+              const offlineMachineIds = new Set(
+                availableMachines
+                  .filter(machine => {
+                    if (!machine.relayId) return true;
+                    if (!machine.lastActivity) return true;
+                    return (
+                      Date.now() -
+                        new Date(machine.lastActivity).getTime() >=
+                      OFFLINE_THRESHOLD_MS
+                    );
+                  })
+                  .map(machine => machine._id)
+              );
+              const onlineMachinesForCheck = machinesForCheck.filter(
+                m => !offlineMachineIds.has(m.machineId)
+              );
+
+              checkVariations(locationIdToUse, onlineMachinesForCheck);
             }}
             onClose={() => {
               setShowVariationCheckPopover(false);
@@ -1026,16 +1083,16 @@ export default function CollectionReportMobileNewCollectionModal({
                   </div>
 
                   <div className="space-y-4">
-                    {variationsData.machines.map((m, idx) => (
+                    {variationsData.machines.map((machine, index) => (
                       <div
-                        key={idx}
-                        className={`rounded-xl border p-4 ${typeof m.variation === 'number' ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
+                        key={index}
+                        className={`rounded-xl border p-4 ${typeof machine.variation === 'number' ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
                       >
                         <p className="mb-1 text-xs font-bold uppercase text-gray-400">
-                          {m.machineId}
+                          {machine.machineId}
                         </p>
                         <h4 className="mb-3 truncate font-bold text-gray-900">
-                          {m.machineName}
+                          {machine.machineName}
                         </h4>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -1044,7 +1101,7 @@ export default function CollectionReportMobileNewCollectionModal({
                               Sas Movement
                             </p>
                             <p className="text-sm font-black text-blue-600">
-                              ${Number(m.sasGross).toFixed(2)}
+                              ${Number(machine.sasGross).toFixed(2)}
                             </p>
                           </div>
                           <div className="space-y-1">
@@ -1052,21 +1109,21 @@ export default function CollectionReportMobileNewCollectionModal({
                               Manual Movement
                             </p>
                             <p className="text-sm font-black text-gray-900">
-                              ${Number(m.meterGross).toFixed(2)}
+                              ${Number(machine.meterGross).toFixed(2)}
                             </p>
                           </div>
                         </div>
 
-                        {typeof m.variation === 'number' && (
+                        {typeof machine.variation === 'number' && (
                           <div className="mt-3 flex items-center justify-between border-t border-amber-200 pt-3">
                             <p className="text-[10px] font-bold uppercase text-amber-800">
                               Variation
                             </p>
                             <p
-                              className={`text-sm font-black ${m.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
+                              className={`text-sm font-black ${machine.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
                             >
-                              {m.variation < 0 ? '-' : '+'}$
-                              {Math.abs(m.variation).toFixed(2)}
+                              {machine.variation < 0 ? '-' : '+'}$
+                              {Math.abs(machine.variation).toFixed(2)}
                             </p>
                           </div>
                         )}

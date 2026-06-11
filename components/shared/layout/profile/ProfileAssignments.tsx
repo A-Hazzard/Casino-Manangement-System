@@ -40,8 +40,10 @@ type ProfileAssignmentsProps = {
     name: string;
     licenceeId?: string | string[];
     licencee?: string | string[];
+    licensee?: string | string[];
     rel?: {
       licencee?: string | string[];
+      licensee?: string | string[];
     };
   }>;
   locationsLoading: boolean;
@@ -104,13 +106,12 @@ export default function ProfileAssignments({
     if (isActuallyAllSelected) {
       return locations
         .map(loc => {
-          const locAny = loc as Record<string, unknown>;
           const lid =
-            locAny.licenceeId ||
-            (locAny.rel as Record<string, unknown>)?.licencee ||
-            (locAny.rel as Record<string, unknown>)?.licensee ||
-            locAny.licencee ||
-            locAny.licensee;
+            loc.licenceeId ||
+            loc.rel?.licencee ||
+            loc.rel?.licensee ||
+            loc.licencee ||
+            loc.licensee;
           const lic = licencees.find(
             l =>
               String(l._id) ===
@@ -139,13 +140,12 @@ export default function ProfileAssignments({
       if (licencee) {
         // It's a licencee ID - find all locations for it
         const licenceeLocations = locations.filter(loc => {
-          const locAny = loc as Record<string, unknown>;
           const lid =
-            locAny.licenceeId ||
-            (locAny.rel as Record<string, unknown>)?.licencee ||
-            (locAny.rel as Record<string, unknown>)?.licensee ||
-            locAny.licencee ||
-            locAny.licensee;
+            loc.licenceeId ||
+            loc.rel?.licencee ||
+            loc.rel?.licensee ||
+            loc.licencee ||
+            loc.licensee;
           if (Array.isArray(lid)) {
             return lid.some(l => String(l) === String(licencee._id));
           }
@@ -167,13 +167,12 @@ export default function ProfileAssignments({
         const loc = locations.find(l => String(l._id) === id);
         if (loc) {
           if (!processedLocationIds.has(String(loc._id))) {
-            const locAny = loc as Record<string, unknown>;
             const lid =
-              locAny.licenceeId ||
-              (locAny.rel as Record<string, unknown>)?.licencee ||
-              (locAny.rel as Record<string, unknown>)?.licensee ||
-              locAny.licencee ||
-              locAny.licensee;
+              loc.licenceeId ||
+              loc.rel?.licencee ||
+              loc.rel?.licensee ||
+              loc.licencee ||
+              loc.licensee;
             const singleLid = Array.isArray(lid) ? lid[0] : lid;
             const lic = licencees.find(
               l => String(l._id) === String(singleLid)

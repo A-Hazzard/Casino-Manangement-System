@@ -11,8 +11,13 @@ export type ChangeItem = {
 };
 
 /**
- * Deep comparison of two objects to detect changes
- * Returns an array of changes with field paths and values
+ * Deep comparison of two objects to detect changes.
+ * Recursively compares all keys and nested objects, returning an array
+ * of changes with field paths and values.
+ * @param {Record<string, unknown>} oldObject - The original object.
+ * @param {Record<string, unknown>} newObject - The updated object to compare against.
+ * @param {string} basePath - Optional base path prefix for nested field paths.
+ * @returns {ChangeItem[]} Array of detected changes with field, oldValue, newValue, and path.
  */
 export function detectChanges(
   oldObject: Record<string, unknown>,
@@ -165,7 +170,12 @@ function formatChangeItem(change: ChangeItem): string {
 }
 
 /**
- * Filter out empty or meaningless changes
+ * Filter out empty or meaningless changes from a changes array.
+ * Removes changes where both old and new values are empty strings,
+ * null/undefined, empty arrays, or empty objects. Always preserves
+ * gamingLocation changes.
+ * @param {ChangeItem[]} changes - The array of detected changes to filter.
+ * @returns {ChangeItem[]} Filtered array containing only meaningful changes.
  */
 export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
   if (!Array.isArray(changes)) {
@@ -215,7 +225,11 @@ export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
 }
 
 /**
- * Get a summary of changes for activity log description
+ * Get a human-readable summary of changes for activity log descriptions.
+ * Returns a count and list of changed field names, or a single formatted
+ * change for a single-item array.
+ * @param {ChangeItem[]} changes - The array of changes to summarize.
+ * @returns {string} A formatted summary string describing the changes.
  */
 export function getChangesSummary(changes: ChangeItem[]): string {
   if (!Array.isArray(changes)) {

@@ -27,7 +27,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
 import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 
-interface VariationCheckPopoverProps {
+type VariationCheckPopoverProps = {
   isOpen: boolean;
   isChecking: boolean;
   hasVariations: boolean | null;
@@ -38,6 +38,9 @@ interface VariationCheckPopoverProps {
   onRetry: () => void;
   onClose: () => void;
   isLoading?: boolean;
+  isPreCreating?: boolean;
+  currentMeterMachineName?: string | null;
+  meterCreationError?: string | null;
 }
 
 export function VariationCheckPopover({
@@ -51,6 +54,9 @@ export function VariationCheckPopover({
   onRetry,
   onClose,
   isLoading = false,
+  isPreCreating = false,
+  currentMeterMachineName = null,
+  meterCreationError = null,
 }: VariationCheckPopoverProps) {
   // ============================================================================
   // State & Hooks
@@ -94,8 +100,55 @@ export function VariationCheckPopover({
           exit={{ y: 20 }}
           onClick={e => e.stopPropagation()}
         >
+          {/* Pre-Creating Meters State */}
+          {isPreCreating && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="h-12 w-12 text-blue-500" />
+              </motion.div>
+              <p className="text-center text-lg font-semibold text-gray-800">
+                Creating Manual Meters for{' '}
+                <span className="font-bold">
+                  {currentMeterMachineName ?? 'Machine'}
+                </span>
+              </p>
+              <p className="text-center text-sm text-gray-600">Please wait...</p>
+            </div>
+          )}
+
+          {/* Meter Creation Error State */}
+          {!isPreCreating && meterCreationError && (
+            <div className="flex flex-col items-center gap-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+              >
+                <AlertCircle className="h-12 w-12 text-red-500" />
+              </motion.div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-800">
+                  Failed to create meters
+                </p>
+                <p className="text-sm text-gray-600">
+                  Could not create meters for{' '}
+                  <strong>{currentMeterMachineName ?? 'Machine'}</strong>:{' '}
+                  {meterCreationError}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={onClose} className="flex-1">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Checking State */}
-          {isChecking && (
+          {!isPreCreating && !meterCreationError && isChecking && (
             <div className="flex flex-col items-center gap-4">
               <motion.div
                 animate={{ rotate: 360 }}
@@ -113,7 +166,7 @@ export function VariationCheckPopover({
           )}
 
           {/* No Variations State */}
-          {!isChecking && hasVariations === false && !error && (
+          {!isPreCreating && !meterCreationError && !isChecking && hasVariations === false && !error && (
             <div className="flex flex-col items-center gap-4">
               <motion.div
                 initial={{ scale: 0 }}
@@ -145,7 +198,7 @@ export function VariationCheckPopover({
           )}
 
           {/* Variations Found State */}
-          {!isChecking && hasVariations === true && !error && (
+          {!isPreCreating && !meterCreationError && !isChecking && hasVariations === true && !error && (
             <div className="flex flex-col items-center gap-4">
               <motion.div
                 initial={{ scale: 0 }}
@@ -189,8 +242,8 @@ export function VariationCheckPopover({
             </div>
           )}
 
-          {/* Error State */}
-          {!isChecking && error && (
+          {/* Variation Check Error State */}
+          {!isPreCreating && !meterCreationError && !isChecking && error && (
             <div className="flex flex-col items-center gap-4">
               <motion.div
                 initial={{ scale: 0 }}

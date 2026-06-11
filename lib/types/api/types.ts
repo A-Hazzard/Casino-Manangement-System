@@ -41,6 +41,7 @@ export type ICollectionReport = {
   machinesCollected?: string;
   includeJackpot?: boolean;
   totalVariation?: number;
+  deletedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
@@ -167,6 +168,7 @@ export type CollectionReportMachineSummary = {
   game?: string;
   custom?: { name?: string };
   relayId?: string;
+  lastActivity?: Date | string;
   smibBoard?: string;
   smbId?: string;
   collectionMeters?: {
@@ -199,6 +201,10 @@ export type MachineMetric = {
   netGross?: number;
   sasGross?: number | string;
   variation?: number | string;
+  metersIn: number;
+  metersOut: number;
+  prevIn: number;
+  prevOut: number;
   sasStartTime?: Date | string | null;
   sasEndTime?: Date | string | null;
   hasIssue?: boolean;
@@ -247,6 +253,7 @@ export type CollectionReportData = {
   useNetGross?: boolean;
   collector?: string;
   collectorName?: string;
+  deletedAt?: string | null;
 };
 
 export type MachineVariationData = {

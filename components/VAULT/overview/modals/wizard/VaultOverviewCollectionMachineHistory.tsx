@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import type { MachineCollectionActivity } from '@/shared/types/vault';
 import { Clock, History as HistoryIcon, Loader2, User } from 'lucide-react';
 
-interface VaultOverviewCollectionMachineHistoryProps {
+type VaultOverviewCollectionMachineHistoryProps = {
   history: MachineCollectionActivity[];
   loading: boolean;
   machineName: string;

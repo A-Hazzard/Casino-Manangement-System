@@ -15,21 +15,17 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { getGrossColorClass } from '@/lib/utils/financial';
 import CollectionReportV2SessionsSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionsSkeleton';
 import { Fragment } from 'react';
-import { ChevronDown, ChevronUp, RotateCcw, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 type V2DesktopProps = {
   sessions: V2Session[];
   loading: boolean;
   isRefreshing?: boolean;
   canManage?: boolean;
-  showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
-  onRestoreSession?: (sessionId: string) => void;
-  onPermanentDeleteSession?: (sessionId: string) => void;
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: string) => void;
@@ -72,23 +68,17 @@ function CollectorHover({ session }: { session: V2Session }) {
 function SessionRow({
   session,
   canManage,
-  showArchived,
   onViewSession,
   onEditSession,
   onSubmitSession,
   onDeleteSession,
-  onRestoreSession,
-  onPermanentDeleteSession,
 }: {
   session: V2Session;
   canManage?: boolean;
-  showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
-  onRestoreSession?: (sessionId: string) => void;
-  onPermanentDeleteSession?: (sessionId: string) => void;
 }) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -103,21 +93,11 @@ function SessionRow({
   const displayVariation =
     session.totalMachineGross === 0 ? 0 : session.totalGrossDifference;
 
-  const archivedDate = session.deletedAt
-    ? formatDistanceToNow(new Date(session.deletedAt), { addSuffix: true })
-    : '';
-
   // ============================================================================
   // Render
   // ============================================================================
   return (
-    <TableRow
-      className={
-        showArchived
-          ? 'bg-amber-50/30 hover:bg-amber-50/50'
-          : 'hover:bg-lighterGreenHighlight'
-      }
-    >
+    <TableRow className="hover:bg-lighterGreenHighlight">
       <TableCell isFirstColumn={true} centered={false}>
         <Link
           href={`/locations/${session.locationId}`}
@@ -168,101 +148,66 @@ function SessionRow({
       <TableCell centered={true} className="whitespace-nowrap text-gray-500">
         {formatDate(session.createdAt)}
       </TableCell>
-      {showArchived && (
-        <TableCell
-          centered={true}
-          className="whitespace-nowrap text-xs text-amber-700"
-        >
-          {archivedDate}
-        </TableCell>
-      )}
       <TableCell centered={true}>
         <div className="flex items-center justify-center gap-2">
-          {showArchived ? (
+          <button
+            type="button"
+            onClick={() => onViewSession?.(session.sessionId)}
+            className="rounded bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+          >
+            View
+          </button>
+          {session.sessionStatus === 'in-progress' && (
+            <button
+              type="button"
+              onClick={() => onSubmitSession?.(session.sessionId)}
+              className="rounded bg-green-50 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+            >
+              Submit
+            </button>
+          )}
+          {canManage && (
             <>
               <button
                 type="button"
-                onClick={() => onRestoreSession?.(session.sessionId)}
-                className="flex items-center gap-1 rounded bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-                title="Restore session"
+                onClick={() => onEditSession?.(session.sessionId)}
+                className="rounded p-1.5 text-blue-600 hover:bg-blue-100"
+                title="Edit session"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Restore
-              </button>
-              {canManage && (
-                <button
-                  type="button"
-                  onClick={() => onPermanentDeleteSession?.(session.sessionId)}
-                  className="flex items-center gap-1 rounded bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
-                  title="Permanently delete session"
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              )}
-            </>
-          ) : (
-            <>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
+                </svg>
+              </button>
               <button
                 type="button"
-                onClick={() => onViewSession?.(session.sessionId)}
-                className="rounded bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                onClick={() => onDeleteSession?.(session.sessionId)}
+                className="rounded p-1.5 text-red-600 hover:bg-red-100"
+                title="Delete session"
               >
-                View
-              </button>
-              {session.sessionStatus === 'in-progress' && (
-                <button
-                  type="button"
-                  onClick={() => onSubmitSession?.(session.sessionId)}
-                  className="rounded bg-green-50 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  Submit
-                </button>
-              )}
-              {canManage && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onEditSession?.(session.sessionId)}
-                    className="rounded p-1.5 text-blue-600 hover:bg-blue-100"
-                    title="Edit session"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDeleteSession?.(session.sessionId)}
-                    className="rounded p-1.5 text-red-600 hover:bg-red-100"
-                    title="Delete session"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </>
-              )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
             </>
           )}
         </div>
@@ -297,13 +242,10 @@ export default function CollectionReportV2Desktop({
   sessions,
   loading,
   canManage,
-  showArchived,
   onViewSession,
   onEditSession,
   onSubmitSession,
   onDeleteSession,
-  onRestoreSession,
-  onPermanentDeleteSession,
   sortField,
   sortDirection,
   onSort,
@@ -339,14 +281,6 @@ export default function CollectionReportV2Desktop({
               const isSortable = header.sortable;
               return (
                 <Fragment key={header.key}>
-                  {header.key === 'actions' && showArchived && (
-                    <TableHead
-                      centered={true}
-                      className="font-semibold text-white"
-                    >
-                      ARCHIVED
-                    </TableHead>
-                  )}
                   <TableHead
                     centered={header.centered}
                     isFirstColumn={header.isFirst ?? false}
@@ -381,17 +315,14 @@ export default function CollectionReportV2Desktop({
         </TableHeader>
         <TableBody>
           {sessions.map(session => (
-            <SessionRow
-              key={session.sessionId}
-              session={session}
-              canManage={canManage}
-              showArchived={showArchived}
-              onViewSession={onViewSession}
+              <SessionRow
+                key={session.sessionId}
+                session={session}
+                canManage={canManage}
+                onViewSession={onViewSession}
               onEditSession={onEditSession}
               onSubmitSession={onSubmitSession}
               onDeleteSession={onDeleteSession}
-              onRestoreSession={onRestoreSession}
-              onPermanentDeleteSession={onPermanentDeleteSession}
             />
           ))}
         </TableBody>

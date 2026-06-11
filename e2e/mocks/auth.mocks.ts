@@ -80,13 +80,17 @@ export const MOCK_USER_LOCATION_ADMIN: MockUserPayload = {
   profile: { firstName: 'E2E', lastName: 'LocAdmin', gender: 'other' },
 };
 
+// Vault Manager account — assigned a location + licencee so vault-management
+// pages (which resolve an active location/licencee via useVaultLicencee) have a
+// working context. Role is vault-manager ONLY → isVaultManagerOnly() routes them
+// into /vault/management/* and blocks CMS routes.
 export const MOCK_USER_VAULT_MANAGER: MockUserPayload = {
   _id: '69b46e8854694ea2246da69b',
   username: 'vaultManager',
   emailAddress: 'vaultmanager@gmail.com',
   roles: ['vault-manager'],
   isEnabled: true,
-  assignedLocations: [],
+  assignedLocations: ['loc_001'],
   assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
   profile: { firstName: 'E2E', lastName: 'VaultManager', gender: 'other' },
 };

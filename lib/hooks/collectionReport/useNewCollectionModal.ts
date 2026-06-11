@@ -174,6 +174,10 @@ export function useNewCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // ==========================================================================
   // Form Data Bindings - Derive from store and create setters
@@ -1734,7 +1738,7 @@ export function useNewCollectionModal({
    */
   const handleApplyAllDates = useCallback(async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
-    if (collectedMachineEntries.length < 2) return;
+    if (collectedMachineEntries.length < 1) return;
     try {
       setIsProcessing(true);
       const axiosInstance = (await import('axios')).default;
@@ -1746,13 +1750,24 @@ export function useNewCollectionModal({
       if (startTimeISO) patchData.sasStartTime = startTimeISO;
       if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
+      const total = collectedMachineEntries.length;
+      setSasUpdateProgress({ completed: 0, total });
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
-          if (!entry._id) return;
-          return await axiosInstance.patch(
-            `/api/collection-reports/collections?id=${entry._id}`,
+          if (!entry._id) {
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return;
+          }
+          const result = await axiosInstance.patch(
+            `/api/collection-reports/collections/${entry._id}`,
             patchData
           );
+          setSasUpdateProgress(prev =>
+            prev ? { ...prev, completed: prev.completed + 1 } : null
+          );
+          return result;
         })
       );
       const failed = results.filter(
@@ -1800,8 +1815,32 @@ export function useNewCollectionModal({
       toast.error('Failed to update SAS times');
     } finally {
       setIsProcessing(false);
+      setSasUpdateProgress(null);
     }
   }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
+
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (collectedMachineEntries.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [collectedMachineEntries]);
 
   // ==========================================================================
   // Handlers
@@ -1959,5 +1998,6 @@ export function useNewCollectionModal({
 
     // Event Handlers - Bulk
     handleApplyAllDates,
+    sasUpdateProgress,
   };
 }

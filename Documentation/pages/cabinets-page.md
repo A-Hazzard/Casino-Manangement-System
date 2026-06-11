@@ -1,8 +1,8 @@
 # Cabinets Page Implementation (`/cabinets`)
 
 **Author:** Aaron Hazzard | Senior Full-Stack Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 5.0.0 (Unified API Architecture)
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -77,6 +77,7 @@ The interface provides a **"Command Center"** for direct hardware interaction:
 
 ## 6. Technical Standards
 
+- **Skeleton UX**: `CabinetDetailsLoadingState` and related skeletons from `components/shared/ui/skeletons/CabinetDetailSkeletons.tsx` are used during data hydration.
 - **Centralized Service**: All API interactions are handled by the `fetchCabinets` and `fetchCabinetById` helpers in `lib/helpers/cabinets/helpers.ts`.
 - **Architecture**: Redirects all hardware-related traffic to the centralized `/api/cabinets` namespace.
 

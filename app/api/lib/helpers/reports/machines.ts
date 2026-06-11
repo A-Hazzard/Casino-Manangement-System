@@ -30,6 +30,33 @@ import type { PipelineStage } from 'mongoose';
 import { NextResponse } from 'next/server';
 
 /**
+ * Extract licencee ID from locationMatchStage (even if nested in $and/$or)
+ */
+function getLicenceeFilter(locationMatchStage: Record<string, unknown>): string | undefined {
+  if (!locationMatchStage) return undefined;
+  if (locationMatchStage['rel.licencee']) {
+    return String(locationMatchStage['rel.licencee']);
+  }
+  if (Array.isArray(locationMatchStage.$and)) {
+    for (const cond of locationMatchStage.$and) {
+      if (cond && typeof cond === 'object') {
+        if (cond['rel.licencee']) {
+          return String(cond['rel.licencee']);
+        }
+        if (Array.isArray(cond.$or)) {
+          for (const orCond of cond.$or) {
+            if (orCond && typeof orCond === 'object' && orCond['rel.licencee']) {
+              return String(orCond['rel.licencee']);
+            }
+          }
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Build a map of licenceeId -> includeJackpot boolean
  */
 async function buildLicenceeJackpotMap(): Promise<Map<string, boolean>> {
@@ -92,33 +119,21 @@ export async function getMachineStats(
   ];
 
   // Add location filter if licencee is specified
-  if (
-    locationMatchStage &&
-    typeof locationMatchStage === 'object' &&
-    ('rel.licencee' in locationMatchStage ||
-      'rel.licencee' in locationMatchStage)
-  ) {
-    const licenceeVal =
-      locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'];
+  const licenceeVal = getLicenceeFilter(locationMatchStage);
+  if (licenceeVal && licenceeVal !== 'all') {
     aggregationPipeline.push({
       $match: {
         $or: [
           { 'locationDetails.rel.licencee': licenceeVal },
-          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
         ],
       },
     });
   }
 
-  // Get total machines count (only machines with lastActivity field and a valid relayId)
+  // Get total machines count (matching all active machines in matched locations)
   const totalCountResult = await Machine.aggregate([
     ...aggregationPipeline,
-    {
-      $match: {
-        lastActivity: { $exists: true },
-        relayId: { $exists: true, $nin: [null, ''] },
-      },
-    },
     { $count: 'total' },
   ]).exec();
   const totalCount = totalCountResult[0]?.total || 0;
@@ -175,24 +190,13 @@ export async function getMachineStats(
       $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
     },
     // Add location filter if licencee is specified
-    ...(locationMatchStage &&
-    typeof locationMatchStage === 'object' &&
-    ('rel.licencee' in locationMatchStage ||
-      'rel.licencee' in locationMatchStage)
+    ...(licenceeVal && licenceeVal !== 'all'
       ? [
           {
             $match: {
               $or: [
-                {
-                  'locationDetails.rel.licencee':
-                    locationMatchStage['rel.licencee'] ||
-                    locationMatchStage['rel.licencee'],
-                },
-                {
-                  'locationDetails.rel.licencee':
-                    locationMatchStage['rel.licencee'] ||
-                    locationMatchStage['rel.licencee'],
-                },
+                { 'locationDetails.rel.licencee': licenceeVal },
+                { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
               ],
             },
           },
@@ -227,6 +231,7 @@ export async function getMachineStats(
                           : {
                               $or: locationRangeList.map(lr => ({
                                 $and: [
+                                  { $eq: ['$$locationId', lr.id] },
                                   { $gte: ['$readAt', lr.rangeStart] },
                                   { $lte: ['$readAt', lr.rangeEnd] },
                                 ],
@@ -352,24 +357,13 @@ export async function getMachineStats(
       {
         $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
       },
-      ...(locationMatchStage &&
-      typeof locationMatchStage === 'object' &&
-      ('rel.licencee' in locationMatchStage ||
-        'rel.licencee' in locationMatchStage)
+      ...(licenceeVal && licenceeVal !== 'all'
         ? [
             {
               $match: {
                 $or: [
-                  {
-                    'locationDetails.rel.licencee':
-                      locationMatchStage['rel.licencee'] ||
-                      locationMatchStage['rel.licencee'],
-                  },
-                  {
-                    'locationDetails.rel.licencee':
-                      locationMatchStage['rel.licencee'] ||
-                      locationMatchStage['rel.licencee'],
-                  },
+                  { 'locationDetails.rel.licencee': licenceeVal },
+                  { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
                 ],
               },
             },
@@ -378,19 +372,39 @@ export async function getMachineStats(
       {
         $lookup: {
           from: 'meters',
-          let: { machineId: '$_id' },
+          let: {
+            machineId: '$_id',
+            locationId: { $toString: '$gamingLocation' },
+          },
           pipeline: [
             {
               $match: {
                 $expr: {
                   $and: [
                     { $eq: ['$machine', '$$machineId'] },
-                    ...(startDate && endDate
+                    ...(locationRangeList.length > 0
                       ? [
-                          { $gte: ['$readAt', startDate] },
-                          { $lte: ['$readAt', endDate] },
+                          locationRangeList.length === 1
+                            ? { $gte: ['$readAt', locationRangeList[0].rangeStart] }
+                            : {
+                                $or: locationRangeList.map(lr => ({
+                                  $and: [
+                                    { $eq: ['$$locationId', lr.id] },
+                                    { $gte: ['$readAt', lr.rangeStart] },
+                                    { $lte: ['$readAt', lr.rangeEnd] },
+                                  ],
+                                })),
+                              },
+                          locationRangeList.length === 1
+                            ? { $lte: ['$readAt', locationRangeList[0].rangeEnd] }
+                            : { $literal: true },
                         ]
-                      : []),
+                      : startDate && endDate
+                        ? [
+                            { $gte: ['$readAt', startDate] },
+                            { $lte: ['$readAt', endDate] },
+                          ]
+                        : []),
                   ],
                 },
               },
@@ -456,13 +470,16 @@ export async function getMachineStats(
 
       const moneyInScale = moneyInMult !== null ? 1 - moneyInMult : 1;
       const moneyOutScale = moneyOutMult !== null ? 1 - moneyOutMult : 1;
-      const scaledDropUSD =
-        convertToUSD(machine.drop || 0, nativeCurrency) * moneyInScale;
-      const scaledMoneyOutUSD =
-        convertToUSD(machine.moneyOut || 0, nativeCurrency) * moneyOutScale;
-      totalDropUSD += scaledDropUSD;
-      totalMoneyOutUSD += scaledMoneyOutUSD;
-      totalGrossUSD += scaledDropUSD - scaledMoneyOutUSD;
+
+      const r = (v: number) => Math.round(v * 100) / 100;
+      const toDisplay = (val: number) =>
+        nativeCurrency !== displayCurrency
+          ? r(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency))
+          : r(val);
+
+      totalDropUSD += toDisplay(machine.drop || 0) * moneyInScale;
+      totalMoneyOutUSD += toDisplay(machine.moneyOut || 0) * moneyOutScale;
+      totalGrossUSD += toDisplay(machine.drop || 0) * moneyInScale - toDisplay(machine.moneyOut || 0) * moneyOutScale;
     }
 
     convertedTotals = {
@@ -521,17 +538,6 @@ export async function getOverviewMachines(
   }
 
   const searchLower = searchTerm?.toLowerCase().trim();
-  // Fetch locations to get gaming day ranges
-  const locationsWithOffset = await GamingLocations.find(locationMatchStage)
-    .select('gameDayOffset _id')
-    .lean<GamingLocationDocument[]>();
-  const gamingDayRanges = getGamingDayRangesForLocations(
-    locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[],
-    timePeriod,
-    startDate,
-    endDate
-  );
-
   const aggregationPipeline: PipelineStage[] = [
     { $match: machineMatchStage },
     {
@@ -545,39 +551,78 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (
-    locationMatchStage &&
-    (locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'])
-  ) {
-    const licenceeVal =
-      locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'];
+  const licenceeVal = getLicenceeFilter(locationMatchStage);
+  if (licenceeVal && licenceeVal !== 'all') {
     aggregationPipeline.push({
       $match: {
         $or: [
           { 'locationDetails.rel.licencee': licenceeVal },
-          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
         ],
       },
     });
   }
 
+  // Compute per-location gaming day ranges
+  const locationsForRange = await GamingLocations.find(locationMatchStage)
+    .select('gameDayOffset _id')
+    .lean<GamingLocationDocument[]>();
+  const gamingDayRanges = getGamingDayRangesForLocations(
+    locationsForRange as unknown as { _id: string; gameDayOffset?: number }[],
+    timePeriod,
+    startDate,
+    endDate
+  );
+  const locationRangeList = Array.from(gamingDayRanges.entries()).map(
+    ([id, range]) => ({
+      id,
+      rangeStart: range.rangeStart,
+      rangeEnd: range.rangeEnd,
+    })
+  );
+
   aggregationPipeline.push(
     {
       $lookup: {
         from: 'meters',
-        let: { machineId: '$_id' },
+        let: {
+          machineId: '$_id',
+          locationId: { $toString: '$gamingLocation' },
+        },
         pipeline: [
           {
             $match: {
               $expr: {
                 $and: [
                   { $eq: ['$machine', '$$machineId'] },
-                  ...(startDate && endDate
+                  ...(locationRangeList.length > 0
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
+                        locationRangeList.length === 1
+                          ? {
+                              $gte: [
+                                '$readAt',
+                                locationRangeList[0].rangeStart,
+                              ],
+                            }
+                          : {
+                              $or: locationRangeList.map(lr => ({
+                                $and: [
+                                  { $eq: ['$$locationId', lr.id] },
+                                  { $gte: ['$readAt', lr.rangeStart] },
+                                  { $lte: ['$readAt', lr.rangeEnd] },
+                                ],
+                              })),
+                            },
+                        locationRangeList.length === 1
+                          ? { $lte: ['$readAt', locationRangeList[0].rangeEnd] }
+                          : { $literal: true },
                       ]
-                    : []),
+                    : startDate && endDate
+                      ? [
+                          { $gte: ['$readAt', startDate] },
+                          { $lte: ['$readAt', endDate] },
+                        ]
+                      : []),
                 ],
               },
             },
@@ -610,6 +655,7 @@ export async function getOverviewMachines(
         _id: 1,
         serialNumber: 1,
         origSerialNumber: 1,
+        relayId: 1,
         'custom.name': 1,
         gamingLocation: 1,
         game: 1,
@@ -680,37 +726,7 @@ export async function getOverviewMachines(
         addSuffix: true,
       });
       actualOfflineTime = actualDuration;
-
-      const locationId = machine.gamingLocation;
-      const range = gamingDayRanges.get(String(locationId));
-
-      if (range) {
-        if (
-          lastActivity < range.rangeStart &&
-          (timePeriod === '7d' ||
-            timePeriod === '30d' ||
-            timePeriod === 'Custom' ||
-            timePeriod === 'last7days' ||
-            timePeriod === 'last30days')
-        ) {
-          const days =
-            timePeriod === '7d' || timePeriod === 'last7days'
-              ? '7'
-              : timePeriod === '30d' || timePeriod === 'last30days'
-                ? '30'
-                : undefined;
-          if (days) {
-            offlineTimeLabel = `within the last ${days} days`;
-          } else {
-            const diffMs =
-              range.rangeEnd.getTime() - range.rangeStart.getTime();
-            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-            offlineTimeLabel = `within the last ${diffDays} days`;
-          }
-        } else {
-          offlineTimeLabel = actualDuration;
-        }
-      }
+      offlineTimeLabel = actualDuration;
     } else if (!isOnline && !lastActivity) {
       actualOfflineTime = 'Never';
       offlineTimeLabel = 'Never';
@@ -740,7 +756,7 @@ export async function getOverviewMachines(
       Math.round((Number(machine.rawCoinOut) || 0) * moneyOutScale * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
-    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+    const holdPct = coinInVal > 0 ? Math.round((adjustedGross / coinInVal) * 100 * 100) / 100 : 0;
 
     return {
       machineId: (machine._id as string).toString(),
@@ -770,7 +786,7 @@ export async function getOverviewMachines(
       netWin: netWinVal,
       gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
-        ? (1 - Number(gameConfig.theoreticalRtp)) * 100
+        ? Math.round((1 - Number(gameConfig.theoreticalRtp)) * 100 * 100) / 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
       jackpot: jackpotVal,
@@ -798,17 +814,12 @@ export async function getOverviewMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (
-    locationMatchStage &&
-    (locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'])
-  ) {
-    const licenceeVal =
-      locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'];
+  if (licenceeVal && licenceeVal !== 'all') {
     countPipeline.push({
       $match: {
         $or: [
           { 'locationDetails.rel.licencee': licenceeVal },
-          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
         ],
       },
     });
@@ -879,39 +890,80 @@ export async function getAllMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (
-    locationMatchStage['rel.licencee'] ||
-    locationMatchStage['rel.licencee']
-  ) {
-    const licenceeVal =
-      locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'];
+  const licenceeVal = getLicenceeFilter(locationMatchStage);
+  if (licenceeVal && licenceeVal !== 'all') {
     aggregationPipeline.push({
       $match: {
         $or: [
           { 'locationDetails.rel.licencee': licenceeVal },
-          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
         ],
       },
     });
   }
 
+  // Compute per-location gaming day ranges
+  const locationsForRange = await GamingLocations.find(locationMatchStage)
+    .select('gameDayOffset _id')
+    .lean<GamingLocationDocument[]>();
+  // We use "Custom" time period if custom dates are passed, otherwise default to "Today" for lookup
+  const timePeriod = searchParams.get('timePeriod') || 'Today';
+  const gamingDayRanges = getGamingDayRangesForLocations(
+    locationsForRange as unknown as { _id: string; gameDayOffset?: number }[],
+    timePeriod,
+    startDate,
+    endDate
+  );
+  const locationRangeList = Array.from(gamingDayRanges.entries()).map(
+    ([id, range]) => ({
+      id,
+      rangeStart: range.rangeStart,
+      rangeEnd: range.rangeEnd,
+    })
+  );
+
   aggregationPipeline.push(
     {
       $lookup: {
         from: 'meters',
-        let: { machineId: '$_id' },
+        let: {
+          machineId: '$_id',
+          locationId: { $toString: '$gamingLocation' },
+        },
         pipeline: [
           {
             $match: {
               $expr: {
                 $and: [
                   { $eq: ['$machine', '$$machineId'] },
-                  ...(startDate && endDate
+                  ...(locationRangeList.length > 0
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
+                        locationRangeList.length === 1
+                          ? {
+                              $gte: [
+                                '$readAt',
+                                locationRangeList[0].rangeStart,
+                              ],
+                            }
+                          : {
+                              $or: locationRangeList.map(lr => ({
+                                $and: [
+                                  { $eq: ['$$locationId', lr.id] },
+                                  { $gte: ['$readAt', lr.rangeStart] },
+                                  { $lte: ['$readAt', lr.rangeEnd] },
+                                ],
+                              })),
+                            },
+                        locationRangeList.length === 1
+                          ? { $lte: ['$readAt', locationRangeList[0].rangeEnd] }
+                          : { $literal: true },
                       ]
-                    : []),
+                    : startDate && endDate
+                      ? [
+                          { $gte: ['$readAt', startDate] },
+                          { $lte: ['$readAt', endDate] },
+                        ]
+                      : []),
                 ],
               },
             },
@@ -944,6 +996,7 @@ export async function getAllMachines(
         _id: 1,
         serialNumber: 1,
         origSerialNumber: 1,
+        relayId: 1,
         'custom.name': 1,
         gamingLocation: 1,
         game: 1,
@@ -954,6 +1007,7 @@ export async function getAllMachines(
         gameConfig: 1,
         collectorDenomination: 1,
         locationName: '$locationDetails.name',
+        aceEnabled: '$locationDetails.aceEnabled',
         licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
         // Denomination scaling fields
         rawDrop: { $ifNull: ['$meterData.drop', 0] },
@@ -976,6 +1030,7 @@ export async function getAllMachines(
 
   // Build licencee jackpot settings map
   const licenceeJackpotMap = await buildLicenceeJackpotMap();
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
@@ -1006,7 +1061,20 @@ export async function getAllMachines(
       Math.round((Number(machine.rawCoinOut) || 0) * moneyOutScale * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
-    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+    const holdPct = coinInVal > 0 ? Math.round((adjustedGross / coinInVal) * 100 * 100) / 100 : 0;
+
+    const lastActivity = machine.lastActivity
+      ? new Date(machine.lastActivity as string)
+      : null;
+    const hasRelay = !!(
+      machine.relayId && String(machine.relayId).trim().length > 0
+    );
+    const isOnline =
+      hasRelay &&
+      !!(
+        machine.aceEnabled ||
+        (lastActivity && lastActivity > threeMinutesAgo)
+      );
 
     return {
       machineId: (machine._id as string).toString(),
@@ -1026,11 +1094,7 @@ export async function getAllMachines(
         (machine.manufacturer as string) ||
         (machine.manuf as string) ||
         'Unknown Manufacturer',
-      isOnline: !!(
-        machine.lastActivity &&
-        new Date(machine.lastActivity as string) >=
-          new Date(Date.now() - 3 * 60 * 1000)
-      ),
+      isOnline,
       lastActivity: machine.lastActivity as string,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
       drop: dropVal,
@@ -1038,7 +1102,7 @@ export async function getAllMachines(
       netWin: netWinVal,
       gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
-        ? (1 - Number(gameConfig.theoreticalRtp)) * 100
+        ? Math.round((1 - Number(gameConfig.theoreticalRtp)) * 100 * 100) / 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
       jackpot: jackpotVal,
@@ -1047,7 +1111,7 @@ export async function getAllMachines(
       coinOut: coinOutVal,
       avgBet:
         (machine.gamesPlayed as number) > 0
-          ? coinInVal / ((machine.gamesPlayed as number) || 1)
+          ? Math.round((coinInVal / ((machine.gamesPlayed as number) || 1)) * 100) / 100
           : 0,
       actualHold: holdPct,
     };
@@ -1098,17 +1162,26 @@ export async function getOfflineMachines(
   const locationsWithOffset = await GamingLocations.find(locationMatchStage)
     .select('gameDayOffset _id aceEnabled')
     .lean<GamingLocationDocument[]>();
+
+  // Build list of aceEnabled location IDs so they are excluded from the offline results
+  const aceEnabledLocIds = locationsWithOffset
+    .filter(loc => loc.aceEnabled === true)
+    .map(loc => String(loc._id));
+
+  // Compute per-location gaming day ranges
   const gamingDayRanges = getGamingDayRangesForLocations(
     locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[],
     timePeriod,
     startDate,
     endDate
   );
-
-  // Build list of aceEnabled location IDs so they are excluded from the offline results
-  const aceEnabledLocIds = locationsWithOffset
-    .filter(loc => loc.aceEnabled === true)
-    .map(loc => String(loc._id));
+  const locationRangeList = Array.from(gamingDayRanges.entries()).map(
+    ([id, range]) => ({
+      id,
+      rangeStart: range.rangeStart,
+      rangeEnd: range.rangeEnd,
+    })
+  );
 
   const locationId = searchParams.get('locationId');
   const durationFilter =
@@ -1210,17 +1283,13 @@ export async function getOfflineMachines(
     { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
   ];
 
-  if (
-    locationMatchStage &&
-    (locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'])
-  ) {
-    const licenceeVal =
-      locationMatchStage['rel.licencee'] || locationMatchStage['rel.licencee'];
+  const licenceeVal = getLicenceeFilter(locationMatchStage);
+  if (licenceeVal && licenceeVal !== 'all') {
     aggregationPipeline.push({
       $match: {
         $or: [
           { 'locationDetails.rel.licencee': licenceeVal },
-          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
         ],
       },
     });
@@ -1230,19 +1299,44 @@ export async function getOfflineMachines(
     {
       $lookup: {
         from: 'meters',
-        let: { machineId: '$_id' },
+        let: {
+          machineId: '$_id',
+          locationId: { $toString: '$gamingLocation' },
+        },
         pipeline: [
           {
             $match: {
               $expr: {
                 $and: [
                   { $eq: ['$machine', '$$machineId'] },
-                  ...(startDate && endDate
+                  ...(locationRangeList.length > 0
                     ? [
-                        { $gte: ['$readAt', startDate] },
-                        { $lte: ['$readAt', endDate] },
+                        locationRangeList.length === 1
+                          ? {
+                              $gte: [
+                                '$readAt',
+                                locationRangeList[0].rangeStart,
+                              ],
+                            }
+                          : {
+                              $or: locationRangeList.map(lr => ({
+                                $and: [
+                                  { $eq: ['$$locationId', lr.id] },
+                                  { $gte: ['$readAt', lr.rangeStart] },
+                                  { $lte: ['$readAt', lr.rangeEnd] },
+                                ],
+                              })),
+                            },
+                        locationRangeList.length === 1
+                          ? { $lte: ['$readAt', locationRangeList[0].rangeEnd] }
+                          : { $literal: true },
                       ]
-                    : []),
+                    : startDate && endDate
+                      ? [
+                          { $gte: ['$readAt', startDate] },
+                          { $lte: ['$readAt', endDate] },
+                        ]
+                      : []),
                 ],
               },
             },
@@ -1275,6 +1369,7 @@ export async function getOfflineMachines(
         _id: 1,
         serialNumber: 1,
         origSerialNumber: 1,
+        relayId: 1,
         'custom.name': 1,
         'Custom.name': 1,
         gamingLocation: 1,
@@ -1286,7 +1381,7 @@ export async function getOfflineMachines(
         gameConfig: 1,
         collectorDenomination: 1,
         locationName: '$locationDetails.name',
-        aceEnabled: { $ifNull: ['$locationDetails.aceEnabled', false] },
+        aceEnabled: '$locationDetails.aceEnabled',
         licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
         // Denomination scaling fields
         rawDrop: { $ifNull: ['$meterData.drop', 0] },
@@ -1408,37 +1503,7 @@ export async function getOfflineMachines(
         addSuffix: true,
       });
       actualOfflineTime = actualDuration;
-
-      const locationId = machine.gamingLocation;
-      const range = gamingDayRanges.get(String(locationId));
-
-      if (range) {
-        if (
-          lastActivity < range.rangeStart &&
-          (timePeriod === '7d' ||
-            timePeriod === '30d' ||
-            timePeriod === 'Custom' ||
-            timePeriod === 'last7days' ||
-            timePeriod === 'last30days')
-        ) {
-          const days =
-            timePeriod === '7d' || timePeriod === 'last7days'
-              ? '7'
-              : timePeriod === '30d' || timePeriod === 'last30days'
-                ? '30'
-                : undefined;
-          if (days) {
-            offlineTimeLabel = `within the last ${days} days`;
-          } else {
-            const diffMs =
-              range.rangeEnd.getTime() - range.rangeStart.getTime();
-            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-            offlineTimeLabel = `within the last ${diffDays} days`;
-          }
-        } else {
-          offlineTimeLabel = actualDuration;
-        }
-      }
+      offlineTimeLabel = actualDuration;
     } else if (!isOnline && !lastActivity) {
       actualOfflineTime = 'Never';
       offlineTimeLabel = 'Never';
@@ -1468,7 +1533,7 @@ export async function getOfflineMachines(
       Math.round((Number(machine.rawCoinOut) || 0) * moneyOutScale * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
-    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+    const holdPct = coinInVal > 0 ? Math.round((adjustedGross / coinInVal) * 100 * 100) / 100 : 0;
 
     return {
       machineId: (machine._id as string).toString(),
@@ -1498,7 +1563,7 @@ export async function getOfflineMachines(
       netWin: netWinVal,
       gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
-        ? (1 - Number(gameConfig.theoreticalRtp)) * 100
+        ? Math.round((1 - Number(gameConfig.theoreticalRtp)) * 100 * 100) / 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
       jackpot: jackpotVal,
@@ -1513,13 +1578,44 @@ export async function getOfflineMachines(
     };
   });
 
+  const countPipeline: PipelineStage[] = [
+    { $match: machineMatchStage },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationDetails',
+      },
+    },
+    { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+  ];
+
+  if (licenceeVal && licenceeVal !== 'all') {
+    countPipeline.push({
+      $match: {
+        $or: [
+          { 'locationDetails.rel.licencee': licenceeVal },
+          { 'locationDetails.rel.licencee': { $in: [licenceeVal] } },
+        ],
+      },
+    });
+  }
+
+  countPipeline.push({ $count: 'total' });
+  const totalCountResult = await Machine.aggregate(countPipeline).exec();
+  const totalCount = totalCountResult[0]?.total || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
   return NextResponse.json({
     data: transformedMachines,
     pagination: {
-      totalCount: transformedMachines.length,
-      totalPages: 1,
-      hasNextPage: false,
-      hasPrevPage: false,
+      page,
+      limit,
+      totalCount,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
     },
   });
 }

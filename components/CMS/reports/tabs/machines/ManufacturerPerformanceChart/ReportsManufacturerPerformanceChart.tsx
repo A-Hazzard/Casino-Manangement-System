@@ -168,8 +168,8 @@ export default function ReportsManufacturerPerformanceChart({
     }
 
     // Remove selected items that are no longer in the filtered list
-    const validSelections = selectedManufacturers.filter(m =>
-      availableManufacturers.includes(m)
+    const validSelections = selectedManufacturers.filter(manufacturer =>
+      availableManufacturers.includes(manufacturer)
     );
 
     // If filter changed to a specific filter (Top 5, Bottom 5) and nothing is selected, auto-select
@@ -236,7 +236,7 @@ export default function ReportsManufacturerPerformanceChart({
   const handleManufacturerToggle = (manufacturer: string) => {
     setSelectedManufacturers(prev =>
       prev.includes(manufacturer)
-        ? prev.filter(m => m !== manufacturer)
+        ? prev.filter(item => item !== manufacturer)
         : [...prev, manufacturer]
     );
   };
@@ -370,7 +370,7 @@ export default function ReportsManufacturerPerformanceChart({
                       setSelectedMetrics(prev => [...prev, item.label]);
                     } else {
                       setSelectedMetrics(prev =>
-                        prev.filter(m => m !== item.label)
+                        prev.filter(selected => selected !== item.label)
                       );
                     }
                   }}

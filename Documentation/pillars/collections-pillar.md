@@ -1,8 +1,8 @@
 # Collection Reporting Pillar (Collections)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -55,6 +55,8 @@ The Collection Reporting system is the primary workflow for reconciling physical
 For deep-dive documentation on API endpoints, data flow, and the calculation pipeline, refer to the [Collections Technical Reference](./COLLECTIONS_TECHNICAL_REFERENCE.md).
 
 V2 collection reports now support the same RAM clear scenario as V1 with identical financial results — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for the unified movement formula and the no-SMIB 2-`Meters`-doc creation pattern.
+
+For offline SMIB machines, `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` are also updated during collection report creation and editing (both V1 and V2), since the live relay is unreachable — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for details.
 
 ---
 

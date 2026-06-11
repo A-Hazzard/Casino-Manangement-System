@@ -18,6 +18,10 @@ import * as XLSX from 'xlsx';
 
 // jsPDF autotable typings are declared in lib/types/jspdf-autotable.d.ts
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 type LegacyExportData = {
   title: string;
   subtitle?: string;
@@ -51,6 +55,10 @@ export type ExtendedLegacyExportData = LegacyExportData & {
 
 import axios from 'axios';
 
+// ============================================================================
+// Logo Helper
+// ============================================================================
+
 // Function to load and convert the EOS logo to base64
 const getEOSLogoBase64 = async (): Promise<string> => {
   try {
@@ -69,7 +77,15 @@ const getEOSLogoBase64 = async (): Promise<string> => {
   }
 };
 
+// ============================================================================
+// ExportUtils Class
+// ============================================================================
+
 export class ExportUtils {
+  // ==========================================================================
+  // PDF Export
+  // ==========================================================================
+
   static async exportToPDF(data: ExtendedLegacyExportData): Promise<void> {
     const doc = new jsPDF();
 
@@ -209,6 +225,10 @@ export class ExportUtils {
     doc.save(fileName);
   }
 
+  // ==========================================================================
+  // CSV Export
+  // ==========================================================================
+
   static exportToCSV(data: ExtendedLegacyExportData): void {
     let csvContent = '';
 
@@ -265,6 +285,10 @@ export class ExportUtils {
     link.click();
     document.body.removeChild(link);
   }
+
+  // ==========================================================================
+  // Excel Export
+  // ==========================================================================
 
   static exportToExcel(data: ExtendedLegacyExportData): void {
     const workbook = XLSX.utils.book_new();
@@ -361,6 +385,10 @@ export class ExportUtils {
     )}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   }
+
+  // ==========================================================================
+  // Unified Export Dispatcher
+  // ==========================================================================
 
   static async exportData(
     data: ExtendedLegacyExportData,

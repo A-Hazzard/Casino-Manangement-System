@@ -1,6 +1,6 @@
 # Backend Documentation Overview
 
-Evolution One CMS is a full-stack casino management platform built on **Next.js 16 (App Router)**, **MongoDB (Mongoose)**, and **TypeScript**, run entirely with **Bun**. This document covers the backend architecture, API conventions, environment setup, and deployment.
+Evolution One CMS is a full-stack casino management platform built on **Next.js 15 (App Router)**, **MongoDB (Mongoose)**, and **TypeScript**, run entirely with **Bun**. This document covers the backend architecture, API conventions, environment setup, and deployment.
 
 ---
 
@@ -8,7 +8,7 @@ Evolution One CMS is a full-stack casino management platform built on **Next.js 
 
 | Layer                     | Technology                              |
 | :------------------------ | :-------------------------------------- |
-| Framework                 | Next.js 16 (App Router, Route Handlers) |
+| Framework                 | Next.js 15 (App Router, Route Handlers) |
 | Runtime / Package Manager | Bun                                     |
 | Database                  | MongoDB via Mongoose v8+                |
 | Auth                      | JWT (jose) stored in HTTP-only cookies  |
@@ -56,7 +56,7 @@ bun run dev        # Start dev server at localhost:3000
 bun run build      # Production build
 bun run start      # Start production server
 bun run check      # Type-check + lint (run before committing)
-bun run test       # Jest tests
+bun run test:e2e   # Playwright end-to-end tests
 ```
 
 ---
@@ -202,7 +202,7 @@ Model.findOne({ _id: id }); // NEVER Model.findById(id)
 
 ```typescript
 {
-  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2026-01-01') } }];
 }
 ```
 
@@ -286,15 +286,15 @@ import { gamingDayRange } from '@/lib/utils/gamingDayRange';
 
 | Topic                        | Document                                                                     |
 | :--------------------------- | :--------------------------------------------------------------------------- |
+| Architectural invariants (AI/agents) | [CLAUDE.md](../../CLAUDE.md)                                          |
 | All API modules              | [Project Guide](../PROJECT_GUIDE.md)                                         |
+| Mongoose models catalog      | [app/api/lib/models/README.md](../../app/api/lib/models/README.md)           |
 | Database Models              | [database-models.md](./database-models.md)                                   |
 | Page & Tab Access            | [api-flows/page-auth-restrictions.md](./api-flows/page-auth-restrictions.md) |
-| Vault Flows                  | [api-flows/vault-management.md](./api-flows/vault-management.md)             |
-| Shift Architecture           | [api-flows/shift-management.md](./api-flows/shift-management.md)             |
-| Payout / Transactions        | [api-flows/payout-flow.md](./api-flows/payout-flow.md)                       |
-| Collection Reports (Backend) | [collection-report.md](./collection-report.md)                               |
+| Vault Flows                  | [vault-api.md](../api/vault-api.md)                                          |
+| Collection Reports (Backend) | [collections-technical-deep-dive.md](../api/collections-technical-deep-dive.md) |
 | RBAC & Authorization         | [.instructions/authorization.md](../../.instructions/authorization.md)       |
 
 ---
 
-_Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard_
+_Last Updated: June 5, 2026 — v4.4.0 — Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard_

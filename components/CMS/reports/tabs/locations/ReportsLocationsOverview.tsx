@@ -36,6 +36,7 @@ import {
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { DashboardTotals } from '@/lib/types';
+import type { MapPreviewLocation } from '@/lib/types/components';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { AggregatedLocation } from '@/lib/types/location';
 import {
@@ -60,9 +61,9 @@ type ReportsLocationsOverviewProps = {
   paginatedLocations: AggregatedLocation[];
   topLocations: TopLocation[];
   allLocationsForDropdown: AggregatedLocation[];
-  gamingLocations: Record<string, unknown>[];
+  gamingLocations: MapPreviewLocation[];
   gamingLocationsLoading: boolean;
-  locationAggregates: Record<string, unknown>[];
+  locationAggregates: AggregatedLocation[];
   locationAggregatesLoading: boolean;
   // Pagination
   currentPage: number;
@@ -114,8 +115,8 @@ export default function ReportsLocationsOverview({
   // Check if any location has includeJackpot and compute total jackpot
   const { anyIncludeJackpot, totalJackpot } = useMemo(() => {
     const dataSource =
-      (locationAggregates as AggregatedLocation[]).length > 0
-        ? (locationAggregates as AggregatedLocation[])
+      locationAggregates.length > 0
+        ? locationAggregates
         : allLocationsForDropdown;
     const any = dataSource.some(loc => loc.includeJackpot);
     const jackpot = dataSource.reduce(
@@ -128,16 +129,16 @@ export default function ReportsLocationsOverview({
   // Calculate online machines totals - use locationAggregates if available, otherwise fallback to allLocationsForDropdown
   const onlineMachinesData = useMemo(() => {
     const dataSource =
-      (locationAggregates as AggregatedLocation[]).length > 0
-        ? (locationAggregates as AggregatedLocation[])
+      locationAggregates.length > 0
+        ? locationAggregates
         : allLocationsForDropdown;
 
     const online = dataSource.reduce(
-      (sum: number, loc: AggregatedLocation) => sum + (loc.onlineMachines || 0),
+      (sum, loc) => sum + (loc.onlineMachines || 0),
       0
     );
     const total = dataSource.reduce(
-      (sum: number, loc: AggregatedLocation) => sum + (loc.totalMachines || 0),
+      (sum, loc) => sum + (loc.totalMachines || 0),
       0
     );
     return {
@@ -247,17 +248,9 @@ export default function ReportsLocationsOverview({
           // Map all gaming locations to LocationData format
           // Use locationAggregation data (same as dashboard) for financial metrics
           return gamingLocations
-            .map((location: Record<string, unknown>) => {
+            .map((location) => {
               // Extract coordinates from geoCoords (API format: { latitude, longitude })
-              const geoCoords = location.geoCoords as
-                | {
-                    latitude?: number;
-                    longitude?: number;
-                    lat?: number;
-                    lng?: number;
-                  }
-                | undefined;
-
+              const geoCoords = location.geoCoords;
               let coordinates: [number, number] | undefined;
               if (geoCoords) {
                 const lat = geoCoords.lat ?? geoCoords.latitude;
@@ -284,27 +277,27 @@ export default function ReportsLocationsOverview({
               const locationId = String(location._id || '');
 
               // Try multiple matching strategies to ensure we find the data
-              let stats: Record<string, unknown> | undefined;
+              let stats: AggregatedLocation | undefined;
               if (
                 Array.isArray(locationAggregates) &&
                 locationAggregates.length > 0
               ) {
                 // Primary match: exact string comparison (same as dashboard MapPreview)
                 stats = locationAggregates.find(
-                  d => String(d.location) === locationId
+                  loc => String(loc.location) === locationId
                 );
 
                 // Fallback: try matching without string conversion (in case types match)
                 if (!stats) {
                   stats = locationAggregates.find(
-                    d => d.location === locationId
+                    loc => loc.location === locationId
                   );
                 }
 
                 // Additional fallback: try matching _id field if location field doesn't match
                 if (!stats) {
                   stats = locationAggregates.find(
-                    d => String(d._id) === locationId
+                    loc => String(loc._id) === locationId
                   );
                 }
 
@@ -320,10 +313,10 @@ export default function ReportsLocationsOverview({
                     sampleAggregateId: locationAggregates[0]?._id,
                     allLocationIds: locationAggregates
                       .slice(0, 5)
-                      .map((d: Record<string, unknown>) => ({
-                        location: d.location,
-                        _id: d._id,
-                        name: d.locationName,
+                      .map(loc => ({
+                        location: loc.location,
+                        _id: loc._id,
+                        name: loc.locationName,
                       })),
                   });
                 }
@@ -341,8 +334,8 @@ export default function ReportsLocationsOverview({
               }
 
               // Calculate performance based on revenue percentage
-              const gross = (stats?.gross as number) ?? 0;
-              const moneyIn = (stats?.moneyIn as number) ?? 0;
+              const gross = stats?.gross ?? 0;
+              const moneyIn = stats?.moneyIn ?? 0;
               const revenuePercent = moneyIn > 0 ? (gross / moneyIn) * 100 : 0;
 
               let performance: 'excellent' | 'good' | 'average' | 'poor' =
@@ -359,19 +352,19 @@ export default function ReportsLocationsOverview({
 
               return {
                 id: locationId,
-                name: (location.name as string) || 'Unknown Location',
+                name: location.name || 'Unknown Location',
                 coordinates,
                 performance,
                 revenue: gross,
                 moneyIn,
-                moneyOut: (stats?.moneyOut as number) ?? 0,
+                moneyOut: stats?.moneyOut ?? 0,
                 totalMachines:
-                  (stats?.totalMachines as number) ??
-                  (location.totalMachines as number) ??
+                  stats?.totalMachines ??
+                  location.totalMachines ??
                   0,
                 onlineMachines:
-                  (stats?.onlineMachines as number) ??
-                  (location.onlineMachines as number) ??
+                  stats?.onlineMachines ??
+                  location.onlineMachines ??
                   0,
               };
             })

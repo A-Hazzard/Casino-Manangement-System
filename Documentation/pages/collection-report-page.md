@@ -208,7 +208,7 @@ All V2 data lives in the `ReportedMachine` collection (`app/api/lib/models/repor
 
 The capture wizard exposes a "RAM Clear" toggle on every machine regardless of `metersMatch` or SMIB status. When checked, two additional fields appear: `ramClearMetersIn` and `ramClearMetersOut` (the pre-reset peak readings). The movement formula becomes `(ramClear − prev) + current`, identical to V1's two-meter math. A yellow "RAM Clear" badge is shown on rows in the review list.
 
-For no-SMIB locations the submit route creates **two** `Meters` docs (RAM clear + post-reset, `isRamClear: true` on the first) instead of one — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for the calculation engine and field mappings.
+For no-SMIB locations and offline SMIB machines, the submit route creates `Meters` docs (RAM clear + post-reset when applicable, `isRamClear: true` on the first) instead of one — see [`Documentation/api/collection-reports-v2-movement.md`](../api/collection-reports-v2-movement.md) for the calculation engine and field mappings. For offline SMIB machines, `Machine.sasMeters.drop` and `Machine.sasMeters.totalCancelledCredits` are also updated with the collector-entered values.
 
 ### Session Lifecycle
 

@@ -240,6 +240,25 @@ export default function LocationsDetailsPageContent() {
     chartDataHook,
   ]);
 
+  // Custom range handler — does NOT call refreshCabinets() because the
+  // useLocationCabinetsData effect already re-fetches when filters change.
+  // Calling refreshCabinets() here caused a race condition where
+  // refreshCabinets() cleared prevCabinetsFetchKey while the effect's fetch
+  // was in-flight, preventing the finally block from turning off loading.
+  const handleCustomRangeGo = useCallback(async () => {
+    if (activeView !== 'machines') return;
+
+    await cabinetsData.refreshLocation();
+    await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
+    chartDataHook.refreshChart();
+  }, [
+    activeView,
+    refreshMachineStats,
+    refreshMembershipStats,
+    cabinetsData,
+    chartDataHook,
+  ]);
+
   // Refresh machine stats when date filters change
   useEffect(() => {
     if (
@@ -441,6 +460,7 @@ export default function LocationsDetailsPageContent() {
             setChartGranularity={chartDataHook.setChartGranularity}
             setSelectedLocationId={cabinetsData.setSelectedLocationId}
             handleRefresh={handleRefresh}
+            onCustomRangeGo={handleCustomRangeGo}
             includeJackpot={cabinetsData.includeJackpot}
             handleFilterChange={handleFilterChange}
             showArchived={cabinetsData.showArchived}

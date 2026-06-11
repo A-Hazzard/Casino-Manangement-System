@@ -1,8 +1,8 @@
 # Evolution One CMS — Master Documentation Hub
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -44,7 +44,7 @@ Technical reference for backend endpoints and core business logic.
 | :------------------- | :---------------------------------------------------- | :---------------------------------------------------------------- |
 | **Analytics Engine** | [calculation-engine.md](./api/calculation-engine.md)  | Movement Delta, 8 AM Offset, Gaming Days, Reviewer Multiplier     |
 | **Dashboard API**    | [dashboard-api.md](./api/dashboard-api.md)            | Money-In Query, Parallel Aggregation, Filters                     |
-| **Auth & IAM**       | [auth-api.md](./api/auth-api.md)                      | JWT Strategy, Session Versioning, TOTP, 9 Roles                   |
+| **Auth & IAM**       | [auth-api.md](./api/auth-api.md)                      | JWT Strategy, Session Versioning, TOTP, 10 Roles                  |
 | **Administration**   | [administration-api.md](./api/administration-api.md)  | RBAC, User CRUD, Multi-tenant Isolation                           |
 | **Locations API**    | [locations-api.md](./api/locations-api.md)            | Property Config, Reviewer Multiplier, Coordinate Conversion       |
 | **Cabinets API**     | [cabinets-api.md](./api/cabinets-api.md)              | Hardware Fleet, Status Computation, Commands, Reviewer Multiplier |

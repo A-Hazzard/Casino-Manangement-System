@@ -12,7 +12,9 @@
     "type-check": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" tsc --noEmit",
     "format": "prettier --write .",
     "check": "bun run type-check && bun run lint",
-    "test": "playwright test e2e/tests/dashboard.spec.ts -c e2e/playwright.config.ts --project=chromium"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:api": "playwright test e2e/tests/api-management.spec.ts --config=e2e/playwright.config.ts --project=chromium",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 
-export interface ISessionEntry {
+export type ISessionEntry = {
   machineId: string;
   machineName?: string;
   source: 'manual' | 'meter';
@@ -19,9 +19,9 @@ export interface ISessionEntry {
   notes?: string;
   isEndOfDay: boolean;
   collectedAt: Date;
-}
+};
 
-export interface IVaultCollectionSession extends mongoose.Document {
+export type IVaultCollectionSession = mongoose.Document & {
   locationId: string;
   vaultShiftId: string;
   type: 'machine_collection' | 'soft_count';
@@ -33,7 +33,7 @@ export interface IVaultCollectionSession extends mongoose.Document {
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
 const VaultCollectionSessionSchema = new Schema<IVaultCollectionSession>(
   {

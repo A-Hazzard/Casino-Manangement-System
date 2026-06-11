@@ -177,6 +177,10 @@ export function useMobileCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // ==========================================================================
   // Fetch rich metadata when modal opens
@@ -1371,6 +1375,29 @@ export function useMobileCollectionModal({
     setStoreLockedLocation,
   ]);
 
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (modalState.collectedMachines.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = modalState.collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = modalState.collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [modalState.collectedMachines]);
+
   // ============================================================================
   // Return Values
   // ============================================================================
@@ -1476,24 +1503,33 @@ export function useMobileCollectionModal({
         return;
       try {
         setModalState(prev => ({ ...prev, isProcessing: true }));
+        const total = modalState.collectedMachines.length;
+        setSasUpdateProgress({ completed: 0, total });
         const results = await Promise.allSettled(
           modalState.collectedMachines.map(async entry => {
-            if (!entry._id) return;
+            if (!entry._id) {
+              setSasUpdateProgress(prev =>
+                prev ? { ...prev, completed: prev.completed + 1 } : null
+              );
+              return;
+            }
 
-            const updateData: Record<string, unknown> = {};
+            const updateData: Record<string, string> = {};
             if (updateAllSasStartDate) {
-              updateData['sasMeters.sasStartTime'] =
-                updateAllSasStartDate.toISOString();
+              updateData.sasStartTime = updateAllSasStartDate.toISOString();
             }
             if (updateAllSasEndDate) {
-              updateData['sasMeters.sasEndTime'] =
-                updateAllSasEndDate.toISOString();
+              updateData.sasEndTime = updateAllSasEndDate.toISOString();
             }
 
-            return await axios.patch(
-              `/api/collection-reports/collections?id=${entry._id}`,
+            const result = await axios.patch(
+              `/api/collection-reports/collections/${entry._id}`,
               updateData
             );
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return result;
           })
         );
         const failed = results.filter(
@@ -1545,7 +1581,10 @@ export function useMobileCollectionModal({
         console.error('Error applying all dates:', error);
         toast.error('Failed to update dates');
         setModalState(prev => ({ ...prev, isProcessing: false }));
+      } finally {
+        setSasUpdateProgress(null);
       }
     },
+    sasUpdateProgress,
   };
 }

@@ -5,6 +5,7 @@ import CollectionReportEditLocationMachineSelection from '@/components/CMS/colle
 import { VariationsCollapsibleSection } from '@/components/CMS/collectionReport/variations/VariationsCollapsibleSection';
 import { Info } from 'lucide-react';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { useEffect } from 'react';
 import type {
   CollectionReportLocationWithMachines,
   CollectionReportMachineSummary,
@@ -89,6 +90,7 @@ type DesktopEditLayoutProps = {
   isUpdateReportEnabled: boolean;
 
   handleApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
   locations: CollectionReportLocationWithMachines[];
   gameDayOffset?: number;
 };
@@ -156,6 +158,7 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     onRefresh,
 
     handleApplyAllDates,
+    sasUpdateProgress,
     locations,
   } = props;
 
@@ -164,8 +167,18 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
   // ============================================================================
   // Computed
   // ============================================================================
-  const desktopMachineIds = machinesOfSelectedLocation.map(m => String(m._id));
+  const desktopMachineIds = machinesOfSelectedLocation.map(machine => String(machine._id));
   const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
+
+  // Auto-fill notes for offline SMIB machines when selected
+  useEffect(() => {
+    if (selectedMachineId && machineForDataEntry && !editingEntryId) {
+      const isKnown = selectedMachineId in desktopMachineStatusMap;
+      if (isKnown && desktopMachineStatusMap[selectedMachineId] === false && !currentMachineNotes) {
+        setCurrentMachineNotes('Machine was offline');
+      }
+    }
+  }, [selectedMachineId, desktopMachineStatusMap, editingEntryId, machineForDataEntry, currentMachineNotes, setCurrentMachineNotes]);
 
   // ============================================================================
   // Render
@@ -321,12 +334,13 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           setUpdateAllSasEndDate={setUpdateAllSasEndDate}
           onRefresh={onRefresh}
           onApplyAllDates={handleApplyAllDates}
+          sasUpdateProgress={sasUpdateProgress}
           variationMachineIds={variationsData?.machines
             .filter(
-              (m: MachineVariationData) =>
-                typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+              (variation: MachineVariationData) =>
+                typeof variation.variation === 'number' && Math.abs(variation.variation) > 0.1
             )
-            .map((m: MachineVariationData) => m.machineId)}
+            .map((variation: MachineVariationData) => variation.machineId)}
         />
       </div>
     </div>

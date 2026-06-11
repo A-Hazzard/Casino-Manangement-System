@@ -368,19 +368,15 @@ function convertHourlyTrendsCurrency(
           plays: number;
         };
         const nativeCurrency = locationCurrencies.get(key) || 'USD';
+        const r = (v: number) => Math.round(v * 100) / 100;
+        const convert = (val: number) =>
+          nativeCurrency !== displayCurrency
+            ? r(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency))
+            : val;
         converted[key] = {
-          handle: convertFromUSD(
-            convertToUSD(data.handle, nativeCurrency),
-            displayCurrency
-          ),
-          winLoss: convertFromUSD(
-            convertToUSD(data.winLoss, nativeCurrency),
-            displayCurrency
-          ),
-          jackpot: convertFromUSD(
-            convertToUSD(data.jackpot, nativeCurrency),
-            displayCurrency
-          ),
+          handle: convert(data.handle),
+          winLoss: convert(data.winLoss),
+          jackpot: convert(data.jackpot),
           plays: data.plays, // plays is not a currency value
         };
       }
@@ -420,19 +416,15 @@ function convertTotalsCurrency(
   > = {};
   Object.keys(totals).forEach(locationId => {
     const nativeCurrency = locationCurrencies.get(locationId) || 'USD';
+    const r = (v: number) => Math.round(v * 100) / 100;
+    const convert = (val: number) =>
+      nativeCurrency !== displayCurrency
+        ? r(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency))
+        : val;
     convertedTotals[locationId] = {
-      handle: convertFromUSD(
-        convertToUSD(totals[locationId].handle, nativeCurrency),
-        displayCurrency
-      ),
-      winLoss: convertFromUSD(
-        convertToUSD(totals[locationId].winLoss, nativeCurrency),
-        displayCurrency
-      ),
-      jackpot: convertFromUSD(
-        convertToUSD(totals[locationId].jackpot, nativeCurrency),
-        displayCurrency
-      ),
+      handle: convert(totals[locationId].handle),
+      winLoss: convert(totals[locationId].winLoss),
+      jackpot: convert(totals[locationId].jackpot),
       plays: totals[locationId].plays, // plays is not a currency value
     };
   });

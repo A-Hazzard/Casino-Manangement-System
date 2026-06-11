@@ -81,11 +81,11 @@ const ROLE_OPTIONS = [
   { label: 'Reviewer', value: 'reviewer' },
 ];
 
-const arraysEqual = (a: string[], b: string[]) => {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i] !== b[i]) {
+const arraysEqual = (arrayA: string[], arrayB: string[]) => {
+  if (arrayA === arrayB) return true;
+  if (arrayA.length !== arrayB.length) return false;
+  for (let index = 0; index < arrayA.length; index += 1) {
+    if (arrayA[index] !== arrayB[index]) {
       return false;
     }
   }
@@ -990,7 +990,7 @@ export default function AdministrationUserModal({
       } else {
         // Other roles are exclusive from Vault Manager and Cashier
         newRoles = [...roles, role].filter(
-          r => r !== 'vault-manager' && r !== 'cashier'
+          roleName => roleName !== 'vault-manager' && roleName !== 'cashier'
         );
         if (roles.includes('vault-manager') || roles.includes('cashier')) {
           toast.info(
@@ -999,7 +999,7 @@ export default function AdministrationUserModal({
         }
       }
     } else {
-      newRoles = roles.filter(r => r !== role);
+      newRoles = roles.filter(roleName => roleName !== role);
     }
 
     setRoles(newRoles);

@@ -1,4 +1,7 @@
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
+import {
+  getUserLocationFilter,
+  getUserAccessibleLicenceesFromToken,
+} from '@/app/api/lib/helpers/licenceeFilter';
 import {
   getAllMachines,
   getMachineStats,
@@ -74,10 +77,10 @@ export async function GET(req: NextRequest) {
             );
           startDate = customStart.includes('T')
             ? new Date(customStart)
-            : new Date(customStart + 'T00:00:00-04:00');
+            : new Date(customStart + 'T00:00:00.000Z');
           endDate = customEnd.includes('T')
             ? new Date(customEnd)
-            : new Date(customEnd + 'T23:59:59-04:00');
+            : new Date(customEnd + 'T00:00:00.000Z');
           if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             return NextResponse.json(
               { error: 'Invalid dates' },
@@ -90,15 +93,13 @@ export async function GET(req: NextRequest) {
           endDate = dates.endDate;
         }
 
-        const assignedLicencees =
-          (userPayload as { assignedLicencees?: string[] })
-            ?.assignedLicencees || [];
         const assignedLocations =
           (userPayload as { assignedLocations?: string[] })
             ?.assignedLocations || [];
+        const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
 
         const allowedLocationIds = await getUserLocationFilter(
-          isAdminOrDev ? 'all' : assignedLicencees,
+          userAccessibleLicencees,
           licencee,
           assignedLocations,
           userRoles

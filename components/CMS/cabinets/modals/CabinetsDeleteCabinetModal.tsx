@@ -42,7 +42,7 @@ export default function CabinetsDeleteCabinetModal({
   // ============================================================================
   const isDeveloper = useMemo(() => {
     const roles = user?.roles || [];
-    return roles.map((r: string) => r.toLowerCase()).includes('developer');
+    return roles.map((role: string) => role.toLowerCase()).includes('developer');
   }, [user]);
 
   const canPermanentlyDelete = useMemo(() => {

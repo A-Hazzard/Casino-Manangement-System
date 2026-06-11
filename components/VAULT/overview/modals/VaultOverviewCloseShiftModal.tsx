@@ -119,7 +119,7 @@ export default function VaultOverviewCloseShiftModal({
   const handleAuthVerified = async () => {
     await onConfirm(
       totalAmount,
-      denominations.filter(d => d.quantity > 0)
+      denominations.filter(denom => denom.quantity > 0)
     );
     setDenominations(
       denomsList.map(d => ({

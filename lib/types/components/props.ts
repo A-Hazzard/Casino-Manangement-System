@@ -5,6 +5,7 @@ import { TimePeriod } from '@/shared/types';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 import type { CollectionReportLocationWithMachines } from '../api';
 import type { LocationSelectItem } from '../location';
+import type { AggregatedLocation } from '@/shared/types/entities';
 
 export type ChartProps = {
   loadingChartData: boolean;
@@ -52,11 +53,20 @@ export type CollectorTooltipData = {
   email?: string;
 };
 
+export type LocationTooltipData = {
+  id?: string;
+  address?: string;
+  country?: string;
+  noSMIBLocation?: boolean;
+  isLocalServer?: boolean;
+};
+
 export type CollectionReportRow = {
   _id: string;
   locationReportId: string;
   locationId?: string;
   locationSlug?: string;
+  locationTooltipData?: LocationTooltipData;
   collector: string;
   collectorFullName?: string;
   collectorFullNameTooltip?: string;
@@ -73,6 +83,7 @@ export type CollectionReportRow = {
   time: string;
   noSMIBLocation?: boolean;
   isLocalServer?: boolean;
+  deletedAt?: string | null;
 };
 
 export type SchedulerTableRow = {
@@ -122,7 +133,7 @@ export type CollectionReportEditCollectionModalProps = {
 export type CollectionReportTableProps = {
   data: CollectionReportRow[];
   loading?: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   sortField?: keyof CollectionReportRow;
@@ -135,7 +146,7 @@ export type CollectionReportTableProps = {
 export type CollectionReportCardsProps = {
   data: CollectionReportRow[];
   gridLayout?: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   editableReportIds?: Set<string>;
@@ -176,7 +187,7 @@ export type CollectionReportDesktopUIProps = {
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   sortField?: keyof CollectionReportRow;
@@ -219,7 +230,7 @@ export type CollectionReportMobileUIProps = {
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   selectedLicencee?: string;
@@ -465,9 +476,43 @@ export type CollectionReportCollectorScheduleCardsProps = {
 export type CollectorScheduleCardsProps =
   CollectionReportCollectorScheduleCardsProps;
 
+type ReportIssuesMap = Record<
+  string,
+  { issueCount: number; hasIssues: boolean }
+>;
+
+export type MapPreviewLocation = {
+  _id: string;
+  name?: string;
+  locationName?: string;
+  deletedAt?: Date;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    longtitude?: number;
+    lat?: number;
+    lng?: number;
+    [key: string]: number | undefined;
+  };
+  totalMachines?: number;
+  onlineMachines?: number;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+  googleMapsIframe?: string;
+  googleMapsLink?: string;
+  licenceeId?: string | null;
+  includeJackpot?: boolean;
+  rel?: {
+    licencee?: string | string[] | null;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
 export type MapPreviewProps = {
-  gamingLocations?: Record<string, unknown>[];
-  locationAggregates?: Record<string, unknown>[];
+  gamingLocations?: MapPreviewLocation[];
+  locationAggregates?: AggregatedLocation[];
   aggLoading?: boolean;
   zoom?: number;
   center?: { lat: number; lng: number };
@@ -481,7 +526,7 @@ export type DashboardMobileLayoutProps = {
   activeTab: import('@/lib/types').ActiveTab;
   totals: import('@/lib/types').DashboardTotals | null;
   chartData: import('@/lib/types').dashboardData[];
-  gamingLocations: import('@/lib/types').locations;
+  gamingLocations: MapPreviewLocation[];
   loadingChartData: boolean;
   loadingTotals?: boolean;
   loadingLocations?: boolean;

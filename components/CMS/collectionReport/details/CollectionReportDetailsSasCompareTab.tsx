@@ -70,14 +70,14 @@ const CollectionReportDetailsSasCompareTab: FC<
             SAS Totals
           </div>
           <div className="space-y-3 p-4 text-sm">
-            {metrics.map((m, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="font-medium text-gray-600">{m.label}</span>
+            {metrics.map((metric, index) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="font-medium text-gray-600">{metric.label}</span>
                 <span
-                  className={`font-bold ${getFinancialColorClass(m.value)}`}
+                  className={`font-bold ${getFinancialColorClass(metric.value)}`}
                 >
                   $
-                  {m.value.toLocaleString(undefined, {
+                  {metric.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -100,16 +100,16 @@ const CollectionReportDetailsSasCompareTab: FC<
             </TableRow>
           </TableHeader>
           <TableBody>
-            {metrics.map((m, i) => (
-              <TableRow key={i} className="hover:bg-gray-50/50">
+            {metrics.map((metric, index) => (
+              <TableRow key={index} className="hover:bg-gray-50/50">
                 <TableCell className="font-medium text-gray-700">
-                  {m.label}
+                  {metric.label}
                 </TableCell>
                 <TableCell
-                  className={`text-right font-bold ${getFinancialColorClass(m.value)}`}
+                  className={`text-right font-bold ${getFinancialColorClass(metric.value)}`}
                 >
                   $
-                  {m.value.toLocaleString(undefined, {
+                  {metric.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}

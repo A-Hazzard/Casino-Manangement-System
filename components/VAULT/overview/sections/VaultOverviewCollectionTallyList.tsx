@@ -13,14 +13,14 @@ import { cn } from '@/lib/utils';
 import { CheckCircle2, History, Monitor, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-interface TallyItem {
+type TallyItem = {
   machineId: string;
   location: string;
   closingCount: number;
   collected: boolean;
 }
 
-interface VaultOverviewCollectionTallyListProps {
+type VaultOverviewCollectionTallyListProps = {
   locationId: string;
   date?: string; // defaults to today
 }

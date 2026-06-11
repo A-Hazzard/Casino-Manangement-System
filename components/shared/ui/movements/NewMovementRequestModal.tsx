@@ -83,7 +83,7 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   const { availableSmibs, loading: loadingSmibs } = useSMIBDiscovery();
 
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(role => role?.toLowerCase()) || [];
   const isAdminOrDev = userRoles.some(role =>
     ['admin', 'developer'].includes(role)
   );
@@ -322,7 +322,7 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     if (!user.emailAddress || user.emailAddress.trim() === '') return false;
     if (!toLocation) return false;
 
-    const roleLower = user.roles?.map(r => r?.toLowerCase()) || [];
+    const roleLower = user.roles?.map(role => role?.toLowerCase()) || [];
     const hasRole =
       roleLower.includes('technician') || roleLower.includes('location admin');
 

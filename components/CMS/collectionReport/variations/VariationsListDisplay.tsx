@@ -18,7 +18,7 @@
 import { format } from 'date-fns';
 import type { MachineVariationData } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 
-interface VariationsListDisplayProps {
+type VariationsListDisplayProps = {
   machines: MachineVariationData[];
   onMachineClick?: (machineId: string) => void;
   isCompact?: boolean;

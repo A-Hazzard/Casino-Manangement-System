@@ -13,7 +13,7 @@
 
 export const MOCK_USER_ADMIN = {
   _id: 'user_001',
-  username: 'jdoe_admin',
+  username: 'jdoeadmin',
   emailAddress: 'john.doe@evolution1.com',
   isEnabled: true,
   roles: ['admin'],
@@ -43,7 +43,7 @@ export const MOCK_USER_ADMIN = {
 
 export const MOCK_USER_CASHIER = {
   _id: 'user_002',
-  username: 'msmith_cashier',
+  username: 'msmithcashier',
   emailAddress: 'mary.smith@evolution1.com',
   isEnabled: true,
   roles: ['cashier'],
@@ -68,7 +68,7 @@ export const MOCK_USER_CASHIER = {
 
 export const MOCK_USER_MANAGER = {
   _id: 'user_003',
-  username: 'rjones_mgr',
+  username: 'rjonesmgr',
   emailAddress: 'robert.jones@evolution1.com',
   isEnabled: false,
   roles: ['manager'],
@@ -86,64 +86,58 @@ export const MOCK_USER_MANAGER = {
 
 // ─── List responses ───────────────────────────────────────────────────────────
 
+// Real /api/users returns { success, users: [...], pagination: {...} } at the top level
+// (NOT wrapped in a "data" property — matches paginateAndRespond() in users.ts)
 export const MOCK_USERS_LIST = {
   success: true,
-  data: {
-    users: [MOCK_USER_ADMIN, MOCK_USER_CASHIER, MOCK_USER_MANAGER],
-    pagination: {
-      page: 1,
-      limit: 10,
-      total: 3,
-      totalPages: 1,
-    },
+  users: [MOCK_USER_ADMIN, MOCK_USER_CASHIER, MOCK_USER_MANAGER],
+  pagination: {
+    page: 1,
+    limit: 50,
+    total: 3,
+    totalPages: 1,
   },
   timestamp: new Date().toISOString(),
 };
 
 export const MOCK_USERS_LIST_AFTER_CREATE = {
   success: true,
-  data: {
-    users: [
-      MOCK_USER_ADMIN,
-      MOCK_USER_CASHIER,
-      MOCK_USER_MANAGER,
-      {
-        _id: 'user_004',
-        username: 'newuser_test',
-        emailAddress: 'newuser@evolution1.com',
-        isEnabled: true,
-        roles: ['technician'],
-        assignedLocations: [],
-        assignedLicencees: ['lic_001'],
-        profile: { firstName: 'New', lastName: 'User', gender: 'other' },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    pagination: { page: 1, limit: 10, total: 4, totalPages: 1 },
-  },
+  users: [
+    MOCK_USER_ADMIN,
+    MOCK_USER_CASHIER,
+    MOCK_USER_MANAGER,
+    {
+      _id: 'user_004',
+      username: 'newuser-test',
+      emailAddress: 'newuser@evolution1.com',
+      isEnabled: true,
+      roles: ['technician'],
+      assignedLocations: [],
+      assignedLicencees: ['lic_001'],
+      profile: { firstName: 'New', lastName: 'User', gender: 'other' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ],
+  pagination: { page: 1, limit: 50, total: 4, totalPages: 1 },
   timestamp: new Date().toISOString(),
 };
 
 export const MOCK_USERS_LIST_AFTER_EDIT = {
   success: true,
-  data: {
-    users: [
-      { ...MOCK_USER_ADMIN, emailAddress: 'john.doe.updated@evolution1.com' },
-      MOCK_USER_CASHIER,
-      MOCK_USER_MANAGER,
-    ],
-    pagination: { page: 1, limit: 10, total: 3, totalPages: 1 },
-  },
+  users: [
+    { ...MOCK_USER_ADMIN, emailAddress: 'john.doe.updated@evolution1.com' },
+    MOCK_USER_CASHIER,
+    MOCK_USER_MANAGER,
+  ],
+  pagination: { page: 1, limit: 50, total: 3, totalPages: 1 },
   timestamp: new Date().toISOString(),
 };
 
 export const MOCK_USERS_LIST_AFTER_DELETE = {
   success: true,
-  data: {
-    users: [MOCK_USER_ADMIN, MOCK_USER_CASHIER],
-    pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
-  },
+  users: [MOCK_USER_ADMIN, MOCK_USER_CASHIER],
+  pagination: { page: 1, limit: 50, total: 2, totalPages: 1 },
   timestamp: new Date().toISOString(),
 };
 
@@ -156,7 +150,7 @@ export const MOCK_USER_CREATE_SUCCESS = {
   data: {
     user: {
       _id: 'user_004',
-      username: 'newuser_test',
+      username: 'newuser-test',
       emailAddress: 'newuser@evolution1.com',
       isEnabled: true,
       roles: ['technician'],

@@ -386,7 +386,7 @@ export default function ReportsGamesPerformanceRevenueChart({
                       setSelectedMetrics(prev => [...prev, item.label]);
                     } else {
                       setSelectedMetrics(prev =>
-                        prev.filter(m => m !== item.label)
+                        prev.filter(selected => selected !== item.label)
                       );
                     }
                   }}

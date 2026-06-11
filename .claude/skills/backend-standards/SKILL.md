@@ -1,5 +1,5 @@
 ---
-name: Backend Standards
+name: backend-standards
 description: Mongoose models over direct collections, findOne() not findById(), licencee filtering, aggregation patterns.
 ---
 

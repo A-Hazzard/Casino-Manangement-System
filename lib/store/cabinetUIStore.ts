@@ -108,6 +108,35 @@ const createStore = () => {
             removeItem: () => {},
           };
         }),
+        merge: (persistedState: unknown, currentState: unknown) => {
+          const persisted = (persistedState || {}) as Partial<CabinetUIState>;
+          const cur = (currentState || {}) as CabinetUIState;
+
+          // Revive customDateRange Date objects from ISO strings stored in localStorage
+          const billValidatorState = {
+            ...(persisted.billValidatorState || {}),
+          };
+          for (const machineId of Object.keys(billValidatorState)) {
+            const range = billValidatorState[machineId]?.customDateRange;
+            if (range?.from && range?.to) {
+              billValidatorState[machineId] = {
+                ...billValidatorState[machineId],
+                customDateRange: {
+                  from:
+                    range.from instanceof Date
+                      ? range.from
+                      : new Date(range.from),
+                  to:
+                    range.to instanceof Date
+                      ? range.to
+                      : new Date(range.to),
+                },
+              };
+            }
+          }
+
+          return { ...cur, ...persisted, billValidatorState };
+        },
       }
     )
   );

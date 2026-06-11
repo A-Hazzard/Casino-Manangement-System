@@ -25,27 +25,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shared/ui/select';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 type ActivityLogDateFilterProps = {
   onDateRangeChange?: (dateRange: { from: Date; to: Date } | undefined) => void;
   onTimePeriodChange?: (timePeriod: TimePeriod) => void;
   disabled?: boolean;
+  timePeriod?: TimePeriod;
 };
 
 export default function ActivityLogDateFilter({
   onDateRangeChange,
   onTimePeriodChange,
   disabled = false,
+  timePeriod,
 }: ActivityLogDateFilterProps) {
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const [activeFilter, setActiveFilter] = useState<TimePeriod>('7d');
+  const [internalActiveFilter, setInternalActiveFilter] = useState<TimePeriod>('7d');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [pendingCustomDateRange, setPendingCustomDateRange] =
     useState<RDPDateRange>();
+
+  const activeFilter = timePeriod !== undefined ? timePeriod : internalActiveFilter;
+
+  const setActiveFilter = (val: TimePeriod) => {
+    setInternalActiveFilter(val);
+  };
+
+  // Sync internal state when external timePeriod changes (e.g. on reset/clear)
+  useEffect(() => {
+    if (timePeriod !== undefined) {
+      setInternalActiveFilter(timePeriod);
+      if (timePeriod !== 'Custom') {
+        setShowCustomPicker(false);
+        setPendingCustomDateRange(undefined);
+      }
+    }
+  }, [timePeriod]);
   // ============================================================================
   // Computed
   // ============================================================================

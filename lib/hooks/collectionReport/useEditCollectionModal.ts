@@ -27,8 +27,11 @@
 
 import { updateCollectionReport } from '@/lib/helpers/collectionReport';
 import {
+  calculateAmountToCollect,
+  calculateTotalMovementFromEntries,
   deleteMachineCollection,
   fetchCollectionsByReportId,
+  getSasEndTime,
   sortMachinesAlphabetically,
 } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport/fetching';
@@ -50,47 +53,11 @@ import type {
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import {
-  calculateCabinetMovement,
   calculateMovement,
 } from '@/lib/utils/movement';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function getSasEndTime(
-  showAdvanced: boolean,
-  capturedEndTime: Date | null,
-  defaultTime: Date
-): Date {
-  console.warn('[useEditCollectionModal] getSasEndTime called:', {
-    showAdvanced,
-    capturedEndTime: capturedEndTime
-      ? capturedEndTime instanceof Date
-        ? capturedEndTime.toISOString()
-        : new Date(String(capturedEndTime)).toISOString()
-      : 'null',
-    defaultTime:
-      defaultTime instanceof Date
-        ? defaultTime.toISOString()
-        : new Date(defaultTime).toISOString(),
-  });
-
-  // In BOTH simple and advanced mode, if we have a capturedEndTime, use it
-  // Simple mode: capturedEndTime is the user-selected collectionTime
-  // Advanced mode: capturedEndTime is the custom sasEndTime set by user
-  if (capturedEndTime) {
-    return capturedEndTime instanceof Date
-      ? capturedEndTime
-      : new Date(String(capturedEndTime));
-  }
-
-  // Fallback to defaultTime only if no capturedEndTime
-  return defaultTime;
-}
 
 // ============================================================================
 // Type Definitions
@@ -229,6 +196,10 @@ export function useEditCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('');
 
@@ -1847,35 +1818,7 @@ export function useEditCollectionModal({
         }
 
         // Recalculate report totals based on currently collected machines
-        const totalMovementData = collectedMachineEntries.map(entry => {
-          const movement = calculateCabinetMovement(
-            entry.metersIn || 0,
-            entry.metersOut || 0,
-            entry.prevIn || 0,
-            entry.prevOut || 0,
-            entry.ramClear || false,
-            undefined,
-            undefined,
-            entry.ramClearMetersIn,
-            entry.ramClearMetersOut
-          );
-          return {
-            drop: movement.metersIn,
-            cancelledCredits: movement.metersOut,
-            gross: movement.gross,
-            sasGross: entry.sasMeters?.gross || 0,
-          };
-        });
-
-        const totals = totalMovementData.reduce(
-          (prev, curr) => ({
-            drop: prev.drop + curr.drop,
-            cancelledCredits: prev.cancelledCredits + curr.cancelledCredits,
-            gross: prev.gross + curr.gross,
-            sasGross: prev.sasGross + curr.sasGross,
-          }),
-          { drop: 0, cancelledCredits: 0, gross: 0, sasGross: 0 }
-        );
+        const totals = calculateTotalMovementFromEntries(collectedMachineEntries);
 
         // PHASE 2: Update collection report financials and totals
         // Recalculate the report timestamp to the earliest collection start time
@@ -1970,7 +1913,7 @@ export function useEditCollectionModal({
    */
   const handleApplyAllDates = useCallback(async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
-    if (collectedMachineEntries.length < 2) return;
+    if (collectedMachineEntries.length < 1) return;
     try {
       setIsProcessing(true);
       const axios = (await import('axios')).default;
@@ -1982,13 +1925,21 @@ export function useEditCollectionModal({
       if (startTimeISO) patchData.sasStartTime = startTimeISO;
       if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
+      const total = collectedMachineEntries.length;
+      setSasUpdateProgress({ completed: 0, total });
+
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
-          if (!entry._id) return;
-          return await axios.patch(
-            `/api/collection-reports/collections?id=${entry._id}`,
+          if (!entry._id) {
+            setSasUpdateProgress(prev => prev ? { ...prev, completed: prev.completed + 1 } : null);
+            return;
+          }
+          const result = await axios.patch(
+            `/api/collection-reports/collections/${entry._id}`,
             patchData
           );
+          setSasUpdateProgress(prev => prev ? { ...prev, completed: prev.completed + 1 } : null);
+          return result;
         })
       );
       const failed = results.filter(
@@ -2004,18 +1955,26 @@ export function useEditCollectionModal({
       // Update local state so UI reflects changes immediately without needing refresh/close
       const updatedEntries = collectedMachineEntries.map(entry => {
         const sasMeters = { ...entry.sasMeters };
-        // Ensure sasStartTime is Date | undefined (never string)
-        sasMeters.sasStartTime = (() => {
+        if (startTimeISO) {
+          sasMeters.sasStartTime = new Date(startTimeISO);
+        } else {
           const val = entry.sasMeters?.sasStartTime;
-          if (!val) return undefined;
-          return typeof val === 'string' ? new Date(val) : val;
-        })();
-        // Ensure sasEndTime is Date | undefined (never string)
-        sasMeters.sasEndTime = (() => {
+          sasMeters.sasStartTime = !val
+            ? undefined
+            : typeof val === 'string'
+              ? new Date(val)
+              : val;
+        }
+        if (endTimeISO) {
+          sasMeters.sasEndTime = new Date(endTimeISO);
+        } else {
           const val = entry.sasMeters?.sasEndTime;
-          if (!val) return undefined;
-          return typeof val === 'string' ? new Date(val) : val;
-        })();
+          sasMeters.sasEndTime = !val
+            ? undefined
+            : typeof val === 'string'
+              ? new Date(val)
+              : val;
+        }
         return { ...entry, sasMeters };
       });
       setCollectedMachineEntries(updatedEntries);
@@ -2028,6 +1987,7 @@ export function useEditCollectionModal({
       toast.error('Failed to update SAS times');
     } finally {
       setIsProcessing(false);
+      setSasUpdateProgress(null);
     }
   }, [
     updateAllSasStartDate,
@@ -2035,6 +1995,29 @@ export function useEditCollectionModal({
     collectedMachineEntries,
     setCollectedMachineEntries,
   ]);
+
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (collectedMachineEntries.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [collectedMachineEntries]);
 
   // ==========================================================================
   // Effects
@@ -2183,33 +2166,8 @@ export function useEditCollectionModal({
     }
 
     // Calculate total movement data from all machine entries using proper movement calculation
-    const totalMovementData = collectedMachineEntries.map(entry => {
-      const movement = calculateCabinetMovement(
-        entry.metersIn || 0,
-        entry.metersOut || 0,
-        entry.prevIn || 0,
-        entry.prevOut || 0,
-        entry.ramClear || false,
-        undefined,
-        undefined,
-        entry.ramClearMetersIn,
-        entry.ramClearMetersOut
-      );
-      return {
-        drop: movement.metersIn,
-        cancelledCredits: movement.metersOut,
-        gross: movement.gross,
-      };
-    });
-
-    // Sum up all movement data
-    const reportTotalData = totalMovementData.reduce(
-      (prev, current) => ({
-        drop: prev.drop + current.drop,
-        cancelledCredits: prev.cancelledCredits + current.cancelledCredits,
-        gross: prev.gross + current.gross,
-      }),
-      { drop: 0, cancelledCredits: 0, gross: 0 }
+    const reportTotalData = calculateTotalMovementFromEntries(
+      collectedMachineEntries
     );
 
     // Get financial values
@@ -2223,19 +2181,15 @@ export function useEditCollectionModal({
     // Get profit share from selected location (default to 50% if not available)
     const profitShare = locationProfitShare;
 
-    // Calculate partner profit: Math.floor((gross - variance - advance) * profitShare / 100) - taxes
-    const partnerProfit =
-      Math.floor(
-        ((reportTotalData.gross - variance - advance) * profitShare) / 100
-      ) - taxes;
-
-    // Calculate amount to collect: gross - variance - advance - partnerProfit + locationPreviousBalance
-    const amountToCollect =
-      reportTotalData.gross -
-      variance -
-      advance -
-      partnerProfit +
-      locationPreviousBalance;
+    // Calculate amount to collect
+    const amountToCollect = calculateAmountToCollect({
+      gross: reportTotalData.gross,
+      variance,
+      advance,
+      taxes,
+      profitShare,
+      previousBalance: locationPreviousBalance,
+    });
 
     const newAmount = amountToCollect.toFixed(2);
     if (financials.amountToCollect !== newAmount) {
@@ -2639,6 +2593,7 @@ export function useEditCollectionModal({
     setUpdateAllSasStartDate,
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
+    sasUpdateProgress,
     isLoadingCollections,
     setIsLoadingCollections,
     isProcessing,

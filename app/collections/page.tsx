@@ -1,3 +1,10 @@
+/**
+ * Collections Redirect Page
+ *
+ * Redirects legacy `/collections` URL to the canonical
+ * `/collection-report` path.
+ */
+
 import { redirect } from 'next/navigation';
 
 export default function Page() {

@@ -22,7 +22,7 @@ import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type { CashDesk, UnbalancedShiftInfo } from '@/shared/types/vault';
 import { AlertCircle, ArrowRight, Clock, RotateCcw } from 'lucide-react';
 
-interface VaultOverviewActiveShiftsModalProps {
+type VaultOverviewActiveShiftsModalProps = {
   open: boolean;
   onClose: () => void;
   activeShifts: CashDesk[];

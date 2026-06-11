@@ -35,8 +35,8 @@ import {
 // ─── Test credentials (real login only) ──────────────────────────────────────
 
 export const TEST_USER = {
-  identifier: process.env.TEST_USER_IDENTIFIER ?? 'testadmin',
-  password: process.env.TEST_USER_PASSWORD ?? 'Test@Password1!',
+  identifier: process.env.TEST_USER_IDENTIFIER ?? 'admin',
+  password: process.env.TEST_USER_PASSWORD ?? 'Sunny2026!',
 };
 
 // ─── Strategy selector ────────────────────────────────────────────────────────
@@ -143,6 +143,7 @@ async function obtainAuthCookie(
 ): Promise<void> {
   const response = await page.request.post('/api/e2e/auth', {
     data: { user: userPayload },
+    timeout: 30_000,
   });
 
   if (!response.ok()) {
@@ -282,6 +283,9 @@ export async function setupAuthState(
     await loginViaMock(page);
   } else {
     await loginViaUI(page);
+    // Wait for the dashboard to fully load so Zustand stores are populated
+    // before we snapshot the storage state.
+    await page.waitForLoadState('networkidle');
   }
 
   // Ensure the directory exists before writing the storage state file

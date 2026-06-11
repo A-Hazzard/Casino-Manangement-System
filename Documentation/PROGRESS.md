@@ -1,8 +1,8 @@
 # Evolution One CMS — Project Progress & Status
 
 **Author:** Aaron Hazzard — Senior Software Engineer  
-**Document Version:** 4.3.0  
-**Last Updated:May 4, 2026  
+**Document Version:** 4.4.0  
+**Last Updated:** June 5, 2026  
 **Classification:\*\* Internal Engineering Document
 
 ---
@@ -523,6 +523,24 @@ This section records notable technical work completed during the v4.3.0 developm
 
 Built full TOTP two-factor authentication: QR code setup, confirmation, per-request verification, and supervised recovery paths for vault manager and cashier roles who cannot self-serve (require manager supervision for account recovery).
 
+### Offline SMIB Machine — SAS Meters Update During CR Creation (2026-06-05)
+
+**Problem**: When a SMIB machine went offline (relay unreachable), the `sasMeters` fields (`drop`, `totalCancelledCredits`) on the Machine document were never updated during collection report creation or editing. This caused the machine's lifetime totals to drift from what collectors were actually entering.
+
+**Root Cause**: The `sasMeters` update was only triggered for `isNoSasLocation === true` (non-SMIB machines). Online SMIB machines skip the update because the relay keeps `sasMeters` current — but offline SMIB machines had the same skip condition, leaving them permanently stale.
+
+**Implementation (4 changes across V1 and V2)**:
+
+1. **V1 `updateMachineCollectionData()`** — Expanded relay check to fetch `lastActivity`, added offline detection (`relayId && (!lastActivity || lastActivity < 3 min)`), changed condition from `isNoSasLocation` to `isNoSasLocation || isOffline`. Updates `Machine.sasMeters` with `metersIn`/`metersOut` params.
+
+2. **V1 `recalculateMachineCollections()`** — Added offline detection from `relayId + lastActivity` on the Machine doc, changed condition from `isNoSasLocation && writeSasMeters` to `(isNoSasLocation || isOffline) && writeSasMeters`. Updates `Machine.sasMeters` with `finalMetersIn`/`finalMetersOut`.
+
+3. **V2 Submit route** — Changed condition from `!machineHasRelay` to `!machineHasRelay || m.isSupplemental === true` to update `Machine.sasMeters` for supplemental (offline) machines.
+
+4. **V2 `cascadeMachineEdit()`** — Expanded `Machine.findOne` to fetch `lastActivity`, added offline detection, changed condition from `isNoSMIBLocation` to `isNoSMIBLocation || isOffline`. Updates `Machine.sasMeters` with `targetMetersIn`/`targetMetersOut`.
+
+**Result**: Offline SMIB machines now have their `sasMeters` kept accurate during both V1 and V2 collection report creation and editing. Online SMIB machines remain untouched (relay handles it).
+
 ---
 
 ## 11. Documentation Coverage
@@ -596,7 +614,9 @@ Documentation/
 
 ## 13. Currently Working On
 
-> _(To be filled in by Aaron Hazzard)_
+- Documentation review and update (all Documentation/ files)
+- SMIB offline threshold restore to 72h (currently 3min for testing)
+- End-to-end testing of offline SMIB supplemental meter creation flow
 
 ---
 

@@ -7,6 +7,7 @@ import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { Calculator, ClipboardList } from 'lucide-react';
+import { useEffect } from 'react';
 import { MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import {
   MachineVariationData,
@@ -40,6 +41,7 @@ type MobileEditLayoutProps = {
   updateAllSasEndDate: Date | undefined;
   setUpdateAllSasEndDate: (d: Date | undefined) => void;
   handleApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
   variationsData: VariationsCheckResponse | null;
   transitions: {
     selectMachine: (machine: CollectionReportMachineSummary) => void;
@@ -80,6 +82,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
     onFormDataChange,
     onCollectedAmountChange,
     baseBalanceCorrection,
@@ -111,6 +114,25 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
   };
 
   /* handleMachineUnselect removed as it is unused */
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  // Auto-fill notes for offline SMIB machines when a new machine is selected
+  useEffect(() => {
+    const selectedMachine = modalState.selectedMachineData;
+    const machineId = selectedMachine?._id ? String(selectedMachine._id) : null;
+    const isEditing = modalState.editingEntryId;
+    const currentNotes = modalState.formData?.notes;
+
+    if (machineId && !isEditing) {
+      const isKnown = machineId in machineStatusMap;
+      if (isKnown && machineStatusMap[machineId] === false && !currentNotes) {
+        onFormDataChange({ notes: 'Machine was offline' });
+      }
+    }
+  }, [modalState.selectedMachineData, modalState.editingEntryId, modalState.formData?.notes, machineStatusMap, onFormDataChange]);
 
   // ============================================================================
   // Render
@@ -176,7 +198,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               {availableMachines.map(
                 (machine: CollectionReportMachineSummary) => {
                   const isCollected = collectedMachines.some(
-                    m => String(m.machineId) === String(machine._id)
+                    col => String(col.machineId) === String(machine._id)
                   );
 
                   return (
@@ -324,12 +346,13 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           updateAllSasEndDate={updateAllSasEndDate}
           onUpdateAllSasEndDate={setUpdateAllSasEndDate}
           onApplyAllDates={handleApplyAllDates}
+          sasUpdateProgress={sasUpdateProgress}
           variationMachineIds={variationsData?.machines
             .filter(
-              (m: MachineVariationData) =>
-                typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+              (variation: MachineVariationData) =>
+                typeof variation.variation === 'number' && Math.abs(variation.variation) > 0.1
             )
-            .map((m: MachineVariationData) => m.machineId)}
+            .map((variation: MachineVariationData) => variation.machineId)}
           formatMachineDisplay={machine => {
             const doc = machine as unknown as CollectionDocument;
             return (

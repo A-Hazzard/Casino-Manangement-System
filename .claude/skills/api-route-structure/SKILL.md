@@ -1,5 +1,5 @@
 ---
-name: API Route Structure
+name: api-route-structure
 description: Structure API routes with step-by-step comments, JSDoc, helper extraction, and proper organization.
 ---
 

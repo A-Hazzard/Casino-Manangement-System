@@ -549,38 +549,21 @@ function convertDailyTrendItems(
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
 
+    const r = (v: number) => Math.round(v * 100) / 100;
+    const convert = (val: number) =>
+      nativeCurrency !== displayCurrency
+        ? r(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency))
+        : val;
+
     // Step 1: Currency Conversion
-    const handle = convertFromUSD(
-      convertToUSD(item.handle, nativeCurrency),
-      displayCurrency
-    );
-    const winLoss = convertFromUSD(
-      convertToUSD(item.winLoss, nativeCurrency),
-      displayCurrency
-    );
-    const jackpot = convertFromUSD(
-      convertToUSD(item.jackpot, nativeCurrency),
-      displayCurrency
-    );
-    const drop = convertFromUSD(
-      convertToUSD(item.drop, nativeCurrency),
-      displayCurrency
-    );
-    const totalCancelledCredits = convertFromUSD(
-      convertToUSD(item.totalCancelledCredits, nativeCurrency),
-      displayCurrency
-    );
-    const gross = convertFromUSD(
-      convertToUSD(item.gross, nativeCurrency),
-      displayCurrency
-    );
+    const handle = convert(item.handle);
+    const winLoss = convert(item.winLoss);
+    const jackpot = convert(item.jackpot);
+    const drop = convert(item.drop);
+    const totalCancelledCredits = convert(item.totalCancelledCredits);
+    const gross = convert(item.gross);
     const netGross =
-      item.netGross !== undefined
-        ? convertFromUSD(
-            convertToUSD(item.netGross, nativeCurrency),
-            displayCurrency
-          )
-        : undefined;
+      item.netGross !== undefined ? convert(item.netGross) : undefined;
 
     return {
       ...item,

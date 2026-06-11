@@ -110,6 +110,9 @@ const CollectionReportPageContent: FC = () => {
   const [v2WizardSessionId, setV2WizardSessionId] = useState<string | null>(
     null
   );
+  const v2SessionsRef = useRef<{ sessionId: string; deletedAt?: unknown }[]>(
+    []
+  );
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -191,6 +194,7 @@ const CollectionReportPageContent: FC = () => {
     collectorHook.collectors
   );
   const v2Hook = useCollectionReportV2Data(selectedLicencee, locations);
+  v2SessionsRef.current = v2Hook.sessions;
 
   // ============================================================================
   // Role-Based Visibility Computations
@@ -200,13 +204,6 @@ const CollectionReportPageContent: FC = () => {
   const canSeeManagerTabs = hasManagerAccess(userRoles);
   const isDeveloper = userRoles.includes('developer');
   const canManageV2 = isDeveloper || userRoles.includes('admin');
-  // Only these roles may view and restore archived V2 sessions.
-  // location admin sees only their assigned locations (enforced by the API).
-  const canViewArchivedV2 =
-    userRoles.includes('developer') ||
-    userRoles.includes('owner') ||
-    userRoles.includes('admin') ||
-    userRoles.includes('location admin');
 
   const visibleTabs = COLLECTION_TABS_CONFIG.filter(tab => {
     if (tab.id === 'monthly' || tab.id === 'manager') return canSeeManagerTabs;
@@ -326,11 +323,6 @@ const CollectionReportPageContent: FC = () => {
                 selectedLocation={filters.selectedLocation}
                 onLocationChange={filters.setSelectedLocation}
                 onClearFilters={filters.clearFilters}
-                showArchived={canViewArchivedV2 ? v2Hook.showArchived : false}
-                onShowArchivedChange={
-                  canViewArchivedV2 ? v2Hook.setShowArchived : undefined
-                }
-                canViewArchived={canViewArchivedV2}
               />
             )}
           </div>
@@ -517,7 +509,6 @@ const CollectionReportPageContent: FC = () => {
                       loading={v2Hook.loading}
                       isRefreshing={v2Hook.isRefreshing}
                       canManage={canManageV2}
-                      showArchived={v2Hook.showArchived}
                       onViewSession={sessionId => openV2View(sessionId)}
                       onEditSession={sessionId =>
                         setV2WizardSessionId(sessionId)
@@ -539,37 +530,6 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
-                      }}
-                      onRestoreSession={async sessionId => {
-                        try {
-                          await axios.patch(
-                            `/api/collection-reports-v2/sessions/${sessionId}`,
-                            { action: 'restore' }
-                          );
-                          v2Hook.onRefresh();
-                        } catch (error) {
-                          console.error(
-                            '[CollectionReportPageContent] Failed to restore session:',
-                            error instanceof Error
-                              ? error.message
-                              : 'Unknown error'
-                          );
-                        }
-                      }}
-                      onPermanentDeleteSession={async sessionId => {
-                        try {
-                          await axios.delete(
-                            `/api/collection-reports-v2/sessions/${sessionId}`
-                          );
-                          v2Hook.onRefresh();
-                        } catch (error) {
-                          console.error(
-                            '[CollectionReportPageContent] Failed to permanently delete session:',
-                            error instanceof Error
-                              ? error.message
-                              : 'Unknown error'
-                          );
-                        }
                       }}
                       sortField={v2Hook.sortField}
                       sortDirection={v2Hook.sortDirection}
@@ -583,7 +543,6 @@ const CollectionReportPageContent: FC = () => {
                       loading={v2Hook.loading}
                       isRefreshing={v2Hook.isRefreshing}
                       canManage={canManageV2}
-                      showArchived={v2Hook.showArchived}
                       onViewSession={sessionId => openV2View(sessionId)}
                       onEditSession={sessionId =>
                         setV2WizardSessionId(sessionId)
@@ -605,37 +564,6 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
-                      }}
-                      onRestoreSession={async sessionId => {
-                        try {
-                          await axios.patch(
-                            `/api/collection-reports-v2/sessions/${sessionId}`,
-                            { action: 'restore' }
-                          );
-                          v2Hook.onRefresh();
-                        } catch (error) {
-                          console.error(
-                            '[CollectionReportPageContent] Failed to restore session:',
-                            error instanceof Error
-                              ? error.message
-                              : 'Unknown error'
-                          );
-                        }
-                      }}
-                      onPermanentDeleteSession={async sessionId => {
-                        try {
-                          await axios.delete(
-                            `/api/collection-reports-v2/sessions/${sessionId}`
-                          );
-                          v2Hook.onRefresh();
-                        } catch (error) {
-                          console.error(
-                            '[CollectionReportPageContent] Failed to permanently delete session:',
-                            error instanceof Error
-                              ? error.message
-                              : 'Unknown error'
-                          );
-                        }
                       }}
                     />
                   </div>
@@ -741,7 +669,9 @@ const CollectionReportPageContent: FC = () => {
           setShowEditDesktop(false);
           setEditingReportId(null);
         }}
-        onCloseDelete={() => hook.setShowDeleteConfirmation(false)}
+        onCloseDelete={() => {
+          hook.setShowDeleteConfirmation(false);
+        }}
         onConfirmDelete={confirmDelete}
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
@@ -761,12 +691,8 @@ const CollectionReportPageContent: FC = () => {
       <CollectionReportV2DeleteSessionModal
         isOpen={!!v2DeleteConfirm}
         sessionId={v2DeleteConfirm ?? ''}
-        onClose={() => setV2DeleteConfirm(null)}
-        onArchive={async sessionId => {
-          await axios.delete(
-            `/api/collection-reports-v2/sessions/${sessionId}?action=archive`
-          );
-          v2Hook.onRefresh();
+        onClose={() => {
+          setV2DeleteConfirm(null);
         }}
         onDelete={async sessionId => {
           await axios.delete(

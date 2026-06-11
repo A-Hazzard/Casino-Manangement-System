@@ -272,3 +272,37 @@ export const ConfigurationsSkeleton = () => (
     ))}
   </div>
 );
+
+export const MetersTableSkeleton = () => (
+  <div className="space-y-4">
+    <div className="max-w-full overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border bg-buttonInactive/50">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <th key={i} className="px-3 py-2">
+                <Skeleton className="h-3 w-16" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 8 }).map((_, rowIndex) => (
+            <tr
+              key={rowIndex}
+              className={`border-b border-border ${rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+            >
+              {Array.from({ length: 6 }).map((_, colIndex) => (
+                <td key={colIndex} className="px-3 py-2">
+                  <Skeleton
+                    className={`h-3 ${colIndex === 0 ? 'w-24' : colIndex < 3 ? 'w-16' : 'w-12'}`}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);

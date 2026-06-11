@@ -32,6 +32,7 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     machinesCollected: { type: String },
     includeJackpot: { type: Boolean, default: false },
     totalVariation: { type: Number },
+    deletedAt: { type: Date },
     createdAt: { type: Date },
     updatedAt: { type: Date },
     __v: { type: Number },

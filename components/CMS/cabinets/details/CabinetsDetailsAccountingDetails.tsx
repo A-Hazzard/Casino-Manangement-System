@@ -33,6 +33,7 @@ import {
 import CabinetsDetailsUnifiedBillValidator from './CabinetsDetailsUnifiedBillValidator';
 import { CollectionSettingsContent } from './CollectionSettingsContent';
 import { ConfigurationCard } from './ConfigurationCard';
+import CabinetsDetailsDeveloperTools from './CabinetsDetailsDeveloperTools';
 
 // Hooks & Store
 import { containerVariants, itemVariants } from '@/lib/constants';
@@ -65,6 +66,7 @@ const CabinetsDetailsAccountingDetails = ({
   activeMetricsTabContent,
   setActiveMetricsTabContent,
   onRefresh,
+  isDeveloper = false,
 }: AccountingDetailsProps) => {
   // ============================================================================
   // State & Hooks
@@ -74,16 +76,23 @@ const CabinetsDetailsAccountingDetails = ({
 
   const {
     collectionHistory,
-    activityLog,
+    displayedActivityLog,
+    globalActivityDisplayPage,
+    totalKnownDisplayPages,
     machine,
     activityLogLoading,
     collectionHistoryError,
     activityLogError,
+    activityLogPagination,
+    activityLogFilters,
+    activityLogFilterOptions,
     billValidatorTimePeriod,
     activeMetricsFilter,
     customDateRange,
     setActivityLogDateRange,
     setActivityLogTimePeriod,
+    setActivityLogPage,
+    setActivityLogFilters,
     setBillValidatorTimePeriod,
     setMachine,
   } = hook;
@@ -99,6 +108,7 @@ const CabinetsDetailsAccountingDetails = ({
     'Collection History',
     'Collection Settings',
     'Configurations',
+    ...(isDeveloper ? ['Developer Options'] : []),
   ];
 
   // ============================================================================
@@ -548,9 +558,7 @@ const CabinetsDetailsAccountingDetails = ({
                       />
                     </div>
 
-                    {activityLogLoading ? (
-                      <CabinetsDetailsActivityLogSkeleton />
-                    ) : activityLogError ? (
+                    {activityLogError ? (
                       <div className="flex h-48 w-full flex-col items-center justify-center">
                         <p className="mb-2 text-center text-red-500">
                           Failed to load activity log
@@ -559,16 +567,20 @@ const CabinetsDetailsAccountingDetails = ({
                           {activityLogError}
                         </p>
                       </div>
-                    ) : activityLog.length > 0 ? (
-                      <CabinetsDetailsActivityLogTable
-                        data={activityLog as CabinetsDetailsMachineEvent[]}
-                      />
+                    ) : activityLogLoading && displayedActivityLog.length === 0 ? (
+                      <CabinetsDetailsActivityLogSkeleton />
                     ) : (
-                      <div className="flex h-48 w-full items-center justify-center">
-                        <p className="text-center text-grayHighlight">
-                          No activity log data found for this machine.
-                        </p>
-                      </div>
+                      <CabinetsDetailsActivityLogTable
+                        data={displayedActivityLog as CabinetsDetailsMachineEvent[]}
+                        pagination={activityLogPagination}
+                        displayPage={globalActivityDisplayPage}
+                        totalDisplayPages={totalKnownDisplayPages}
+                        filters={activityLogFilters}
+                        filterOptions={activityLogFilterOptions}
+                        loading={activityLogLoading}
+                        onFilterChange={setActivityLogFilters}
+                        onPageChange={setActivityLogPage}
+                      />
                     )}
                   </motion.div>
                 ) : activeMetricsTabContent === 'Collection History' ? (
@@ -750,6 +762,18 @@ const CabinetsDetailsAccountingDetails = ({
                         )}
                     </motion.div>
                   )
+                ) : activeMetricsTabContent === 'Developer Options' ? (
+                  /* Tab: Developer Options */
+                  <motion.div
+                    key="developer-options"
+                    className="w-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <CabinetsDetailsDeveloperTools cabinetId={cabinet._id} />
+                  </motion.div>
                 ) : (
                   <motion.div
                     key="no-content"

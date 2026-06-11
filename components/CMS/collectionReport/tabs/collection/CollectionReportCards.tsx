@@ -34,6 +34,7 @@ import {
 } from '@/lib/utils/permissions';
 import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -150,9 +151,9 @@ export default function CollectionReportCards({
               key={`${row?.collector || 'unknown'}-${
                 row?.location || 'unknown'
               }-${row?.time || 'unknown'}-${index}`}
-              className={`card-item mb-4 transform overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 ease-in-out animate-in fade-in-0 slide-in-from-bottom-2 hover:scale-[1.02] hover:shadow-md ${
+              className={`card-item mb-4 transform overflow-hidden rounded-lg shadow-sm transition-all duration-300 ease-in-out animate-in fade-in-0 slide-in-from-bottom-2 hover:scale-[1.02] hover:shadow-md ${
                 hasIssues ? 'border-l-4 border-l-yellow-500 bg-yellow-50' : ''
-              }`}
+              } ${row.deletedAt ? 'bg-amber-50 opacity-80' : 'bg-white'}`}
               style={{
                 animationDelay: `${index * 50}ms`,
                 animationFillMode: 'both',
@@ -234,9 +235,61 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Location
                   </span>
-                  <span className="text-right text-sm font-semibold">
-                    {row?.location || '-'}
-                  </span>
+                  <div className="group relative text-right">
+                    {(row?.locationSlug || row?.locationId) ? (
+                      <Link
+                        href={`/locations/${row.locationSlug || row.locationId}`}
+                        className="text-sm font-semibold text-buttonActive hover:underline"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {row?.location || '-'}
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-semibold">
+                        {row?.location || '-'}
+                      </span>
+                    )}
+                    {row.locationTooltipData && (
+                      <div className="absolute right-0 top-full z-50 mt-1 hidden w-max max-w-xs rounded bg-gray-800 px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                        <div className="space-y-1 text-left">
+                          {row.locationTooltipData.address && (
+                            <div className="font-medium">
+                              {row.locationTooltipData.address}
+                            </div>
+                          )}
+                          {row.locationTooltipData.country && (
+                            <div className="text-gray-300">
+                              {row.locationTooltipData.country}
+                            </div>
+                          )}
+                          {(row.locationTooltipData.noSMIBLocation ||
+                            row.locationTooltipData.isLocalServer ||
+                            row.noSMIBLocation ||
+                            row.isLocalServer) && (
+                            <div className="flex gap-1 pt-0.5">
+                              {(row.locationTooltipData.noSMIBLocation ||
+                                row.noSMIBLocation) && (
+                                <span className="rounded bg-gray-600 px-1.5 py-0.5">
+                                  No SMIB
+                                </span>
+                              )}
+                              {(row.locationTooltipData.isLocalServer ||
+                                row.isLocalServer) && (
+                                <span className="rounded bg-gray-600 px-1.5 py-0.5">
+                                  Local Server
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {row.locationTooltipData.id && (
+                            <div className="pt-0.5 text-[10px] text-gray-500">
+                              ID: {row.locationTooltipData.id}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">

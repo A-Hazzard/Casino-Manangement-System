@@ -27,7 +27,6 @@ export type MachinePayload = Omit<
     lastMetersIn?: string;
     lastMetersOut?: string;
   };
-  // Snake_case variants for incoming data compatibility
   is_sas_machine?: boolean;
   sas_version?: string;
   current_session?: string;
@@ -35,7 +34,6 @@ export type MachinePayload = Omit<
   last_activity?: string | Date;
   last_sas_meter_at?: string | Date;
   last_bill_meter_at?: string | Date;
-  // Nested snake_case support
   sasMeters?: GamingMachine['sasMeters'] & {
     total_cancelled_credits?: number;
     games_played?: number;

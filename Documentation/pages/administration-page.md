@@ -1,8 +1,8 @@
 # Administration Page Implementation (`/administration`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:May 4, 2026  
-**Version:\*\* 4.3.0
+**Last Updated:** June 5, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -91,32 +91,9 @@ Management of supported countries and their respective jurisdictional defaults.
 
 ## 6. Technical UI Standards
 
-- **Skeleton UX**: `DirectorySkeleton` and `LogsSkeleton` are used for initial hydration.
+- **Skeleton UX**: `AdministrationUserTableSkeleton`, `AdministrationUserCardSkeleton`, and related skeletons are used for initial hydration.
 - **Performance**: The Audit Stream uses an intersection observer for lazy-loading historical logs beyond the first page.
 - **Search Latency**: Filter changes trigger a `350ms` debounced re-fetch to optimize database query load.
-
----
-
-## 3. CRUD Feature Triggers
-
-- **Create User**: Triggers `POST /api/users` via the "New User" modal.
-- **Edit User**: Triggers `PUT /api/users/[id]` upon form submission.
-- **Disable Licencee**: Triggers `PATCH /api/licencees/[id]/status`.
-
----
-
-## 4. Role Detection
-
-- **Developer**: Access to `GET /api/licencees`.
-- **Admin**: Access to `GET /api/users` (Scoped to their Licencee).
-- **Manager**: No access to the "Licencee" tab; UI hides the tab element via `roleCheck` helper.
-
----
-
-## 5. Visual Indicators
-
-- 🔑 **Temp Password**: Highlighted in yellow if the user hasn't completed the "First Login" wizard.
-- 🚫 **Banned**: Row opacity reduced to 50% with a "Disabled" badge.
 
 ---
 

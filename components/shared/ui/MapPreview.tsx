@@ -24,6 +24,7 @@ import { Badge } from '@/components/shared/ui/badge';
 import MapSkeleton from '@/components/shared/ui/MapSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { Location } from '@/lib/types';
+import type { AggregatedLocation } from '@/shared/types/entities';
 import { MapPreviewProps } from '@/lib/types/components';
 import { isAbortError } from '@/lib/utils/errors';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
@@ -66,6 +67,12 @@ const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), {
   ssr: false,
 });
 
+// Leaflet map methods used in this component
+type LeafletMapHandle = {
+  setView?: (coords: [number, number], zoom: number) => void;
+  eachLayer?: (fn: (layer: unknown) => void) => void;
+};
+
 // Helper function to get the valid longitude (checks both "longitude" and "longtitude")
 const getValidLongitude = (geo: {
   longitude?: number;
@@ -84,7 +91,7 @@ const getValidLongitude = (geo: {
 // Helper function to get location stats from locationAggregation data
 const getLocationStats = (
   location: Location,
-  locationAggregates: Record<string, unknown>[]
+  locationAggregates: AggregatedLocation[]
 ) => {
   // Try to find matching data in locationAggregates
   const stats = Array.isArray(locationAggregates)
@@ -120,7 +127,7 @@ const LocationPopupContent = ({
   isMinimized = false,
 }: {
   location: Location;
-  locationAggregates: Record<string, unknown>[];
+  locationAggregates: AggregatedLocation[];
   isFinancialDataLoading: boolean;
   onViewDetails: (locationId: string) => void;
   isMinimized?: boolean;
@@ -320,7 +327,7 @@ export default function MapPreview(props: MapPreviewProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [mapReady, setMapReady] = useState(false);
   const [locationAggregates, setLocationAggregates] = useState<
-    Record<string, unknown>[]
+    AggregatedLocation[]
   >(props.locationAggregates || []);
   const [aggLoading, setAggLoading] = useState<boolean>(
     props.aggLoading ?? true
@@ -331,8 +338,8 @@ export default function MapPreview(props: MapPreviewProps) {
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
   ]); // Trinidad center as initial map center (dynamically updated based on licencee)
-  const previewMapRef = useRef<Record<string, unknown> | null>(null);
-  const modalMapRef = useRef<Record<string, unknown> | null>(null);
+  const previewMapRef = useRef<LeafletMapHandle | null>(null);
+  const modalMapRef = useRef<LeafletMapHandle | null>(null);
   const router = useRouter();
 
   // Get Zustand state for reactivity
@@ -713,9 +720,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const zoomToLocation = (location: Location) => {
     try {
       // Use preview map ref if modal is not open, otherwise use modal map ref
-      const activeMapRef = isModalOpen ? modalMapRef : previewMapRef;
+      const activeMap = isModalOpen ? modalMapRef.current : previewMapRef.current;
 
-      if (!activeMapRef.current) {
+      if (!activeMap) {
         console.warn('Map ref not available for zooming');
         return;
       }
@@ -731,13 +738,29 @@ export default function MapPreview(props: MapPreviewProps) {
       const lon = getValidLongitude(location.geoCoords);
 
       if (lat && lon && lat !== 0 && lon !== 0) {
-        const mapInstance = activeMapRef.current as {
-          setView?: (coords: [number, number], zoom: number) => void;
-        };
-        if (mapInstance.setView && typeof mapInstance.setView === 'function') {
-          mapInstance.setView([lat, lon], 15);
+        if (activeMap.setView) {
+          activeMap.setView([lat, lon], 15);
           setSearchQuery(location.name || location.locationName || '');
           setShowSearchResults(false);
+
+          // Open popup for the searched location
+          if (activeMap.eachLayer) {
+            activeMap.eachLayer(layer => {
+              const marker = layer as {
+                getLatLng?: () => { lat: number; lng: number };
+                openPopup?: () => void;
+              };
+              if (
+                typeof marker.getLatLng === 'function' &&
+                typeof marker.openPopup === 'function'
+              ) {
+                const ll = marker.getLatLng();
+                if (ll.lat === lat && ll.lng === lon) {
+                  marker.openPopup();
+                }
+              }
+            });
+          }
         } else {
           console.warn('Map setView method not available');
         }
@@ -756,15 +779,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const handlePreviewMapCreated = (map: unknown) => {
     try {
       if (map && typeof map === 'object') {
-        const mapInstance = map as {
-          setView?: (coords: [number, number], zoom: number) => void;
-          getContainer?: () => HTMLElement | null;
-        };
-        // Verify map instance has required methods
-        if (mapInstance.setView && typeof mapInstance.setView === 'function') {
-          previewMapRef.current = mapInstance as {
-            setView: (coords: [number, number], zoom: number) => void;
-          };
+        const mapInstance = map as LeafletMapHandle;
+        if (typeof mapInstance.setView === 'function') {
+          previewMapRef.current = mapInstance;
         }
       }
     } catch (error) {
@@ -776,15 +793,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const handleModalMapCreated = (map: unknown) => {
     try {
       if (map && typeof map === 'object') {
-        const mapInstance = map as {
-          setView?: (coords: [number, number], zoom: number) => void;
-          getContainer?: () => HTMLElement | null;
-        };
-        // Verify map instance has required methods
-        if (mapInstance.setView && typeof mapInstance.setView === 'function') {
-          modalMapRef.current = mapInstance as {
-            setView: (coords: [number, number], zoom: number) => void;
-          };
+        const mapInstance = map as LeafletMapHandle;
+        if (typeof mapInstance.setView === 'function') {
+          modalMapRef.current = mapInstance;
         }
       }
     } catch (error) {
@@ -817,7 +828,13 @@ export default function MapPreview(props: MapPreviewProps) {
     if (!lon) return null;
 
     return (
-      <Marker key={key} position={[lat, lon]}>
+      <Marker
+        key={key}
+        position={[lat, lon]}
+        eventHandlers={{
+          mouseover: event => event.target.openPopup(),
+        }}
+      >
         <Popup>
           <LocationPopupContent
             location={locationObj}

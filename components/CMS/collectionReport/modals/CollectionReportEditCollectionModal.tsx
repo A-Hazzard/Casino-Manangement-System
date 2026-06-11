@@ -185,11 +185,20 @@ function DesktopEditWrapper({
             sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
             prevMetersIn: entry.prevIn || 0,
             prevMetersOut: entry.prevOut || 0,
+            movementGross: entry.movement.gross,
           })
         );
+
+        // Only include machines that had SAS data at collection time.
+        // Filtering by current lastActivity is wrong here — these are already-submitted
+        // collections whose machines may have gone offline since the report was collected.
+        const onlineMachinesForCheck = machinesForCheck.filter(
+          m => m.sasStartTime && m.sasEndTime
+        );
+
         variation.checkVariations(
           desktopHook.selectedLocationId ?? '',
-          machinesForCheck
+          onlineMachinesForCheck
         );
       };
       runAutoCheck();
@@ -208,46 +217,60 @@ function DesktopEditWrapper({
   // Handlers
   // ============================================================================
   const handleDesktopSubmit = async () => {
-    if (desktopHook.editingEntryId) {
-      toast.warning('Save or cancel your current machine edit first.');
-      return;
+    try {
+      if (desktopHook.editingEntryId) {
+        toast.warning('Save or cancel your current machine edit first.');
+        return;
+      }
+      if (
+        desktopHook.collectedMachineEntries.length === 0 ||
+        desktopHook.isProcessing
+      )
+        return;
+
+      const locationId =
+        desktopHook.selectedLocationId ||
+        desktopHook.collectedMachineEntries[0]?.location ||
+        '';
+
+      // Query gaminglocations directly to check noSMIBLocation flag.
+      // If true, skip the /api/collection-reports/check-variations request entirely
+      // and show the standard "Are you sure?" update confirmation instead.
+      const isNoSmib = await checkLocationNoSMIB(locationId);
+      if (isNoSmib) {
+        setShowUpdateReportConfirmation(true);
+        return;
+      }
+
+      setShowVariationPopover(true);
+      const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
+        machineId: entry.machineId,
+        machineName:
+          entry.machineCustomName ||
+          entry.machineName ||
+          entry.serialNumber ||
+          entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+      }));
+
+      // Only include machines that had SAS data at collection time.
+      // Filtering by current lastActivity is wrong here — these are already-submitted
+      // collections whose machines may have gone offline since the report was collected.
+      const onlineMachinesForCheck = machinesForCheck.filter(
+        m => m.sasStartTime && m.sasEndTime
+      );
+
+      variation.checkVariations(locationId, onlineMachinesForCheck);
+    } catch (e) {
+      console.error('[handleDesktopSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
+      toast.error('Failed to submit. Please try again.');
     }
-    if (
-      desktopHook.collectedMachineEntries.length === 0 ||
-      desktopHook.isProcessing
-    )
-      return;
-
-    const locationId =
-      desktopHook.selectedLocationId ||
-      desktopHook.collectedMachineEntries[0]?.location ||
-      '';
-
-    // Query gaminglocations directly to check noSMIBLocation flag.
-    // If true, skip the /api/collection-reports/check-variations request entirely
-    // and show the standard "Are you sure?" update confirmation instead.
-    const isNoSmib = await checkLocationNoSMIB(locationId);
-    if (isNoSmib) {
-      setShowUpdateReportConfirmation(true);
-      return;
-    }
-
-    setShowVariationPopover(true);
-    const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
-      machineId: entry.machineId,
-      machineName:
-        entry.machineCustomName ||
-        entry.machineName ||
-        entry.serialNumber ||
-        entry.machineId,
-      metersIn: entry.metersIn || 0,
-      metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-      sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-      prevMetersIn: entry.prevIn || 0,
-      prevMetersOut: entry.prevOut || 0,
-    }));
-    variation.checkVariations(locationId, machinesForCheck);
   };
 
   // ============================================================================
@@ -423,7 +446,7 @@ function MobileEditWrapper({
   });
 
   // Online/offline status for machines in the edit modal
-  const editMobileIds = mobileHook.availableMachines.map(m => String(m._id));
+  const editMobileIds = mobileHook.availableMachines.map(machine => String(machine._id));
   const editMachineStatusMap = useMachineOnlineStatus(editMobileIds);
 
   // ============================================================================
@@ -468,44 +491,58 @@ function MobileEditWrapper({
   // Handlers
   // ============================================================================
   const handleMobileSubmit = async () => {
-    if (mobileHook.modalState.editingEntryId) {
-      toast.warning('Save or cancel your current machine edit first.');
-      return;
+    try {
+      if (mobileHook.modalState.editingEntryId) {
+        toast.warning('Save or cancel your current machine edit first.');
+        return;
+      }
+      if (
+        mobileHook.collectedMachines.length === 0 ||
+        mobileHook.modalState.isProcessing
+      )
+        return;
+
+      const locationId =
+        mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
+
+      // Query gaminglocations directly to check noSMIBLocation flag.
+      // If true, skip the /api/collection-reports/check-variations request entirely
+      // and show the standard "Are you sure?" update confirmation instead.
+      const isNoSmib = await checkLocationNoSMIB(locationId);
+      if (isNoSmib) {
+        setShowUpdateReportConfirmation(true);
+        return;
+      }
+
+      setShowVariationPopover(true);
+      const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+        machineId: entry.machineId,
+        machineName:
+          entry.machineCustomName ||
+          entry.machineName ||
+          entry.serialNumber ||
+          entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+      }));
+
+      // Only include machines that had SAS data at collection time.
+      // Filtering by current lastActivity is wrong here — these are already-submitted
+      // collections whose machines may have gone offline since the report was collected.
+      const onlineMachinesForCheck = machinesForCheck.filter(
+        m => m.sasStartTime && m.sasEndTime
+      );
+
+      variation.checkVariations(locationId, onlineMachinesForCheck);
+    } catch (e) {
+      console.error('[handleMobileSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
+      toast.error('Failed to submit. Please try again.');
     }
-    if (
-      mobileHook.collectedMachines.length === 0 ||
-      mobileHook.modalState.isProcessing
-    )
-      return;
-
-    const locationId =
-      mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
-
-    // Query gaminglocations directly to check noSMIBLocation flag.
-    // If true, skip the /api/collection-reports/check-variations request entirely
-    // and show the standard "Are you sure?" update confirmation instead.
-    const isNoSmib = await checkLocationNoSMIB(locationId);
-    if (isNoSmib) {
-      setShowUpdateReportConfirmation(true);
-      return;
-    }
-
-    setShowVariationPopover(true);
-    const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
-      machineId: entry.machineId,
-      machineName:
-        entry.machineCustomName ||
-        entry.machineName ||
-        entry.serialNumber ||
-        entry.machineId,
-      metersIn: entry.metersIn || 0,
-      metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-      sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-      prevMetersIn: entry.prevIn || 0,
-      prevMetersOut: entry.prevOut || 0,
-    }));
-    variation.checkVariations(locationId, machinesForCheck);
   };
 
   // Auto-check variations when collections are loaded
@@ -539,8 +576,17 @@ function MobileEditWrapper({
           sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
           prevMetersIn: entry.prevIn || 0,
           prevMetersOut: entry.prevOut || 0,
+          movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
         }));
-        variation.checkVariations(locationId, machinesForCheck);
+
+        // Only include machines that had SAS data at collection time.
+        // Filtering by current lastActivity is wrong here — these are already-submitted
+        // collections whose machines may have gone offline since the report was collected.
+        const onlineMachinesForCheck = machinesForCheck.filter(
+          m => m.sasStartTime && m.sasEndTime
+        );
+
+        variation.checkVariations(locationId, onlineMachinesForCheck);
       };
       runAutoCheck();
     }

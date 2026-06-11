@@ -5,8 +5,7 @@
 
 import type { DateFormatOptions, DateInput } from '@/shared/types/dateFormat';
 
-// Re-export shared types for convenience
-// No re-exports needed as they are unused outside this file
+
 
 /**
  * Format a date using Intl.DateTimeFormat
@@ -275,15 +274,6 @@ export function setTimeToGamingDayStart(
 
   return createDateInTrinidadTime(year, month, day, gameDayOffset, 0, 0);
 }
-
-/**
- * Set the time on an existing Date object to gaming day end time.
- * Gaming day end is (gameDayOffset - 1):59:59 (one minute before start).
- *
- * @param date - The date to modify
- * @param gameDayOffset - The hour when gaming day starts (e.g., 8 for 8 AM)
- * @returns New Date with gaming day end time (Trinidad timezone)
- */
 
 /**
  * Create the end of gaming day in Trinidad timezone.
