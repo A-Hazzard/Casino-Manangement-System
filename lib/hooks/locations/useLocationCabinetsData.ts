@@ -112,6 +112,7 @@ export function useLocationCabinetsData({
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
   const [includeJackpot, setIncludeJackpot] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
+  const [totalsRefreshTrigger, setTotalsRefreshTrigger] = useState(0);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -554,6 +555,7 @@ export function useLocationCabinetsData({
     dateFilterInitialized,
     filtersInitialized,
     makeCabinetsRequest,
+    totalsRefreshTrigger,
   ]);
 
   // ============================================================================
@@ -911,6 +913,7 @@ export function useLocationCabinetsData({
     setAllCabinets([]);
     setAccumulatedCabinets([]);
     setLoadedBatches(new Set());
+    setTotalsRefreshTrigger(prev => prev + 1);
     setRefreshing(false);
   }, []);
 

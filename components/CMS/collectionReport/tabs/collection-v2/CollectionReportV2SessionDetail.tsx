@@ -55,6 +55,8 @@ type SessionMachine = {
   sasMetersOut: number | null;
   manualMetersIn?: number;
   manualMetersOut?: number;
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
   prevsasMetersIn?: number;
   prevsasMetersOut?: number;
   prevManualMetersIn?: number;
@@ -479,6 +481,27 @@ export default function CollectionReportV2SessionDetail({
         setMachineLastCollectionTime(null);
       });
   }, [currentIndex, currentMachine?.machineId, sessionId]);
+
+  // Warn when entered meters are less than previous values (possible meter rollover)
+  useEffect(() => {
+    const enteredIn = captureState.manualMetersIn !== '' ? Number(captureState.manualMetersIn) : null;
+    const enteredOut = captureState.manualMetersOut !== '' ? Number(captureState.manualMetersOut) : null;
+    const prevIn = currentMachine?.prevSasMetersIn ?? currentMachine?.prevsasMetersIn;
+    const prevOut = currentMachine?.prevSasMetersOut ?? currentMachine?.prevsasMetersOut;
+
+    if (enteredIn !== null && prevIn !== undefined && prevIn > 0 && enteredIn < prevIn) {
+      toast.warning(
+        `Meters In (${enteredIn.toLocaleString()}) is less than the previous value (${prevIn.toLocaleString()}). Check for meter rollover.`,
+        { id: 'rollover-in', duration: 5000 }
+      );
+    }
+    if (enteredOut !== null && prevOut !== undefined && prevOut > 0 && enteredOut < prevOut) {
+      toast.warning(
+        `Meters Out (${enteredOut.toLocaleString()}) is less than the previous value (${prevOut.toLocaleString()}). Check for meter rollover.`,
+        { id: 'rollover-out', duration: 5000 }
+      );
+    }
+  }, [captureState.manualMetersIn, captureState.manualMetersOut, currentMachine?.prevSasMetersIn, currentMachine?.prevSasMetersOut, currentMachine?.prevsasMetersIn, currentMachine?.prevsasMetersOut]);
 
   const targetTime = useCustomPeriod
     ? customSasEnd
@@ -1268,7 +1291,8 @@ export default function CollectionReportV2SessionDetail({
             <button
               type="button"
               onClick={() => handleBackToReports()}
-              className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+              disabled={saving || submitting}
+              className="flex items-center text-sm text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed"
             >
               <svg
                 className="mr-1 h-4 w-4"
@@ -1756,6 +1780,34 @@ export default function CollectionReportV2SessionDetail({
             </div>
           )}
 
+          {/* Previous Values — shows the baseline from the last collection */}
+          {(currentMachine?.prevSasMetersIn != null ||
+            currentMachine?.prevManualMetersIn != null) && (
+            <div className="mb-6">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                Previous Values
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Prev Meters In</div>
+                  <div className="text-lg font-semibold text-gray-700 sm:text-xl">
+                    {isCurrentMachineNoSMIB
+                      ? (currentMachine.prevManualMetersIn ?? currentMachine.prevSasMetersIn)?.toLocaleString() ?? 'N/A'
+                      : (currentMachine.prevSasMetersIn ?? currentMachine.prevManualMetersIn)?.toLocaleString() ?? 'N/A'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Prev Meters Out</div>
+                  <div className="text-lg font-semibold text-gray-700 sm:text-xl">
+                    {isCurrentMachineNoSMIB
+                      ? (currentMachine.prevManualMetersOut ?? currentMachine.prevSasMetersOut)?.toLocaleString() ?? 'N/A'
+                      : (currentMachine.prevSasMetersOut ?? currentMachine.prevManualMetersOut)?.toLocaleString() ?? 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Supplemental Meters Warning — shown when the machine is flagged as supplemental
                (backend detected offline SMIB ≥ 3 days on save/load). */}
           {!isCurrentMachineNoSMIB &&
@@ -1782,6 +1834,22 @@ export default function CollectionReportV2SessionDetail({
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+          {/* First Collection Indicator */}
+          {!isCurrentMachineNoSMIB &&
+            !currentMachine?.lastCollectionTime &&
+            (currentMachine?.prevSasMetersIn == null ||
+              currentMachine?.prevSasMetersIn === 0) && (
+              <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-800">
+                  First Collection
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  No previous meters recorded for this machine. Starting from
+                  zero.
+                </p>
               </div>
             )}
 
@@ -2095,7 +2163,8 @@ export default function CollectionReportV2SessionDetail({
                 <button
                   type="button"
                   onClick={() => handleBackToReports()}
-                  className="text-center text-sm text-gray-400 hover:text-gray-600 sm:text-left"
+                  disabled={saving || submitting}
+                  className="text-center text-sm text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed sm:text-left"
                 >
                   Cancel
                 </button>
@@ -2291,7 +2360,8 @@ function ReviewView({
               ? onBackToReports()
               : router.push('/collection-report?section=collection-v2')
           }
-          className="mb-4 flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className={`mb-4 flex items-center text-sm ${submitting ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+          disabled={submitting}
         >
           <svg
             className="mr-1 h-4 w-4"

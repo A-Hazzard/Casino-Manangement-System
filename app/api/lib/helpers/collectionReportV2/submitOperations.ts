@@ -446,10 +446,11 @@ export async function persistMachineMetersOnSubmit(
         ).catch(() => undefined);
       }
 
-      const targetMetersIn = !machineHasRelay
+      const useManualAsBaseline = !machineHasRelay || submittedMachine.isSupplemental === true;
+      const targetMetersIn = useManualAsBaseline
         ? (submittedMachine.manualMetersIn ?? submittedMachine.sasMetersIn)
         : submittedMachine.sasMetersIn;
-      const targetMetersOut = !machineHasRelay
+      const targetMetersOut = useManualAsBaseline
         ? (submittedMachine.manualMetersOut ?? submittedMachine.sasMetersOut)
         : submittedMachine.sasMetersOut;
 
@@ -517,6 +518,13 @@ export async function persistMachineMetersOnSubmit(
           machineUpdateError
         );
       });
+
+      if (submittedMachine.isSupplemental === true && submittedMachine.manualMetersIn !== undefined) {
+        await ReportedMachine.findOneAndUpdate(
+          { machineId: submittedMachine.machineId, sessionId },
+          { $set: { sasMetersIn: targetMetersIn ?? null, sasMetersOut: targetMetersOut ?? null } }
+        ).catch(() => undefined);
+      }
 
       if (!machineHasRelay) {
         await ReportedMachine.findOneAndUpdate(

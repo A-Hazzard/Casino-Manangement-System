@@ -41,6 +41,7 @@ import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import {
+  ArrowLeft,
   Calculator,
   ClipboardList,
   Info,
@@ -164,6 +165,8 @@ export default function CollectionReportMobileNewCollectionModal({
 
   // Defensive: clear any stale shared collection-modal store state when the create
   // modal opens (e.g. machines/financials left over from a prior edit modal session).
+  // The cleanup also resets on unmount/close so the next open starts from a clean
+  // store on its first render — preventing a stale machine grid / skeleton flash.
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
   );
@@ -171,6 +174,9 @@ export default function CollectionReportMobileNewCollectionModal({
     if (show) {
       resetCollectionModalStore();
     }
+    return () => {
+      resetCollectionModalStore();
+    };
   }, [show, resetCollectionModalStore]);
 
   // Auto-fill notes for offline SMIB machines when selected
@@ -191,6 +197,15 @@ export default function CollectionReportMobileNewCollectionModal({
       if (collectedMachines.length === 0 || modalState.isProcessing) return;
 
       const locationIdToUse = lockedLocationId || selectedLocation || '';
+
+      // Guard: never run the variations check without a resolved location —
+      // it produces a confusing "Invalid location" error from the API.
+      if (!locationIdToUse) {
+        toast.error(
+          'No location is selected for this collection. Please reopen the report and try again.'
+        );
+        return;
+      }
 
       // Query gaminglocations directly to check noSMIBLocation flag.
       // If true, skip the /api/collection-reports/check-variations request entirely.
@@ -256,6 +271,9 @@ export default function CollectionReportMobileNewCollectionModal({
       <Dialog
         open={show}
         onOpenChange={isOpen => {
+          // Prevent closing during processing
+          if (!isOpen && modalState.isProcessing) return;
+
           // Prevent closing if confirmation dialogs are open
           if (
             !isOpen &&
@@ -300,15 +318,17 @@ export default function CollectionReportMobileNewCollectionModal({
                 <h2 className="text-xl font-bold tracking-tight text-gray-900">
                   New Collection Report
                 </h2>
-                <DialogClose asChild>
-                  <button
-                    onClick={onClose}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    aria-label="Close"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </DialogClose>
+                {!modalState.isProcessing && (
+                  <DialogClose asChild>
+                    <button
+                      onClick={onClose}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      aria-label="Close"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </DialogClose>
+                )}
               </div>
             </div>
           )}
@@ -448,6 +468,23 @@ export default function CollectionReportMobileNewCollectionModal({
                       </button>
                     )}
 
+                    {/* Return to Form Button - only show when a machine is selected */}
+                    {selectedMachine && (
+                      <button
+                        onClick={() => {
+                          pushNavigation('form');
+                          setModalState(prev => ({
+                            ...prev,
+                            isFormVisible: true,
+                          }));
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-3 font-medium text-white shadow-md transition-all hover:bg-amber-700 active:scale-95"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                        Return to Form
+                      </button>
+                    )}
+
                     {/* View Collected Machines Button - only show when >=1 machine */}
                     {collectedMachines.length >= 1 && (
                       <button
@@ -567,18 +604,21 @@ export default function CollectionReportMobileNewCollectionModal({
                                 </p>
 
                                 {/* Previous Meters Display */}
-                                <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                  <p className="flex flex-col sm:flex-row sm:gap-2">
-                                    <span>
-                                      Prev In:{' '}
-                                      {machine.collectionMeters?.metersIn || 0}
-                                    </span>
-                                    <span className="hidden sm:inline">|</span>
-                                    <span>
-                                      Prev Out:{' '}
-                                      {machine.collectionMeters?.metersOut || 0}
-                                    </span>
-                                  </p>
+                                <div className="mt-1.5 text-xs text-gray-600">
+                                  {machine.collectionMeters != null &&
+                                    (machine.collectionMeters.metersIn != null || machine.collectionMeters.metersOut != null) ? (
+                                    <p>
+                                      Prev In: {machine.collectionMeters.metersIn?.toLocaleString() ?? 'N/A'}
+                                      {' | '}
+                                      Prev Out: {machine.collectionMeters.metersOut?.toLocaleString() ?? 'N/A'}
+                                    </p>
+                                  ) : machine.sasMeters?.drop != null || machine.sasMeters?.totalCancelledCredits != null ? (
+                                    <p className="text-gray-400">
+                                      Prev In: {machine.sasMeters.drop?.toLocaleString() ?? 'N/A'}
+                                      {' | '}
+                                      Prev Out: {machine.sasMeters.totalCancelledCredits?.toLocaleString() ?? 'N/A'}
+                                    </p>
+                                  ) : null}
                                 </div>
 
                                 {/* Status Indicators */}
@@ -790,20 +830,20 @@ export default function CollectionReportMobileNewCollectionModal({
 
                 {/* Home Screen Submit Button - Allow submission from machine list */}
                 {collectedMachines.length > 0 && (
-                  <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm">
+                  <div className="sticky bottom-0 mt-4 border-t bg-white p-3">
                     <button
                       onClick={handleStartSubmit}
                       disabled={
                         !isCreateReportsEnabled || modalState.isProcessing
                       }
-                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-bold shadow-md transition-colors active:scale-95 ${
                         isCreateReportsEnabled && !modalState.isProcessing
-                          ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
-                          : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'cursor-not-allowed bg-gray-300 text-gray-500'
                       }`}
                     >
                       <SendHorizontal className="h-3.5 w-3.5" />
-                      SUBMIT FINAL REPORT ({collectedMachines.length} machines)
+                      Create Collection Report ({collectedMachines.length} machines)
                     </button>
                   </div>
                 )}
@@ -823,7 +863,6 @@ export default function CollectionReportMobileNewCollectionModal({
                 setModalState(prev => ({ ...prev, searchTerm: val }))
               }
               onMachineSelect={() => {
-                // handle select
                 pushNavigation('form');
               }}
               onBack={popNavigation}
@@ -837,6 +876,7 @@ export default function CollectionReportMobileNewCollectionModal({
               onBack={() => {
                 popNavigation();
               }}
+              onClose={onClose}
               onViewCollectedList={handleViewCollectedMachines}
               selectedMachineData={selectedMachineData ?? null}
               editingEntryId={modalState.editingEntryId}
@@ -914,6 +954,7 @@ export default function CollectionReportMobileNewCollectionModal({
               onBack={() => {
                 popNavigation();
               }}
+              onClose={onClose}
               collectedMachines={collectedMachines}
               searchTerm={modalState.collectedMachinesSearchTerm}
               onSearchChange={term => {

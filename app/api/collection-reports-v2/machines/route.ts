@@ -34,6 +34,7 @@ import {
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { generateMongoId } from '@/lib/utils/id';
 import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
 import { NextRequest, NextResponse } from 'next/server';
@@ -115,7 +116,9 @@ export async function POST(req: NextRequest) {
       parsed.data.sasEndTime,
       parsed.data.ramClear,
       parsed.data.ramClearIn,
-      parsed.data.ramClearOut
+      parsed.data.ramClearOut,
+      body.softMetersIn !== undefined ? Number(body.softMetersIn) : undefined,
+      body.softMetersOut !== undefined ? Number(body.softMetersOut) : undefined
     );
 
     // Enforce V1 invariant: ramClear peak >= prev
@@ -147,6 +150,29 @@ export async function POST(req: NextRequest) {
     );
 
     const doc = await ReportedMachine.create(docData);
+
+    const machineName = String(body.machineCustomName || body.machineName || parsed.data.machineId);
+    logActivity({
+      action: 'CREATE',
+      details: `Captured machine ${machineName} in V2 session ${parsed.data.sessionId}`,
+      userId: String(userPayload._id),
+      username: String(userPayload.emailAddress ?? userPayload._id),
+      metadata: {
+        userId: String(userPayload._id),
+        userEmail: String(userPayload.emailAddress ?? ''),
+        resource: 'collection-report-v2-machine',
+        resourceId: String(doc._id),
+        resourceName: machineName,
+        changes: [
+          { field: 'sessionId', oldValue: null, newValue: parsed.data.sessionId },
+          { field: 'machineId', oldValue: null, newValue: parsed.data.machineId },
+          { field: 'sasMetersIn', oldValue: null, newValue: docData.sasMetersIn },
+          { field: 'sasMetersOut', oldValue: null, newValue: docData.sasMetersOut },
+        ],
+      },
+    }).catch(logError => {
+      console.error('[POST machines] Failed to log activity:', logError instanceof Error ? logError.message : 'Unknown error');
+    });
 
     const duration = Date.now() - startTime;
     logRouteCreate(functionName, 'POST', '/api/collection-reports-v2/machines', 1, user, duration);
@@ -298,8 +324,32 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 11: Return success response
+    // STEP 11: Log activity and return response
     // ============================================================================
+    const patchMachineName = String(
+      result.machineCustomName || result.machineName || reportedMachineId
+    );
+    logActivity({
+      action: 'UPDATE',
+      details: `Edited machine ${patchMachineName} in V2 session ${result.sessionId}`,
+      userId: String(userPayload._id),
+      username: String(userPayload.emailAddress ?? userPayload._id),
+      metadata: {
+        userId: String(userPayload._id),
+        userEmail: String(userPayload.emailAddress ?? ''),
+        resource: 'collection-report-v2-machine',
+        resourceId: reportedMachineId,
+        resourceName: patchMachineName,
+        changes: Object.entries(updateData).map(([field, newValue]) => ({
+          field,
+          oldValue: null,
+          newValue,
+        })),
+      },
+    }).catch(logError => {
+      console.error('[PATCH machines] Failed to log activity:', logError instanceof Error ? logError.message : 'Unknown error');
+    });
+
     const duration = Date.now() - startTime;
     logRouteUpdate(
       functionName,

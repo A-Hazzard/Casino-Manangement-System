@@ -254,11 +254,17 @@ export function useNewCollectionModal({
   // ==========================================================================
 
   /**
-   * Find location ID for a given machine using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
   const getLocationIdFromCollection = useCallback(
-    (locationName: string) => {
-      const found = locations.find(location => location.name === locationName);
+    (locationIdentifier: string) => {
+      const found = locations.find(
+        location =>
+          String(location._id) === locationIdentifier ||
+          location.name === locationIdentifier
+      );
       return found ? String(found._id) : null;
     },
     [locations]
@@ -1080,7 +1086,7 @@ export function useNewCollectionModal({
 
       const entryData: Partial<CollectionDocument> = {
         machineId: selectedMachineId,
-        location: selectedLocationName,
+        location: selectedLocationId || '',
         collector: userId,
         metersIn: Number(currentMetersIn),
         metersOut: Number(currentMetersOut),

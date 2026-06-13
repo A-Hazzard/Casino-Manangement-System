@@ -24,6 +24,7 @@ type CabinetsDetailsAccountingSectionProps = {
   cabinet: Cabinet;
   activeTab: string;
   loading?: boolean;
+  refreshTrigger?: number;
   onTabChange: (tab: string) => void;
   onRefresh: () => void;
 };
@@ -32,6 +33,7 @@ export default function CabinetsDetailsAccountingSection({
   cabinet,
   activeTab,
   loading = false,
+  refreshTrigger,
   onTabChange,
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
@@ -79,6 +81,8 @@ export default function CabinetsDetailsAccountingSection({
           activeMetricsTabContent={activeTab}
           setActiveMetricsTabContent={onTabChange}
           isDeveloper={isDeveloper}
+          refreshTrigger={refreshTrigger}
+          onRefresh={onRefresh}
         />
       </div>
     </div>

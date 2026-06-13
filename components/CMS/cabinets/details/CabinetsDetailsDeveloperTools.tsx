@@ -11,6 +11,7 @@ type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
 type CabinetsDetailsDeveloperToolsProps = {
   cabinetId: string;
+  refreshTrigger?: number;
 };
 
 const DATE_COLS = ['readAt', 'createdAt', 'updatedAt', 'deletedAt'];
@@ -116,6 +117,7 @@ const TIME_PERIODS: TimePeriod[] = ['Today', 'Yesterday', '7d', '30d', 'All Time
 
 export default function CabinetsDetailsDeveloperTools({
   cabinetId,
+  refreshTrigger,
 }: CabinetsDetailsDeveloperToolsProps) {
   // ============================================================================
   // State
@@ -176,12 +178,12 @@ export default function CabinetsDetailsDeveloperTools({
     [cabinetId]
   );
 
-  // Auto-fetch on mount and whenever non-custom period changes
+  // Auto-fetch on mount, whenever non-custom period changes, or on external refresh
   useEffect(() => {
     if (timePeriod !== 'Custom') {
       fetchMeters(timePeriod, '', '');
     }
-  }, [timePeriod, fetchMeters]);
+  }, [timePeriod, fetchMeters, refreshTrigger]);
 
   // ============================================================================
   // Handlers

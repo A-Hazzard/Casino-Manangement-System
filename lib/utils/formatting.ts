@@ -23,8 +23,9 @@ export function formatCurrency(value: number): string {
   }
 
   // Check if the value has meaningful decimal places
-  const hasDecimals = value % 1 !== 0;
-  const decimalPart = value % 1;
+  const absValue = Math.abs(value);
+  const hasDecimals = absValue % 1 !== 0;
+  const decimalPart = absValue % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
 
   return value.toLocaleString('en-US', {

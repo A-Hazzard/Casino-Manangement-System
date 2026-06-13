@@ -1227,7 +1227,7 @@ export function useEditCollectionModal({
             ? Number(currentRamClearMetersOut)
             : undefined,
           timestamp: currentCollectionTime,
-          location: selectedLocationName,
+          location: selectedLocationId,
           locationReportId: reportId,
           collector: userId || '',
           isCompleted: false,
@@ -1270,7 +1270,7 @@ export function useEditCollectionModal({
               : undefined,
             timestamp: currentCollectionTime,
             collectionTime: currentCollectionTime, // KEEP IN SYNC
-            location: selectedLocationName,
+            location: selectedLocationId,
             locationReportId: reportId,
             collector: userId || '',
             // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime

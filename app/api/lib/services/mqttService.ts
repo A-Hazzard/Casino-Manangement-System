@@ -1108,6 +1108,49 @@ class MQTTService {
   }
 
   /**
+   * Send Update Meters command to SMIB (typ: exp, pyd: 0A)
+   * @param relayId - The SMIB relay ID
+   */
+  async sendUpdateMeters(relayId: string): Promise<void> {
+    if (!relayId) {
+      console.error('[sendUpdateMeters] relayId is required');
+      return;
+    }
+    if (!this.client || !this.isConnected) {
+      await this.connect();
+    }
+
+    const topic = this.buildPublishTopic(relayId);
+    const payload = JSON.stringify({
+      typ: 'exp',
+      rly: relayId,
+      mac: '',
+      tkn: '',
+      pyd: '0A',
+    });
+
+    console.log(`📡 [MQTT] Sending Update Meters command to ${relayId}`);
+    console.log(`📡 [MQTT] Payload: ${payload}`);
+
+    return new Promise<void>((resolve, reject) => {
+      if (!this.client) {
+        reject(new Error('MQTT client not available'));
+        return;
+      }
+
+      this.client.publish(topic, payload, error => {
+        if (error) {
+          console.error(`❌ Failed to send Update Meters command:`, error);
+          reject(error);
+        } else {
+          console.log(`✅ Update Meters command sent to ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
    * Send Clear NVS Door command to SMIB
    * @param relayId - The SMIB relay ID
    */

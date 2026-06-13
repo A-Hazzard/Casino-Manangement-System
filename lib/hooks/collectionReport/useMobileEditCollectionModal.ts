@@ -529,12 +529,16 @@ export function useMobileEditCollectionModal({
   }, [modalState.collectedMachines]);
 
   /**
-   * Find location ID for a given machine using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
   const getLocationIdFromMachine = useCallback(
-    (locationName: string) => {
+    (locationIdentifier: string) => {
       const matchingLoc = locations.find(
-        location => location.name === locationName
+        location =>
+          String(location._id) === locationIdentifier ||
+          location.name === locationIdentifier
       );
       return matchingLoc ? String(matchingLoc._id) : null;
     },
@@ -670,7 +674,7 @@ export function useMobileEditCollectionModal({
           isEditing && existingEntry
             ? existingEntry.game || ''
             : modalState.selectedMachineData.game || '',
-        location: selectedLocationName,
+        location: selectedLocationId || '',
         collector: user?._id || '',
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),

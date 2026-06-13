@@ -30,8 +30,9 @@ import { PipelineStage } from 'mongoose';
  */
 const formatSmartDecimal = (value: number): string => {
   if (isNaN(value)) return '0';
-  const hasDecimals = value % 1 !== 0;
-  const decimalPart = value % 1;
+  const absValue = Math.abs(value);
+  const hasDecimals = absValue % 1 !== 0;
+  const decimalPart = absValue % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };

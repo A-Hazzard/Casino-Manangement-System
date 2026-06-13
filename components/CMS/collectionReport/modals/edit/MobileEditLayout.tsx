@@ -25,6 +25,7 @@ type MobileEditLayoutProps = {
   lockedLocationId: string | undefined;
   selectedLocationId: string | undefined;
   selectedLocationName: string;
+  onClose: () => void;
   pushNavigation: (view: string) => void;
   popNavigation: (toView?: string) => void;
   handleViewCollectedMachines: () => void;
@@ -68,6 +69,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     collectedMachines,
     availableMachines,
     selectedLocationName,
+    onClose,
     pushNavigation,
     popNavigation,
     handleViewCollectedMachines,
@@ -218,11 +220,16 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
                             serialNumber: getSerialNumberIdentifier(machine),
                           })}
                         </p>
-                        {machine.relayId && (
-                          <MachineOnlineStatusDot
-                            isOnline={machineStatusMap[String(machine._id)]}
-                          />
-                        )}
+                        <span className="flex items-center gap-2">
+                          {machine.relayId && (
+                            <MachineOnlineStatusDot
+                              isOnline={machineStatusMap[String(machine._id)]}
+                            />
+                          )}
+                          <span className="text-xs text-gray-500">
+                            Prev In: {machine.collectionMeters?.metersIn ?? 0} | Prev Out: {machine.collectionMeters?.metersOut ?? 0}
+                          </span>
+                        </span>
                         <p className="text-[11px] font-medium uppercase tracking-tight text-gray-400">
                           {machine.game || 'Machine'}
                         </p>
@@ -257,6 +264,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               isFormVisible: false,
             }));
           }}
+          onClose={onClose}
           onViewCollectedList={handleViewCollectedMachines}
           selectedMachineData={modalState.selectedMachineData}
           editingEntryId={modalState.editingEntryId}
@@ -324,6 +332,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               isCollectedListVisible: false,
             }));
           }}
+          onClose={onClose}
           collectedMachines={collectedMachines}
           searchTerm={modalState.collectedMachinesSearchTerm}
           onSearchChange={term =>

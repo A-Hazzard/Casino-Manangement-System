@@ -7,6 +7,7 @@ const eslintConfig = [
     ignores: [
       '.next/**',
       'scripts/**',
+      'scratch/**',
       'backup/**',
       'mongo-migration/**',
       'node_modules/**',

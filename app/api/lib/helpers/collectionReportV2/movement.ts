@@ -98,7 +98,9 @@ export async function computeMovement(
   sasEndTime?: Date,
   ramClear?: boolean,
   ramClearMetersIn?: number,
-  ramClearMetersOut?: number
+  ramClearMetersOut?: number,
+  softMetersIn?: number | null,
+  softMetersOut?: number | null
 ): Promise<MovementResult> {
   // === STEP 1: Check Machine.collectionMetersHistory for the current session ===
   // If a history entry for this session already exists, its prevMetersIn/Out
@@ -205,9 +207,7 @@ export async function computeMovement(
     lastActivity?: Date | string;
   }>();
   const hasRelay = !!machine?.relayId;
-  // A relay machine is considered offline if lastActivity is >3 days ago.
-  // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
-  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
   const isOffline =
     hasRelay &&
     (!machine?.lastActivity ||
@@ -315,10 +315,12 @@ export async function computeMovement(
     }
   }
 
+  const softIn = softMetersIn ?? 0;
+  const softOut = softMetersOut ?? 0;
   const movement: ReportedMachineMovement = {
     manualMetersIn: manualMovIn,
     manualMetersOut: manualMovOut,
-    machineGross: manualMovIn - manualMovOut,
+    machineGross: manualMovIn - manualMovOut + softIn - softOut,
   };
 
   return {

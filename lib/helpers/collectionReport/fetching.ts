@@ -21,8 +21,7 @@ export async function fetchCollectionReportsByLicencee(
   search?: string,
   searchType?: string,
   signal?: AbortSignal,
-  locationIds?: string[],
-  includeArchived?: boolean
+  locationIds?: string[]
 ) {
   const params = new URLSearchParams();
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
@@ -37,7 +36,6 @@ export async function fetchCollectionReportsByLicencee(
     params.append('locationIds', locationIds.join(','));
   if (search) params.append('search', search);
   if (searchType) params.append('searchType', searchType);
-  if (includeArchived) params.append('includeArchived', 'true');
 
   const response = await axios.get(
     `/api/collection-reports?${params.toString()}`,

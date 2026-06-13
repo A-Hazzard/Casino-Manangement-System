@@ -219,11 +219,15 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   /**
-   * Find which location a machine belongs to using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
-  const getLocationIdFromMachine = useCallback((locationName: string) => {
+  const getLocationIdFromMachine = useCallback((locationIdentifier: string) => {
     const matchingLoc = locationsRef.current.find(
-      location => location.name === locationName
+      location =>
+        String(location._id) === locationIdentifier ||
+        location.name === locationIdentifier
     );
     return matchingLoc ? String(matchingLoc._id) : null;
   }, []);
@@ -406,9 +410,14 @@ export function useMobileCollectionModal({
     ]
   );
 
-  // Fetch machines when location changes
+  // Fetch machines when location changes.
+  // The `cancelled` guard prevents a superseded request (e.g. the brief
+  // reopen reset-race where the location is cleared then re-locked) from
+  // writing stale machines or leaving the loading skeleton stuck on.
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocation;
+    let cancelled = false;
+
     if (locationIdToUse) {
       setModalState(prev => ({ ...prev, isLoadingMachines: true }));
       const fetchMachinesForLocation = async () => {
@@ -416,16 +425,20 @@ export function useMobileCollectionModal({
           const response = await axios.get(
             `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
           );
+          if (cancelled) return;
           if (response.data?.success && response.data?.data) {
             setStoreAvailableMachines(response.data.data);
           } else {
             setStoreAvailableMachines([]);
           }
         } catch (error) {
+          if (cancelled) return;
           console.error('Error fetching machines for location:', error);
           setStoreAvailableMachines([]);
         } finally {
-          setModalState(prev => ({ ...prev, isLoadingMachines: false }));
+          if (!cancelled) {
+            setModalState(prev => ({ ...prev, isLoadingMachines: false }));
+          }
         }
       };
       fetchMachinesForLocation();
@@ -433,6 +446,10 @@ export function useMobileCollectionModal({
       setStoreAvailableMachines([]);
       setModalState(prev => ({ ...prev, isLoadingMachines: false }));
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLocation, lockedLocationId, setStoreAvailableMachines]);
 
   // Auto-populate prevIn/prevOut when a machine is selected
@@ -738,7 +755,7 @@ export function useMobileCollectionModal({
       // Prepare collection payload
       const collectionPayload = {
         machineId: String(selectedMachineData._id),
-        location: selectedLocationName,
+        location: selectedLocation || '',
         collector: user?._id || '',
         notes: modalState.formData.notes,
         ramClear: modalState.formData.ramClear,

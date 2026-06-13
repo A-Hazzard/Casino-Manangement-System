@@ -103,11 +103,16 @@ export default function CollectionReportMobileMachineList({
                       </span>
                     )}
                   </span>
-                  {machine.relayId && (
-                    <MachineOnlineStatusDot
-                      isOnline={machineStatusMap[String(machine._id)]}
-                    />
-                  )}
+                  <span className="flex items-center gap-2">
+                    {machine.relayId && (
+                      <MachineOnlineStatusDot
+                        isOnline={machineStatusMap[String(machine._id)]}
+                      />
+                    )}
+                    <span className="text-xs text-gray-500">
+                      Prev In: {machine.collectionMeters?.metersIn ?? 0} | Prev Out: {machine.collectionMeters?.metersOut ?? 0}
+                    </span>
+                  </span>
                 </span>
               </button>
             ))

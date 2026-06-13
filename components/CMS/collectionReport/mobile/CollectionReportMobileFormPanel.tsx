@@ -3,11 +3,12 @@
 import { ReactElement } from 'react';
 import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 type MobileFormPanelProps = {
   isVisible: boolean;
   onBack: () => void;
+  onClose: () => void;
   onViewCollectedList: () => void;
 
   // Machine data
@@ -86,6 +87,7 @@ type MobileFormPanelProps = {
  *
  * @param isVisible - Whether the panel is currently transitioned into view
  * @param onBack - Callback to return to the previous screen (typically location/machine selection)
+ * @param onClose - Callback to close the modal entirely
  * @param onViewCollectedList - Navigation callback to view the list of already collected machines
  * @param selectedMachineData - Meta-data for the machine currently being loaded into the form
  * @param editingEntryId - ID of the specific collection document being edited (null if new entry)
@@ -104,6 +106,7 @@ type MobileFormPanelProps = {
 export default function CollectionReportMobileFormPanel({
   isVisible,
   onBack,
+  onClose,
   onViewCollectedList,
   selectedMachineData,
   editingEntryId,
@@ -149,14 +152,23 @@ export default function CollectionReportMobileFormPanel({
                     : 'Machine'}
               </h3>
             </div>
-            {!isManager && !editingEntryId && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={onViewCollectedList}
-                className="mr-2 flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-all hover:bg-blue-100 active:scale-95"
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                aria-label="Close"
               >
-                <span>List ({collectedMachinesCount})</span>
+                <X className="h-5 w-5" />
               </button>
-            )}
+              {!isManager && !editingEntryId && (
+                <button
+                  onClick={onViewCollectedList}
+                  className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 transition-all hover:bg-blue-100 active:scale-95"
+                >
+                  <span>List ({collectedMachinesCount})</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Scrollable Form Content */}

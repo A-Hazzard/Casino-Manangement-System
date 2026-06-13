@@ -21,8 +21,9 @@ import { CabinetsDetailsSMIBOTAUpdate as OTAUpdateSection } from '@/components/C
 import { CabinetsDetailsSMIBRestart as RestartSection } from '@/components/CMS/cabinets/smibManagement/CabinetsDetailsSMIBRestart';
 import { Button } from '@/components/shared/ui/button';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useSmibUpdateMeters } from '@/lib/hooks/data/useSmibUpdateMeters';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDownIcon, Copy } from 'lucide-react';
+import { ChevronDownIcon, Copy, RefreshCw } from 'lucide-react';
 
 type SSEMessage = {
   type:
@@ -99,6 +100,7 @@ type CabinetsDetailsSMIBManagementSectionProps = {
   };
   onToggleExpand: () => void;
   onFetchConfig: (relayId: string) => void;
+  onRefresh?: () => void;
   onSaveConfig: (command?: string) => Promise<void>;
   onUpdateFormData: (key: string, value: string) => void;
   onSetEditingSection: (section: string | null) => void;
@@ -139,12 +141,18 @@ export default function CabinetsDetailsSMIBManagementSection({
   editingSection,
   onToggleExpand,
   onFetchConfig,
+  onRefresh,
   onSetEditingSection,
   onCopyToClipboard,
   onResetFormData,
   onSaveAll,
   smibHook,
 }: CabinetsDetailsSMIBManagementSectionProps) {
+  // ============================================================================
+  // Hooks
+  // ============================================================================
+  const { isUpdatingMeters, updateMeters } = useSmibUpdateMeters();
+
   // ============================================================================
   // Guard & Render
   // ============================================================================
@@ -222,8 +230,31 @@ export default function CabinetsDetailsSMIBManagementSection({
           )}
         </div>
 
-        {/* Right Side: Get Config Button + Toggle */}
+        {/* Right Side: Update Meters Button + Get Config Button + Toggle */}
         <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+          {canAccessSmibConfig && cabinet?.relayId && (
+            <Button
+              onClick={async () => {
+                const success = await updateMeters(cabinet.relayId!);
+                if (success) onRefresh?.();
+              }}
+              disabled={isUpdatingMeters}
+              className="w-full rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+            >
+              {isUpdatingMeters ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Update Meters</span>
+                  <span className="sm:hidden">Update Meters</span>
+                </>
+              )}
+            </Button>
+          )}
           {canAccessSmibConfig && (
             <Button
               onClick={() => cabinet && onFetchConfig(cabinet.relayId!)}

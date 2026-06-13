@@ -49,6 +49,7 @@ export default function CabinetsDetailsPageContent() {
     isOnline,
     activeTab,
     refreshing,
+    refreshTrigger,
     editingSection,
     chartData,
     loadingChart,
@@ -132,6 +133,7 @@ export default function CabinetsDetailsPageContent() {
           <CabinetsDetailsSMIBManagementSection
             cabinet={cabinet}
             canAccessSmibConfig={canAccessSmibConfig}
+            onRefresh={handleRefresh}
             smibConfigExpanded={smibHook.smibConfigExpanded}
             mqttConfigData={smibHook.mqttConfigData}
             isConnectedToMqtt={smibHook.isConnectedToMqtt}
@@ -247,6 +249,7 @@ export default function CabinetsDetailsPageContent() {
             cabinet={cabinet}
             activeTab={activeTab}
             loading={refreshing}
+            refreshTrigger={refreshTrigger}
             onTabChange={handleTabChange}
             onRefresh={handleRefresh}
           />

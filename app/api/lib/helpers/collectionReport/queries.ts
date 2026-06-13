@@ -544,18 +544,19 @@ export async function getMonthlyCollectionReportSummary(
 
   const result = await CollectionReport.aggregate(pipeline);
   const agg = result[0] || {};
-  const formatSmartDecimal = (value: number | undefined): string => {
-    if (value === undefined) return '-';
-    const hasDecimals = value % 1 !== 0;
-    const decimalPart = value % 1;
-    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-    return value.toFixed(hasSignificantDecimals ? 2 : 0);
-  };
+    const formatSmartDecimal = (value: number | undefined): string => {
+      if (value === undefined) return '-';
+      const absValue = Math.abs(value);
+      const hasDecimals = absValue % 1 !== 0;
+      const decimalPart = absValue % 1;
+      const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+      return value.toFixed(hasSignificantDecimals ? 2 : 0);
+    };
 
-  return {
-    drop: formatSmartDecimal(agg.drop),
-    cancelledCredits: formatSmartDecimal(agg.cancelledCredits),
-    gross: formatSmartDecimal(agg.gross),
+    return {
+      drop: formatSmartDecimal(agg.drop),
+      cancelledCredits: formatSmartDecimal(agg.cancelledCredits),
+      gross: formatSmartDecimal(agg.gross),
     sasGross: formatSmartDecimal(agg.sasGross),
   };
 }
@@ -704,8 +705,9 @@ export async function getMonthlyCollectionReportByLocation(
 
   const formatSmartDecimal = (value: number | undefined): string => {
     if (value === undefined || value === null) return '-';
-    const hasDecimals = value % 1 !== 0;
-    const decimalPart = value % 1;
+    const absValue = Math.abs(value);
+    const hasDecimals = absValue % 1 !== 0;
+    const decimalPart = absValue % 1;
     const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
     return value.toFixed(hasSignificantDecimals ? 2 : 0);
   };

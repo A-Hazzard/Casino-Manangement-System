@@ -199,6 +199,8 @@ export function buildCaptureDocumentData(
         : metersMatch === true
           ? computed.resolvedSasMetersOut
           : undefined,
+    softMetersIn: body.softMetersIn !== undefined ? Number(body.softMetersIn) : undefined,
+    softMetersOut: body.softMetersOut !== undefined ? Number(body.softMetersOut) : undefined,
     prevSasMetersIn: computed.prevMeters.prevSasMetersIn,
     prevSasMetersOut: computed.prevMeters.prevSasMetersOut,
     movement: computed.movement,
@@ -305,6 +307,8 @@ export function buildUpdateDataFromPayload(
   if (body.sasMetersOut !== undefined) updateData.sasMetersOut = body.sasMetersOut;
   if (body.manualMetersIn !== undefined) updateData.manualMetersIn = body.manualMetersIn;
   if (body.manualMetersOut !== undefined) updateData.manualMetersOut = body.manualMetersOut;
+  if (body.softMetersIn !== undefined) updateData.softMetersIn = body.softMetersIn;
+  if (body.softMetersOut !== undefined) updateData.softMetersOut = body.softMetersOut;
   if (body.metersMatch !== undefined) updateData.metersMatch = body.metersMatch;
   if (body.notes !== undefined) updateData.notes = body.notes;
 
@@ -466,6 +470,15 @@ export async function resolveAndRecalculateMovement(
     ? (updateData.ramClearMetersOut ?? currentDoc.ramClearMetersOut)
     : undefined;
 
+  const resolvedSoftIn =
+    updateData.softMetersIn !== undefined
+      ? updateData.softMetersIn
+      : undefined;
+  const resolvedSoftOut =
+    updateData.softMetersOut !== undefined
+      ? updateData.softMetersOut
+      : undefined;
+
   const {
     prevMeters,
     movement,
@@ -485,7 +498,9 @@ export async function resolveAndRecalculateMovement(
     resolvedSasEnd,
     resolvedRamClear,
     resolvedRamClearIn,
-    resolvedRamClearOut
+    resolvedRamClearOut,
+    resolvedSoftIn,
+    resolvedSoftOut
   );
 
   if (
@@ -536,6 +551,8 @@ export function shouldRecalculateMovement(
     body.sasMetersOut !== undefined ||
     body.manualMetersIn !== undefined ||
     body.manualMetersOut !== undefined ||
+    body.softMetersIn !== undefined ||
+    body.softMetersOut !== undefined ||
     body.metersMatch !== undefined ||
     body.ramClear !== undefined ||
     body.ramClearMetersIn !== undefined ||

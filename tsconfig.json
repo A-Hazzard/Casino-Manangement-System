@@ -46,5 +46,5 @@
     "scripts/check-locs.js",
     "scripts/repair-database.js"
   ],
-  "exclude": ["node_modules", "scripts", ".next"]
+  "exclude": ["node_modules", "scripts", "scratch", ".next"]
 }

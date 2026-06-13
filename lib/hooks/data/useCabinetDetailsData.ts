@@ -30,6 +30,7 @@ type UseCabinetDetailsDataReturn = {
   metricsLoading: boolean;
   isOnline: boolean;
   fetchCabinetDetailsData: () => Promise<void>;
+  fetchCabinetDetailsSilent: () => Promise<void>;
   handleCabinetUpdated: () => void;
 };
 
@@ -57,6 +58,8 @@ export function useCabinetDetailsData({
 
   // AbortController for cabinet details queries
   const makeRequest = useAbortableRequest();
+  // Separate AbortController for background polling so it never cancels the main fetch
+  const makePollingRequest = useAbortableRequest();
 
   // ============================================================================
   // Data Fetching
@@ -245,6 +248,86 @@ export function useCabinetDetailsData({
     fetchCabinetDetailsData();
   }, [fetchCabinetDetailsData]);
 
+  // Silent background poll — updates cabinet state without touching metricsLoading.
+  // Uses a separate makePollingRequest so it never aborts the main fetch.
+  const fetchCabinetDetailsSilent = useCallback(async () => {
+    try {
+      const storeState = useDashBoardStore.getState();
+      const currentActiveMetricsFilter =
+        storeState.activeMetricsFilter || activeMetricsFilter;
+      const currentCustomDateRange =
+        storeState.customDateRange || customDateRange;
+
+      if (!currentActiveMetricsFilter) return;
+
+      const hasCustomDates =
+        currentActiveMetricsFilter === 'Custom' &&
+        ((currentCustomDateRange?.startDate &&
+          currentCustomDateRange?.endDate) ||
+          (currentCustomDateRange?.from && currentCustomDateRange?.to) ||
+          (currentCustomDateRange?.start && currentCustomDateRange?.end));
+
+      if (currentActiveMetricsFilter === 'Custom' && !hasCustomDates) return;
+
+      const from =
+        currentCustomDateRange?.startDate ||
+        currentCustomDateRange?.from ||
+        currentCustomDateRange?.start;
+      const to =
+        currentCustomDateRange?.endDate ||
+        currentCustomDateRange?.to ||
+        currentCustomDateRange?.end;
+
+      const effectiveRange =
+        currentActiveMetricsFilter === 'Custom' && from && to
+          ? {
+              from: from instanceof Date ? from : new Date(String(from)),
+              to: to instanceof Date ? to : new Date(String(to)),
+            }
+          : undefined;
+
+      const cabinetData = await makePollingRequest(signal =>
+        fetchCabinetById(
+          slug,
+          currentActiveMetricsFilter,
+          effectiveRange,
+          displayCurrency,
+          selectedLicencee || null,
+          signal
+        )
+      );
+
+      if (!cabinetData) return;
+
+      setCabinet(cabinetData);
+
+      if (cabinetData?.locationName) {
+        setLocationName(cabinetData.locationName);
+      }
+
+      if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
+        setIsOnline(true);
+      } else if (cabinetData?.lastActivity) {
+        const lastActive = new Date(cabinetData.lastActivity);
+        setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
+      }
+    } catch (err) {
+      if (isAbortError(err)) return;
+      // Silently ignore polling errors — don't update error state or show toasts
+    }
+  }, [
+    slug,
+    activeMetricsFilter,
+    customDateRange,
+    selectedLicencee,
+    displayCurrency,
+    makePollingRequest,
+    customDateRange?.startDate?.getTime(),
+    customDateRange?.endDate?.getTime(),
+    customDateRange?.from?.getTime(),
+    customDateRange?.to?.getTime(),
+  ]);
+
   // ============================================================================
   // Effects
   // ============================================================================
@@ -277,6 +360,7 @@ export function useCabinetDetailsData({
     metricsLoading,
     isOnline,
     fetchCabinetDetailsData,
+    fetchCabinetDetailsSilent,
     handleCabinetUpdated,
   };
 }

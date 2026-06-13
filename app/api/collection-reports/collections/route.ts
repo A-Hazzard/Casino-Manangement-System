@@ -19,7 +19,6 @@ import {
   resolvePreviousMetersForPatch,
   runPostUpdatePropagation,
 } from '@/app/api/lib/helpers/collectionReport/collectionOperations'
-import { getLocationNamesFromIds } from '@/app/api/lib/helpers/collectionReport/queries'
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter'
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users'
 import { connectDB } from '@/app/api/lib/middleware/db'
@@ -95,7 +94,7 @@ export async function GET(req: NextRequest) {
     const isAdmin = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner')
     const licencee = searchParams.get('licencee')
 
-    // STEP 4: Determine allowed location IDs and resolve to names
+    // STEP 4: Determine allowed location IDs
     const allowedLocationIds = await getUserLocationFilter(
       isAdmin ? 'all' : userAccessibleLicencees,
       licencee || undefined,
@@ -103,25 +102,18 @@ export async function GET(req: NextRequest) {
       userRoles
     )
 
-    let allowedLocationNames: string[] | 'all' = 'all'
-    if (allowedLocationIds !== 'all') {
-      if (allowedLocationIds.length === 0) return NextResponse.json([])
-      allowedLocationNames = await getLocationNamesFromIds(allowedLocationIds)
-      if (allowedLocationNames.length === 0) return NextResponse.json([])
-    }
-
     // STEP 5: Build filter query
     const filter: Record<string, unknown> = {}
     if (locationReportId) filter.locationReportId = locationReportId
 
     if (location) {
-      if (allowedLocationNames === 'all' || allowedLocationNames.includes(location)) {
+      if (allowedLocationIds === 'all' || allowedLocationIds.includes(location)) {
         filter.location = location
       } else {
         return NextResponse.json([])
       }
-    } else if (allowedLocationNames !== 'all') {
-      filter.location = { $in: allowedLocationNames }
+    } else if (allowedLocationIds !== 'all') {
+      filter.location = { $in: allowedLocationIds }
     }
 
     if (collector) filter.collector = collector
@@ -132,10 +124,9 @@ export async function GET(req: NextRequest) {
       filter.isCompleted = false
       filter.locationReportId = ''
       if (allowedLocationIds !== 'all') {
-        const locationNames = await getLocationNamesFromIds(allowedLocationIds)
-        filter.location = locationNames.length > 0
-          ? { $in: locationNames }
-          : 'IMPOSSIBLE_LOCATION_NAME'
+        filter.location = allowedLocationIds.length > 0
+          ? { $in: allowedLocationIds }
+          : 'IMPOSSIBLE_LOCATION'
       }
     }
 

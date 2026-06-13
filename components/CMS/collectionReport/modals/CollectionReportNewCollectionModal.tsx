@@ -306,6 +306,7 @@ export default function CollectionReportNewCollectionModal({
       >
         <DialogContent
           className="flex h-auto max-h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-auto md:w-full md:max-w-6xl lg:max-w-7xl"
+          showCloseButton={!isProcessing}
           onPointerDownOutside={e => e.preventDefault()}
           onEscapeKeyDown={e => e.preventDefault()}
         >

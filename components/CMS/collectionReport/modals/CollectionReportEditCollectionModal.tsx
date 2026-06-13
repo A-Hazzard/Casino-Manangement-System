@@ -613,14 +613,16 @@ function MobileEditWrapper({
             <h2 className="text-xl font-bold tracking-tight text-gray-900">
               Edit Collection Report
             </h2>
-            <DialogClose asChild>
-              <button
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </DialogClose>
+            {!mobileHook.modalState.isProcessing && (
+              <DialogClose asChild>
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogClose>
+            )}
           </div>
         </div>
       )}
@@ -631,6 +633,7 @@ function MobileEditWrapper({
       ) : (
         <MobileEditLayout
           {...mobileHook}
+          onClose={onClose}
           handleStartSubmit={handleMobileSubmit}
           variationsData={variation.variationsData}
           hasChanges={mobileHook.hasUnsavedEdits}

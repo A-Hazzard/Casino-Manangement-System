@@ -51,11 +51,13 @@ type ActivityLogFilterOptions = {
 type UseCabinetAccountingDataProps = {
   cabinet: Cabinet;
   activeMetricsTabContent: string;
+  refreshTrigger?: number;
 };
 
 export function useCabinetAccountingData({
   cabinet,
   activeMetricsTabContent,
+  refreshTrigger,
 }: UseCabinetAccountingDataProps) {
   // ============================================================================
   // Store state
@@ -254,6 +256,7 @@ export function useCabinetAccountingData({
     activityLogTimePeriod,
     activityLogDateRange,
     activityLogFilters,
+    refreshTrigger,
   ]);
 
   useEffect(() => {

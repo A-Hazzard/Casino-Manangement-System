@@ -6,6 +6,10 @@
 
 'use client';
 
+import { useState } from 'react';
+import CabinetsDetailsUnifiedBillValidator from '@/components/CMS/cabinets/details/CabinetsDetailsUnifiedBillValidator';
+import { TimePeriod } from '@/shared/types/common';
+
 type SessionDetail = {
   sessionId: string;
   sessionStatus: 'in-progress' | 'submitted';
@@ -48,6 +52,7 @@ type SessionMachine = {
   machineGross?: number;
   sasGross?: number;
   grossDifference?: number;
+  hasRelay?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -204,6 +209,56 @@ export default function CollectionReportV2SessionReportSummaryTab({
           session.machines.some(machine => machine.sasGross !== undefined))) && (
         <GrossSummary session={session} />
       )}
+
+      {/* Bill Validator */}
+      {!session.noSMIBLocation &&
+        session.machines.some(m => m.hasRelay) && (
+          <BillValidatorSection machines={session.machines} />
+        )}
+    </div>
+  );
+}
+
+function BillValidatorSection({ machines }: { machines: SessionMachine[] }) {
+  // ============================================================================
+  // State
+  // ============================================================================
+  const smibMachines = machines.filter(m => m.hasRelay);
+  const [selectedMachineId, setSelectedMachineId] = useState<string>(
+    smibMachines[0]?.machineId ?? ''
+  );
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
+
+  if (smibMachines.length === 0 || !selectedMachineId) return null;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <div className="rounded-lg bg-white p-5 shadow">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        Bill Validator
+      </h3>
+      {smibMachines.length > 1 && (
+        <div className="mb-4">
+          <select
+            value={selectedMachineId}
+            onChange={e => setSelectedMachineId(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            {smibMachines.map(m => (
+              <option key={m.machineId} value={m.machineId}>
+                {m.machineCustomName || m.machineName}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <CabinetsDetailsUnifiedBillValidator
+        machineId={selectedMachineId}
+        timePeriod={timePeriod}
+        onTimePeriodChange={setTimePeriod}
+      />
     </div>
   );
 }

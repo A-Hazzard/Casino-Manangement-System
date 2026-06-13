@@ -286,7 +286,18 @@ export async function computeTotalVariation(
         $match: {
           $or: meterQueries.map(q => ({
             machine: q.machineId,
-            readAt: { $gte: q.startTime, $lte: q.endTime },
+            readAt: {
+              $gte: new Date(q.startTime.getTime() - 60000),
+              $lte: q.endTime,
+            },
+            $or: [
+              { meterSource: { $ne: 'COLLECTION_REPORT' } },
+              {
+                meterSource: 'COLLECTION_REPORT',
+                isSupplemental: true,
+                readAt: q.endTime,
+              },
+            ],
           })),
         },
       },

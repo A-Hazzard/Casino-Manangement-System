@@ -213,6 +213,7 @@ export async function POST(request: NextRequest) {
               machine: query.machineId,
               readAt: { $gte: query.startTime, $lte: query.endTime },
             })),
+            meterSource: { $ne: 'COLLECTION_REPORT' },
           },
         },
         {

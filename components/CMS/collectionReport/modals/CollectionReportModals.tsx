@@ -42,7 +42,6 @@ type CollectionReportModalsProps = {
   editingReportId: string | null;
   showDeleteConfirm: boolean;
   reportToDelete: string | null;
-  isArchived?: boolean;
   allReports: CollectionReportRow[];
   locationsWithMachines: CollectionReportLocationWithMachines[];
   onCloseNewMobile: () => void;
@@ -62,7 +61,6 @@ export default function CollectionReportModals({
   editingReportId,
   showDeleteConfirm,
   reportToDelete,
-  isArchived = false,
   allReports,
   locationsWithMachines,
   onCloseNewMobile,
@@ -128,7 +126,6 @@ export default function CollectionReportModals({
         isOpen={showDeleteConfirm}
         reportId={reportToDelete || ''}
         locationName={locationName}
-        isArchived={isArchived}
         onClose={onCloseDelete}
         onDelete={onConfirmDelete}
       />
