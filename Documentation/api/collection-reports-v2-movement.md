@@ -171,7 +171,7 @@ The Collection Report V2 session view displays these columns in the machines tab
 | Movement Machine In    | `movement.manualMetersIn`                        | Delta from previous collection (manual)                                 |
 | Movement Machine Gross | `movement.machineGross`                          | Machine-perspective collection gross                                    |
 | Movement SAS Gross     | `sasGross`                                       | SAS-perspective collection gross                                        |
-| Variation              | `grossDifference`                                | `machineGross - sasGross`                                               |
+| Variation              | `variation`                                      | `machineGross - sasGross`                                               |
 | RAM Clear badge        | `ramClear === true`                              | Yellow pill on the machine row; tooltip shows the pre-reset peak values |
 
 ---

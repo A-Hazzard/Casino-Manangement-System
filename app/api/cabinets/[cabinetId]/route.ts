@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       const startDateParam = searchParams.get('startDate');
       const endDateParam = searchParams.get('endDate');
       const timePeriod = searchParams.get('timePeriod') as TimePeriod;
+      const dateField = searchParams.get('dateField') || 'readAt';
       const displayCurrency =
         (searchParams.get('currency') as CurrencyCode) || 'USD';
 
@@ -142,7 +143,8 @@ export async function GET(request: NextRequest) {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
           reviewerMultiplierStartTime?: Date | string | null;
-        }
+        },
+        dateField
       );
 
       // ============================================================================

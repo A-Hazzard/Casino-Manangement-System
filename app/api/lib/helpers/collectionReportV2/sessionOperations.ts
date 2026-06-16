@@ -11,6 +11,7 @@
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Collections } from '@/app/api/lib/models/collections';
 import UserModel from '@/app/api/lib/models/user';
 import { determineAllowedLocationIds } from '@/app/api/lib/helpers/collectionReport/queries';
 import { calculateDateRangeForTimePeriod } from '@/app/api/lib/helpers/collectionReport/queries';
@@ -64,6 +65,7 @@ export type V2MachineEntry = {
   sasMetersIn: number;
   sasMetersOut: number;
   collectionTime: Date | null;
+  previousCollectionTime?: Date | null;
   sequenceOrder: number;
 };
 
@@ -139,12 +141,13 @@ export type SessionMachineResponse = {
   prevSasMetersOut: number | undefined;
   movement: ReportedMachineMovement | undefined;
   machineGross: number;
-  grossDifference: number | null;
+  variation: number | null;
   sasStartTime: Date | undefined;
   sasEndTime: Date | undefined;
   sessionStartTime: Date | undefined;
   sessionEndTime: Date | undefined;
   imageData: string | undefined;
+  driveFileId: string | undefined;
   metersMatch: boolean | undefined;
   hasRelay: boolean;
   ramClear: boolean;
@@ -524,25 +527,56 @@ export async function lookupLastSessionEndTimes(
   machineIds: string[],
   excludedSessionId?: string
 ): Promise<Map<string, Date>> {
-  const match: Record<string, unknown> = {
+  // Query both V1 and V2 simultaneously — pick the MOST RECENT per machine
+  // regardless of which version it came from.
+
+  // V2: most recent submitted ReportedMachine.sasEndTime per machineId
+  const v2Match: Record<string, unknown> = {
     machineId: { $in: machineIds },
     sessionStatus: 'submitted',
     $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
   };
   if (excludedSessionId) {
-    match._id = { $nin: [excludedSessionId] };
+    v2Match._id = { $nin: [excludedSessionId] };
   }
 
-  const submissions = await ReportedMachine.aggregate<{
-    _id: string;
-    sasEndTime: Date;
-  }>([
-    { $match: match },
-    { $sort: { sasEndTime: -1 } },
-    { $group: { _id: '$machineId', sasEndTime: { $first: '$sasEndTime' } } },
+  const [v2Submissions, v1Submissions] = await Promise.all([
+    ReportedMachine.aggregate<{ _id: string; sasEndTime: Date }>([
+      { $match: v2Match },
+      { $sort: { sasEndTime: -1 } },
+      { $group: { _id: '$machineId', sasEndTime: { $first: '$sasEndTime' } } },
+    ]),
+    Collections.aggregate<{ _id: string; sasEndTime: Date }>([
+      {
+        $match: {
+          machineId: { $in: machineIds },
+          isCompleted: true,
+          'sasMeters.sasEndTime': { $exists: true },
+        },
+      },
+      { $sort: { 'sasMeters.sasEndTime': -1 } },
+      {
+        $group: {
+          _id: '$machineId',
+          sasEndTime: { $first: '$sasMeters.sasEndTime' },
+        },
+      },
+    ]),
   ]);
 
-  return new Map(submissions.map(s => [s._id, s.sasEndTime]));
+  // Merge: for each machine, pick the MORE RECENT sasEndTime from either version
+  const result = new Map<string, Date>();
+  for (const v2Sub of v2Submissions) {
+    result.set(v2Sub._id, v2Sub.sasEndTime);
+  }
+  for (const v1Sub of v1Submissions) {
+    const existing = result.get(v1Sub._id);
+    if (!existing || v1Sub.sasEndTime.getTime() > existing.getTime()) {
+      result.set(v1Sub._id, v1Sub.sasEndTime);
+    }
+  }
+
+  return result;
 }
 
 // ============================================================================
@@ -576,6 +610,7 @@ export function mapMachinesToV2Format(
       sasMetersIn: sasIn || fallbackIn,
       sasMetersOut: sasOut || fallbackOut,
       collectionTime: (machine.collectionTime as Date | undefined) || null,
+      previousCollectionTime: (machine.previousCollectionTime as Date | undefined) || null,
       sequenceOrder: index,
     };
   });
@@ -607,6 +642,7 @@ export async function buildReportedMachineDocs(
   const reportedMachineDocs = machineList.map((machine, index) => {
     const sasStartTime =
       lastCollectionMap.get(machine.machineId) ??
+      machine.previousCollectionTime ??
       machine.collectionTime ??
       undefined;
 
@@ -749,14 +785,16 @@ export function buildSessionMachineResponse(
       prevSasMetersOut: machine.prevSasMetersOut as number | undefined,
       movement: machine.movement as ReportedMachineMovement | undefined,
       machineGross,
-      grossDifference: sasGross !== null ? machineGross - sasGross : null,
+      variation: sasGross !== null ? machineGross - sasGross : null,
       sasStartTime: machine.sasStartTime as Date | undefined,
       sasEndTime: machine.sasEndTime as Date | undefined,
       sessionStartTime: machine.sessionStartTime as Date | undefined,
       sessionEndTime: machine.sessionEndTime as Date | undefined,
-      imageData: machine.driveFileId
-        ? `/api/collection-reports-v2/drive-files/${machine.driveFileId as string}`
-        : (machine.tempImageData as string | undefined) || undefined,
+      imageData: (machine.tempImageData as string | undefined)
+        || (machine.driveFileId
+          ? `/api/collection-reports-v2/drive-files/${machine.driveFileId as string}`
+          : undefined),
+      driveFileId: (machine.driveFileId as string | undefined) || undefined,
       metersMatch: !machineHasRelay ? true : (machine.metersMatch as boolean | undefined),
       hasRelay: machineHasRelay,
       ramClear: (machine.ramClear as boolean) === true,
@@ -838,19 +876,16 @@ export async function buildSessionDetailResponse(
   const machineDocs = await Machine.find({
     _id: { $in: machineIds },
   })
-    .select('collectionTime sasMeters relayId')
+    .select('collectionTime previousCollectionTime sasMeters relayId')
     .lean<
       Array<{
         _id: string;
         collectionTime?: Date;
+        previousCollectionTime?: Date;
         sasMeters?: { drop?: number; totalCancelledCredits?: number };
         relayId?: string | null;
       }>
     >();
-
-  const machineCollectionTimeMap = new Map(
-    machineDocs.map(m => [String(m._id), m.collectionTime])
-  );
 
   const liveSasMetersMap = new Map(
     machineDocs.map(m => [
@@ -866,9 +901,14 @@ export async function buildSessionDetailResponse(
     machineDocs.map(m => [String(m._id), !!m.relayId])
   );
 
-  for (const [machineId, collectionTime] of machineCollectionTimeMap) {
-    if (!lastCollectionMap.has(machineId) && collectionTime) {
-      lastCollectionMap.set(machineId, collectionTime);
+  // Fallback: previousCollectionTime > collectionTime (for SAS start resolution)
+  for (const machineDoc of machineDocs) {
+    const mid = String(machineDoc._id);
+    if (!lastCollectionMap.has(mid)) {
+      const prevTime = machineDoc.previousCollectionTime ?? machineDoc.collectionTime;
+      if (prevTime) {
+        lastCollectionMap.set(mid, prevTime);
+      }
     }
   }
 

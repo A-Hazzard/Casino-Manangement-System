@@ -67,6 +67,9 @@ export function useLocationData({
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const lastFetchTimeRef = useRef<number>(0); // wall-clock Date.now() for visibility guard
+  const lastFetchPageRef = useRef<number>(1);
+  const lastFetchLimitRef = useRef<number>(50);
   const selectedFiltersRef = useRef(selectedFilters);
   const selectedFiltersKeyRef = useRef<string>('');
 
@@ -177,6 +180,9 @@ export function useLocationData({
       // Mark this as the current active fetch generation
       const currentFetchId = performance.now();
       lastFetchRef.current = currentFetchId;
+      lastFetchTimeRef.current = Date.now();
+      lastFetchPageRef.current = page || 1;
+      lastFetchLimitRef.current = limit || 50;
       currentRequestFiltersRef.current = currentFilters;
 
       // Reset error state
@@ -200,90 +206,98 @@ export function useLocationData({
         hasCustomDate: !!dateRangeForFetch,
       });
 
-      const result = await makeRequest(async signal => {
-        const isSearchingArchived = selectedStatus === 'Archived';
+      try {
+        const result = await makeRequest(async signal => {
+          const isSearchingArchived = selectedStatus === 'Archived';
 
-        // Only use backend search if debounced search term exists
-        if (debouncedSearchTerm.trim()) {
-          const effectiveLicencee = selectedLicencee || '';
-          const effectiveFilter = activeMetricsFilter || 'Today';
-          const searchData = await searchAllLocations(
-            debouncedSearchTerm,
-            effectiveLicencee,
-            displayCurrency,
-            effectiveFilter,
-            dateRangeForFetch
-              ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
-              : undefined,
-            signal,
+          // Only use backend search if debounced search term exists
+          if (debouncedSearchTerm.trim()) {
+            const effectiveLicencee = selectedLicencee || '';
+            const effectiveFilter = activeMetricsFilter || 'Today';
+            const searchData = await searchAllLocations(
+              debouncedSearchTerm,
+              effectiveLicencee,
+              displayCurrency,
+              effectiveFilter,
+              dateRangeForFetch
+                ? { from: dateRangeForFetch.from, to: dateRangeForFetch.to }
+                : undefined,
+              signal,
+              currentFilters,
+              selectedStatus === 'Archived' ? undefined : selectedStatus,
+              isSearchingArchived
+            );
+            return { data: searchData, pagination: undefined };
+          }
+
+          // Otherwise, use the normal fetchLocationsData for metrics-based data
+          const data = await fetchAggregatedLocationsData(
+            (activeMetricsFilter || 'Today') as TimePeriod,
+            selectedLicencee || '',
             currentFilters,
+            dateRangeForFetch,
+            displayCurrency,
+            page || 1,
+            limit || 50,
+            signal,
+            undefined,
             selectedStatus === 'Archived' ? undefined : selectedStatus,
-            isSearchingArchived
+            sortBy,
+            sortOrder,
+            selectedStatus === 'Archived'
           );
-          return { data: searchData, pagination: undefined };
+
+          return data;
+        }, 'locations'); // Unique key prevents overlapping requests
+
+        // Only process the result if this is still the latest request
+        if (lastFetchRef.current === currentFetchId) {
+          if (result) {
+            // NOTE: reviewer multiplier is applied server-side in /api/reports/locations
+            // DO NOT apply any additional scaling here
+            const scaledData = result.data;
+
+            if (page === 1 || !page) {
+              setLocationData(scaledData);
+            } else {
+              // Accumulate data, avoiding duplicates
+              setLocationData(prev => {
+                const existingIds = new Set(prev.map(loc => loc._id));
+                const uniqueNew = scaledData.filter(
+                  loc => !existingIds.has(loc._id)
+                );
+                return [...prev, ...uniqueNew];
+              });
+            }
+
+            if (result.pagination) {
+              const total =
+                result.pagination.totalCount ?? result.pagination.total ?? 0;
+              setTotalCount(total);
+            } else {
+              setTotalCount(result.data.length);
+            }
+            hasCompletedFirstFetchRef.current = true;
+          }
+
+          // Always clear loading if we are the latest request
+          setLoading(false);
+          setSearchLoading(false);
+        } else {
+          console.log(
+            '[useLocationData] Ignoring stale response from older fetch',
+            {
+              currentFetchId,
+              latestFetchId: lastFetchRef.current,
+            }
+          );
         }
-
-        // Otherwise, use the normal fetchLocationsData for metrics-based data
-        const result = await fetchAggregatedLocationsData(
-          (activeMetricsFilter || 'Today') as TimePeriod,
-          selectedLicencee || '',
-          currentFilters,
-          dateRangeForFetch,
-          displayCurrency,
-          page || 1,
-          limit || 50,
-          signal,
-          undefined,
-          selectedStatus === 'Archived' ? undefined : selectedStatus,
-          sortBy,
-          sortOrder,
-          selectedStatus === 'Archived'
-        );
-
-        return result;
-      }, 'locations'); // Unique key prevents overlapping requests
-
-      // Only process the result if this is still the latest request
-      if (lastFetchRef.current === currentFetchId) {
-        if (result) {
-          // NOTE: reviewer multiplier is applied server-side in /api/reports/locations
-          // DO NOT apply any additional scaling here
-          const scaledData = result.data;
-
-          if (page === 1 || !page) {
-            setLocationData(scaledData);
-          } else {
-            // Accumulate data, avoiding duplicates
-            setLocationData(prev => {
-              const existingIds = new Set(prev.map(loc => loc._id));
-              const uniqueNew = scaledData.filter(
-                loc => !existingIds.has(loc._id)
-              );
-              return [...prev, ...uniqueNew];
-            });
-          }
-
-          if (result.pagination) {
-            const total =
-              result.pagination.totalCount ?? result.pagination.total ?? 0;
-            setTotalCount(total);
-          } else {
-            setTotalCount(result.data.length);
-          }
-          hasCompletedFirstFetchRef.current = true;
+      } catch (e) {
+        if (lastFetchRef.current === currentFetchId) {
+          setError(e instanceof Error ? e.message : 'Unknown error');
+          setLoading(false);
+          setSearchLoading(false);
         }
-
-        // Always clear loading if we are the latest request
-        setLoading(false);
-        setSearchLoading(false);
-      } else {
-        console.log(
-          '[useLocationData] Ignoring stale response from older fetch',
-          {
-            currentFetchId,
-            latestFetchId: lastFetchRef.current,
-          }
-        );
       }
     },
     [
@@ -304,17 +318,16 @@ export function useLocationData({
   // Effects
   // ============================================================================
 
-  // Refresh data when user returns to the page
+  // Refresh data when user returns to the page after 60+ seconds away
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
-        if (timeSinceLastFetch < 0 || timeSinceLastFetch < 60000) {
+        const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
+        if (timeSinceLastFetch < 60000) {
           return;
         }
-        // Use fetchData directly since it's stable
         setTimeout(() => {
-          fetchData();
+          fetchData(lastFetchPageRef.current, lastFetchLimitRef.current);
         }, 100);
       }
     };

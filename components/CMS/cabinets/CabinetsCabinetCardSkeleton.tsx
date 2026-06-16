@@ -54,10 +54,6 @@ export default function CabinetsCabinetCardSkeleton() {
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-24" />
             </div>
-            <div className="flex justify-between">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-24" />
-            </div>
           </div>
 
           {/* Action Buttons */}

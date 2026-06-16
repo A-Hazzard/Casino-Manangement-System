@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
       gamingLocation: locationId,
       ...DELETION_FILTER,
     })
-      .select('_id machineId serialNumber custom game manufacturer machineName collectionMeters sasMeters collectionTime')
+      .select('_id machineId serialNumber custom game manufacturer machineName collectionMeters sasMeters collectionTime previousCollectionTime')
       .sort({ 'custom.name': 1, _id: 1 })
       .lean<MachineDocument[]>();
 

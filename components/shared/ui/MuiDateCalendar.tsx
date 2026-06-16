@@ -15,7 +15,7 @@ import {
   Stack,
   styled,
 } from '@mui/material';
-import { useMemo, useState, useEffect, ChangeEvent } from 'react';
+import { useMemo, useState, useEffect, ChangeEvent, type ReactNode } from 'react';
 import { isWithinInterval, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ type MuiDateCalendarProps = {
   minDate?: Date;
   /** Latest selectable date (inclusive). Days after this are greyed out. */
   maxDate?: Date;
+  footerContent?: ReactNode;
 };
 
 // === Styled Components for Range Highlighting ===
@@ -239,6 +240,7 @@ export function MuiDateCalendar({
   showTime = true,
   minDate,
   maxDate,
+  footerContent,
 }: MuiDateCalendarProps) {
   // ============================================================================
   // State & Hooks
@@ -307,12 +309,12 @@ export function MuiDateCalendar({
 
     const end = new Date(mode === 'range' ? toDate : fromDate);
     if (showTime) {
-      end.setHours(toTime.hours, toTime.minutes, 59, 999);
+      end.setHours(toTime.hours, toTime.minutes, 0, 0);
     } else {
-      end.setHours(23, 59, 59, 999);
+      end.setHours(0, 0, 0, 0);
     }
 
-    return start > end;
+    return start.getTime() > end.getTime();
   }, [fromDate, toDate, fromTime, toTime, showTime, mode]);
 
   const theme = useMemo(
@@ -517,6 +519,7 @@ export function MuiDateCalendar({
                 bgcolor: 'grey.50',
               }}
             >
+              {footerContent}
               <Button
                 variant="contained"
                 onClick={handleApply}
@@ -545,6 +548,7 @@ export function MuiDateCalendar({
               borderTop: '1px solid rgba(0,0,0,0.08)',
             }}
           >
+            {footerContent}
             <Button
               fullWidth
               variant="contained"

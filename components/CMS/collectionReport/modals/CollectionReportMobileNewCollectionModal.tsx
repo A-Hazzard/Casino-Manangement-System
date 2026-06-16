@@ -141,6 +141,9 @@ export default function CollectionReportMobileNewCollectionModal({
     hasVariations,
     variationsData,
     error: variationError,
+    isPreCreating,
+    currentMeterMachineName,
+    meterCreationError,
     isMinimized,
     checkVariations,
     toggleMinimize,
@@ -1018,11 +1021,14 @@ export default function CollectionReportMobileNewCollectionModal({
 
           {/* Variation Check Popover */}
           <VariationCheckPopover
-            isOpen={showVariationCheckPopover && !isMinimized}
+            isOpen={showVariationCheckPopover && (!isMinimized || isPreCreating || !!meterCreationError)}
             isChecking={isChecking}
             hasVariations={hasVariations}
             error={variationError}
             variationsData={variationsData}
+            isPreCreating={isPreCreating}
+            currentMeterMachineName={currentMeterMachineName}
+            meterCreationError={meterCreationError}
             onMinimize={toggleMinimize}
             onSubmit={() => {
               setShowVariationCheckPopover(false);

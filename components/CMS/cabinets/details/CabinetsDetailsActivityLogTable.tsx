@@ -15,7 +15,7 @@
  * - Success/failure indicators on sequence steps
  */
 
-import { FC, Fragment, useRef, useState } from 'react';
+import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import {
@@ -33,13 +33,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { CheckIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { Search } from 'lucide-react';
 
 import PaginationControls from '@/components/shared/ui/PaginationControls';
+import CabinetsDetailsActivityLogSkeleton from '@/components/CMS/cabinets/details/CabinetsDetailsActivityLogSkeleton';
 
 // ============================================================================
 // Types
@@ -90,8 +88,8 @@ type ActivityLogFilters = {
 
 type ActivityLogPagination = {
   currentPage: number;
-  totalPages: number;
-  totalEvents: number;
+  totalPages: number | null;
+  totalEvents: number | null;
   hasNextPage: boolean;
   hasPrevPage: boolean;
   cursorResolved: boolean;
@@ -135,6 +133,88 @@ function formatDate(dateString: string | Date) {
   });
 }
 
+function formatTimeValue(timeStr: string): { hours: number; minutes: number; isPM: boolean } {
+  if (!timeStr) return { hours: 0, minutes: 0, isPM: false };
+  const [h, m] = timeStr.split(':').map(Number);
+  return { hours: h, minutes: m, isPM: h >= 12 };
+}
+
+function toTimeString(hours24: number, minutes: number): string {
+  return `${String(hours24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/**
+ * Time input matching the MuiDateCalendar TimeInput style —
+ * separate hour/minute boxes with AM/PM selector.
+ */
+function ActivityTimeInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (timeStr: string) => void;
+}) {
+  const { hours, minutes, isPM } = formatTimeValue(value);
+  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+
+  const inputClass =
+    'w-[40px] rounded border border-border bg-background px-1 text-center text-[13px] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary';
+  const selectClass =
+    'rounded border border-border bg-muted/50 px-1 text-[13px] focus:border-primary focus:outline-none';
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <div className="flex items-center gap-0.5">
+        <input
+          type="text"
+          value={displayHour === 0 && !isPM ? '' : String(displayHour)}
+          onChange={e => {
+            const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+            const parsed = parseInt(raw);
+            if (raw === '' || isNaN(parsed) || parsed < 0 || parsed > 12) return;
+            const h24 = isPM ? (parsed === 12 ? 12 : parsed + 12) : parsed === 12 ? 0 : parsed;
+            onChange(toTimeString(h24, minutes));
+          }}
+          placeholder="12"
+          className={inputClass}
+        />
+        <span className="text-[13px] font-medium text-foreground">:</span>
+        <input
+          type="text"
+          value={String(minutes).padStart(2, '0')}
+          onChange={e => {
+            const raw = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+            const parsed = parseInt(raw);
+            if (raw === '' || isNaN(parsed) || parsed < 0 || parsed > 59) return;
+            onChange(toTimeString(hours, parsed));
+          }}
+          placeholder="00"
+          className={inputClass}
+        />
+        <select
+          value={isPM ? 'PM' : 'AM'}
+          onChange={e => {
+            const newIsPM = e.target.value === 'PM';
+            const newH24 = newIsPM
+              ? displayHour === 12 ? 12 : displayHour + 12
+              : displayHour === 12 ? 0 : displayHour;
+            onChange(toTimeString(newH24, minutes));
+          }}
+          className={selectClass}
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Renders the Activity Log table with server-side pagination and filters.
  */
@@ -165,6 +245,9 @@ export const CabinetsDetailsActivityLogTable: FC<
   // Local command code input before submitting the cursor seek
   const [commandInput, setCommandInput] = useState(filters.command);
   const commandInputRef = useRef<HTMLInputElement>(null);
+
+  // Track first matching row for scroll-to-match on cursor seek
+  const [firstMatchIndex, setFirstMatchIndex] = useState(-1);
 
   // ============================================================================
   // Handlers
@@ -249,17 +332,59 @@ export const CabinetsDetailsActivityLogTable: FC<
     filters.command;
 
   // ============================================================================
+  // Computed — command match tracking for amber highlighting
+  // ============================================================================
+  const commandMatchMap = useMemo(() => {
+    if (!filters.command || !pagination?.cursorResolved) return null;
+    const map = new Map<number, boolean>();
+    displayedData.forEach((row, index) => {
+      const code = (row.command ?? '').toLowerCase();
+      if (code === filters.command.toLowerCase()) {
+        map.set(index, true);
+      }
+    });
+    return map;
+  }, [filters.command, pagination?.cursorResolved, displayedData]);
+
+  const hasAnyCommandMatch = commandMatchMap && commandMatchMap.size > 0;
+
+  // Find first matching row index for scroll
+  useEffect(() => {
+    if (commandMatchMap && commandMatchMap.size > 0) {
+      const firstIdx = commandMatchMap.keys().next().value;
+      setFirstMatchIndex(firstIdx ?? -1);
+    } else {
+      setFirstMatchIndex(-1);
+    }
+  }, [commandMatchMap]);
+
+  // Scroll first matching row into view
+  useEffect(() => {
+    const rafId = requestAnimationFrame(() => {
+      if (firstMatchIndex >= 0) {
+        const matches = document.querySelectorAll<HTMLElement>(
+          '[data-command-match="true"]'
+        );
+        const visibleMatch = Array.from(matches).find(
+          el => el.offsetParent !== null
+        );
+        visibleMatch?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [firstMatchIndex, pagination?.currentPage, filters.command]);
+
+  // ============================================================================
   // Render
   // ============================================================================
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
       <div className="w-full">
         {/* Filter Controls */}
-        <div className="mb-4 rounded-lg bg-gray-50 p-4 space-y-4">
+        <div className="mb-4 rounded-lg bg-container p-4 shadow-sm space-y-4">
 
           {/* Quick Filters */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-2 text-sm font-medium text-gray-500">
+            <span className="mr-2 text-sm font-medium text-grayHighlight">
               Quick Filters:
             </span>
             <Button
@@ -268,8 +393,8 @@ export const CabinetsDetailsActivityLogTable: FC<
               onClick={() => handleQuickFilter('Critical')}
               className={
                 filters.type === 'Critical'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'border-red-200 text-red-600 hover:bg-red-50'
+                  ? 'bg-buttonActive text-white hover:bg-buttonActive/90'
+                  : 'bg-button text-white hover:bg-button/90'
               }
             >
               Critical
@@ -284,8 +409,8 @@ export const CabinetsDetailsActivityLogTable: FC<
               onClick={() => handleQuickFilter('Warning')}
               className={
                 filters.type === 'Warning' || filters.type === 'WARN'
-                  ? 'bg-orange-500 hover:bg-orange-600'
-                  : 'border-orange-200 text-orange-500 hover:bg-orange-50'
+                  ? 'bg-buttonActive text-white hover:bg-buttonActive/90'
+                  : 'bg-button text-white hover:bg-button/90'
               }
             >
               Warning
@@ -296,8 +421,8 @@ export const CabinetsDetailsActivityLogTable: FC<
               onClick={() => handleQuickFilter('INFO')}
               className={
                 filters.type === 'INFO'
-                  ? 'bg-blue-500 hover:bg-blue-600'
-                  : 'border-blue-200 text-blue-500 hover:bg-blue-50'
+                  ? 'bg-buttonActive text-white hover:bg-buttonActive/90'
+                  : 'bg-button text-white hover:bg-button/90'
               }
             >
               INFO
@@ -315,8 +440,8 @@ export const CabinetsDetailsActivityLogTable: FC<
               }
               className={
                 filters.eventType === 'SAS Event'
-                  ? 'bg-purple-600 hover:bg-purple-700'
-                  : 'border-purple-200 text-purple-600 hover:bg-purple-50'
+                  ? 'bg-buttonActive text-white hover:bg-buttonActive/90'
+                  : 'bg-button text-white hover:bg-button/90'
               }
             >
               SAS Event
@@ -334,93 +459,19 @@ export const CabinetsDetailsActivityLogTable: FC<
 
           {/* Granular Filters Grid */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Start Time picker */}
-            <div>
-              <TimePicker
-                label="Start Time"
-                value={startTime ? new Date(`2000-01-01T${startTime}`) : null}
-                onChange={newValue => {
-                  setStartTime(
-                    newValue ? newValue.toTimeString().slice(0, 5) : ''
-                  );
-                }}
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: {
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        height: '40px',
-                        minHeight: '40px',
-                        maxHeight: '40px',
-                        '& .MuiOutlinedInput-input': {
-                          height: '40px',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                        },
-                        '& fieldset': { borderColor: '#d1d5db' },
-                        '&:hover fieldset': { borderColor: '#9ca3af' },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#3b82f6',
-                          borderWidth: '2px',
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '14px',
-                        color: '#6b7280',
-                        '&.Mui-focused': { color: '#3b82f6' },
-                      },
-                    },
-                  },
-                }}
-              />
-            </div>
+            {/* Start Time */}
+            <ActivityTimeInput
+              label="Start Time"
+              value={startTime}
+              onChange={setStartTime}
+            />
 
-            {/* End Time picker */}
-            <div>
-              <TimePicker
-                label="End Time"
-                value={endTime ? new Date(`2000-01-01T${endTime}`) : null}
-                onChange={newValue => {
-                  setEndTime(
-                    newValue ? newValue.toTimeString().slice(0, 5) : ''
-                  );
-                }}
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    sx: {
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        height: '40px',
-                        minHeight: '40px',
-                        maxHeight: '40px',
-                        '& .MuiOutlinedInput-input': {
-                          height: '40px',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                        },
-                        '& fieldset': { borderColor: '#d1d5db' },
-                        '&:hover fieldset': { borderColor: '#9ca3af' },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#3b82f6',
-                          borderWidth: '2px',
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '14px',
-                        color: '#6b7280',
-                        '&.Mui-focused': { color: '#3b82f6' },
-                      },
-                    },
-                  },
-                }}
-              />
-            </div>
+            {/* End Time */}
+            <ActivityTimeInput
+              label="End Time"
+              value={endTime}
+              onChange={setEndTime}
+            />
 
             {/* Event Type dropdown */}
             <div>
@@ -491,7 +542,7 @@ export const CabinetsDetailsActivityLogTable: FC<
             {/* Event Code cursor seek */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={commandInputRef}
                   placeholder="Jump to event code (e.g. 67, 1F)…"
@@ -523,44 +574,58 @@ export const CabinetsDetailsActivityLogTable: FC<
           </div>
 
           {/* Cursor seek indicator */}
-          {pagination?.cursorResolved && (
-            <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-800">
-              Jumped to page {pagination.currentPage} of {pagination.totalPages} — first occurrence of code &ldquo;{filters.command}&rdquo;
+          {pagination?.cursorResolved && filters.command && (
+            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+              Jumped to page {pagination.currentPage}{pagination.totalPages !== null ? ` of ${pagination.totalPages}` : ''} — first occurrence of code &ldquo;{filters.command}&rdquo;
             </div>
           )}
         </div>
 
+        {loading ? (
+          <CabinetsDetailsActivityLogSkeleton />
+        ) : (
+        <>
         {/* Desktop Table View */}
-        <div className="hidden w-full overflow-x-auto rounded-lg lg:block">
+        <div className="hidden w-full overflow-x-auto rounded-lg border border-gray-200 bg-container shadow-sm lg:block">
+          {hasAnyCommandMatch && (
+            <div className="border-b border-gray-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+              {commandMatchMap!.size} row{commandMatchMap!.size !== 1 ? 's' : ''} matched on this page
+            </div>
+          )}
           <Table>
             <TableHeader>
-              <TableRow className="bg-button text-white">
-                <TableHead className="text-white">Type</TableHead>
-                <TableHead className="text-white">Event</TableHead>
-                <TableHead className="text-white">Event Code</TableHead>
-                <TableHead className="text-white">Date</TableHead>
+              <TableRow className="bg-muted/40">
+                <TableHead className="text-grayHighlight">Type</TableHead>
+                <TableHead className="text-grayHighlight">Event</TableHead>
+                <TableHead className="text-grayHighlight">Event Code</TableHead>
+                <TableHead className="text-grayHighlight">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {displayedData.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-12 text-center text-gray-400">
+                  <TableCell colSpan={4} className="py-12 text-center text-grayHighlight">
                     No activity log data found for the selected filters.
                   </TableCell>
                 </TableRow>
               )}
               {displayedData.map((row, idx) => {
                 const logLevel = row.eventLogLevel || 'General';
-                const rowBgClass =
-                  logLevel === 'Critical'
-                    ? 'bg-red-50 hover:bg-red-100'
+                const isRowMatch = commandMatchMap?.get(idx) ?? false;
+                const rowBgClass = isRowMatch
+                  ? 'bg-amber-50/60 border-l-amber-500 hover:bg-amber-100/40'
+                  : logLevel === 'Critical'
+                    ? 'bg-red-50/60 hover:bg-red-100/40'
                     : logLevel === 'Warning' || logLevel === 'Warn'
-                      ? 'bg-orange-50 hover:bg-orange-100'
+                      ? 'bg-orange-50/60 hover:bg-orange-100/40'
                       : 'hover:bg-muted';
 
                 return (
                   <Fragment key={row._id || idx}>
-                    <TableRow className={`text-center ${rowBgClass}`}>
+                    <TableRow
+                      className={`text-center transition-colors border-l-4 ${rowBgClass}`}
+                      data-command-match={isRowMatch ? 'true' : undefined}
+                    >
                       <TableCell>
                         <div className="flex items-center justify-center gap-2">
                           <CheckIcon className="h-4 w-4 text-green-500" />
@@ -575,7 +640,7 @@ export const CabinetsDetailsActivityLogTable: FC<
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleSequence(row._id)}
-                              className="rounded p-1 transition-colors hover:bg-gray-100"
+                              className="rounded p-1 transition-colors hover:bg-muted"
                             >
                               {expandedSequences.has(row._id) ? (
                                 <MinusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
@@ -589,15 +654,15 @@ export const CabinetsDetailsActivityLogTable: FC<
                         {expandedSequences.has(row._id) &&
                           row.sequence &&
                           row.sequence.length > 0 && (
-                            <div className="mt-3 border-t border-gray-200 pt-3">
-                              <h4 className="mb-2 text-sm font-medium text-gray-700">
+                            <div className="mt-3 border-t border-border pt-3">
+                              <h4 className="mb-2 text-sm font-medium text-foreground">
                                 Sequence Details
                               </h4>
                               <div className="space-y-2">
                                 {row.sequence.map((seq, seqIdx) => (
                                   <div
                                     key={seqIdx}
-                                    className="rounded border bg-gray-50 p-2 text-xs"
+                                    className="rounded border bg-muted/40 p-2 text-xs"
                                   >
                                     <div className="mb-1 flex items-center justify-between">
                                       <span className="font-medium">
@@ -613,7 +678,7 @@ export const CabinetsDetailsActivityLogTable: FC<
                                         {seq.logLevel}
                                       </span>
                                     </div>
-                                    <div className="text-gray-500">
+                                    <div className="text-muted-foreground">
                                       {formatDate(seq.createdAt)}
                                     </div>
                                   </div>
@@ -622,7 +687,11 @@ export const CabinetsDetailsActivityLogTable: FC<
                             </div>
                           )}
                       </TableCell>
-                      <TableCell className="font-mono">
+                      <TableCell
+                        className={`font-mono ${
+                          isRowMatch ? 'bg-amber-200/70 font-semibold' : ''
+                        }`}
+                      >
                         {row.command || '00'}
                       </TableCell>
                       <TableCell>{formatDate(row.date)}</TableCell>
@@ -636,89 +705,99 @@ export const CabinetsDetailsActivityLogTable: FC<
 
         {/* Mobile Cards View */}
         <div className="block w-full space-y-4 lg:hidden">
-          {displayedData.map((row, idx) => (
-            <div
-              key={row._id || idx}
-              className="w-full overflow-hidden rounded-lg border border-border bg-container shadow-md"
-            >
-              <div className="bg-button px-4 py-3 text-sm font-semibold text-white">
-                <div className="flex items-center justify-between">
-                  <span>{row.eventType || 'General'}</span>
-                  <CheckIcon className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 p-4">
-                <div className="flex items-start justify-between">
-                  <span className="font-medium text-gray-700">Event</span>
-                  <div className="flex items-center gap-2">
-                    <span className="ml-2 break-all text-right">
-                      {row.description || 'No activity'}
-                    </span>
-                    {row.sequence && row.sequence.length > 0 && (
-                      <button
-                        onClick={() => toggleSequence(row._id)}
-                        className="rounded p-1 transition-colors hover:bg-gray-100"
-                      >
-                        {expandedSequences.has(row._id) ? (
-                          <MinusIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
-                        ) : (
-                          <PlusIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
-                        )}
-                      </button>
-                    )}
+          {displayedData.map((row, idx) => {
+            const isRowMatch = commandMatchMap?.get(idx) ?? false;
+            return (
+              <div
+                key={row._id || idx}
+                className={`w-full overflow-hidden rounded-lg border shadow-md ${
+                  isRowMatch
+                    ? 'border-amber-400 bg-amber-50/60'
+                    : 'border-border bg-container'
+                }`}
+                data-command-match={isRowMatch ? 'true' : undefined}
+              >
+                <div className="bg-button px-4 py-3 text-sm font-semibold text-white">
+                  <div className="flex items-center justify-between">
+                    <span>{row.eventType || 'General'}</span>
+                    <CheckIcon className="h-4 w-4" />
                   </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">Event Code</span>
-                  <span className="font-mono font-medium">
-                    {row.command || '00'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-gray-700">Date</span>
-                  <span className="text-sm font-medium">
-                    {formatDate(row.date)}
-                  </span>
-                </div>
-
-                {/* Mobile Sequence Dropdown */}
-                {expandedSequences.has(row._id) &&
-                  row.sequence &&
-                  row.sequence.length > 0 && (
-                    <div className="mt-3 border-t border-gray-200 pt-3">
-                      <h4 className="mb-2 text-sm font-medium text-gray-700">
-                        Sequence Details
-                      </h4>
-                      <div className="space-y-2">
-                        {row.sequence.map((seq, seqIdx) => (
-                          <div key={seqIdx} className="rounded bg-gray-50 p-2">
-                            <div className="mb-1 flex items-center justify-between">
-                              <span className="text-xs font-medium">
-                                {seq.description}
-                              </span>
-                              <span
-                                className={`rounded px-1 py-0.5 text-xs ${
-                                  seq.success
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
-                                }`}
-                              >
-                                {seq.logLevel}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {formatDate(seq.createdAt)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                <div className="flex flex-col gap-3 p-4">
+                  <div className="flex items-start justify-between">
+                    <span className="font-medium text-foreground">Event</span>
+                    <div className="flex items-center gap-2">
+                      <span className="ml-2 break-all text-right">
+                        {row.description || 'No activity'}
+                      </span>
+                      {row.sequence && row.sequence.length > 0 && (
+                        <button
+                          onClick={() => toggleSequence(row._id)}
+                          className="rounded p-1 transition-colors hover:bg-muted"
+                        >
+                          {expandedSequences.has(row._id) ? (
+                            <MinusIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
+                          ) : (
+                            <PlusIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
+                          )}
+                        </button>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-foreground">Event Code</span>
+                    <span className={`font-mono font-medium ${
+                      isRowMatch ? 'bg-amber-200/70 px-1 rounded' : ''
+                    }`}>
+                      {row.command || '00'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-foreground">Date</span>
+                    <span className="text-sm font-medium">
+                      {formatDate(row.date)}
+                    </span>
+                  </div>
+
+                  {/* Mobile Sequence Dropdown */}
+                  {expandedSequences.has(row._id) &&
+                    row.sequence &&
+                    row.sequence.length > 0 && (
+                      <div className="mt-3 border-t border-border pt-3">
+                        <h4 className="mb-2 text-sm font-medium text-foreground">
+                          Sequence Details
+                        </h4>
+                        <div className="space-y-2">
+                          {row.sequence.map((seq, seqIdx) => (
+                            <div key={seqIdx} className="rounded bg-muted/40 p-2">
+                              <div className="mb-1 flex items-center justify-between">
+                                <span className="text-xs font-medium">
+                                  {seq.description}
+                                </span>
+                                <span
+                                  className={`rounded px-1 py-0.5 text-xs ${
+                                    seq.success
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {seq.logLevel}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatDate(seq.createdAt)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {displayedData.length === 0 && !loading && (
-            <div className="flex h-32 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400">
+            <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-container text-sm text-grayHighlight">
               No activity log data found for the selected filters.
             </div>
           )}
@@ -728,10 +807,12 @@ export const CabinetsDetailsActivityLogTable: FC<
         <PaginationControls
           currentPage={displayPage}
           totalPages={totalDisplayPages}
-          totalCount={pagination?.totalEvents ?? 0}
+          totalCount={pagination?.totalEvents ?? null}
           setCurrentPage={handlePageChange}
+          hasMore={pagination?.hasNextPage ?? false}
         />
+        </>
+        )}
       </div>
-    </LocalizationProvider>
   );
 };

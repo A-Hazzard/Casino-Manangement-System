@@ -502,6 +502,7 @@ export async function persistMachineMetersOnSubmit(
           prevMetersOut: prevOut,
           timestamp: submittedMachine.sasEndTime ?? sessionEndTime,
           locationReportId: sessionId,
+          reportVersion: 2,
         };
 
         machineUpdateOps.$push = {
@@ -552,6 +553,10 @@ export async function persistMachineMetersOnSubmit(
     })
   );
 
+  // NOTE: reportVersion backfill for pre-existing history entries is handled by
+  // backfillSessionReportVersion(), invoked once from the submit route so it runs
+  // for every session regardless of whether any machine was captured/confirmed.
+
   if (sessionLocationId) {
     let maxSasEndTime: Date | undefined;
     for (const submittedMachine of submittedMachines) {
@@ -574,6 +579,105 @@ export async function persistMachineMetersOnSubmit(
       });
     }
   }
+}
+
+// ============================================================================
+// reportVersion Backfill
+// ============================================================================
+
+/**
+ * Backfills reportVersion: 2 onto a session's machine history entries that
+ * predate the reportVersion field, bumps each machine's updatedAt, and records
+ * an audit-log entry describing the change.
+ *
+ * Uses updateOne with { strict: false } on purpose: when the running process
+ * registered the Machine model before reportVersion was added to the schema,
+ * Mongoose strict mode silently strips the field on cast (the write "succeeds" —
+ * version bumps, updatedAt changes — but reportVersion never lands). Disabling
+ * strict lets the path through regardless of the registered schema. arrayFilters
+ * scopes the update to this session's entries only, leaving V1 (UUID
+ * locationReportId) entries untouched.
+ *
+ * @param {string} sessionId - The V2 session whose history entries to label
+ * @param {NextRequest} req - Incoming request (for audit IP / user-agent)
+ * @param {{ _id: string; emailAddress: string; roles?: string[] }} userPayload - Acting user
+ * @returns {Promise<{ machinesUpdated: number }>} Count of machines whose history changed
+ */
+export async function backfillSessionReportVersion(
+  sessionId: string,
+  req: NextRequest,
+  userPayload: { _id: string; emailAddress: string; roles?: string[] }
+): Promise<{ machinesUpdated: number }> {
+  const sessionMachines = await ReportedMachine.find(
+    { sessionId },
+    'machineId'
+  ).lean<Array<{ machineId?: string }>>();
+
+  const machineIds = sessionMachines
+    .map(reportedMachine => reportedMachine.machineId)
+    .filter((id): id is string => !!id);
+
+  let machinesUpdated = 0;
+  for (const machineId of machineIds) {
+    const updateResult = await Machine.updateOne(
+      { _id: machineId },
+      {
+        $set: {
+          'collectionMetersHistory.$[entry].reportVersion': 2,
+          updatedAt: new Date(),
+        },
+      },
+      {
+        strict: false,
+        arrayFilters: [
+          {
+            'entry.locationReportId': sessionId,
+            'entry.reportVersion': { $exists: false },
+          },
+        ],
+      }
+    );
+
+    if (updateResult.modifiedCount > 0) {
+      machinesUpdated++;
+    }
+  }
+
+  console.log(
+    `[backfillSessionReportVersion] session=${sessionId}: ${machinesUpdated}/${machineIds.length} machines updated`
+  );
+
+  if (machinesUpdated > 0) {
+    const changes: ActivityChange[] = [
+      { field: 'reportVersion', oldValue: null, newValue: 2 },
+      { field: 'machinesUpdated', oldValue: null, newValue: machinesUpdated },
+    ];
+
+    await logActivity({
+      action: 'UPDATE',
+      details: `Backfilled reportVersion=2 on collection meter history for ${machinesUpdated} machine(s) in session ${sessionId}`,
+      ipAddress: getClientIP(req) || undefined,
+      userAgent: req.headers.get('user-agent') || undefined,
+      userId: userPayload._id,
+      username: userPayload.emailAddress,
+      metadata: {
+        userId: userPayload._id,
+        userEmail: userPayload.emailAddress,
+        userRole: userPayload.roles?.[0] || 'user',
+        resource: 'collection-report',
+        resourceId: sessionId,
+        resourceName: `Session ${sessionId} history backfill`,
+        changes,
+      },
+    }).catch(logError => {
+      console.error(
+        `[backfillSessionReportVersion] Failed to log activity for session ${sessionId}:`,
+        logError instanceof Error ? logError.message : 'Unknown error'
+      );
+    });
+  }
+
+  return { machinesUpdated };
 }
 
 // ============================================================================

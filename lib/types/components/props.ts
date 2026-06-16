@@ -33,6 +33,7 @@ export type DateFiltersProps = {
   showQuarterly?: boolean;
   mode?: 'auto' | 'mobile' | 'desktop';
   enableTimeInputs?: boolean;
+  calendarFooterContent?: ReactNode;
 };
 
 export type HeaderProps = {

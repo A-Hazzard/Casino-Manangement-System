@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 
 import type { GamingMachine } from '@/shared/types';
 
@@ -22,38 +23,41 @@ type CollectionSnapshot = {
   locationReportId?: string;
 };
 
-function getCollectionSortTime(collection: CollectionSnapshot): number {
-  const raw = collection.collectionTime ?? collection.timestamp ?? new Date(0);
-  return new Date(raw).getTime();
-}
+type V2SessionSnapshot = {
+  _id: string;
+  sessionId: string;
+  sasMetersIn: number | null;
+  sasMetersOut: number | null;
+  manualMetersIn?: number | null;
+  manualMetersOut?: number | null;
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
+  sasEndTime?: Date;
+  sessionEndTime?: Date;
+  metersMatch?: boolean;
+  machineId: string;
+};
 
-function getObjectIdTime(collection: CollectionSnapshot): number {
-  if (
-    typeof collection._id === 'object' &&
-    collection._id !== null &&
-    'getTimestamp' in collection._id
-  ) {
-    return (collection._id as mongoose.Types.ObjectId).getTimestamp().getTime();
-  }
-  return 0;
-}
+type HistoryEntry = {
+  _id: mongoose.Types.ObjectId;
+  metersIn: number;
+  metersOut: number;
+  prevMetersIn: number;
+  prevMetersOut: number;
+  timestamp: Date;
+  locationReportId: string;
+  reportVersion?: number;
+};
 
 /**
- * Retrieves all collections of a machine in chronological order and updates machine collectionMetersHistory.
- * No longer cascades/recalculates subsequent collections' meters — it only updates the Machine doc.
- *
- * @param {string | null} [machineId] - The machine to update history for.
- * @param {string} [anchorCollectionId] - Unused (kept for compatibility with callers).
- */
-/**
- * Recalculates the collectionMetersHistory for a machine from all its collections.
+ * Recalculates the collectionMetersHistory for a machine from all collections
+ * (V1) and submitted sessions (V2), merging both into a unified chronological
+ * history array. Updates Machine.collectionMeters and collectionMetersHistory.
  *
  * @param machineId      - The machine to recalculate.
  * @param writeSasMeters - When true, also updates sasMeters.drop and
- *                         sasMeters.totalCancelledCredits for noSMIB locations.
- *                         Must only be true when called from a finalising path
- *                         (submit / post-submit edit) — never during mid-wizard
- *                         per-machine saves where the report is still open.
+ *                         sasMeters.totalCancelledCredits for noSMIB/offline
+ *                         machines. Only true from finalising paths.
  */
 export async function recalculateMachineCollections(
   machineId?: string | null,
@@ -71,23 +75,82 @@ export async function recalculateMachineCollections(
     return;
   }
 
-  // Per-machine SMIB check: the machine has a relay if it has a relayId.
-  // Non-relay machines mirror their meter values into sasMeters.
-  // Offline SMIB machines (relay present but stale lastActivity) also get updated.
   const isNoSmibMachine = !machine.relayId;
-  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing (TODO: restore 72h)
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
   const isOffline =
     !!machine.relayId &&
     (!machine.lastActivity ||
       new Date().getTime() - new Date(machine.lastActivity).getTime() >=
         OFFLINE_THRESHOLD_MS);
 
-  const collections = await Collections.find({
+  // ==========================================================================
+  // Query V1 collections + V2 submitted sessions
+  // ==========================================================================
+  const v1Collections = await Collections.find({
     machineId,
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
   }).lean<CollectionSnapshot[]>();
 
-  if (!collections.length) {
+  const v2Sessions = await ReportedMachine.find({
+    machineId,
+    sessionStatus: 'submitted',
+    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+  })
+    .sort({ sasEndTime: 1 })
+    .lean<V2SessionSnapshot[]>();
+
+  // ==========================================================================
+  // Build unified history from both sources
+  // ==========================================================================
+  const historyEntries: HistoryEntry[] = [];
+
+  // V1 entries
+  for (const col of v1Collections) {
+    historyEntries.push({
+      _id: new mongoose.Types.ObjectId(),
+      metersIn: Number(col.metersIn ?? 0),
+      metersOut: Number(col.metersOut ?? 0),
+      prevMetersIn: Number(col.prevIn ?? 0),
+      prevMetersOut: Number(col.prevOut ?? 0),
+      timestamp:
+        (col.collectionTime as Date | undefined) ??
+        (col.timestamp as Date | undefined) ??
+        new Date(),
+      locationReportId: col.locationReportId ?? '',
+      reportVersion: 1,
+    });
+  }
+
+  // V2 entries
+  for (const rm of v2Sessions) {
+    const hasRelay = !!machine.relayId;
+    const useManualAsBaseline = !hasRelay || rm.metersMatch === false;
+    const metersIn = useManualAsBaseline
+      ? (rm.manualMetersIn ?? rm.sasMetersIn ?? 0)
+      : (rm.sasMetersIn ?? 0);
+    const metersOut = useManualAsBaseline
+      ? (rm.manualMetersOut ?? rm.sasMetersOut ?? 0)
+      : (rm.sasMetersOut ?? 0);
+
+    historyEntries.push({
+      _id: new mongoose.Types.ObjectId(),
+      metersIn,
+      metersOut,
+      prevMetersIn: rm.prevSasMetersIn ?? 0,
+      prevMetersOut: rm.prevSasMetersOut ?? 0,
+      timestamp:
+        (rm.sasEndTime as Date | undefined) ??
+        (rm.sessionEndTime as Date | undefined) ??
+        new Date(),
+      locationReportId: rm.sessionId,
+      reportVersion: 2,
+    });
+  }
+
+  // ==========================================================================
+  // No entries at all — clear meters and history
+  // ==========================================================================
+  if (historyEntries.length === 0) {
     await Machine.findOneAndUpdate(
       { _id: machineId },
       {
@@ -105,62 +168,26 @@ export async function recalculateMachineCollections(
     return;
   }
 
-  const sorted = [...collections].sort((a, b) => {
-    const timeDiff = getCollectionSortTime(a) - getCollectionSortTime(b);
-    if (timeDiff !== 0) {
-      return timeDiff;
-    }
-    return getObjectIdTime(a) - getObjectIdTime(b);
-  });
+  // ==========================================================================
+  // Sort by timestamp chronologically
+  // ==========================================================================
+  historyEntries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
-  const historyEntries: Array<{
-    _id: mongoose.Types.ObjectId;
-    metersIn: number;
-    metersOut: number;
-    prevMetersIn: number;
-    prevMetersOut: number;
-    timestamp: Date;
-    locationReportId: string;
-  }> = [];
+  const lastEntry = historyEntries[historyEntries.length - 1];
+  const secondLastEntry =
+    historyEntries.length >= 2
+      ? historyEntries[historyEntries.length - 2]
+      : null;
 
-  for (
-    let collectionIndex = 0;
-    collectionIndex < sorted.length;
-    collectionIndex++
-  ) {
-    const col = sorted[collectionIndex];
-    historyEntries.push({
-      _id: new mongoose.Types.ObjectId(),
-      metersIn: Number(col.metersIn ?? 0),
-      metersOut: Number(col.metersOut ?? 0),
-      prevMetersIn: Number(col.prevIn ?? 0),
-      prevMetersOut: Number(col.prevOut ?? 0),
-      timestamp:
-        (col.collectionTime as Date | undefined) ??
-        (col.timestamp as Date | undefined) ??
-        new Date(),
-      locationReportId: col.locationReportId ?? '',
-    });
-  }
+  const finalMetersIn = lastEntry.metersIn;
+  const finalMetersOut = lastEntry.metersOut;
 
-  const lastCol = sorted[sorted.length - 1];
-  const secondLastCol = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+  const collectionTime = lastEntry.timestamp;
+  const previousCollectionTime = secondLastEntry?.timestamp ?? null;
 
-  const finalMetersIn = lastCol ? Number(lastCol.metersIn ?? 0) : 0;
-  const finalMetersOut = lastCol ? Number(lastCol.metersOut ?? 0) : 0;
-
-  const collectionTime = lastCol
-    ? ((lastCol.collectionTime as Date | undefined) ??
-      (lastCol.timestamp as Date | undefined) ??
-      null)
-    : null;
-  const previousCollectionTime = secondLastCol
-    ? ((secondLastCol.collectionTime as Date | undefined) ??
-      (secondLastCol.timestamp as Date | undefined) ??
-      null)
-    : null;
-
-  // Prepare update operations
+  // ==========================================================================
+  // Apply updates to Machine
+  // ==========================================================================
   const machineSetUpdate: Record<string, unknown> = {
     'collectionMeters.metersIn': finalMetersIn,
     'collectionMeters.metersOut': finalMetersOut,
@@ -170,16 +197,11 @@ export async function recalculateMachineCollections(
     updatedAt: new Date(),
   };
 
-  // For noSMIB locations AND offline SMIB locations, mirror the final values into
-  // sasMeters so dashboard queries stay in sync — but ONLY when called from a
-  // finalising path. During mid-wizard per-machine saves the report is still
-  // open, so sasMeters must not be touched until the collector presses Submit.
   if ((isNoSmibMachine || isOffline) && writeSasMeters) {
     machineSetUpdate['sasMeters.drop'] = finalMetersIn;
     machineSetUpdate['sasMeters.totalCancelledCredits'] = finalMetersOut;
   }
 
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   await Machine.findOneAndUpdate(
     { _id: machineId },
     { $set: machineSetUpdate },

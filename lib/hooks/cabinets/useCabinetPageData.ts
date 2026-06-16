@@ -36,6 +36,7 @@ export function useCabinetPageData() {
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { displayCurrency } = useCurrency();
+  const initialSmibExpanded = searchParams?.get('smib') === 'true';
 
   // ============================================================================
   // Base Data Hooks
@@ -60,7 +61,7 @@ export function useCabinetPageData() {
     dateFilterInitialized,
   });
 
-  const smibHook = useSmibConfiguration();
+  const smibHook = useSmibConfiguration(initialSmibExpanded);
 
   // ============================================================================
   // Chart State
@@ -97,6 +98,7 @@ export function useCabinetPageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
+    if (section === 'developer-options') return 'Developer Options';
     return 'Movement Metrics';
   });
 
@@ -197,6 +199,7 @@ export function useCabinetPageData() {
         'Collection History': 'collection-history',
         'Collection Settings': 'collection-settings',
         Configurations: 'configurations',
+        'Developer Options': 'developer-options',
       };
 
       const params = new URLSearchParams(searchParams?.toString() || '');
@@ -208,6 +211,18 @@ export function useCabinetPageData() {
     },
     [pathname, router, searchParams]
   );
+
+  const handleSmibToggle = useCallback(() => {
+    smibHook.toggleSmibConfig();
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    const isCurrentlyExpanded = params.get('smib') === 'true';
+    if (isCurrentlyExpanded) {
+      params.delete('smib');
+    } else {
+      params.set('smib', 'true');
+    }
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [smibHook.toggleSmibConfig, pathname, router, searchParams]);
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     if (!text || text === 'N/A' || text.trim() === '') {
@@ -619,6 +634,24 @@ export function useCabinetPageData() {
     // The smibHook functions are stable useCallback hooks, so they don't need to be in deps
   }, [cabinet?._id]);
 
+  // Auto-fetch SMIB config when URL has ?smib=true on page load
+  useEffect(() => {
+    if (
+      initialSmibExpanded &&
+      cabinet?.relayId &&
+      canAccessSmibConfig &&
+      !smibHook.hasConfigBeenFetched
+    ) {
+      smibHook.fetchSmibConfiguration(cabinet.relayId);
+    }
+  }, [
+    initialSmibExpanded,
+    cabinet?.relayId,
+    canAccessSmibConfig,
+    smibHook.hasConfigBeenFetched,
+    smibHook.fetchSmibConfiguration,
+  ]);
+
   return {
     slug,
     cabinet,
@@ -640,7 +673,10 @@ export function useCabinetPageData() {
     canEditMachines,
     selectedLicencee,
     displayCurrency,
-    smibHook,
+    smibHook: {
+      ...smibHook,
+      toggleSmibConfig: handleSmibToggle,
+    },
     // Setters
     setEditingSection,
     setChartGranularity: (
@@ -650,6 +686,7 @@ export function useCabinetPageData() {
       setChartGranularity(value);
     },
     refreshTrigger,
+    // Setters
     // Handlers
     handleTabChange,
     handleRefresh,

@@ -71,7 +71,7 @@ export default function LocationsPageContent() {
     handleMultiFilterChange,
     setSearchTerm,
     setCurrentPage,
-    totalCount,
+    hasMoreLocations,
     isDataComplete,
   } = locationsPageData;
 
@@ -307,9 +307,8 @@ export default function LocationsPageContent() {
               <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalCount={totalCount}
                 setCurrentPage={setCurrentPage}
-                showTotalCount
+                hasMore={hasMoreLocations}
               />
             </div>
           )}

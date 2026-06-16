@@ -74,7 +74,7 @@ export default function CabinetsDetailsAccountingSection({
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[400px] w-full max-w-full overflow-x-auto">
+      <div className="min-h-[400px] w-full overflow-hidden">
         <CabinetsDetailsAccountingDetails
           cabinet={cabinet}
           loading={loading}

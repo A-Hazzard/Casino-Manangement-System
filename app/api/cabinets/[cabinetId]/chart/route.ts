@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+    const dateField = searchParams.get('dateField') || 'readAt';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
     const granularity = searchParams.get('granularity') as
@@ -191,7 +192,7 @@ export async function GET(request: NextRequest) {
     // STEP 8: Build and execute aggregation pipeline
     // ============================================================================
     const pipeline = buildChartAggregationPipeline(
-      machineId, startDate, endDate, granularityConfig
+      machineId, startDate, endDate, granularityConfig, dateField
     );
 
     const chartData = (await Meters.aggregate(pipeline)) as ChartBucket[];

@@ -105,7 +105,7 @@ const MOCK_SESSION_DETAIL_SUBMITTED = {
         isSupplemental: false,
         machineGross: 4823000,
         sasGross: 4823000,
-        grossDifference: 0,
+        variation: 0,
       },
       {
         reportedMachineId: 'rm_002',
@@ -125,7 +125,7 @@ const MOCK_SESSION_DETAIL_SUBMITTED = {
         isSupplemental: false,
         machineGross: 3680000,
         sasGross: 3680000,
-        grossDifference: 0,
+        variation: 0,
       },
     ],
   },

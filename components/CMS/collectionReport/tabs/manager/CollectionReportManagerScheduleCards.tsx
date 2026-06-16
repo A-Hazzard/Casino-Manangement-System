@@ -11,6 +11,7 @@
  * - Responsive design (mobile only)
  */
 import { Button } from '@/components/shared/ui/button';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import type {
   CollectionReportManagerScheduleCardsProps,
   SchedulerTableRow,
@@ -29,8 +30,25 @@ export default function CollectionReportManagerScheduleCards({
   // ============================================================================
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 lg:hidden">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-4 border-t-4 border-buttonActive"></div>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 sm:px-4 sm:py-3">
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+            </div>
+            <div className="px-3 py-3 sm:px-4 sm:py-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div><Skeleton className="mb-1 h-3 w-14" /><Skeleton className="h-4 w-24" /></div>
+                <div><Skeleton className="mb-1 h-3 w-14" /><Skeleton className="h-4 w-24" /></div>
+                <div><Skeleton className="mb-1 h-3 w-16" /><Skeleton className="h-4 w-28" /></div>
+                <div><Skeleton className="mb-1 h-3 w-16" /><Skeleton className="h-4 w-28" /></div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

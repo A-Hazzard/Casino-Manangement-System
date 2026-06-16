@@ -127,10 +127,10 @@ const CabinetDetailPageSkeleton = () => (
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2">
+              {['Movements', 'Live Meters', 'Bill Validator', 'Activity Log', 'Collection History', 'Collection Settings', 'Configurations', 'Developer Options'].map((label) => (
+                <div key={label} className="flex items-center gap-2">
                   <Skeleton className="h-4 w-4" />
-                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-28" />
                 </div>
               ))}
             </CardContent>

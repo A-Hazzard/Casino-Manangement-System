@@ -292,7 +292,23 @@ async function updateMachineCollectionData(
   const currentCollectionMeters = currentMachine.collectionMeters;
   const currentMachineCollectionTime = currentMachine.collectionTime;
 
-  // Determine true previous meters from the latest completed collection
+  // Determine true previous meters — most-recent-regardless-of-version
+  // Priority: 1. collectionMetersHistory entry (unified V1+V2, most recent before this)
+  //           2. Previous V1 collection (backward compat)
+  //           3. Machine.collectionMeters
+
+  // Scan unified collectionMetersHistory for the most recent entry chronologically
+  // before this collection (includes both V1 and V2 entries)
+  const historyBeforeThis = (currentMachine.collectionMetersHistory ?? [])
+    .filter(
+      entry => entry.timestamp && new Date(entry.timestamp).getTime() < collectionTime.getTime()
+    )
+    .sort(
+      (a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime()
+    );
+
+  const previousHistoryEntry = historyBeforeThis[0];
+
   const previousCompletedCollection = await Collections.findOne({
     machineId,
     isCompleted: true,
@@ -309,10 +325,12 @@ async function updateMachineCollectionData(
     .lean<CollectionDocument>();
 
   const baselinePrevIn =
+    previousHistoryEntry?.metersIn ??
     previousCompletedCollection?.metersIn ??
     currentCollectionMeters?.metersIn ??
     0;
   const baselinePrevOut =
+    previousHistoryEntry?.metersOut ??
     previousCompletedCollection?.metersOut ??
     currentCollectionMeters?.metersOut ??
     0;
@@ -338,6 +356,7 @@ async function updateMachineCollectionData(
     prevMetersOut: baselinePrevOut,
     timestamp: collectionTime,
     locationReportId,
+    reportVersion: 1,
   };
 
   // Prepare all update operations

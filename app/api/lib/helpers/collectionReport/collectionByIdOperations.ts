@@ -466,6 +466,24 @@ export async function updateMachineHistoryForPatch(
     const collectionTimeForComparison =
       updatedCollection.collectionTime || updatedCollection.timestamp;
 
+    // Priority 1: unified collectionMetersHistory — most recent entry before this
+    const historyBeforeThis = (historyEntries ?? [])
+      .filter(
+        entry =>
+          entry.timestamp &&
+          collectionTimeForComparison &&
+          new Date(entry.timestamp).getTime() <
+            new Date(collectionTimeForComparison).getTime()
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp!).getTime() -
+          new Date(a.timestamp!).getTime()
+      );
+
+    const previousHistoryEntry = historyBeforeThis[0];
+
+    // Priority 2: V1 Collections (backward compat)
     const previousCollection = await Collections.findOne(
       {
         machineId: updatedCollection.machineId,
@@ -483,8 +501,14 @@ export async function updateMachineHistoryForPatch(
       }
     );
 
-    const prevMetersIn = previousCollection?.metersIn || 0;
-    const prevMetersOut = previousCollection?.metersOut || 0;
+    const prevMetersIn =
+      previousHistoryEntry?.metersIn ??
+      previousCollection?.metersIn ??
+      0;
+    const prevMetersOut =
+      previousHistoryEntry?.metersOut ??
+      previousCollection?.metersOut ??
+      0;
 
     const updateResult = await Machine.findOneAndUpdate(
       { _id: updatedCollection.machineId },

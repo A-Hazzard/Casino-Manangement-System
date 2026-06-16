@@ -113,7 +113,7 @@ export default function CabinetsDetailsPageContent() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
       >
-        <div className="flex w-full min-w-0 max-w-full flex-col gap-6">
+        <div className="flex w-full min-w-0 flex-col gap-6 overflow-hidden">
           {/* Header & Summary */}
           <CabinetsDetailsSummarySection
             cabinet={cabinet}

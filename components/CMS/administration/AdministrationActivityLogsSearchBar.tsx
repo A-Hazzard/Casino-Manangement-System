@@ -34,16 +34,16 @@ function AdministrationActivityLogsSearchBar({
   // Render - Search Bar
   // ============================================================================
   return (
-    <div className="mt-6 rounded-t-lg bg-buttonActive p-3 md:p-4">
+    <div className="rounded-lg bg-container p-3 md:p-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex h-11 w-full rounded-md bg-white shadow-sm sm:max-w-md">
+          <div className="flex h-11 w-full rounded-md border border-gray-200 bg-white shadow-sm sm:max-w-md">
             <input
               type="text"
               placeholder="Search activity logs..."
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
-              className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none md:text-base"
+              className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none ring-buttonActive focus:ring-1 md:text-base"
             />
             <span className="flex cursor-pointer items-center border-l border-gray-300 bg-white px-2 text-gray-400 transition-colors hover:text-gray-600">
               <MagnifyingGlassIcon className="h-4 w-4 md:h-5 md:w-5" />
@@ -52,7 +52,7 @@ function AdministrationActivityLogsSearchBar({
           <div className="relative">
             <button
               type="button"
-              className={`flex h-11 cursor-pointer items-center whitespace-nowrap rounded-md bg-blue-400 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-500 md:px-4 md:text-sm`}
+              className={`flex h-11 cursor-pointer items-center whitespace-nowrap rounded-md bg-button px-3 text-xs font-medium text-white transition-colors hover:bg-buttonActive md:px-4 md:text-sm`}
               onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
             >
               {searchMode === 'username'

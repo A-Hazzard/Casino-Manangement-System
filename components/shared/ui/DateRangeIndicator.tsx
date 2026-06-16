@@ -48,7 +48,6 @@ export default function DateRangeIndicator({
           const sd = customDateRange.startDate;
           const ed = customDateRange.endDate;
 
-          // Check for "Date Only" intent (Midnight in UTC or Local is usually used for date-only pickers)
           const isDateOnlyIntent =
             sd.getHours() === 0 &&
             sd.getMinutes() === 0 &&
@@ -56,22 +55,21 @@ export default function DateRangeIndicator({
             ed.getMinutes() === 0;
 
           if (isDateOnlyIntent) {
-            // Display as full gaming days for the selected dates
             const startDate = format(sd, 'MMM d, yyyy');
             const endDate = format(ed, 'MMM d, yyyy');
-
-            // If same day, show the full window representing that day
             if (isSameDay(sd, ed)) {
               return `${startDate}`;
             }
             return `${startDate} - ${endDate}`;
           }
 
-          // Otherwise show with specific times
           const startDate = format(sd, 'MMM d, yyyy');
           const endDate = format(ed, 'MMM d, yyyy');
           const startTimeStr = format(sd, 'h:mm a');
           const endTimeStr = format(ed, 'h:mm a');
+          if (isSameDay(sd, ed)) {
+            return `${startDate} ${startTimeStr} - ${endTimeStr}`;
+          }
           return `${startDate} ${startTimeStr} - ${endDate} ${endTimeStr}`;
         }
         return 'Custom Range';
@@ -124,7 +122,6 @@ export default function DateRangeIndicator({
             const startDateStr = format(sd, 'EEEE, MMMM d, yyyy');
 
             if (isSameDay(sd, ed)) {
-              // If single day selected, show it as a full gaming day window
               const nextDay = new Date(sd);
               nextDay.setDate(nextDay.getDate() + 1);
               const nextDayStr = format(nextDay, 'EEEE, MMMM d, yyyy');
@@ -137,11 +134,13 @@ export default function DateRangeIndicator({
             return `${startDateStr} at ${formatGamingTime(gameDayOffset)} to ${nextDayStr} at ${formatGamingEnd(gameDayOffset)}`;
           }
 
-          // Specific times
           const startDate = format(sd, 'EEEE, MMMM d, yyyy');
           const endDate = format(ed, 'EEEE, MMMM d, yyyy');
           const startTimeStr = format(sd, 'h:mm a');
           const endTimeStr = format(ed, 'h:mm a');
+          if (isSameDay(sd, ed)) {
+            return `${startDate} at ${startTimeStr} to ${endTimeStr}`;
+          }
           return `${startDate} at ${startTimeStr} to ${endDate} at ${endTimeStr}`;
         }
         return 'Custom date range selected';

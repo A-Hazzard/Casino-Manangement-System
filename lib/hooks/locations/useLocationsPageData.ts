@@ -73,8 +73,8 @@ export function useLocationsPageData() {
   // Pagination Constants
   // ============================================================================
   const ITEMS_PER_PAGE = 20;
-  const ITEMS_PER_BATCH = 40;
-  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
+  const ITEMS_PER_BATCH = 100;
+  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 
@@ -139,18 +139,15 @@ export function useLocationsPageData() {
     [locationData.length, totalCount]
   );
 
+  const hasMoreLocations = totalCount > 0 && locationData.length < totalCount;
+
   const effectiveTotalPages = useMemo(() => {
-    const displayedCount = locationData.length;
-    const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
-
-    // If server has more data not yet fetched, allow +1 page to trigger next batch
-    if (locationData.length < totalCount && totalCount > 0) {
-      const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-      return Math.min(displayedPages + 1, serverTotalPages);
+    if (hasMoreLocations) {
+      const loadedBatchCount = Math.ceil(locationData.length / ITEMS_PER_BATCH) || 1;
+      return loadedBatchCount * PAGES_PER_BATCH;
     }
-
-    return displayedPages;
-  }, [locationData.length, totalCount, ITEMS_PER_PAGE]);
+    return Math.max(1, Math.ceil(locationData.length / ITEMS_PER_PAGE));
+  }, [locationData.length, hasMoreLocations, ITEMS_PER_BATCH, ITEMS_PER_PAGE, PAGES_PER_BATCH]);
 
   // ============================================================================
   // Handlers
@@ -381,6 +378,7 @@ export function useLocationsPageData() {
     setSelectedStatus,
     fetchData,
     totalCount,
+    hasMoreLocations,
     locationDataLength: paginatedLocationData.length,
     isDataComplete,
   };

@@ -246,7 +246,8 @@ export const fetchCabinetById = async (
   customDateRange?: DateRange,
   currency?: string,
   licencee?: string | null,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  dateField?: string
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
@@ -254,6 +255,10 @@ export const fetchCabinetById = async (
 
     // Add query parameters
     const queryParams = [];
+
+    if (dateField && dateField !== 'readAt') {
+      queryParams.push(`dateField=${encodeURIComponent(dateField)}`);
+    }
 
     if (timePeriod === 'Custom') {
       // For Custom time period, dates are required

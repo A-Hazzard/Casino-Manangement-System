@@ -30,6 +30,9 @@ export default function LocationsLocationSkeleton() {
                 <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
                   GROSS
                 </th>
+                <th className="relative cursor-pointer p-3 text-center font-semibold text-white">
+                  JACKPOT
+                </th>
                 <th className="p-3 text-center font-semibold text-white">
                   ACTIONS
                 </th>
@@ -55,6 +58,9 @@ export default function LocationsLocationSkeleton() {
                     </div>
                   </td>
                   {/* Financial columns */}
+                  <td className="p-3 text-center">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
                   <td className="p-3 text-center">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </td>

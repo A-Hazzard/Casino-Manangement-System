@@ -236,25 +236,39 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
     prevMetersOut: prevOut,
     timestamp,
     locationReportId: sessionId,
+    reportVersion: 2,
   };
 
-  await Machine.findOneAndUpdate(
-    { _id: machineId, 'collectionMetersHistory.locationReportId': sessionId },
-    {
-      $set: {
-        'collectionMetersHistory.$.metersIn': historyEntry.metersIn,
-        'collectionMetersHistory.$.metersOut': historyEntry.metersOut,
-        'collectionMetersHistory.$.prevMetersIn': historyEntry.prevMetersIn,
-        'collectionMetersHistory.$.prevMetersOut': historyEntry.prevMetersOut,
-        'collectionMetersHistory.$.timestamp': historyEntry.timestamp,
-      },
-    }
-  ).catch(err => {
-    console.error(
-      `[cascadeMachineEdit] Failed to update collectionMetersHistory for machine ${machineId}:`,
-      err
+  // Use find-modify-save to reliably update subdocument fields including new ones.
+  const machine = await Machine.findOne({ _id: machineId });
+  if (machine) {
+    const historyArray = machine.collectionMetersHistory as Array<{
+      locationReportId?: string;
+      metersIn: number;
+      metersOut: number;
+      prevMetersIn: number;
+      prevMetersOut: number;
+      timestamp: Date;
+      reportVersion?: number;
+    }> | undefined;
+    const entry = historyArray?.find(
+      (item) => item.locationReportId === sessionId
     );
-  });
+    if (entry) {
+      entry.metersIn = historyEntry.metersIn;
+      entry.metersOut = historyEntry.metersOut;
+      entry.prevMetersIn = historyEntry.prevMetersIn;
+      entry.prevMetersOut = historyEntry.prevMetersOut;
+      entry.timestamp = historyEntry.timestamp;
+      entry.reportVersion = historyEntry.reportVersion;
+      await machine.save().catch((err: unknown) => {
+        console.error(
+          `[cascadeMachineEdit] Failed to update collectionMetersHistory for machine ${machineId}:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+      });
+    }
+  }
 
   // ============================================================================
   // 2. Update collectionMeters (and sasMeters for noSMIB) only if this session

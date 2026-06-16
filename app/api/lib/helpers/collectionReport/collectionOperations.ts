@@ -334,9 +334,36 @@ export async function resolvePreviousMetersForPatch(
       if (!prevOutProvided)
         updateData.prevOut = previousCollection.metersOut ?? 0
     } else {
+      // Fallback: check unified collectionMetersHistory for most recent entry before this collection
+      const collectionTime =
+        (originalCollection.collectionTime as Date) ||
+        (originalCollection.timestamp as Date)
+
       const editMachine = await Machine.findOne({
         _id: originalCollection.machineId,
-      }).lean<GamingMachine>()
+      })
+        .select('sasMeters collectionMeters collectionMetersHistory')
+        .lean<GamingMachine & {
+          collectionMetersHistory?: Array<{
+            metersIn?: number;
+            metersOut?: number;
+            timestamp?: Date;
+          }>;
+        }>()
+
+      const historyBeforeThis = (editMachine?.collectionMetersHistory ?? [])
+        .filter(
+          entry =>
+            entry.timestamp && collectionTime &&
+            new Date(entry.timestamp).getTime() < new Date(collectionTime).getTime()
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime()
+        )
+
+      const previousHistoryEntry = historyBeforeThis[0]
+
       const sasMetersData = editMachine?.sasMeters as
         | Record<string, unknown>
         | undefined
@@ -344,6 +371,8 @@ export async function resolvePreviousMetersForPatch(
         | Record<string, unknown>
         | undefined
 
+      const historyMetersIn = previousHistoryEntry?.metersIn
+      const historyMetersOut = previousHistoryEntry?.metersOut
       const sasIn = (sasMetersData?.drop as number) ?? null
       const sasOut = (sasMetersData?.totalCancelledCredits as number) ?? null
       const legacyIn = (collectionMetersData?.metersIn as number) ?? null
@@ -351,11 +380,13 @@ export async function resolvePreviousMetersForPatch(
 
       if (!prevInProvided) {
         updateData.prevIn =
-          legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0)
+          historyMetersIn ??
+          (legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0))
       }
       if (!prevOutProvided) {
         updateData.prevOut =
-          legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0)
+          historyMetersOut ??
+          (legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0))
       }
     }
   }

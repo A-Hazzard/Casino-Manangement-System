@@ -84,6 +84,7 @@ const CabinetsDetailsAccountingDetails = ({
     activityLogLoading,
     collectionHistoryError,
     activityLogError,
+    activityLogTimePeriod,
     activityLogPagination,
     activityLogFilters,
     activityLogFilterOptions,
@@ -178,7 +179,7 @@ const CabinetsDetailsAccountingDetails = ({
           ))}
         </motion.aside>
 
-        <div className="w-full flex-grow">
+        <div className="w-full min-w-0 flex-grow">
           <AnimatePresence mode="wait">
             <motion.div
               key="accounting-content"
@@ -556,6 +557,7 @@ const CabinetsDetailsAccountingDetails = ({
                       <ActivityLogDateFilter
                         onDateRangeChange={setActivityLogDateRange}
                         onTimePeriodChange={setActivityLogTimePeriod}
+                        timePeriod={activityLogTimePeriod}
                         disabled={activityLogLoading}
                       />
                     </div>

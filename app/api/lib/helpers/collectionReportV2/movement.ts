@@ -36,10 +36,18 @@
  *   - movement.manualMetersOut = (ramClearMetersOut - prevSasMetersOut) + effectiveOut
  *   - sasGross calculation is unchanged.
  *
- * ## Previous meter fallback
- *   1. First checks the most recent *submitted* ReportedMachine for this machine.
- *   2. If none found, falls back to Machine.collectionMeters.metersIn/Out.
- *   3. If still no data, defaults to 0.
+ * ## Previous meter fallback (unified history)
+ *   1. collectionMetersHistory entry for this session (edit mode ground truth)
+ *   2. Most recent collectionMetersHistory entry chronologically before this session
+ *      (unified — includes both V1 collections and V2 sessions)
+ *   3. Machine.collectionMeters.metersIn/Out (first-ever fallback)
+ *   4. 0
+ *
+ * ## SAS start time fallback
+ *   1. Provided sasStartTime
+ *   2. Previous V2 ReportedMachine.sasEndTime
+ *   3. Previous V1 Collections.sasMeters.sasEndTime
+ *   4. Machine.previousCollectionTime → Machine.collectionTime
  *
  * Flow:
  *   1. Look up the most recent submitted ReportedMachine (excluding current session).
@@ -50,6 +58,7 @@
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Collections } from '@/app/api/lib/models/collections';
 import type { ReportedMachineMovement } from '@/app/api/lib/models/reportedMachines';
 
 type PrevMeters = {
@@ -108,6 +117,7 @@ export async function computeMovement(
   // first-submit and never mutated, even though Machine.collectionMeters gets
   // overwritten on every submit. Using those prevents the poisoned
   // collectionMeters from corrupting movement on re-edits.
+  // Also loads the full history array for prev-value fallback across V1/V2.
   const machineForHistory = await Machine.findOne(
     { _id: machineId },
     'collectionMeters collectionMetersHistory'
@@ -115,8 +125,11 @@ export async function computeMovement(
     collectionMeters?: { metersIn?: number; metersOut?: number };
     collectionMetersHistory?: Array<{
       locationReportId?: string;
+      metersIn?: number;
+      metersOut?: number;
       prevMetersIn?: number;
       prevMetersOut?: number;
+      timestamp?: Date;
     }>;
   }>();
 
@@ -125,26 +138,21 @@ export async function computeMovement(
       entry => entry.locationReportId === currentSessionId
     );
 
-  // === STEP 2: Look up the most recent submitted V2 report for this machine ===
-  const prevDoc = await ReportedMachine.findOne(
-    {
-      machineId,
-      sessionId: { $ne: currentSessionId },
-      sessionStatus: 'submitted',
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-    },
-    'sasMetersIn sasMetersOut'
-  )
-    .sort({ sasEndTime: -1 })
-    .lean<{
-      sasMetersIn: number;
-      sasMetersOut: number;
-    }>();
+  // === STEP 2: Find the most recent history entry chronologically BEFORE this session ===
+  // Uses the unified collectionMetersHistory (contains both V1 and V2 entries
+  // thanks to recalculateMachineCollections merging both timelines).
+  const referenceTime = sasEndTime ?? new Date();
+  const historyArray = machineForHistory?.collectionMetersHistory ?? [];
+  const sortedHistory = [...historyArray]
+    .filter(entry => entry.timestamp && entry.timestamp < referenceTime)
+    .sort((a, b) => (b.timestamp?.getTime() ?? 0) - (a.timestamp?.getTime() ?? 0));
+
+  const previousHistoryEntry = sortedHistory[0];
 
   // === STEP 3: Resolve previous values ===
   // Priority:
   //   1. collectionMetersHistory entry for this session (edit mode ground truth)
-  //   2. Most recent other submitted ReportedMachine for this machine
+  //   2. Most recent collectionMetersHistory entry before this session (unified V1+V2)
   //   3. Machine.collectionMeters (first-ever capture fallback)
   let prevSasIn: number;
   let prevSasOut: number;
@@ -153,9 +161,9 @@ export async function computeMovement(
     // Edit mode: use the frozen prev values from the history entry
     prevSasIn = historyEntryForSession.prevMetersIn;
     prevSasOut = historyEntryForSession.prevMetersOut ?? 0;
-  } else if (prevDoc) {
-    prevSasIn = prevDoc.sasMetersIn ?? 0;
-    prevSasOut = prevDoc.sasMetersOut ?? 0;
+  } else if (previousHistoryEntry) {
+    prevSasIn = previousHistoryEntry.metersIn ?? 0;
+    prevSasOut = previousHistoryEntry.metersOut ?? 0;
   } else {
     // First-time report: use the collection meters stored on the Machine document
     prevSasIn = machineForHistory?.collectionMeters?.metersIn ?? 0;
@@ -167,26 +175,46 @@ export async function computeMovement(
     prevSasMetersOut: prevSasOut,
   };
 
-  // Resolve missing sasStartTime
+  // Resolve missing sasStartTime — query both V1 and V2, pick the MOST RECENT
+  // regardless of which version it came from.
   let resolvedSasStartTime = sasStartTime;
   if (!resolvedSasStartTime) {
-    const prevSub = await ReportedMachine.findOne({
-      machineId,
-      sessionId: { $ne: currentSessionId },
-      sessionStatus: 'submitted',
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-    })
-      .sort({ sasEndTime: -1 })
-      .select('sasEndTime')
-      .lean<{ sasEndTime?: Date }>();
+    const [prevV2, prevV1] = await Promise.all([
+      ReportedMachine.findOne({
+        machineId,
+        sessionId: { $ne: currentSessionId },
+        sessionStatus: 'submitted',
+        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+      })
+        .sort({ sasEndTime: -1 })
+        .select('sasEndTime')
+        .lean<{ sasEndTime?: Date }>(),
+      Collections.findOne({
+        machineId,
+        isCompleted: true,
+        'sasMeters.sasEndTime': { $exists: true },
+      })
+        .sort({ 'sasMeters.sasEndTime': -1 })
+        .select('sasMeters.sasEndTime')
+        .lean<{ sasMeters?: { sasEndTime?: Date } }>(),
+    ]);
 
-    if (prevSub?.sasEndTime) {
-      resolvedSasStartTime = prevSub.sasEndTime;
+    const v2Time = prevV2?.sasEndTime?.getTime() ?? 0;
+    const v1Time = prevV1?.sasMeters?.sasEndTime?.getTime() ?? 0;
+
+    if (v2Time > 0 && v1Time > 0) {
+      resolvedSasStartTime = v2Time > v1Time
+        ? prevV2!.sasEndTime!
+        : prevV1!.sasMeters!.sasEndTime!;
+    } else if (v2Time > 0) {
+      resolvedSasStartTime = prevV2!.sasEndTime!;
+    } else if (v1Time > 0) {
+      resolvedSasStartTime = prevV1!.sasMeters!.sasEndTime!;
     } else {
       const machineDoc = await Machine.findOne({ _id: machineId })
-        .select('collectionTime')
-        .lean<{ collectionTime?: Date }>();
-      resolvedSasStartTime = machineDoc?.collectionTime ?? undefined;
+        .select('collectionTime previousCollectionTime')
+        .lean<{ collectionTime?: Date; previousCollectionTime?: Date }>();
+      resolvedSasStartTime = machineDoc?.previousCollectionTime ?? machineDoc?.collectionTime ?? undefined;
     }
   }
 

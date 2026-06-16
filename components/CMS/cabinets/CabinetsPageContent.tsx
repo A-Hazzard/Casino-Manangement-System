@@ -90,7 +90,7 @@ export default function CabinetsPageContent() {
     chartData,
     loadingChart,
     totalPages,
-    totalCount,
+    hasMoreCabinets,
     setActiveSection,
     setSearchTerm,
     setSelectedLocation,
@@ -356,8 +356,8 @@ export default function CabinetsPageContent() {
                 sortOrder={sortOrder}
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalCount={totalCount}
                 onPageChange={setCurrentPage}
+                hasMore={hasMoreCabinets}
                 onSort={handleColumnSort}
                 onEdit={() => {}}
                 onDelete={() => {}}

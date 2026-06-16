@@ -27,7 +27,7 @@ type SessionMachine = {
   imageData?: string;
   metersMatch?: boolean;
   machineGross?: number;
-  grossDifference?: number;
+  variation?: number;
   movement?: {
     manualMetersIn?: number;
     manualMetersOut?: number;

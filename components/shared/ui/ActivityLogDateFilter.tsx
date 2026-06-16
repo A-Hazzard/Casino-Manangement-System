@@ -4,7 +4,7 @@
  *
  * Features:
  * - Preset time period filters (Today, Yesterday, Last 7 Days, Last 30 Days, All Time, Custom)
- * - Custom date range picker
+ * - Custom date range picker using MuiDateCalendar
  * - Date range change callbacks
  * - Time period change callbacks
  * - Disabled state support
@@ -17,7 +17,8 @@
 
 import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/shared/ui/button';
-import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/shared/ui/popover';
+import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,6 @@ import {
   SelectValue,
 } from '@/components/shared/ui/select';
 import { useEffect, useMemo, useState } from 'react';
-import type { DateRange as RDPDateRange } from 'react-day-picker';
 
 type ActivityLogDateFilterProps = {
   onDateRangeChange?: (dateRange: { from: Date; to: Date } | undefined) => void;
@@ -45,9 +45,8 @@ export default function ActivityLogDateFilter({
   // State & Hooks
   // ============================================================================
   const [internalActiveFilter, setInternalActiveFilter] = useState<TimePeriod>('7d');
-  const [showCustomPicker, setShowCustomPicker] = useState(false);
-  const [pendingCustomDateRange, setPendingCustomDateRange] =
-    useState<RDPDateRange>();
+  const [showCustomDesktop, setShowCustomDesktop] = useState(false);
+  const [showCustomMobile, setShowCustomMobile] = useState(false);
 
   const activeFilter = timePeriod !== undefined ? timePeriod : internalActiveFilter;
 
@@ -60,11 +59,12 @@ export default function ActivityLogDateFilter({
     if (timePeriod !== undefined) {
       setInternalActiveFilter(timePeriod);
       if (timePeriod !== 'Custom') {
-        setShowCustomPicker(false);
-        setPendingCustomDateRange(undefined);
+        setShowCustomDesktop(false);
+        setShowCustomMobile(false);
       }
     }
   }, [timePeriod]);
+
   // ============================================================================
   // Computed
   // ============================================================================
@@ -91,41 +91,35 @@ export default function ActivityLogDateFilter({
   // ============================================================================
   const handleFilterClick = (filter: TimePeriod) => {
     if (filter === 'Custom') {
-      setShowCustomPicker(true);
+      setShowCustomDesktop(true);
     } else {
-      setShowCustomPicker(false);
+      setShowCustomDesktop(false);
+      setShowCustomMobile(false);
       setActiveFilter(filter);
       onTimePeriodChange?.(filter);
       onDateRangeChange?.(undefined);
     }
   };
 
-  const handleApplyCustomRange = () => {
-    if (pendingCustomDateRange?.from && pendingCustomDateRange?.to) {
-      // Convert dates to proper timezone format
-      const startDate = new Date(pendingCustomDateRange.from);
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = new Date(pendingCustomDateRange.to);
-      endDate.setHours(23, 59, 59, 999);
-
-      setActiveFilter('Custom');
-      setShowCustomPicker(false);
-      onTimePeriodChange?.('Custom');
-      onDateRangeChange?.({ from: startDate, to: endDate });
+  const handleMobileSelectChange = (value: string) => {
+    if (value === 'Custom') {
+      setShowCustomMobile(true);
+    } else {
+      setShowCustomMobile(false);
+      setShowCustomDesktop(false);
+      setActiveFilter(value as TimePeriod);
+      onTimePeriodChange?.(value as TimePeriod);
+      onDateRangeChange?.(undefined);
     }
   };
 
-  const handleCancelCustomRange = () => {
-    setShowCustomPicker(false);
-    setPendingCustomDateRange(undefined);
-  };
-
-  const handleSetLastMonth = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-    setPendingCustomDateRange({ from: firstDay, to: lastDay });
+  const handleCustomSelect = (range?: { from: Date; to: Date }) => {
+    if (!range) return;
+    setActiveFilter('Custom');
+    setShowCustomDesktop(false);
+    setShowCustomMobile(false);
+    onTimePeriodChange?.('Custom');
+    onDateRangeChange?.({ from: range.from, to: range.to });
   };
 
   // ============================================================================
@@ -138,28 +132,54 @@ export default function ActivityLogDateFilter({
         {/* Desktop Filter Buttons */}
         <div className="hidden items-center gap-2 md:flex">
           {timeFilterButtons.map(button => (
-            <Button
-              key={button.value}
-              variant={activeFilter === button.value ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleFilterClick(button.value)}
-              disabled={disabled}
-              className={
-                activeFilter === button.value
-                  ? 'bg-buttonActive text-container'
-                  : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
-              }
-            >
-              {button.label}
-            </Button>
+            button.value === 'Custom' ? (
+              <Popover key={button.value} open={showCustomDesktop} onOpenChange={setShowCustomDesktop}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={activeFilter === 'Custom' ? 'default' : 'outline'}
+                    size="sm"
+                    disabled={disabled}
+                    className={
+                      activeFilter === 'Custom'
+                        ? 'bg-buttonActive text-container'
+                        : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
+                    }
+                  >
+                    {button.label}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                  <MuiDateCalendar
+                    showTime={false}
+                    buttonLabel="Apply"
+                    onSelect={handleCustomSelect}
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Button
+                key={button.value}
+                variant={activeFilter === button.value ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleFilterClick(button.value)}
+                disabled={disabled}
+                className={
+                  activeFilter === button.value
+                    ? 'bg-buttonActive text-container'
+                    : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
+                }
+              >
+                {button.label}
+              </Button>
+            )
           ))}
         </div>
 
         {/* Mobile Filter Dropdown */}
         <div className="w-full md:hidden">
           <Select
-            value={activeFilter}
-            onValueChange={value => handleFilterClick(value as TimePeriod)}
+            value={showCustomMobile ? 'Custom' : activeFilter}
+            onValueChange={handleMobileSelectChange}
             disabled={disabled}
           >
             <SelectTrigger className="w-full">
@@ -173,19 +193,19 @@ export default function ActivityLogDateFilter({
               ))}
             </SelectContent>
           </Select>
+
+          {/* MuiDateCalendar for mobile - shown when Custom is selected */}
+          {showCustomMobile && (
+            <div className="mt-2 w-full">
+              <MuiDateCalendar
+                showTime={false}
+                buttonLabel="Apply"
+                onSelect={handleCustomSelect}
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Custom Date Range Picker */}
-      {showCustomPicker && (
-        <ModernDateRangePicker
-          value={pendingCustomDateRange}
-          onChange={setPendingCustomDateRange}
-          onGo={handleApplyCustomRange}
-          onCancel={handleCancelCustomRange}
-          onSetLastMonth={handleSetLastMonth}
-        />
-      )}
     </div>
   );
 }

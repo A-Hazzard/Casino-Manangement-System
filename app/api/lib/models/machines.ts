@@ -94,6 +94,7 @@ export const machineSchema = new Schema(
         prevMetersOut: Number,
         timestamp: Date,
         locationReportId: String,
+        reportVersion: Number,
       },
     ],
     assetStatus: String,

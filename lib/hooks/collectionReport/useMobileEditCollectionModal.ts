@@ -1359,7 +1359,7 @@ export function useMobileEditCollectionModal({
 
   // Load existing report data for edit mode
   useEffect(() => {
-    if (show && reportId && locations && locations.length > 0) {
+    if (show && reportId) {
       const loadReportData = async () => {
         try {
           setModalState(prev => ({
@@ -1378,7 +1378,7 @@ export function useMobileEditCollectionModal({
           );
           const collections = collectionsResponse.data;
 
-          const matchingLocation = locations.find(
+          const matchingLocation = locationsRef.current.find(
             loc => loc.name === reportData.locationName
           );
 
@@ -1455,6 +1455,44 @@ export function useMobileEditCollectionModal({
               isLoadingCollections: false,
               isLoadingMachines: false,
             }));
+          } else if (reportData.locationId) {
+            // Fallback: set locked location from report data so machines load via API
+            setStoreLockedLocation(String(reportData.locationId));
+            setStoreCollectedMachines(collections);
+
+            setModalState(prev => ({
+              ...prev,
+              selectedLocation: String(reportData.locationId),
+              selectedLocationName: reportData.locationName || '',
+              lockedLocationId: String(reportData.locationId),
+              collectedMachines: collections,
+              originalCollections: JSON.parse(JSON.stringify(collections)),
+              isLoadingCollections: false,
+              isLoadingMachines: false,
+              financials: {
+                variance: String(reportData.locationMetrics?.variance || 0),
+                previousBalance: String(
+                  reportData.locationMetrics?.previousBalanceOwed || 0
+                ),
+                amountToCollect: String(
+                  reportData.locationMetrics?.amountToCollect || 0
+                ),
+                collectedAmount: String(
+                  reportData.locationMetrics?.collectedAmount || 0
+                ),
+                taxes: String(reportData.locationMetrics?.taxes || 0),
+                advance: String(reportData.locationMetrics?.advance || 0),
+                varianceReason:
+                  reportData.locationMetrics?.varianceReason || '',
+                reasonForShortagePayment:
+                  reportData.locationMetrics?.reasonForShortage || '',
+                balanceCorrection: String(
+                  reportData.locationMetrics?.balanceCorrection || 0
+                ),
+                balanceCorrectionReason:
+                  reportData.locationMetrics?.correctionReason || '',
+              },
+            }));
           } else {
             setModalState(prev => ({
               ...prev,
@@ -1478,10 +1516,10 @@ export function useMobileEditCollectionModal({
   }, [
     show,
     reportId,
-    locations,
     setStoreSelectedLocation,
     setStoreAvailableMachines,
     setStoreCollectedMachines,
+    setStoreLockedLocation,
   ]);
 
   // Fetch machines when location changes (important since they are no longer pre-fetched)

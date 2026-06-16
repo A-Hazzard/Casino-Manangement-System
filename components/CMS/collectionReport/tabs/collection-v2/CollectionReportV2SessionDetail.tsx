@@ -76,7 +76,7 @@ type SessionMachine = {
   // These are movement-based (movement.machineGross / movement.sasGross)
   machineGross?: number;
   sasGross?: number;
-  grossDifference?: number;
+  variation?: number;
   lastCollectionTime?: string | null;
   isSupplemental?: boolean;
   createdAt?: string;
@@ -219,6 +219,45 @@ function SubmitProgressOverlay({
 // Component
 // ============================================================================
 
+function ReviewThumbnail({
+  imageData,
+  name,
+}: {
+  imageData: string;
+  name: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gray-50 text-gray-400">
+        <svg
+          className="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageData}
+      alt={name}
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 type SessionDetailProps = {
   /** When provided (modal mode), overrides the URL param. */
   sessionId?: string;
@@ -306,6 +345,7 @@ export default function CollectionReportV2SessionDetail({
     ramClearMetersIn: '',
     ramClearMetersOut: '',
   });
+  const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
 
   // ============================================================================
   // Effects
@@ -403,6 +443,7 @@ export default function CollectionReportV2SessionDetail({
           currentMachine.hasRelay === false
         )
       );
+      setPhotoPreviewFailed(false);
     }
   }, [
     currentIndex,
@@ -410,6 +451,15 @@ export default function CollectionReportV2SessionDetail({
     session,
     getInitialCaptureStateForMachine,
   ]);
+
+  // Reset preview failure flag whenever the image data changes (e.g. user replaces HEIC with JPG)
+  const prevImageDataRef = useRef(captureState.imageData);
+  useEffect(() => {
+    if (captureState.imageData !== prevImageDataRef.current) {
+      prevImageDataRef.current = captureState.imageData;
+      setPhotoPreviewFailed(false);
+    }
+  }, [captureState.imageData]);
 
   // Check last collection time when machine changes
   useEffect(() => {
@@ -628,6 +678,7 @@ export default function CollectionReportV2SessionDetail({
 
   const handleCameraCapture = (imageData: string) => {
     setCaptureState(prev => ({ ...prev, imageData }));
+    setPhotoPreviewFailed(false);
     setShowCamera(false);
   };
 
@@ -644,6 +695,7 @@ export default function CollectionReportV2SessionDetail({
         reader.onload = event => {
           const base64 = event.target?.result as string;
           setCaptureState(prev => ({ ...prev, imageData: base64 }));
+          setPhotoPreviewFailed(false);
           toast.success('Image pasted successfully');
         };
         reader.readAsDataURL(file);
@@ -1861,16 +1913,42 @@ export default function CollectionReportV2SessionDetail({
             </label>
             {captureState.imageData ? (
               <div className="relative">
-                <img
-                  src={captureState.imageData}
-                  alt="Meter"
-                  className="max-h-64 w-full rounded-lg border border-gray-200 object-contain"
-                />
+                {photoPreviewFailed ? (
+                  <div className="flex max-h-64 min-h-[12rem] w-full flex-col items-center justify-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <svg
+                      className="h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-center text-sm font-medium text-gray-700">
+                      Preview not available
+                    </p>
+                    <p className="max-w-xs text-center text-xs text-gray-500">
+                      This file type can&apos;t be previewed in the browser, but your image is safe and will be stored. Previews are supported for JPG, PNG, GIF and WebP.
+                    </p>
+                  </div>
+                ) : (
+                  <img
+                    src={captureState.imageData}
+                    alt="Meter"
+                    className="max-h-64 w-full rounded-lg border border-gray-200 object-contain"
+                    onError={() => setPhotoPreviewFailed(true)}
+                  />
+                )}
                 <button
                   type="button"
-                  onClick={() =>
-                    setCaptureState(prev => ({ ...prev, imageData: null }))
-                  }
+                  onClick={() => {
+                    setCaptureState(prev => ({ ...prev, imageData: null }));
+                    setPhotoPreviewFailed(false);
+                  }}
                   className="absolute right-2 top-2 rounded-full bg-red-500 p-1.5 text-white hover:bg-red-600"
                 >
                   <svg
@@ -2430,10 +2508,9 @@ function ReviewView({
                     {/* Thumbnail — imageData comes from server (Drive URL or tempImageData) */}
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 sm:h-20 sm:w-20">
                       {machine.imageData ? (
-                        <img
-                          src={machine.imageData}
-                          alt={machine.machineName}
-                          className="h-full w-full object-cover"
+                        <ReviewThumbnail
+                          imageData={machine.imageData}
+                          name={machine.machineName}
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-center text-[10px] text-gray-400">
@@ -2567,6 +2644,24 @@ function ReviewView({
                           {machine.sasMetersOut?.toLocaleString() ?? 'N/A'}
                         </span>
                       </div>
+                      {machine.prevSasMetersIn != null &&
+                        machine.prevSasMetersIn !== 0 && (
+                          <div className="flex items-baseline justify-between sm:block">
+                            <span className="text-gray-400">Prev In</span>
+                            <span className="font-medium text-gray-700 sm:ml-1">
+                              {machine.prevSasMetersIn.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      {machine.prevSasMetersOut != null &&
+                        machine.prevSasMetersOut !== 0 && (
+                          <div className="flex items-baseline justify-between sm:block">
+                            <span className="text-gray-400">Prev Out</span>
+                            <span className="font-medium text-gray-700 sm:ml-1">
+                              {machine.prevSasMetersOut.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
                       {machine.machineGross !== undefined && (
                         <div className="flex items-baseline justify-between sm:block">
                           <span className="text-gray-400">Machine Gross</span>
@@ -2584,12 +2679,12 @@ function ReviewView({
                         </div>
                       )}
                       {!isMachineNoSMIB &&
-                        machine.grossDifference !== undefined &&
-                        machine.grossDifference !== 0 && (
+                        machine.metersMatch === false &&
+                        machine.variation !== undefined && (
                           <div className="flex items-baseline justify-between sm:col-span-2 sm:block">
-                            <span className="text-gray-400">Difference</span>
+                            <span className="text-gray-400">Variation</span>
                             <span className="font-medium text-red-600 sm:ml-1">
-                              {machine.grossDifference?.toLocaleString() ??
+                              {machine.variation?.toLocaleString() ??
                                 'N/A'}
                             </span>
                           </div>

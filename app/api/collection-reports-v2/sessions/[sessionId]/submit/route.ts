@@ -23,6 +23,7 @@ import {
   uploadSessionImages,
   relocateDrivePhotos,
   persistMachineMetersOnSubmit,
+  backfillSessionReportVersion,
   logSubmitActivity,
 } from '@/app/api/lib/helpers/collectionReportV2/submitOperations';
 import { NextRequest, NextResponse } from 'next/server';
@@ -208,6 +209,25 @@ export async function PATCH(
         sessionId,
         submittedMachines,
         sessionEndTime
+      );
+    }
+
+    // ============================================================================
+    // STEP 8B: Backfill reportVersion on this session's history entries
+    // Runs for EVERY session — even when no machine was captured/confirmed
+    // (e.g. skip-to-review without editing), where persistMachineMetersOnSubmit
+    // is skipped. Bumps machine.updatedAt and writes an audit-log entry.
+    // ============================================================================
+    try {
+      await backfillSessionReportVersion(sessionId, req, {
+        _id: userPayload._id as string,
+        emailAddress: userPayload.emailAddress as string,
+        roles: userPayload.roles as string[],
+      });
+    } catch (backfillErr) {
+      console.error(
+        `[submit] Backfill reportVersion FAILED for session ${sessionId}:`,
+        backfillErr instanceof Error ? backfillErr.message : 'Unknown error'
       );
     }
 

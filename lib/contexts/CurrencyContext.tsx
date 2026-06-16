@@ -18,6 +18,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -314,14 +315,20 @@ export function CurrencyProvider({
     }
   }, [user, isSingleLicenceeNonAdmin]); // Reduced dependencies to prevent infinite loop
 
-  const value: CurrencyContextType = {
+  const value = useMemo((): CurrencyContextType => ({
     displayCurrency,
     setDisplayCurrency: handleSetDisplayCurrency,
     formatAmount: formatAmountWithCurrency,
     convertAmount: convertAmountWithCurrency,
     isAllLicencee,
     shouldApplyConversion: isAllLicencee,
-  };
+  }), [
+    displayCurrency,
+    handleSetDisplayCurrency,
+    formatAmountWithCurrency,
+    convertAmountWithCurrency,
+    isAllLicencee,
+  ]);
 
   return (
     <CurrencyContext.Provider value={value}>

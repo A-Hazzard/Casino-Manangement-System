@@ -78,7 +78,7 @@ function applyScaleToMachine(
     sasMetersOut: round(machine.sasMetersOut !== null ? machine.sasMetersOut * moneyOutScale : null),
     sasGross: round(machine.sasGross !== null ? machine.sasGross * moneyInScale : null),
     machineGross: Math.round(machine.machineGross * moneyInScale * 100) / 100,
-    grossDifference: round(machine.grossDifference !== null ? machine.grossDifference * moneyInScale : null),
+    variation: round(machine.variation !== null ? machine.variation * moneyInScale : null),
   };
 }
 

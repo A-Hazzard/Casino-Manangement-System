@@ -124,7 +124,8 @@ export async function aggregateCabinetMetrics(
   endDateParam: string | null,
   gameDayOffset: number,
   includeJackpot: boolean,
-  userPayload: UserForScale
+  userPayload: UserForScale,
+  dateField: string = 'readAt'
 ): Promise<CabinetMetrics> {
   const metrics: CabinetMetrics = {
     moneyIn: 0,
@@ -174,7 +175,7 @@ export async function aggregateCabinetMetrics(
 
   const matchQuery: Record<string, unknown> = { machine: cabinetId };
   if (startDate && endDate) {
-    matchQuery.readAt = { $gte: startDate, $lte: endDate };
+    matchQuery[dateField] = { $gte: startDate, $lte: endDate };
   }
 
   const aggregation = await Meters.aggregate([

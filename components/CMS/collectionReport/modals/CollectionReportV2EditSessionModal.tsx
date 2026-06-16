@@ -43,7 +43,7 @@ type SessionMachine = {
   metersMatch?: boolean;
   machineGross?: number;
   sasGross?: number;
-  grossDifference?: number;
+  variation?: number;
   createdAt?: string;
   updatedAt?: string;
 };

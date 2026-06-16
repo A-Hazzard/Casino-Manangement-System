@@ -206,6 +206,39 @@ async function findPreviousCollectionForRevert(
     );
     return null;
   }
+
+  // Priority 1: unified collectionMetersHistory — most recent entry
+  // chronologically before this operation (includes both V1 and V2)
+  const machine = await Machine.findOne({ _id: machineId })
+    .select('collectionMetersHistory')
+    .lean<{
+      collectionMetersHistory?: Array<{
+        metersIn?: number;
+        metersOut?: number;
+        timestamp?: Date;
+      }>;
+    }>();
+
+  const historyBeforeThis = (machine?.collectionMetersHistory ?? [])
+    .filter(
+      entry =>
+        entry.timestamp &&
+        new Date(entry.timestamp).getTime() < currentCollectionTime.getTime()
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime()
+    );
+
+  const previousHistoryEntry = historyBeforeThis[0];
+  if (previousHistoryEntry) {
+    return {
+      metersIn: previousHistoryEntry.metersIn ?? 0,
+      metersOut: previousHistoryEntry.metersOut ?? 0,
+    };
+  }
+
+  // Priority 2: V1 Collections (backward compat for machines without history)
   const previousCollection = await Collections.findOne({
     machineId,
     $and: [

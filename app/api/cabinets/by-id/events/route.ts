@@ -217,10 +217,14 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 7: Resolve cursor page if event command code provided
     // ============================================================================
-    // Find the rank (position) of the first document where command matches,
-    // then seek to that page offset so the user jumps to where that code first appears.
+    // Find the rank (0-based global position) of the Nth match for `command`,
+    // then seek to the exact batch + display page that contains it — same
+    // technique as the meters search (metersSearch.ts).
+    const matchOrdinal = Math.max(0, parseInt(searchParams.get('matchOrdinal') || '0'));
     let resolvedPage = page;
     let cursorResolved = false;
+    let matchCount = 0;
+    let matchIndex = -1;
 
     if (command) {
       const commandMatchQuery = {
@@ -228,17 +232,48 @@ export async function GET(request: NextRequest) {
         command: { $regex: `^${command}$`, $options: 'i' },
       };
 
-      const firstMatch = await MachineEvent.findOne(commandMatchQuery)
-        .sort({ date: -1 })
-        .select('date _id')
-        .lean<{ date: Date; _id: unknown }>();
+      // One pass: total match count + the Nth match.
+      type MatchFacetResult = {
+        total: { n: number }[];
+        nth: { _id: unknown; date: Date }[];
+      };
 
-      if (firstMatch) {
-        const rankQuery: Record<string, unknown> = {
+      const matchFacet = await MachineEvent.aggregate<MatchFacetResult>([
+        { $match: commandMatchQuery },
+        { $sort: { date: -1, _id: -1 } },
+        {
+          $facet: {
+            total: [{ $count: 'n' }],
+            nth: [
+              { $skip: matchOrdinal },
+              { $limit: 1 },
+              { $project: { _id: 1, date: 1 } },
+            ],
+          },
+        },
+      ]).exec();
+
+      matchCount = matchFacet[0]?.total?.[0]?.n ?? 0;
+      const nthMatch = matchFacet[0]?.nth?.[0];
+
+      if (nthMatch) {
+        // Count events that sort before the Nth match (its 0-based global rank).
+        // $expr with _id tiebreaker avoids driver-level ObjectId typing issues.
+        const rankCount = await MachineEvent.countDocuments({
           ...baseQuery,
-          date: { $gt: firstMatch.date },
-        };
-        const rankCount = await MachineEvent.countDocuments(rankQuery);
+          $expr: {
+            $or: [
+              { $gt: ['$date', nthMatch.date] },
+              {
+                $and: [
+                  { $eq: ['$date', nthMatch.date] },
+                  { $gt: ['$_id', nthMatch._id] },
+                ],
+              },
+            ],
+          },
+        });
+        matchIndex = rankCount;
         resolvedPage = Math.floor(rankCount / limit) + 1;
         cursorResolved = true;
       }
@@ -247,8 +282,22 @@ export async function GET(request: NextRequest) {
     const skip = (resolvedPage - 1) * limit;
 
     // ============================================================================
-    // STEP 8: Query events via $facet (data + metadata + filter options)
+    // STEP 8: Query events — fast path for All Time, facet path for date-bounded
+    //
+    // All Time (no date filter): skip the expensive $count and $group aggregations
+    // that would scan every matching document. Instead fetch limit+1 rows via the
+    // machine+date index, derive hasNextPage from the extra row, and return
+    // totalEvents/totalPages as null so the UI shows unbounded pagination.
+    //
+    // Date-bounded: the date range keeps the matching set small, so the full
+    // $facet (count + filter-option groups) stays fast.
     // ============================================================================
+    const isAllTime = !dateFilterStart && !dateFilterEnd;
+
+    let events: MachineEventDocument[] = [];
+    let totalEvents: number | null = null;
+    let allTimeHasNextPage = false;
+
     type FacetItem = { _id: string | null };
     type FacetResult = {
       metadata: [{ total: number }] | [];
@@ -258,48 +307,64 @@ export async function GET(request: NextRequest) {
       games: FacetItem[];
     };
 
-    const facetPipeline: import('mongoose').PipelineStage[] = [
-      { $match: baseQuery },
-      { $sort: { date: -1 } },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [{ $skip: skip }, { $limit: limit }],
-          eventTypes: [
-            { $group: { _id: '$eventType' } },
-            { $match: { _id: { $ne: null } } },
-          ],
-          eventLogLevels: [
-            { $group: { _id: '$eventLogLevel' } },
-            { $match: { _id: { $ne: null } } },
-          ],
-          games: [
-            { $group: { _id: '$gameName' } },
-            { $match: { _id: { $ne: null } } },
-          ],
-        },
-      },
-    ];
-
-    const facetResult = await MachineEvent.aggregate<FacetResult>(facetPipeline);
-    const facetData = facetResult[0];
-
-    let events = facetData?.data ?? [];
-    const totalEvents = facetData?.metadata[0]?.total ?? 0;
-    const filterOptions = {
-      eventTypes: (facetData?.eventTypes ?? [])
-        .map(i => i._id)
-        .filter(Boolean)
-        .sort() as string[],
-      eventLogLevels: (facetData?.eventLogLevels ?? [])
-        .map(i => i._id)
-        .filter(Boolean)
-        .sort() as string[],
-      games: (facetData?.games ?? [])
-        .map(i => i._id)
-        .filter(Boolean)
-        .sort() as string[],
+    let filterOptions = {
+      eventTypes: [] as string[],
+      eventLogLevels: [] as string[],
+      games: [] as string[],
     };
+
+    if (isAllTime) {
+      // Fetch one extra doc to detect whether a next page exists.
+      const rawEvents = await MachineEvent.find(baseQuery)
+        .sort({ date: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit + 1)
+        .lean<MachineEventDocument[]>();
+
+      allTimeHasNextPage = rawEvents.length > limit;
+      events = allTimeHasNextPage ? rawEvents.slice(0, limit) : rawEvents;
+
+      // Derive filter options from the current page — avoids a full-collection scan.
+      filterOptions = {
+        eventTypes: [...new Set(events.map(e => e.eventType).filter((v): v is string => Boolean(v)))].sort(),
+        eventLogLevels: [...new Set(events.map(e => e.eventLogLevel).filter((v): v is string => Boolean(v)))].sort(),
+        games: [...new Set(events.map(e => e.gameName).filter((v): v is string => Boolean(v)))].sort(),
+      };
+    } else {
+      const facetPipeline: import('mongoose').PipelineStage[] = [
+        { $match: baseQuery },
+        { $sort: { date: -1, _id: -1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [{ $skip: skip }, { $limit: limit }],
+            eventTypes: [
+              { $group: { _id: '$eventType' } },
+              { $match: { _id: { $ne: null } } },
+            ],
+            eventLogLevels: [
+              { $group: { _id: '$eventLogLevel' } },
+              { $match: { _id: { $ne: null } } },
+            ],
+            games: [
+              { $group: { _id: '$gameName' } },
+              { $match: { _id: { $ne: null } } },
+            ],
+          },
+        },
+      ];
+
+      const facetResult = await MachineEvent.aggregate<FacetResult>(facetPipeline);
+      const facetData = facetResult[0];
+
+      events = facetData?.data ?? [];
+      totalEvents = facetData?.metadata[0]?.total ?? 0;
+      filterOptions = {
+        eventTypes: (facetData?.eventTypes ?? []).map(i => i._id).filter((v): v is string => Boolean(v)).sort(),
+        eventLogLevels: (facetData?.eventLogLevels ?? []).map(i => i._id).filter((v): v is string => Boolean(v)).sort(),
+        games: (facetData?.games ?? []).map(i => i._id).filter((v): v is string => Boolean(v)).sort(),
+      };
+    }
 
     // ============================================================================
     // STEP 9: Try alternative machine identifiers if no events found
@@ -334,8 +399,15 @@ export async function GET(request: NextRequest) {
 
     // ============================================================================
     // STEP 10: Return events with pagination metadata and filter options
+    //
+    // For All Time queries totalEvents/totalPages are null — the client renders
+    // unbounded pagination (no "of Y" total, no last-page button).
     // ============================================================================
-    const totalPages = Math.ceil(totalEvents / limit);
+    const totalPages = totalEvents !== null ? Math.ceil(totalEvents / limit) : null;
+    const hasNextPage = totalPages !== null
+      ? resolvedPage < totalPages
+      : allTimeHasNextPage;
+
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Machines By ID Events API] Completed in ${duration}ms`);
@@ -348,9 +420,11 @@ export async function GET(request: NextRequest) {
         currentPage: resolvedPage,
         totalPages,
         totalEvents,
-        hasNextPage: resolvedPage < totalPages,
+        hasNextPage,
         hasPrevPage: resolvedPage > 1,
         cursorResolved,
+        matchCount,
+        matchIndex,
       },
       filters: filterOptions,
     });

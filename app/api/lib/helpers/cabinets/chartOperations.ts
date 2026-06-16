@@ -249,14 +249,15 @@ export function buildChartAggregationPipeline(
   machineId: string,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  config: GranularityConfig
+  config: GranularityConfig,
+  dateField: string = 'readAt'
 ): PipelineStage[] {
   const { useHourly, useMinute, useMonthly, useWeekly, useDaily } = config;
   const pipeline: PipelineStage[] = [];
 
   const matchStage: Record<string, unknown> = { machine: machineId };
   if (startDate && endDate) {
-    matchStage.readAt = { $gte: startDate, $lte: endDate };
+    matchStage[dateField] = { $gte: startDate, $lte: endDate };
   }
   pipeline.push({ $match: matchStage });
 

@@ -27,7 +27,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
-import { DatePicker } from '@/components/shared/ui/date-picker';
+import ActivityLogDateFilter from '@/components/shared/ui/ActivityLogDateFilter';
+import type { TimePeriod } from '@/shared/types/common';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +42,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shared/ui/select';
-import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -60,12 +60,12 @@ import {
   ExternalLink,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
 import AdministrationActivityLogCard from '../cards/AdministrationActivityLogCard';
 import AdministrationActivityLogDescriptionDialog from '../modals/AdministrationActivityLogDescriptionDialog';
 import AdministrationActivityLogCardSkeleton from '../skeletons/AdministrationActivityLogCardSkeleton';
+import AdministrationActivityLogTableSkeleton from '../skeletons/AdministrationActivityLogTableSkeleton';
 
 type AdministrationActivityLogsTableProps = {
   className?: string;
@@ -96,7 +96,13 @@ function AdministrationActivityLogsTable({
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [actionFilter, setActionFilter] = useState('all');
   const [resourceFilter, setResourceFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>();
+  const [isJumping, setIsJumping] = useState(false);
+
+  // Track requested batches for arbitrary page jumps
+  const requestedBatchRef = useRef<Set<number>>(new Set());
+  const prevPageRef = useRef(currentPage);
 
   // Sort states
   const [sortBy, setSortBy] = useState('timestamp');
@@ -223,14 +229,12 @@ function AdministrationActivityLogsTable({
         params.append('action', actionFilter);
       if (resourceFilter && resourceFilter !== 'all')
         params.append('resource', resourceFilter);
-      if (dateFilter) {
-        const selectedDate = new Date(dateFilter);
-        selectedDate.setHours(0, 0, 0, 0);
-        params.append('startDate', selectedDate.toISOString());
-
-        const endDate = new Date(dateFilter);
-        endDate.setHours(23, 59, 59, 999);
-        params.append('endDate', endDate.toISOString());
+      if (timePeriod && timePeriod !== 'All Time') {
+        params.append('timePeriod', timePeriod);
+      }
+      if (dateRange) {
+        params.append('startDate', dateRange.from.toISOString());
+        params.append('endDate', dateRange.to.toISOString());
       }
 
       const url = `/api/activity-logs?${params}`;
@@ -257,24 +261,36 @@ function AdministrationActivityLogsTable({
     searchMode,
     actionFilter,
     resourceFilter,
-    dateFilter,
+    timePeriod,
+    dateRange,
     sortBy,
     sortOrder,
     itemsPerBatch,
   ]);
 
-  // Fetch next batch when crossing batch boundaries
+  // Calculate total pages based on server data
+  const totalPages = useMemo(() => {
+    return serverTotalPages > 0 ? serverTotalPages : 1;
+  }, [serverTotalPages]);
+
+  // Fetch batches on page change — handles sequential nav and arbitrary jumps
   useEffect(() => {
     if (loading) return;
 
     const currentBatch = calculateBatchNumber(currentPage);
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
+    const prevPage = prevPageRef.current;
+    prevPageRef.current = currentPage;
 
-    // Build params for batch fetch
-    const buildParams = () => {
+    // Detect arbitrary jump (skip-forward or skip-back, not sequential +1/-1)
+    const isSequentialNav =
+      Math.abs(currentPage - prevPage) === 1 ||
+      currentPage === 0 ||
+      currentPage === totalPages - 1;
+
+    // Build params helper
+    const buildParamsForBatch = (batch: number) => {
       const params = new URLSearchParams({
-        page: String(nextBatch),
+        page: String(batch),
         limit: String(itemsPerBatch),
         sortBy,
         sortOrder,
@@ -291,100 +307,60 @@ function AdministrationActivityLogsTable({
           params.append('search', debouncedSearchTerm);
         }
       }
-      if (actionFilter && actionFilter !== 'all')
-        params.append('action', actionFilter);
-      if (resourceFilter && resourceFilter !== 'all')
-        params.append('resource', resourceFilter);
-      if (dateFilter) {
-        const selectedDate = new Date(dateFilter);
-        selectedDate.setHours(0, 0, 0, 0);
-        params.append('startDate', selectedDate.toISOString());
-
-        const endDate = new Date(dateFilter);
-        endDate.setHours(23, 59, 59, 999);
-        params.append('endDate', endDate.toISOString());
+      if (actionFilter && actionFilter !== 'all') params.append('action', actionFilter);
+      if (resourceFilter && resourceFilter !== 'all') params.append('resource', resourceFilter);
+      if (timePeriod && timePeriod !== 'All Time') params.append('timePeriod', timePeriod);
+      if (dateRange) {
+        params.append('startDate', dateRange.from.toISOString());
+        params.append('endDate', dateRange.to.toISOString());
       }
       return params;
     };
 
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
-      setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      const params = buildParams();
-      fetch(`/api/activity-logs?${params}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            const logs = data.data.activities || data.data.logs || [];
-            setAllLogs(prev => {
-              const existingIds = new Set(
-                prev.map((item: ActivityLog) => item._id)
-              );
-              const newItems = logs.filter(
-                (item: ActivityLog) => !existingIds.has(item._id)
-              );
-              return [...prev, ...newItems];
-            });
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching next batch:', error);
-        });
+    // Fetch a specific batch and merge into allLogs
+    const fetchBatch = async (batch: number) => {
+      if (requestedBatchRef.current.has(batch)) return;
+      requestedBatchRef.current.add(batch);
+
+      if (!isSequentialNav) {
+        setIsJumping(true);
+      }
+
+      setLoadedBatches(prev => new Set([...prev, batch]));
+      const params = buildParamsForBatch(batch);
+      try {
+        const res = await fetch(`/api/activity-logs?${params}`);
+        const data = await res.json();
+        if (data.success) {
+          const logs = data.data.activities || data.data.logs || [];
+          setAllLogs(prev => {
+            const existingIds = new Set(prev.map((item: ActivityLog) => item._id));
+            const newItems = logs.filter((item: ActivityLog) => !existingIds.has(item._id));
+            return [...prev, ...newItems];
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching batch:', error);
+      } finally {
+        setIsJumping(false);
+      }
+    };
+
+    // Ensure current batch is loaded
+    if (!loadedBatches.has(currentBatch)) {
+      fetchBatch(currentBatch);
     }
 
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch)) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      const params = new URLSearchParams({
-        page: String(currentBatch),
-        limit: String(itemsPerBatch),
-        sortBy,
-        sortOrder,
-      });
-      // Add filters...
-      if (debouncedSearchTerm) {
-        if (searchMode === 'username') {
-          params.append('username', debouncedSearchTerm);
-        } else if (searchMode === 'email') {
-          params.append('email', debouncedSearchTerm);
-        } else if (searchMode === '_id') {
-          params.append('resourceId', debouncedSearchTerm);
-        } else {
-          params.append('search', debouncedSearchTerm);
-        }
-      }
-      if (actionFilter && actionFilter !== 'all')
-        params.append('action', actionFilter);
-      if (resourceFilter && resourceFilter !== 'all')
-        params.append('resource', resourceFilter);
-      if (dateFilter) {
-        const selectedDate = new Date(dateFilter);
-        selectedDate.setHours(0, 0, 0, 0);
-        params.append('startDate', selectedDate.toISOString());
+    // For arbitrary jumps, also ensure the batch containing the target page is loaded
+    if (!isSequentialNav && !loadedBatches.has(currentBatch)) {
+      // fetchBatch already called above, no need to duplicate
+    }
 
-        const endDate = new Date(dateFilter);
-        endDate.setHours(23, 59, 59, 999);
-        params.append('endDate', endDate.toISOString());
-      }
-      fetch(`/api/activity-logs?${params}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            const logs = data.data.activities || data.data.logs || [];
-            setAllLogs(prev => {
-              const existingIds = new Set(
-                prev.map((item: ActivityLog) => item._id)
-              );
-              const newItems = logs.filter(
-                (item: ActivityLog) => !existingIds.has(item._id)
-              );
-              return [...prev, ...newItems];
-            });
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching current batch:', error);
-        });
+    // Sequential next-batch prefetch (same as before for smooth scrolling)
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
+      fetchBatch(nextBatch);
     }
   }, [
     currentPage,
@@ -394,18 +370,15 @@ function AdministrationActivityLogsTable({
     searchMode,
     actionFilter,
     resourceFilter,
-    dateFilter,
+    timePeriod,
+    dateRange,
     sortBy,
     sortOrder,
     itemsPerBatch,
     pagesPerBatch,
+    totalPages,
     calculateBatchNumber,
   ]);
-
-  // Fetch initial batch when filters change
-  useEffect(() => {
-    fetchInitialBatch();
-  }, [fetchInitialBatch]);
 
   // Get items for current page from the current batch
   const logs = useMemo(() => {
@@ -415,10 +388,10 @@ function AdministrationActivityLogsTable({
     return allLogs.slice(startIndex, endIndex);
   }, [allLogs, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Calculate total pages based on server data
-  const totalPages = useMemo(() => {
-    return serverTotalPages > 0 ? serverTotalPages : 1;
-  }, [serverTotalPages]);
+  // Fetch initial batch when filters change
+  useEffect(() => {
+    fetchInitialBatch();
+  }, [fetchInitialBatch]);
 
   // Handle sort
   const handleSort = (column: string) => {
@@ -683,69 +656,142 @@ function AdministrationActivityLogsTable({
           )}
         </CardHeader>
         <CardContent>
-          {/* Search Bar */}
-          <AdministrationActivityLogsSearchBar
-            searchValue={searchTerm}
-            setSearchValue={setSearchTerm}
-            searchMode={searchMode}
-            setSearchMode={setSearchMode}
-            searchDropdownOpen={searchDropdownOpen}
-            setSearchDropdownOpen={setSearchDropdownOpen}
-          />
+          {/* Integrated Filters Panel */}
+          <div className="mb-6 mt-4 rounded-lg border border-gray-200 bg-container p-4 shadow-sm">
+            {/* Top Row: Search + Mode + Action */}
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+              {/* Search input */}
+              <div className="flex h-11 w-full rounded-md border border-gray-200 bg-white shadow-sm md:col-span-2">
+                <input
+                  type="text"
+                  placeholder="Search activity logs..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none ring-buttonActive focus:ring-1"
+                />
+                <span className="flex cursor-pointer items-center border-l border-gray-300 bg-white px-2 text-gray-400 transition-colors hover:text-gray-600">
+                  <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
+                </span>
+              </div>
 
-          {/* Filters */}
-          <div className="mb-6 mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Action" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="create">Create</SelectItem>
-                <SelectItem value="update">Update</SelectItem>
-                <SelectItem value="delete">Delete</SelectItem>
-                <SelectItem value="view">View</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Mode selector */}
+              <div className="relative">
+                <button
+                  type="button"
+                  className={`flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-md bg-button px-3 text-xs font-medium text-white transition-colors hover:bg-buttonActive md:px-4 md:text-sm`}
+                  onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
+                >
+                  {searchMode === 'username'
+                    ? 'Username'
+                    : searchMode === 'email'
+                      ? 'Email'
+                      : searchMode === 'description'
+                        ? 'Description'
+                        : 'ID'}
+                  <svg
+                    className={`ml-1 h-3 w-3 transition-transform md:ml-2 md:h-4 md:w-4 ${searchDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                {searchDropdownOpen && (
+                  <div className="absolute left-0 top-full z-20 mt-1 w-auto min-w-[150px] rounded-md border border-gray-200 bg-white shadow-lg">
+                    {(['username', 'email', 'description', '_id'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100 ${searchMode === mode ? 'font-semibold text-buttonActive' : 'text-gray-700'}`}
+                        onClick={() => {
+                          setSearchMode(mode);
+                          setSearchDropdownOpen(false);
+                        }}
+                      >
+                        {mode === 'username' ? 'Username' : mode === 'email' ? 'Email' : mode === 'description' ? 'Description' : 'ID'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <Select value={resourceFilter} onValueChange={setResourceFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Resource" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Resources</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-                <SelectItem value="machine">Machine</SelectItem>
-                <SelectItem value="location">Location</SelectItem>
-                <SelectItem value="collection">Collection</SelectItem>
-                <SelectItem value="collection-report">
-                  Collection Report
-                </SelectItem>
-                <SelectItem value="licencee">Licencee</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="session">Session</SelectItem>
-                <SelectItem value="vault">Vault</SelectItem>
-                <SelectItem value="cashier_shift">Cashier Shift</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Action filter */}
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="create">Create</SelectItem>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="view">View</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex gap-2">
-              <DatePicker
-                date={dateFilter}
-                setDate={setDateFilter}
-                disabled={loading}
-              />
+            {/* Bottom Row: Resource + Date Presets + Custom */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              {/* Resource filter */}
+              <Select value={resourceFilter} onValueChange={setResourceFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Resource" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Resources</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="machine">Machine</SelectItem>
+                  <SelectItem value="location">Location</SelectItem>
+                  <SelectItem value="collection">Collection</SelectItem>
+                  <SelectItem value="collection-report">Collection Report</SelectItem>
+                  <SelectItem value="licencee">Licencee</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="session">Session</SelectItem>
+                  <SelectItem value="vault">Vault</SelectItem>
+                  <SelectItem value="cashier_shift">Cashier Shift</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Date filter presets */}
+              <div className="md:col-span-2">
+                <ActivityLogDateFilter
+                  timePeriod={timePeriod}
+                  onTimePeriodChange={setTimePeriod}
+                  onDateRangeChange={setDateRange}
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Clear Filters */}
+              <div className="flex items-end">
+                {(searchTerm || actionFilter !== 'all' || resourceFilter !== 'all' || timePeriod !== 'All Time' || dateRange) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSearchMode('username');
+                      setActionFilter('all');
+                      setResourceFilter('all');
+                      setTimePeriod('All Time');
+                      setDateRange(undefined);
+                    }}
+                    className="h-11 w-full border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container"
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Desktop Table View */}
           <div className="hidden rounded-lg border lg:block">
             {loading ? (
-              <div className="space-y-2 p-4">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12" />
-                ))}
-              </div>
+              <AdministrationActivityLogTableSkeleton />
             ) : (
               <div className="overflow-x-auto">
                 <Table className="min-w-full">
@@ -1025,6 +1071,7 @@ function AdministrationActivityLogsTable({
             setCurrentPage={setCurrentPage}
             totalCount={serverTotalCount}
             showTotalCount
+            isLoadingPage={isJumping}
           />
         </CardContent>
       </Card>
