@@ -33,8 +33,7 @@ import {
   addMachineTypeFilter,
   addOnlineStatusFilter,
   addGameTypeFilter,
-  runStatusCounts,
-  runLocationStatus,
+  runStatusAndLocationCounts,
   buildLocationCountFilter,
 } from '@/app/api/lib/helpers/cabinets/statusOperations';
 
@@ -166,14 +165,16 @@ export async function GET(req: NextRequest) {
     // Apply game type filter
     addGameTypeFilter(aggregationPipeline, gameType);
 
-    // Run all status counts in parallel
+    // Run all status and location counts in a single optimized pass
     const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [counts, locationStatusResult] = await Promise.all([
-      runStatusCounts(aggregationPipeline, threeMinutesAgo, fourHoursAgo, twentyFourHoursAgo),
-      runLocationStatus(aggregationPipeline, threeMinutesAgo),
-    ]);
+    const counts = await runStatusAndLocationCounts(
+      aggregationPipeline,
+      threeMinutesAgo,
+      fourHoursAgo,
+      twentyFourHoursAgo
+    );
 
     // Query GamingLocations directly for total location count
     const locationCountFilter = buildLocationCountFilter(
@@ -186,7 +187,7 @@ export async function GET(req: NextRequest) {
     const totalLocations = await GamingLocations.countDocuments({
       $and: locationCountFilter,
     });
-    const onlineLocations = locationStatusResult.onlineLocations;
+    const onlineLocations = counts.onlineLocations;
     const offlineLocations = Math.max(0, totalLocations - onlineLocations);
 
     // ============================================================================
@@ -197,7 +198,7 @@ export async function GET(req: NextRequest) {
       functionName,
       'GET',
       '/api/cabinets/status',
-      counts.totalMachines,
+      1,
       user,
       duration
     );

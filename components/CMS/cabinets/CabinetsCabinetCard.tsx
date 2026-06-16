@@ -128,7 +128,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
   return (
     <div
       ref={cardRef}
-      className={`xs:p-2 relative mx-auto mb-4 w-full max-w-full rounded-lg border p-2 shadow-sm transition-shadow hover:shadow-md sm:p-4 ${isArchived ? 'border-amber-100 bg-gray-50' : 'border-gray-100 bg-white'}`}
+      className={`relative mx-auto mb-4 w-full max-w-full rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md md:p-4 ${isArchived ? 'border-amber-100 bg-gray-50' : 'border-gray-100 bg-white'}`}
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
@@ -313,19 +313,20 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
       </div>
 
       {/* Action Buttons - Fixed at bottom */}
-      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+      <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
         {showArchived ? (
-          /* Archived view: Restore (managers/admins/devs/owners) and Delete (developers/admins/owners only) - icon only */
+          /* Archived view: Restore (managers/admins/devs/owners) and Delete (developers/admins/owners only) */
           <>
             {props.canDeleteMachines !== false && (
               <Button
                 onClick={() => props.onRestore?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex flex-1 items-center justify-center text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700 w-full"
                 title="Restore"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restore</span>
               </Button>
             )}
             {props.canPermanentlyDeleteMachines && (
@@ -333,10 +334,11 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
                 onClick={() => props.onPermanentDelete?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
                 title="Permanently Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
               </Button>
             )}
           </>
@@ -347,7 +349,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
               onClick={handleViewClick}
               variant="outline"
               size="sm"
-              className="flex flex-1 items-center justify-center gap-1.5 text-xs"
+              className="flex items-center justify-center gap-1.5 text-xs w-full"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>View</span>
@@ -357,7 +359,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
                 onClick={() => props.onEdit?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 <span>Edit</span>
@@ -368,7 +370,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
                 onClick={() => props.onDelete?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Delete</span>

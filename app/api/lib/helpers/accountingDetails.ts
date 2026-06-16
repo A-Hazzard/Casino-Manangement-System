@@ -438,7 +438,7 @@ export async function getCollectionReportById(
           $or: meterQueries.map(q => ({
             machine: q.machineId,
             readAt: {
-              $gte: new Date(q.startTime.getTime() - 60000),
+              $gte: q.startTime,
               $lte: q.endTime,
             },
             $or: [

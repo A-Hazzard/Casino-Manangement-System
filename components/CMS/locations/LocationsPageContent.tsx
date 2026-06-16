@@ -229,8 +229,8 @@ export default function LocationsPageContent() {
               {locationsPageData.selectedStatus === 'Archived' ? (
                 <ClientOnly fallback={<LocationsArchivedLocationSkeleton />}>
                   {/* Mobile skeletons */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-                    {[...Array(4)].map((_, i) => (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+                    {[...Array(20)].map((_, i) => (
                       <LocationsArchivedLocationSkeleton key={i} />
                     ))}
                   </div>
@@ -242,8 +242,8 @@ export default function LocationsPageContent() {
               ) : (
                 <ClientOnly fallback={<LocationsLocationSkeleton />}>
                   {/* Mobile skeletons */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-                    {[...Array(4)].map((_, i) => (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+                    {[...Array(20)].map((_, i) => (
                       <LocationsLocationSkeleton key={i} />
                     ))}
                   </div>
@@ -263,7 +263,7 @@ export default function LocationsPageContent() {
             /* Main Content: Display data in appropriate format for viewport */
             <div>
               {/* Mobile View: Cards display */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
                 {locationData.map(loc => (
                   <LocationsLocationCard
                     key={String(loc._id || loc.location || Math.random())}

@@ -479,163 +479,114 @@ export function addGameTypeFilter(
  * @param {Date} twentyFourHoursAgo - Timestamp for 24-hour offline window
  * @returns {Promise<StatusCounts>} Object with total, online, offline, and critical counts
  */
-export async function runStatusCounts(
+export type CombinedStatusCounts = {
+  totalMachines: number;
+  onlineMachines: number;
+  offlineMachines: number;
+  criticalOffline: number;
+  recentOffline: number;
+  onlineLocations: number;
+};
+
+/**
+ * Runs a unified single-pass aggregation to fetch all machine status counts and online locations.
+ * This is highly optimized using $facet to avoid redundant table scans and lookups.
+ *
+ * @param {PipelineStage[]} pipeline - Base aggregation pipeline
+ * @param {Date} threshold - Online/offline threshold timestamp
+ * @param {Date} fourHoursAgo - Timestamp for 4-hour offline window
+ * @param {Date} twentyFourHoursAgo - Timestamp for 24-hour offline window
+ * @returns {Promise<CombinedStatusCounts>} Combined status counts
+ */
+export async function runStatusAndLocationCounts(
   pipeline: PipelineStage[],
   threshold: Date,
   fourHoursAgo: Date,
   twentyFourHoursAgo: Date
-): Promise<StatusCounts> {
-  const totalResult = await Machine.aggregate([
-    ...pipeline,
-    { $count: 'total' },
-  ]).exec();
-  const totalMachines = totalResult[0]?.total || 0;
-
-  const onlineResult = await Machine.aggregate([
+): Promise<CombinedStatusCounts> {
+  const facetResult = await Machine.aggregate([
     ...pipeline,
     {
-      $match: {
-        $or: [
-          { 'locationDetails.aceEnabled': true },
+      $facet: {
+        total: [{ $count: 'count' }],
+        online: [
           {
-            $and: [
-              { lastActivity: { $exists: true, $ne: null } },
-              {
-                $expr: {
-                  $gte: [
+            $match: {
+              $or: [
+                { 'locationDetails.aceEnabled': true },
+                {
+                  $and: [
+                    { lastActivity: { $exists: true, $ne: null } },
                     {
-                      $convert: {
-                        input: '$lastActivity',
-                        to: 'date',
-                        onError: new Date(0),
+                      $expr: {
+                        $gte: [
+                          {
+                            $convert: {
+                              input: '$lastActivity',
+                              to: 'date',
+                              onError: new Date(0),
+                            },
+                          },
+                          threshold,
+                        ],
                       },
                     },
-                    threshold,
                   ],
                 },
-              },
-            ],
+              ],
+            },
           },
+          { $count: 'count' },
         ],
-      },
-    },
-    { $count: 'total' },
-  ]).exec();
-  const onlineMachines = onlineResult[0]?.total || 0;
-
-  const criticalOfflineResult = await Machine.aggregate([
-    ...pipeline,
-    {
-      $match: {
-        'locationDetails.aceEnabled': { $ne: true },
-        $or: [
-          { lastActivity: { $exists: false } },
-          { lastActivity: null },
+        criticalOffline: [
           {
-            $expr: {
-              $lt: [
+            $match: {
+              'locationDetails.aceEnabled': { $ne: true },
+              $or: [
+                { lastActivity: { $exists: false } },
+                { lastActivity: null },
                 {
-                  $convert: {
-                    input: '$lastActivity',
-                    to: 'date',
-                    onError: new Date(0),
+                  $expr: {
+                    $lt: [
+                      {
+                        $convert: {
+                          input: '$lastActivity',
+                          to: 'date',
+                          onError: new Date(0),
+                        },
+                      },
+                      twentyFourHoursAgo,
+                    ],
                   },
                 },
-                twentyFourHoursAgo,
               ],
             },
           },
+          { $count: 'count' },
         ],
-      },
-    },
-    { $count: 'total' },
-  ]).exec();
-  const criticalOffline = criticalOfflineResult[0]?.total || 0;
-
-  const recentOfflineResult = await Machine.aggregate([
-    ...pipeline,
-    {
-      $match: {
-        'locationDetails.aceEnabled': { $ne: true },
-        $and: [
-          { lastActivity: { $exists: true, $ne: null } },
+        recentOffline: [
           {
-            $expr: {
+            $match: {
+              'locationDetails.aceEnabled': { $ne: true },
               $and: [
+                { lastActivity: { $exists: true, $ne: null } },
                 {
-                  $gte: [
-                    {
-                      $convert: {
-                        input: '$lastActivity',
-                        to: 'date',
-                        onError: new Date(0),
-                      },
-                    },
-                    fourHoursAgo,
-                  ],
-                },
-                {
-                  $lt: [
-                    {
-                      $convert: {
-                        input: '$lastActivity',
-                        to: 'date',
-                        onError: new Date(0),
-                      },
-                    },
-                    threshold,
-                  ],
-                },
-              ],
-            },
-          },
-        ],
-      },
-    },
-    { $count: 'total' },
-  ]).exec();
-  const recentOffline = recentOfflineResult[0]?.total || 0;
-
-  return {
-    totalMachines,
-    onlineMachines,
-    offlineMachines: totalMachines - onlineMachines,
-    criticalOffline,
-    recentOffline,
-  };
-}
-
-// ============================================================================
-// Location Stats
-// ============================================================================
-
-/**
- * Runs the aggregation and returns the count of online locations.
- *
- * @param {PipelineStage[]} pipeline - Base aggregation pipeline
- * @param {Date} threshold - Online/offline threshold timestamp
- * @returns {Promise<{ onlineLocations: number }>} Object with online location count
- */
-export async function runLocationStatus(
-  pipeline: PipelineStage[],
-  threshold: Date
-): Promise<{ onlineLocations: number }> {
-  const result = await Machine.aggregate([
-    ...pipeline,
-    {
-      $group: {
-        _id: '$gamingLocation',
-        isOnline: {
-          $max: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: ['$locationDetails.aceEnabled', true] },
-                  {
+                  $expr: {
                     $and: [
-                      { $gt: ['$lastActivity', null] },
                       {
                         $gte: [
+                          {
+                            $convert: {
+                              input: '$lastActivity',
+                              to: 'date',
+                              onError: new Date(0),
+                            },
+                          },
+                          fourHoursAgo,
+                        ],
+                      },
+                      {
+                        $lt: [
                           {
                             $convert: {
                               input: '$lastActivity',
@@ -648,25 +599,75 @@ export async function runLocationStatus(
                       },
                     ],
                   },
-                ],
-              },
-              1,
-              0,
-            ],
+                },
+              ],
+            },
           },
-        },
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        totalLocations: { $sum: 1 },
-        onlineLocations: { $sum: '$isOnline' },
+          { $count: 'count' },
+        ],
+        locationStatus: [
+          {
+            $group: {
+              _id: '$gamingLocation',
+              isOnline: {
+                $max: {
+                  $cond: [
+                    {
+                      $or: [
+                        { $eq: ['$locationDetails.aceEnabled', true] },
+                        {
+                          $and: [
+                            { $gt: ['$lastActivity', null] },
+                            {
+                              $gte: [
+                                {
+                                  $convert: {
+                                    input: '$lastActivity',
+                                    to: 'date',
+                                    onError: new Date(0),
+                                  },
+                                },
+                                threshold,
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalLocations: { $sum: 1 },
+              onlineLocations: { $sum: '$isOnline' },
+            },
+          },
+        ],
       },
     },
   ]).exec();
 
-  return { onlineLocations: result[0]?.onlineLocations || 0 };
+  const data = facetResult[0];
+  const totalMachines = data?.total?.[0]?.count || 0;
+  const onlineMachines = data?.online?.[0]?.count || 0;
+  const criticalOffline = data?.criticalOffline?.[0]?.count || 0;
+  const recentOffline = data?.recentOffline?.[0]?.count || 0;
+  const onlineLocations = data?.locationStatus?.[0]?.onlineLocations || 0;
+
+  return {
+    totalMachines,
+    onlineMachines,
+    offlineMachines: totalMachines - onlineMachines,
+    criticalOffline,
+    recentOffline,
+    onlineLocations,
+  };
 }
 
 // ============================================================================

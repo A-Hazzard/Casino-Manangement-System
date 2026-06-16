@@ -95,7 +95,7 @@ export default function LocationsCabinetCardMobile({
   // ============================================================================
   return (
     <div
-      className={`rounded-lg border border-gray-200 p-4 shadow-sm transition-shadow hover:shadow-md ${isArchived ? 'border-amber-100 bg-gray-50' : 'bg-white'}`}
+      className={`rounded-lg border border-gray-200 p-3 shadow-sm transition-shadow hover:shadow-md md:p-4 ${isArchived ? 'border-amber-100 bg-gray-50' : 'bg-white'}`}
     >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex max-w-[85%] flex-wrap items-center gap-2">
@@ -260,14 +260,14 @@ export default function LocationsCabinetCardMobile({
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3">
+      <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
         {!isArchived && (
           <>
             <Button
               onClick={() => router.push(`/cabinets/${cabinet._id}`)}
               variant="outline"
               size="sm"
-              className="flex flex-1 items-center justify-center gap-1.5 text-xs"
+              className="flex items-center justify-center gap-1.5 text-xs w-full"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>View</span>
@@ -278,7 +278,7 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onEdit(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 <span>Edit</span>
@@ -290,7 +290,7 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onDelete(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Delete</span>
@@ -306,7 +306,7 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onRestore?.(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex flex-1 items-center justify-center gap-1.5 border-amber-200 text-xs text-amber-600 hover:bg-amber-50"
+                className="flex items-center justify-center gap-1.5 border-amber-200 text-xs text-amber-600 hover:bg-amber-50 w-full"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Restore</span>
@@ -317,10 +317,10 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onPermanentDelete?.(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-50"
+                className="flex items-center justify-center gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-50 w-full"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Perm Delete</span>
+                <span>Delete</span>
               </Button>
             )}
           </>

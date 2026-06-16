@@ -60,7 +60,7 @@ export default function CabinetsCabinetTableSkeleton() {
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: 10 }).map((_, rowIndex) => (
+          {Array.from({ length: 20 }).map((_, rowIndex) => (
             <tr
               key={rowIndex}
               className="border-b border-gray-200 hover:bg-grayHighlight/10"

@@ -218,9 +218,9 @@ export const CabinetsCabinetSearchFilters = ({
 
       {/* Desktop View: Purple search bar with filters */}
       <div className="relative mt-4 hidden overflow-visible rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
-        <div className="flex w-full flex-wrap items-center gap-4">
+        <div className="flex w-full flex-wrap items-center gap-3">
           {/* Search Input */}
-          <div className="relative min-w-0 flex-1">
+          <div className="relative w-full md:max-w-[240px] lg:max-w-[280px] xl:max-w-[320px] 2xl:max-w-[360px]">
             <Input
               type="text"
               placeholder="Search machines..."
@@ -231,91 +231,89 @@ export const CabinetsCabinetSearchFilters = ({
             <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2">
-            {showLocationFilter && (
-              <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
-                <MultiSelectDropdown
-                  options={locationOptions}
-                  selectedIds={selectedLocation}
-                  onChange={handleLocationChange}
-                  placeholder="All Locations"
-                  label="Locations"
-                  searchPlaceholder="Search locations..."
-                />
-              </div>
-            )}
-
+          {/* Location Dropdown */}
+          {showLocationFilter && (
             <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
               <MultiSelectDropdown
-                options={gameTypeOptions}
-                selectedIds={selectedGameType}
-                onChange={handleGameTypeChange}
-                placeholder="All Game Types"
-                label="Game Types"
-                searchPlaceholder="Search game types..."
+                options={locationOptions}
+                selectedIds={selectedLocation}
+                onChange={handleLocationChange}
+                placeholder="All Locations"
+                label="Locations"
+                searchPlaceholder="Search locations..."
               />
             </div>
+          )}
 
-            {/* Status Filter */}
-            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
-              <CustomSelect
-                value={selectedStatus}
-                onValueChange={onStatusChange}
-                options={[
-                  { value: 'All', label: 'All Status' },
-                  { value: 'Online', label: 'Online' },
-                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  {
-                    value: 'OfflineShortest',
-                    label: 'Offline (Shortest First)',
-                  },
-                  { value: 'NeverOnline', label: 'Never Online' },
-                  { value: 'Archived', label: 'Archived' },
-                ]}
-                placeholder="All Status"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={false}
-                emptyMessage="No status options found"
-              />
-            </div>
+          <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
+            <MultiSelectDropdown
+              options={gameTypeOptions}
+              selectedIds={selectedGameType}
+              onChange={handleGameTypeChange}
+              placeholder="All Game Types"
+              label="Game Types"
+              searchPlaceholder="Search game types..."
+            />
+          </div>
 
-            {/* Membership Filter */}
-            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
-              <CustomSelect
-                value={selectedMembership}
-                onValueChange={onMembershipChange}
-                options={[
-                  { value: 'all', label: 'All Membership' },
-                  { value: 'enabled', label: 'Membership Enabled' },
-                  { value: 'disabled', label: 'Membership Disabled' },
-                ]}
-                placeholder="All Membership"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={false}
-                emptyMessage="No options found"
-              />
-            </div>
+          {/* Status Filter */}
+          <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+            <CustomSelect
+              value={selectedStatus}
+              onValueChange={onStatusChange}
+              options={[
+                { value: 'All', label: 'All Status' },
+                { value: 'Online', label: 'Online' },
+                { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                {
+                  value: 'OfflineShortest',
+                  label: 'Offline (Shortest First)',
+                },
+                { value: 'NeverOnline', label: 'Never Online' },
+                { value: 'Archived', label: 'Archived' },
+              ]}
+              placeholder="All Status"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={false}
+              emptyMessage="No status options found"
+            />
+          </div>
 
-            {/* SMIB Filter */}
-            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
-              <CustomSelect
-                value={selectedSmibStatus}
-                onValueChange={onSmibStatusChange}
-                options={[
-                  { value: 'all', label: 'All SMIB' },
-                  { value: 'smib', label: 'Only SMIB' },
-                  { value: 'no-smib', label: 'No SMIB' },
-                ]}
-                placeholder="All SMIB"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={false}
-                emptyMessage="No options found"
-              />
-            </div>
+          {/* Membership Filter */}
+          <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+            <CustomSelect
+              value={selectedMembership}
+              onValueChange={onMembershipChange}
+              options={[
+                { value: 'all', label: 'All Membership' },
+                { value: 'enabled', label: 'Membership Enabled' },
+                { value: 'disabled', label: 'Membership Disabled' },
+              ]}
+              placeholder="All Membership"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={false}
+              emptyMessage="No options found"
+            />
+          </div>
+
+          {/* SMIB Filter */}
+          <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+            <CustomSelect
+              value={selectedSmibStatus}
+              onValueChange={onSmibStatusChange}
+              options={[
+                { value: 'all', label: 'All SMIB' },
+                { value: 'smib', label: 'Only SMIB' },
+                { value: 'no-smib', label: 'No SMIB' },
+              ]}
+              placeholder="All SMIB"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={false}
+              emptyMessage="No options found"
+            />
           </div>
         </div>
       </div>

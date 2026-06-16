@@ -86,7 +86,7 @@ export function parseReportLocationsParams(
   const page = parseInt(searchParams.get('page') || '1');
   const limit = showAllLocations
     ? 10000
-    : Math.min(parseInt(searchParams.get('limit') || '50'), 50);
+    : Math.min(parseInt(searchParams.get('limit') || '50'), 100);
   const skip = showAllLocations ? 0 : (page - 1) * limit;
   const sortBy = searchParams.get('sortBy') || 'gross';
   const sortOrder =

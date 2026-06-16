@@ -56,12 +56,17 @@ export default function PaginationControls({
     }
   };
 
+  const handleInputBlur = () => {
+    let val = Number(inputValue);
+    if (isNaN(val) || val < 1) val = 1;
+    if (totalIsKnown && val > knownTotal) val = knownTotal;
+    handlePageChange(val - 1);
+    setInputValue(String(val));
+  };
+
   const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      let val = Number(inputValue);
-      if (isNaN(val) || val < 1) val = 1;
-      if (totalIsKnown && val > knownTotal) val = knownTotal;
-      handlePageChange(val - 1);
+      handleInputBlur();
     }
   };
 
@@ -130,6 +135,7 @@ export default function PaginationControls({
                 value={inputValue}
                 onChange={e => setInputValue(e.target.value)}
                 onKeyDown={handleInputKeyDown}
+                onBlur={handleInputBlur}
                 disabled={isLoadingPage}
                 className="w-14 rounded border border-gray-300 px-2 py-1 text-center text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-1 focus:ring-buttonActive disabled:opacity-50"
                 aria-label="Page number"

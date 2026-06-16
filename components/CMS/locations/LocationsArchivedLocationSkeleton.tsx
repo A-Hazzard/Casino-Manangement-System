@@ -42,7 +42,7 @@ export default function LocationsArchivedLocationSkeleton() {
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: 10 }).map((_, idx) => (
+              {Array.from({ length: 20 }).map((_, idx) => (
                 <tr
                   key={idx}
                   className="border-b border-gray-100 hover:bg-muted"
@@ -67,12 +67,15 @@ export default function LocationsArchivedLocationSkeleton() {
                   <td className="p-3 text-center">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </td>
+                  {/* Money Out column */}
                   <td className="p-3 text-center">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </td>
+                  {/* Gross column */}
                   <td className="p-3 text-center">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </td>
+                  {/* Jackpot column */}
                   <td className="p-3 text-center">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </td>
@@ -98,7 +101,7 @@ export default function LocationsArchivedLocationSkeleton() {
       </div>
 
       {/* Mobile skeleton (card) - matches LocationsLocationCard with showArchived=true - single card per skeleton */}
-      <div className="relative mx-auto w-full rounded-lg border border-amber-100 bg-gray-50 p-4 shadow-sm lg:hidden">
+      <div className="relative mx-auto w-full rounded-lg border border-amber-100 bg-gray-50 p-3 md:p-4 shadow-sm lg:hidden">
         {/* Location Name with Icons */}
         <div className="mb-3 flex flex-col gap-2">
           <div className="inline-flex items-start gap-1.5">
@@ -139,9 +142,9 @@ export default function LocationsArchivedLocationSkeleton() {
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-          <Skeleton className="h-8 flex-1 rounded" />
-          <Skeleton className="h-8 w-16 rounded" />
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
+          <Skeleton className="h-8 w-full rounded" />
+          <Skeleton className="h-8 w-full rounded" />
         </div>
       </div>
     </>

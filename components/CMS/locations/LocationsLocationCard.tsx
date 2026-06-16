@@ -90,7 +90,7 @@ export default function LocationsLocationCard({
   return (
     <div
       ref={cardRef}
-      className={`relative mx-auto w-full rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${showArchived ? 'border-amber-100 bg-gray-50' : 'border-border bg-white'}`}
+      className={`relative mx-auto w-full rounded-lg border p-3 shadow-sm transition-shadow hover:shadow-md md:p-4 ${showArchived ? 'border-amber-100 bg-gray-50' : 'border-border bg-white'}`}
     >
       <div className="mb-3 flex flex-col gap-2">
         {/* Location Name with Membership Icon */}
@@ -387,7 +387,7 @@ export default function LocationsLocationCard({
       )}
 
       {/* Action Buttons */}
-      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+      <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
         {showArchived ? (
           /* Archived view: Restore (all managers) - Delete only for developers */
           <>
@@ -396,7 +396,7 @@ export default function LocationsLocationCard({
                 onClick={() => onRestore?.(location)}
                 variant="outline"
                 size="sm"
-                className="flex flex-1 items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700 w-full"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Restore</span>
@@ -407,7 +407,7 @@ export default function LocationsLocationCard({
                 onClick={() => onDelete?.(location)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Delete</span>
@@ -419,7 +419,7 @@ export default function LocationsLocationCard({
           <>
             <Link
               href={`/locations/${(location.location as string) || location._id}`}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs hover:bg-accent"
+              className="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs hover:bg-accent w-full"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>View</span>
@@ -430,7 +430,7 @@ export default function LocationsLocationCard({
                   onClick={() => onEdit(location)}
                   variant="outline"
                   size="sm"
-                  className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   <span>Edit</span>
@@ -439,7 +439,7 @@ export default function LocationsLocationCard({
                   onClick={() => onDelete?.(location)}
                   variant="outline"
                   size="sm"
-                  className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 w-full"
                 >
                   <Archive className="h-3.5 w-3.5" />
                   <span>Remove</span>

@@ -15,10 +15,10 @@ export default function CabinetsCabinetCardSkeleton() {
   // ============================================================================
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-      {[...Array(4)].map((_, i) => (
+      {[...Array(20)].map((_, i) => (
         <div
           key={i}
-          className="relative mx-auto w-full rounded-lg border border-gray-100 bg-white p-4 shadow-sm"
+          className="relative mx-auto w-full rounded-lg border border-gray-100 bg-white p-3 md:p-4 shadow-sm"
         >
           {/* Header with Asset Number and Status Indicator */}
           <div className="mb-2 flex items-center justify-between">
@@ -57,10 +57,10 @@ export default function CabinetsCabinetCardSkeleton() {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-            <Skeleton className="h-8 flex-1" />
-            <Skeleton className="h-8 flex-1" />
-            <Skeleton className="h-8 flex-1" />
+          <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
           </div>
         </div>
       ))}

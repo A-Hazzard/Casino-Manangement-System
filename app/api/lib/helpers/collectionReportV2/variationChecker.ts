@@ -123,7 +123,7 @@ async function aggregateMetersByMachine(
     return {
       machine: String(m.machineId),
       readAt: {
-        $gte: new Date(startTime.getTime() - 60000),
+        $gte: startTime,
         $lte: endTime,
       },
       $or: [

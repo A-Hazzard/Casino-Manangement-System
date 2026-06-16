@@ -249,12 +249,14 @@ export function MuiDateCalendar({
   const [toDate, setToDate] = useState<Date>(propEndDate || date || new Date());
 
   const [fromTime, setFromTime] = useState({
-    hours: gameDayOffset,
-    minutes: 0,
+    hours: date ? date.getHours() : gameDayOffset,
+    minutes: date ? date.getMinutes() : 0,
   });
   const [toTime, setToTime] = useState({
-    hours: gameDayOffset === 0 ? 23 : (gameDayOffset - 1 + 24) % 24,
-    minutes: 59,
+    hours: propEndDate
+      ? propEndDate.getHours()
+      : gameDayOffset === 0 ? 23 : (gameDayOffset - 1 + 24) % 24,
+    minutes: propEndDate ? propEndDate.getMinutes() : 59,
   });
 
   // Highlight component
@@ -288,8 +290,10 @@ export function MuiDateCalendar({
   useEffect(() => {
     if (date) {
       setFromDate(date);
+      setFromTime({ hours: date.getHours(), minutes: date.getMinutes() });
       if (mode === 'range' && propEndDate) {
         setToDate(propEndDate);
+        setToTime({ hours: propEndDate.getHours(), minutes: propEndDate.getMinutes() });
       } else if (mode === 'range' && toDate < date) {
         setToDate(date);
       }
@@ -480,6 +484,27 @@ export function MuiDateCalendar({
                       onChange={(h, m) => setToTime({ hours: h, minutes: m })}
                       color="text.secondary"
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        const now = new Date();
+                        setToDate(now);
+                        setToTime({ hours: now.getHours(), minutes: now.getMinutes() });
+                      }}
+                      sx={{
+                        mt: 1,
+                        fontSize: '11px',
+                        textTransform: 'none',
+                        py: 0.25,
+                        px: 1,
+                        borderColor: 'grey.400',
+                        color: 'text.secondary',
+                        '&:hover': { borderColor: 'primary.main', color: 'primary.main' },
+                      }}
+                    >
+                      Current Time
+                    </Button>
                   </Box>
                 )}
                 <DateCalendar

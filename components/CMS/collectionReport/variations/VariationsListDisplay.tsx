@@ -61,7 +61,7 @@ export function VariationsListDisplay({
     try {
       const dateObj =
         typeof timeString === 'string' ? new Date(timeString) : timeString;
-      return format(dateObj, 'MMM dd, yyyy HH:mm');
+      return format(dateObj, 'MMM dd, yyyy HH:mm:ss');
     } catch {
       return String(timeString);
     }

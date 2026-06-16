@@ -179,6 +179,18 @@ const FILTER_LABELS: Record<TimePeriod, string> = {
   Custom: 'Custom',
 };
 
+function formatCustomRangeLabel(from?: Date, to?: Date): string {
+  if (!from || !to) return 'Custom';
+  const fmt = (d: Date) =>
+    d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  return `${fmt(from)} – ${fmt(to)}`;
+}
+
 export default function CabinetsDetailsDeveloperTools({
   cabinetId,
   refreshTrigger,
@@ -503,7 +515,9 @@ export default function CabinetsDetailsDeveloperTools({
                   : 'bg-button text-white hover:bg-button/90'
               }`}
             >
-              Custom
+              {timePeriod === 'Custom' && customDateRange.from && customDateRange.to
+                ? formatCustomRangeLabel(customDateRange.from, customDateRange.to)
+                : 'Custom'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start" side="bottom">

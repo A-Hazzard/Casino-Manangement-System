@@ -119,7 +119,7 @@ export default function CollectionReportCards({
   // ============================================================================
   // Show skeleton while loading (initial load or subsequent loads)
   if (loading && (!data || data.length === 0)) {
-    return <CollectionReportCardSkeleton gridLayout={gridLayout} count={4} />;
+    return <CollectionReportCardSkeleton gridLayout={gridLayout} count={20} />;
   }
 
   // Only show "No Data Available" when NOT loading and data is empty

@@ -129,10 +129,23 @@ export function useLocationsPageData() {
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return (
-      locationData.length <= startIndex && totalCount > locationData.length
-    );
-  }, [locationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+    const currentBatch = calculateBatchNumber(currentPage);
+    if (!loadedBatches.has(currentBatch)) {
+      return true;
+    }
+    if (locationData.length <= startIndex && totalCount > locationData.length) {
+      return loading;
+    }
+    return false;
+  }, [
+    locationData.length,
+    currentPage,
+    ITEMS_PER_PAGE,
+    totalCount,
+    loadedBatches,
+    calculateBatchNumber,
+    loading,
+  ]);
 
   const isDataComplete = useMemo(
     () => locationData.length >= totalCount && totalCount > 0,
@@ -273,13 +286,21 @@ export function useLocationsPageData() {
   // Consolidated data fetch effect
   useEffect(() => {
     if (filtersInitialized) {
-      const currentBatch = calculateBatchNumber(currentPage);
-      if (!loadedBatches.has(currentBatch)) {
+      const startIndex = currentPage * ITEMS_PER_PAGE;
+      let targetBatch = calculateBatchNumber(currentPage);
+
+      // If we are trying to view a page that is beyond our currently loaded data,
+      // but the server has more data, we should fetch the next batch.
+      if (locationData.length <= startIndex && totalCount > locationData.length) {
+        targetBatch = Math.ceil(locationData.length / ITEMS_PER_BATCH) + 1;
+      }
+
+      if (!loadedBatches.has(targetBatch)) {
         console.warn(
-          `[useLocationsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`
+          `[useLocationsPageData] Fetching batch ${targetBatch} for page ${currentPage + 1}`
         );
-        setLoadedBatches(prev => new Set([...prev, currentBatch]));
-        void fetchData(currentBatch, ITEMS_PER_BATCH);
+        setLoadedBatches(prev => new Set([...prev, targetBatch]));
+        void fetchData(targetBatch, ITEMS_PER_BATCH);
       }
     }
   }, [
@@ -294,9 +315,12 @@ export function useLocationsPageData() {
     fetchData,
     selectedStatus,
     ITEMS_PER_BATCH,
+    ITEMS_PER_PAGE,
     loadedBatches,
     calculateBatchNumber,
     debouncedSearchTerm, // Added to ensure fetch re-triggers when term settles
+    locationData.length,
+    totalCount,
   ]);
 
   // Metrics totals fetch
