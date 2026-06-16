@@ -222,6 +222,22 @@ export async function POST(req: NextRequest) {
       finalLocationReportId = calculatedLocationReportId
     }
 
+    // OFFLINE SMIB: calculateSasMetrics returns gross=0 when no live meters exist.
+    // Storing gross=0 causes computeTotalVariation to produce a phantom variation equal to
+    // movement.gross. For offline machines collector-entered values are the source of truth
+    // for both movement and SAS — variation must be $0.
+    const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000
+    const hasRelay = !!machine.relayId?.trim()
+    const isOfflineMachine =
+      hasRelay &&
+      (!machine.lastActivity ||
+        Date.now() - new Date(machine.lastActivity).getTime() >= OFFLINE_THRESHOLD_MS)
+    if (isOfflineMachine) {
+      sasMeters.drop = movement.metersIn
+      sasMeters.totalCancelledCredits = movement.metersOut
+      sasMeters.gross = movement.gross
+    }
+
     // STEP 5: Build and save
     const collectionData = await buildCollectionData(
       calculationPayload, machine, sasMeters, movement,
@@ -295,9 +311,10 @@ export async function PATCH(req: NextRequest) {
     }
 
     let locationId = ''
+    let patchMachineDoc: GamingMachine | null = null
     if (originalCollection.machineId) {
-      const machineDoc = await Machine.findOne({ _id: originalCollection.machineId }).lean<GamingMachine>()
-      if (machineDoc?.gamingLocation) locationId = String(machineDoc.gamingLocation)
+      patchMachineDoc = await Machine.findOne({ _id: originalCollection.machineId }).lean<GamingMachine>()
+      if (patchMachineDoc?.gamingLocation) locationId = String(patchMachineDoc.gamingLocation)
     }
 
     // STEP 3: Detect changes
@@ -312,6 +329,47 @@ export async function PATCH(req: NextRequest) {
     // STEP 5: Recalculate SAS metrics if needed
     if (timestampChanged || metersChanged || sasTimesChanged) {
       await recalculateSasMetricsForPatch(originalCollection, updateData)
+    }
+
+    // STEP 5.1: For offline SMIB machines, override sasMeters.gross/drop/tcc with the
+    // computed movement values. calculateSasMetrics includes the supplemental
+    // COLLECTION_REPORT meter in its query, so it returns a stale gross (from the old
+    // meter) instead of the newly-entered values. Offline = collector values are truth.
+    // Also triggers when originalCollection.meterId is set: the collection was taken while
+    // the machine was offline (supplemental meter exists) even if the relay is back online now.
+    if (updateData.sasMeters && patchMachineDoc) {
+      const hasRelay = !!patchMachineDoc.relayId?.trim()
+      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000
+      const lastActivityMs = patchMachineDoc.lastActivity
+        ? Date.now() - new Date(patchMachineDoc.lastActivity as Date).getTime()
+        : null
+      const isOfflinePatch =
+        (hasRelay &&
+          (!patchMachineDoc.lastActivity ||
+            (lastActivityMs !== null && lastActivityMs >= OFFLINE_THRESHOLD_MS))) ||
+        !!originalCollection.meterId
+      console.log(
+        '[PATCH STEP 5.1] machine=' + String(originalCollection.machineId) +
+        ' hasRelay=' + hasRelay + ' lastActivityAgo=' + (lastActivityMs !== null ? Math.round(lastActivityMs / 1000) + 's' : 'never') +
+        ' hasMeterId=' + !!originalCollection.meterId + ' isOfflinePatch=' + isOfflinePatch
+      )
+      if (isOfflinePatch) {
+        const newIn = Number(updateData.metersIn ?? originalCollection.metersIn ?? 0)
+        const newPrevIn = Number(updateData.prevIn ?? originalCollection.prevIn ?? 0)
+        const newOut = Number(updateData.metersOut ?? originalCollection.metersOut ?? 0)
+        const newPrevOut = Number(updateData.prevOut ?? originalCollection.prevOut ?? 0)
+        const newDrop = Number((newIn - newPrevIn).toFixed(2))
+        const newCancelled = Number((newOut - newPrevOut).toFixed(2))
+        const sm = updateData.sasMeters as Record<string, unknown>
+        sm.drop = newDrop
+        sm.totalCancelledCredits = newCancelled
+        sm.gross = Number((newDrop - newCancelled).toFixed(2))
+        console.log(
+          '[PATCH STEP 5.1] OVERRIDE machine=' + String(originalCollection.machineId) +
+          ' newIn=' + newIn + ' prevIn=' + newPrevIn + ' newOut=' + newOut + ' prevOut=' + newPrevOut +
+          ' drop=' + newDrop + ' tcc=' + newCancelled + ' gross=' + sm.gross
+        )
+      }
     }
 
     // STEP 5.5: Fallback dot notation for sasMeters when recalc was skipped

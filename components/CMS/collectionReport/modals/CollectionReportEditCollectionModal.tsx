@@ -113,6 +113,11 @@ function DesktopEditWrapper({
     onRefresh,
     onClose: handleCloseWithForce,
   });
+
+  // Online/offline status for machines in the edit modal (Desktop)
+  const desktopMachineIds = desktopHook.collectedMachineEntries.map(entry => String(entry.machineId));
+  const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
+
   const variation = useCollectionReportVariationCheck();
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
@@ -171,34 +176,38 @@ function DesktopEditWrapper({
         );
         if (isNoSmib) return;
 
-        const machinesForCheck = desktopHook.collectedMachineEntries.map(
-          entry => ({
-            machineId: entry.machineId,
-            machineName:
-              entry.machineCustomName ||
-              entry.machineName ||
-              entry.serialNumber ||
-              entry.machineId,
-            metersIn: entry.metersIn || 0,
-            metersOut: entry.metersOut || 0,
-            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-            prevMetersIn: entry.prevIn || 0,
-            prevMetersOut: entry.prevOut || 0,
-            movementGross: entry.movement.gross,
-          })
-        );
-
-        // Only include machines that had SAS data at collection time.
-        // Filtering by current lastActivity is wrong here — these are already-submitted
-        // collections whose machines may have gone offline since the report was collected.
-        const onlineMachinesForCheck = machinesForCheck.filter(
-          m => m.sasStartTime && m.sasEndTime
-        );
+        // Pass storedSasGross from each collection's sasMeters.gross.
+        // This lets the check-variations route use the stored value instead of
+        // re-querying live Meters, which correctly handles offline SMIB machines
+        // (where pre-offline SAS meters would otherwise double-count with the
+        // supplemental meter and produce phantom variation).
+        const machinesForCheck = desktopHook.collectedMachineEntries
+          .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+          .map(entry => {
+            const isOffline =
+              (entry.machineId && desktopMachineStatusMap[entry.machineId] === false) ||
+              !!entry.meterId;
+            return {
+              machineId: entry.machineId,
+              machineName:
+                entry.machineCustomName ||
+                entry.machineName ||
+                entry.serialNumber ||
+                entry.machineId,
+              metersIn: entry.metersIn || 0,
+              metersOut: entry.metersOut || 0,
+              sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+              sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+              prevMetersIn: entry.prevIn || 0,
+              prevMetersOut: entry.prevOut || 0,
+              movementGross: entry.movement.gross,
+              storedSasGross: isOffline ? entry.movement.gross : undefined,
+            };
+          });
 
         variation.checkVariations(
           desktopHook.selectedLocationId ?? '',
-          onlineMachinesForCheck
+          machinesForCheck
         );
       };
       runAutoCheck();
@@ -243,30 +252,95 @@ function DesktopEditWrapper({
       }
 
       setShowVariationPopover(true);
-      const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
+
+      // ── Build pre-create payloads (updates supplemental meters for offline/previously-offline machines) ──
+      const desktopPreCreate = desktopHook.collectedMachineEntries.map(entry => ({
         machineId: entry.machineId,
-        machineName:
+        collectionId: String(entry._id),
+        locationId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        sasEndTime: entry.sasMeters?.sasEndTime,
+        customName:
           entry.machineCustomName ||
           entry.machineName ||
           entry.serialNumber ||
           entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-        movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+        ramClear: entry.ramClear,
+        ramClearMetersIn:
+          entry.ramClearMetersIn != null ? Number(entry.ramClearMetersIn) : undefined,
+        ramClearMetersOut:
+          entry.ramClearMetersOut != null ? Number(entry.ramClearMetersOut) : undefined,
       }));
 
-      // Only include machines that had SAS data at collection time.
-      // Filtering by current lastActivity is wrong here — these are already-submitted
-      // collections whose machines may have gone offline since the report was collected.
-      const onlineMachinesForCheck = machinesForCheck.filter(
-        m => m.sasStartTime && m.sasEndTime
+      // ── Build variation-check machines ──
+      // IMPORTANT: check-variations filters out meterSource='COLLECTION_REPORT' from its
+      // live Meters query, so it can NEVER see the supplemental meter — even after it's updated.
+      // For machines with a supplemental meter (entry.meterId), we must always pass
+      // storedSasGross so the check uses the freshly-updated supplemental meter value directly.
+      // Compute storedSasGross from current edited inputs (entry.metersIn, prevIn, etc.)
+      // NOT from entry.movement.gross (which is the pre-edit DB value).
+      const machinesForCheck = desktopHook.collectedMachineEntries
+        .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+        .map(entry => {
+          const currentlyOffline =
+            entry.machineId && desktopMachineStatusMap[entry.machineId] === false;
+          const hasSupplementalMeter = !!entry.meterId;
+          // For machines with a supplemental meter: check-variations excludes COLLECTION_REPORT
+          // meters from the live query, so we pass storedSasGross = computed movement gross
+          // from the current inputs. This matches what was just written to the supplemental meter.
+          // For currently-offline machines with no supplemental meter: same logic (will be created).
+          // For truly online machines with no supplemental meter: no storedSasGross, live query.
+          const useStoredSasGross = hasSupplementalMeter || currentlyOffline;
+          const movementGross = (entry as { movement?: { gross?: number } }).movement?.gross;
+          // Compute fresh movement from current inputs (reflects edits, unlike entry.movement.gross)
+          const freshMovementGross = hasSupplementalMeter
+            ? (entry.metersIn || 0) - (entry.prevIn || 0) - ((entry.metersOut || 0) - (entry.prevOut || 0))
+            : movementGross;
+
+          console.log(
+            `[handleDesktopSubmit] 🔎 machine=${entry.machineId} ` +
+            `currentlyOffline=${currentlyOffline} hasSupplementalMeter=${hasSupplementalMeter} ` +
+            `useStoredSasGross=${useStoredSasGross} movementGross=${movementGross} ` +
+            `freshMovementGross=${freshMovementGross} ` +
+            `metersIn=${entry.metersIn} prevIn=${entry.prevIn} metersOut=${entry.metersOut} prevOut=${entry.prevOut} ` +
+            `sasMeters.gross=${entry.sasMeters?.gross} meterId=${entry.meterId ?? 'none'} ` +
+            `statusMapValue=${desktopMachineStatusMap[entry.machineId]}`
+          );
+
+          return {
+            machineId: entry.machineId,
+            machineName:
+              entry.machineCustomName ||
+              entry.machineName ||
+              entry.serialNumber ||
+              entry.machineId,
+            metersIn: entry.metersIn || 0,
+            metersOut: entry.metersOut || 0,
+            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+            movementGross: freshMovementGross,
+            storedSasGross: useStoredSasGross ? (freshMovementGross ?? 0) : undefined,
+          };
+        });
+
+      console.log(
+        `[handleDesktopSubmit] 📤 preCreateThenCheck locationId=${locationId} ` +
+        `preCreate=${desktopPreCreate.length} variationMachines=${machinesForCheck.length}`,
+        machinesForCheck.map(m => ({
+          id: m.machineId,
+          storedSasGross: m.storedSasGross,
+          movementGross: m.movementGross,
+          metersIn: m.metersIn,
+          prevMetersIn: m.prevMetersIn,
+        }))
       );
 
-      variation.checkVariations(locationId, onlineMachinesForCheck);
+      variation.preCreateThenCheck(locationId, machinesForCheck, desktopPreCreate);
     } catch (e) {
       console.error('[handleDesktopSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       toast.error('Failed to submit. Please try again.');
@@ -515,30 +589,87 @@ function MobileEditWrapper({
       }
 
       setShowVariationPopover(true);
-      const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+
+      // ── Build pre-create payloads ──
+      const mobilePreCreate = mobileHook.collectedMachines.map(entry => ({
         machineId: entry.machineId,
-        machineName:
+        collectionId: String(entry._id),
+        locationId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        sasEndTime: entry.sasMeters?.sasEndTime,
+        customName:
           entry.machineCustomName ||
           entry.machineName ||
           entry.serialNumber ||
           entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-        movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+        ramClear: entry.ramClear,
+        ramClearMetersIn:
+          entry.ramClearMetersIn != null ? Number(entry.ramClearMetersIn) : undefined,
+        ramClearMetersOut:
+          entry.ramClearMetersOut != null ? Number(entry.ramClearMetersOut) : undefined,
       }));
 
-      // Only include machines that had SAS data at collection time.
-      // Filtering by current lastActivity is wrong here — these are already-submitted
-      // collections whose machines may have gone offline since the report was collected.
-      const onlineMachinesForCheck = machinesForCheck.filter(
-        m => m.sasStartTime && m.sasEndTime
+      // ── Build variation-check machines ──
+      // IMPORTANT: check-variations filters out meterSource='COLLECTION_REPORT' from its
+      // live Meters query, so the supplemental meter is never visible via live query.
+      // For machines with a supplemental meter (entry.meterId), always pass storedSasGross
+      // computed from current edited inputs.
+      const machinesForCheck = mobileHook.collectedMachines
+        .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+        .map(entry => {
+          const currentlyOffline =
+            entry.machineId && editMachineStatusMap[entry.machineId] === false;
+          const hasSupplementalMeter = !!entry.meterId;
+          const useStoredSasGross = hasSupplementalMeter || currentlyOffline;
+          const movementGross = (entry as { movement?: { gross?: number } }).movement?.gross;
+          const freshMovementGross = hasSupplementalMeter
+            ? (entry.metersIn || 0) - (entry.prevIn || 0) - ((entry.metersOut || 0) - (entry.prevOut || 0))
+            : movementGross;
+
+          console.log(
+            `[handleMobileSubmit] 🔎 machine=${entry.machineId} ` +
+            `currentlyOffline=${currentlyOffline} hasSupplementalMeter=${hasSupplementalMeter} ` +
+            `useStoredSasGross=${useStoredSasGross} movementGross=${movementGross} ` +
+            `freshMovementGross=${freshMovementGross} ` +
+            `metersIn=${entry.metersIn} prevIn=${entry.prevIn} metersOut=${entry.metersOut} prevOut=${entry.prevOut} ` +
+            `sasMeters.gross=${entry.sasMeters?.gross} meterId=${entry.meterId ?? 'none'} ` +
+            `statusMapValue=${editMachineStatusMap[entry.machineId]}`
+          );
+
+          return {
+            machineId: entry.machineId,
+            machineName:
+              entry.machineCustomName ||
+              entry.machineName ||
+              entry.serialNumber ||
+              entry.machineId,
+            metersIn: entry.metersIn || 0,
+            metersOut: entry.metersOut || 0,
+            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+            movementGross: freshMovementGross,
+            storedSasGross: useStoredSasGross ? (freshMovementGross ?? 0) : undefined,
+          };
+        });
+
+      console.log(
+        `[handleMobileSubmit] 📤 preCreateThenCheck locationId=${locationId} ` +
+        `preCreate=${mobilePreCreate.length} variationMachines=${machinesForCheck.length}`,
+        machinesForCheck.map(m => ({
+          id: m.machineId,
+          storedSasGross: m.storedSasGross,
+          movementGross: m.movementGross,
+          metersIn: m.metersIn,
+          prevMetersIn: m.prevMetersIn,
+        }))
       );
 
-      variation.checkVariations(locationId, onlineMachinesForCheck);
+      variation.preCreateThenCheck(locationId, machinesForCheck, mobilePreCreate);
     } catch (e) {
       console.error('[handleMobileSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       toast.error('Failed to submit. Please try again.');
@@ -563,30 +694,33 @@ function MobileEditWrapper({
         const isNoSmib = await checkLocationNoSMIB(locationId);
         if (isNoSmib) return;
 
-        const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
-          machineId: entry.machineId,
-          machineName:
-            entry.machineCustomName ||
-            entry.machineName ||
-            entry.serialNumber ||
-            entry.machineId,
-          metersIn: entry.metersIn || 0,
-          metersOut: entry.metersOut || 0,
-          sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-          sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-          prevMetersIn: entry.prevIn || 0,
-          prevMetersOut: entry.prevOut || 0,
-          movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
-        }));
+        const machinesForCheck = mobileHook.collectedMachines
+          .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+          .map(entry => {
+            const isOffline =
+              (entry.machineId && editMachineStatusMap[entry.machineId] === false) ||
+              !!entry.meterId;
+            return {
+              machineId: entry.machineId,
+              machineName:
+                entry.machineCustomName ||
+                entry.machineName ||
+                entry.serialNumber ||
+                entry.machineId,
+              metersIn: entry.metersIn || 0,
+              metersOut: entry.metersOut || 0,
+              sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+              sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+              prevMetersIn: entry.prevIn || 0,
+              prevMetersOut: entry.prevOut || 0,
+              movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+              storedSasGross: isOffline
+                ? (entry as { movement?: { gross?: number } }).movement?.gross ?? 0
+                : undefined,
+            };
+          });
 
-        // Only include machines that had SAS data at collection time.
-        // Filtering by current lastActivity is wrong here — these are already-submitted
-        // collections whose machines may have gone offline since the report was collected.
-        const onlineMachinesForCheck = machinesForCheck.filter(
-          m => m.sasStartTime && m.sasEndTime
-        );
-
-        variation.checkVariations(locationId, onlineMachinesForCheck);
+        variation.checkVariations(locationId, machinesForCheck);
       };
       runAutoCheck();
     }

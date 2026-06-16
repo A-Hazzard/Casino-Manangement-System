@@ -13,7 +13,6 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import { Meters } from '@/app/api/lib/models/meters';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type {
@@ -224,8 +223,8 @@ export async function computeTotalVariation(
 ): Promise<number> {
   const collections = await Collections.find(
     { locationReportId },
-    { movement: 1, sasMeters: 1, machineId: 1 }
-  ).lean<Pick<CollectionDocument, 'movement' | 'sasMeters' | 'machineId'>[]>();
+    { movement: 1, sasMeters: 1, machineId: 1, meterId: 1 }
+  ).lean<Pick<CollectionDocument, 'movement' | 'sasMeters' | 'machineId' | 'meterId'>[]>();
 
   if (!collections.length) return 0;
 
@@ -262,97 +261,53 @@ export async function computeTotalVariation(
     }
   }
 
-  // Batched SAS meter data query — same pattern as accountingDetails.ts
-  const meterQueries = collections
-    .filter(
-      collection =>
-        collection.machineId &&
-        collection.sasMeters?.sasStartTime &&
-        collection.sasMeters?.sasEndTime
-    )
-    .map(collection => ({
-      machineId: collection.machineId as string,
-      startTime: new Date(collection.sasMeters!.sasStartTime!),
-      endTime: new Date(collection.sasMeters!.sasEndTime!),
-    }));
-
-  const meterDataMap = new Map<
-    string,
-    { drop: number; cancelled: number; jackpot: number }
-  >();
-  if (meterQueries.length > 0) {
-    const cursor = Meters.aggregate([
-      {
-        $match: {
-          $or: meterQueries.map(q => ({
-            machine: q.machineId,
-            readAt: {
-              $gte: q.startTime,
-              $lte: q.endTime,
-            },
-            $or: [
-              { meterSource: { $ne: 'COLLECTION_REPORT' } },
-              {
-                meterSource: 'COLLECTION_REPORT',
-                isSupplemental: true,
-                readAt: q.endTime,
-              },
-            ],
-          })),
-        },
-      },
-      {
-        $group: {
-          _id: '$machine',
-          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          totalCancelled: {
-            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-          },
-          totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-        },
-      },
-    ]).cursor({ batchSize: 1000 });
-
-    for await (const doc of cursor) {
-      meterDataMap.set(doc._id, {
-        drop: doc.totalDrop,
-        cancelled: doc.totalCancelled,
-        jackpot: doc.totalJackpot,
-      });
-    }
-  }
-
-  // Sum per-machine variation — identical formula to accountingDetails.ts
+  // Use stored sasMeters.gross from each collection document.
+  // This matches what Machine Metrics displays and is correct for both online and
+  // offline SMIB machines. Re-querying the live Meters collection causes double-counting
+  // for offline machines: pre-offline SAS meters + the supplemental COLLECTION_REPORT
+  // meter both fall in the window, inflating SAS gross and producing phantom variation.
   return collections.reduce((sum, col) => {
     const hasSmib = smibMap.get(String(col.machineId)) ?? false;
     if (!hasSmib) return sum;
 
     const meterGross = col.movement?.gross ?? 0;
+    const storedSasGross = col.sasMeters?.gross;
 
-    // Recalculate SAS gross from batched meter data (same as accountingDetails.ts)
-    let sasGross = 0;
-    let machineJackpot = 0;
-    if (
-      col.machineId &&
-      col.sasMeters?.sasStartTime &&
-      col.sasMeters?.sasEndTime
-    ) {
-      const meterData = meterDataMap.get(col.machineId);
-      if (meterData) {
-        sasGross = meterData.drop - meterData.cancelled;
-        machineJackpot = meterData.jackpot;
-      }
-    }
+    // No stored SAS data means this machine had no SMIB data — skip variation.
+    if (storedSasGross === undefined || storedSasGross === null) return sum;
 
+    // If this collection has a supplemental meter (meterId set), the machine was offline
+    // when collected and the collector's values are the authoritative source of truth.
+    // Use meterGross as the SAS gross so variation = 0 regardless of what sasMeters.gross
+    // holds in the DB (it may be stale from the original offline collection).
+    //
+    // Also handles the pre-fix case: sasMeters.gross===0 && sasMeters.drop===0 means
+    // no live SAS data existed at collection time — treat variation as 0.
+    const hasSupplementalMeter = !!col.meterId;
+    const isLegacyZeroSas = storedSasGross === 0 && (col.sasMeters?.drop ?? 0) === 0;
+    const effectiveSasGross =
+      hasSupplementalMeter || isLegacyZeroSas
+        ? meterGross
+        : storedSasGross;
+
+    const machineJackpot = col.sasMeters?.jackpot ?? 0;
     const adjustedSasGross = includeJackpot
-      ? sasGross - machineJackpot
-      : sasGross;
+      ? effectiveSasGross - machineJackpot
+      : effectiveSasGross;
 
-    const hasNoSasData =
-      !col.sasMeters?.sasStartTime ||
-      !col.sasMeters?.sasEndTime ||
-      !meterDataMap.has(String(col.machineId));
+    const variation = meterGross - adjustedSasGross;
+    console.log(
+      '[computeTotalVariation] machine=' + String(col.machineId) +
+      ' meterId=' + (col.meterId ?? 'none') +
+      ' hasSupplementalMeter=' + hasSupplementalMeter +
+      ' isLegacyZeroSas=' + isLegacyZeroSas +
+      ' meterGross=' + meterGross +
+      ' storedSasGross=' + storedSasGross +
+      ' effectiveSasGross=' + effectiveSasGross +
+      ' variation=' + variation
+    );
 
-    return sum + (meterGross - (hasNoSasData ? 0 : adjustedSasGross));
+    return sum + variation;
   }, 0);
 }
+

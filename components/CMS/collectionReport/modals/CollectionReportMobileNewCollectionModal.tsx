@@ -674,11 +674,12 @@ export default function CollectionReportMobileNewCollectionModal({
                                             const lastTime =
                                               res.data?.data?.collectionTime;
                                             if (lastTime) {
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  lastTime
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(lastTime);
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             } else {
                                               const loc = locations.find(
                                                 l =>
@@ -705,21 +706,25 @@ export default function CollectionReportMobileNewCollectionModal({
                                                 0,
                                                 0
                                               );
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  currentGamingDayStart.getTime() -
-                                                    24 * 60 * 60 * 1000
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(
+                                                currentGamingDayStart.getTime() -
+                                                  24 * 60 * 60 * 1000
+                                              );
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             }
                                           })
                                           .catch(() => {
                                             if (machine.collectionTime) {
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  machine.collectionTime
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(machine.collectionTime);
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             } else {
                                               const loc = locations.find(
                                                 l =>
@@ -746,17 +751,48 @@ export default function CollectionReportMobileNewCollectionModal({
                                                 0,
                                                 0
                                               );
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  currentGamingDayStart.getTime() -
-                                                    24 * 60 * 60 * 1000
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(
+                                                currentGamingDayStart.getTime() -
+                                                  24 * 60 * 60 * 1000
+                                              );
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             }
                                           })
                                           .finally(() => {
                                             setIsLoadingTime(false);
                                           });
+                                        const newPrevIn = (() => {
+                                          const sasDrop =
+                                            machine.sasMeters?.drop ?? null;
+                                          const collectionIn =
+                                            machine.collectionMeters?.metersIn;
+                                          return collectionIn !== null &&
+                                            collectionIn !== undefined &&
+                                            collectionIn > 0
+                                            ? collectionIn.toString()
+                                            : sasDrop !== null && sasDrop > 0
+                                              ? sasDrop.toString()
+                                              : '';
+                                        })();
+                                        const newPrevOut = (() => {
+                                          const sasCancelled =
+                                            machine.sasMeters
+                                              ?.totalCancelledCredits ?? null;
+                                          const collectionOut =
+                                            machine.collectionMeters?.metersOut;
+                                          return collectionOut !== null &&
+                                            collectionOut !== undefined &&
+                                            collectionOut > 0
+                                            ? collectionOut.toString()
+                                            : sasCancelled !== null &&
+                                                sasCancelled > 0
+                                              ? sasCancelled.toString()
+                                              : '';
+                                        })();
                                         setStoreFormData({
                                           metersIn: '',
                                           metersOut: '',
@@ -768,41 +804,28 @@ export default function CollectionReportMobileNewCollectionModal({
                                           sasStartTime: null,
                                           sasEndTime: null,
                                           collectionTime: new Date(),
-                                          prevIn: (() => {
-                                            const sasDrop =
-                                              machine.sasMeters?.drop ?? null;
-                                            const collectionIn =
-                                              machine.collectionMeters
-                                                ?.metersIn;
-                                            return collectionIn !== null &&
-                                              collectionIn !== undefined &&
-                                              collectionIn > 0
-                                              ? collectionIn.toString()
-                                              : sasDrop !== null && sasDrop > 0
-                                                ? sasDrop.toString()
-                                                : '';
-                                          })(),
-                                          prevOut: (() => {
-                                            const sasCancelled =
-                                              machine.sasMeters
-                                                ?.totalCancelledCredits ?? null;
-                                            const collectionOut =
-                                              machine.collectionMeters
-                                                ?.metersOut;
-                                            return collectionOut !== null &&
-                                              collectionOut !== undefined &&
-                                              collectionOut > 0
-                                              ? collectionOut.toString()
-                                              : sasCancelled !== null &&
-                                                  sasCancelled > 0
-                                                ? sasCancelled.toString()
-                                                : '';
-                                          })(),
+                                          prevIn: newPrevIn,
+                                          prevOut: newPrevOut,
                                         });
                                         pushNavigation('form');
                                         setModalState(prev => ({
                                           ...prev,
                                           isFormVisible: true,
+                                          formData: {
+                                            ...prev.formData,
+                                            metersIn: '',
+                                            metersOut: '',
+                                            notes: '',
+                                            ramClear: false,
+                                            ramClearMetersIn: '',
+                                            ramClearMetersOut: '',
+                                            showAdvancedSas: false,
+                                            sasStartTime: null,
+                                            sasEndTime: null,
+                                            collectionTime: new Date(),
+                                            prevIn: newPrevIn,
+                                            prevOut: newPrevOut,
+                                          },
                                         }));
                                       }
                                     }}

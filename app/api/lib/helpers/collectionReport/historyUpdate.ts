@@ -13,6 +13,8 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import { calculateMovement } from '@/lib/utils/movement';
+import type { GamingMachine } from '@/shared/types';
 
 export type MachineChange = {
   machineId: string;
@@ -178,6 +180,39 @@ async function processSingleMachineChange(
 
   console.warn(`✅ Collection validated successfully for machine ${machineId}`);
 
+  // Retrieve the Machine document to check online/offline status
+  const machineDoc = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+  const hasRelay = !!machineDoc?.relayId?.trim();
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+  const isOffline =
+    hasRelay &&
+    (!machineDoc?.lastActivity ||
+      Date.now() - new Date(machineDoc.lastActivity).getTime() >= OFFLINE_THRESHOLD_MS);
+
+  const isActuallyOffline = isOffline || !!collection.meterId;
+
+  // Calculate the new movement values
+  const previousMeters = {
+    metersIn: Number(change.prevMetersIn),
+    metersOut: Number(change.prevMetersOut),
+  };
+  const movement = calculateMovement(
+    Number(change.metersIn),
+    Number(change.metersOut),
+    previousMeters,
+    change.ramClear,
+    undefined,
+    undefined,
+    change.ramClearMetersIn,
+    change.ramClearMetersOut
+  );
+
+  const roundedMovement = {
+    metersIn: Number(movement.metersIn.toFixed(2)),
+    metersOut: Number(movement.metersOut.toFixed(2)),
+    gross: Number(movement.gross.toFixed(2)),
+  };
+
   // ============================================================================
   // STEP 1: Synchronize collection document with values from frontend
   // ============================================================================
@@ -199,6 +234,14 @@ async function processSingleMachineChange(
         ramClear: change.ramClear,
         ramClearMetersIn: change.ramClearMetersIn,
         ramClearMetersOut: change.ramClearMetersOut,
+        movement: roundedMovement,
+        ...(isActuallyOffline
+          ? {
+              'sasMeters.drop': roundedMovement.metersIn,
+              'sasMeters.totalCancelledCredits': roundedMovement.metersOut,
+              'sasMeters.gross': roundedMovement.gross,
+            }
+          : {}),
         updatedAt: new Date(),
       },
     },

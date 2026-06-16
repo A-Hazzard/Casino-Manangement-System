@@ -28,6 +28,10 @@ export type CheckVariationsMachine = {
    * When provided the API uses this value directly instead of recalculating from raw meters,
    * which ensures RAM-clear entries produce the same meterGross as the report detail page. */
   movementGross?: number;
+  /** Pre-computed SAS gross from a saved collection's sasMeters.gross.
+   * When provided the API uses this value directly instead of querying live Meters,
+   * which prevents offline SMIB machines from showing phantom variation. */
+  storedSasGross?: number;
 }
 
 export type MachineVariationData = {

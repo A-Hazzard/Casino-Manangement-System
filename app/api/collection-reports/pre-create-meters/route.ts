@@ -171,29 +171,9 @@ export async function POST(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 4: Skip online SMIB machines — relay creates meters automatically
-    // ============================================================================
-    if (hasRelay && !isOffline) {
-      logRouteWarn(
-        FUNCTION_NAME,
-        'POST',
-        ROUTE_PATH,
-        `SKIPPED machine ${machineId} ("${customName}") — online SMIB, relay supplies meters (lastActivity ${lastActivityMs !== null ? `${Math.round(lastActivityMs / 1000)}s ago` : 'unknown'})`,
-        user
-      );
-      if (Date.now() - startTime > 1000) {
-        console.warn(`[pre-create-meters] Slow response: ${Date.now() - startTime}ms`);
-      }
-      return NextResponse.json({
-        success: true,
-        customName,
-        created: false,
-        skipped: true,
-      });
-    }
-
-    // ============================================================================
-    // STEP 5: Check for existing meterId on Collection (update vs create)
+    // STEP 4: Check for existing supplemental meter on Collection (update vs create)
+    //         Must happen before the online-skip so that collections taken while a
+    //         machine was offline are always updated — even if the relay is back online.
     // ============================================================================
     let existingMeterId: string | undefined;
     let existingRamClearMeterId: string | undefined;
@@ -210,6 +190,40 @@ export async function POST(req: NextRequest) {
           `[pre-create-meters] 🔄 machine=${machineId} collection=${collectionId} — meterId ${existingMeterId} already set, will UPDATE existing meter(s)`
         );
       }
+    }
+
+    // ============================================================================
+    // STEP 5: Skip online SMIB machines that have no supplemental meter.
+    //         If an existing meterId is present the collection was originally taken
+    //         while the machine was offline — we must update that meter even if the
+    //         relay is back online now.
+    // ============================================================================
+    if (hasRelay && !isOffline && existingMeterId) {
+      // Machine is online NOW but has a supplemental meter from when it was offline.
+      // We must still update the meter so check-variations gets the fresh values.
+      console.log(
+        '[pre-create-meters] ONLINE+EXISTING_METER machine=' + machineId +
+        ' ("' + customName + '") was offline when collected, existingMeterId=' + existingMeterId +
+        ' -- will UPDATE meter with new values'
+      );
+    }
+    if (hasRelay && !isOffline && !existingMeterId) {
+      logRouteWarn(
+        FUNCTION_NAME,
+        'POST',
+        ROUTE_PATH,
+        `SKIPPED machine ${machineId} ("${customName}") — online SMIB, relay supplies meters (lastActivity ${lastActivityMs !== null ? `${Math.round(lastActivityMs / 1000)}s ago` : 'unknown'})`,
+        user
+      );
+      if (Date.now() - startTime > 1000) {
+        console.warn(`[pre-create-meters] Slow response: ${Date.now() - startTime}ms`);
+      }
+      return NextResponse.json({
+        success: true,
+        customName,
+        created: false,
+        skipped: true,
+      });
     }
 
     // ============================================================================
@@ -291,7 +305,7 @@ export async function POST(req: NextRequest) {
         drop: ramClearIn,
         meterSource: 'COLLECTION_REPORT' as const,
         isRamClear: true,
-        isSupplemental: isOffline,
+        isSupplemental: isOffline || !!existingMeterId,
         readAt: new Date(baseReadAt.getTime() - 1000),
         createdAt: baseCreatedAt,
       });
@@ -326,7 +340,7 @@ export async function POST(req: NextRequest) {
         drop: currentMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
         isRamClear: false,
-        isSupplemental: isOffline,
+        isSupplemental: isOffline || !!existingMeterId,
         readAt: new Date(baseReadAt.getTime() + 1000),
         createdAt: new Date(baseCreatedAt.getTime() + 1000),
       });
@@ -361,7 +375,7 @@ export async function POST(req: NextRequest) {
         totalCancelledCredits: currentMetersOut,
         drop: currentMetersIn,
         meterSource: 'COLLECTION_REPORT' as const,
-        isSupplemental: isOffline,
+        isSupplemental: isOffline || !!existingMeterId,
         readAt: baseReadAt,
         createdAt: baseCreatedAt,
       });
