@@ -1,6 +1,11 @@
-import { redirect } from 'next/navigation';
+/**
+ * Collection Reports Redirect Page
+ *
+ * Redirects legacy `/collection-reports` URL to the canonical
+ * `/collection-report` path.
+ */
 
-// Redirect to the collect page if user types in the wrong URL
+import { redirect } from 'next/navigation';
 export default function Page() {
   redirect('/collection-report');
   return null;

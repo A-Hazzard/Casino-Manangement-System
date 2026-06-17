@@ -149,7 +149,8 @@ export default function AdminFeedbackPanel({
     if (!selected) return;
     setIsUpdating(true);
     try {
-      const updateData: Record<string, unknown> = { _id: selected._id };
+      type FeedbackUpdatePayload = { _id: string; status?: string; notes?: string | null };
+      const updateData: FeedbackUpdatePayload = { _id: selected._id };
       if (editStatus !== selected.status) updateData.status = editStatus;
       const currentNotes = selected.notes || '';
       if (editNotes.trim() !== currentNotes.trim())

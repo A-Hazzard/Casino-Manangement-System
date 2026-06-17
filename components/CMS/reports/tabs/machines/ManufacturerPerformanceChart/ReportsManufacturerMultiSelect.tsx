@@ -95,7 +95,7 @@ export function ReportsManufacturerMultiSelect({
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(manufacturers.map(m => m.id));
+      onSelectionChange(manufacturers.map(manufacturer => manufacturer.id));
     }
   };
 

@@ -42,12 +42,12 @@ export function shouldShowLicenceeFilter(
   // For location admins, only show if they have multiple licencees
   // For other users, show if they have multiple licencees
   // Use only new field but fallback to old fields just in case
-  const userLicencees = Array.isArray(
-    (user as { assignedLicencees?: string[] })?.assignedLicencees
-  )
-    ? (user as { assignedLicencees: string[] }).assignedLicencees
-    : Array.isArray((user as Record<string, unknown>)?.licencees)
-      ? ((user as Record<string, unknown>).licencees as string[])
+  const userLicencees = Array.isArray(user?.assignedLicencees)
+    ? user.assignedLicencees
+    : Array.isArray(
+        (user as UserAuthPayload & { licencees?: string[] })?.licencees
+      )
+      ? (user as UserAuthPayload & { licencees: string[] }).licencees
       : [];
 
   return userLicencees.length > 1;

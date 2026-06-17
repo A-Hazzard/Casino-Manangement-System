@@ -18,13 +18,13 @@ import {
 } from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
-interface VaultActivityQuery {
+type VaultActivityQuery = {
   locationId?: string;
   startDate?: string;
   endDate?: string;
   type?: string;
   performedBy?: string;
-}
+};
 
 /**
  * Main GET handler for fetching vault activity report

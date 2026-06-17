@@ -529,14 +529,34 @@ export function ModernCalendar({
     }
   };
 
-  /** Updates the selected start time */
+  /** Updates the selected start time and auto-propagates in single mode */
   const handleStartTimeChange = (hours: number, minutes: number) => {
     setSelectedStartTime({ hours, minutes });
+
+    if (mode === 'single' && enableTimeInputs && startDate) {
+      const updatedDate = new Date(startDate);
+      updatedDate.setHours(hours, minutes, 0, 0);
+      onSelect?.({ from: updatedDate, to: updatedDate });
+    }
   };
 
-  /** Updates the selected end time */
+  /** Updates the selected end time and auto-propagates in range mode */
   const handleEndTimeChange = (hours: number, minutes: number) => {
     setSelectedEndTime({ hours, minutes });
+
+    if (mode === 'range' && enableTimeInputs && startDate && endDate) {
+      const updatedEnd = new Date(endDate);
+      updatedEnd.setHours(hours, minutes, 0, 0);
+      const finalStart = selectedStartTime
+        ? new Date(startDate).setHours(
+            selectedStartTime.hours,
+            selectedStartTime.minutes,
+            0,
+            0
+          )
+        : startDate;
+      onSelect?.({ from: new Date(finalStart), to: updatedEnd });
+    }
   };
 
   /**

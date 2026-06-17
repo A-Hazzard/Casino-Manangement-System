@@ -42,6 +42,7 @@ type NewCollectionCollectedMachinesProps = {
   setUpdateAllSasEndDate?: (date: Date | undefined) => void;
   onApplyAllDates?: () => void;
   variationMachineIds?: string[];
+  sasUpdateProgress?: { completed: number; total: number } | null;
 };
 
 export default function CollectionReportNewCollectionCollectedMachines({
@@ -55,6 +56,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
   setUpdateAllSasEndDate,
   onApplyAllDates,
   variationMachineIds = [],
+  sasUpdateProgress,
 }: NewCollectionCollectedMachinesProps) {
   // ============================================================================
   // State & Hooks
@@ -90,8 +92,8 @@ export default function CollectionReportNewCollectionCollectedMachines({
         </h3>
       </div>
 
-      {/* Update All SAS Times - Only show if 2+ machines */}
-      {collectedMachineEntries.length >= 2 &&
+      {/* Update All SAS Times */}
+      {collectedMachineEntries.length >= 1 &&
         setUpdateAllSasStartDate &&
         setUpdateAllSasEndDate &&
         onApplyAllDates && (
@@ -165,6 +167,31 @@ export default function CollectionReportNewCollectionCollectedMachines({
             >
               {isProcessing ? 'Updating...' : 'Update All Times'}
             </Button>
+
+            {sasUpdateProgress && (
+              <div className="mt-1 space-y-1">
+                <div className="flex items-center justify-between text-[9px] font-semibold text-blue-700">
+                  <span>
+                    {sasUpdateProgress.completed}/{sasUpdateProgress.total}
+                  </span>
+                  <span>
+                    {Math.round(
+                      (sasUpdateProgress.completed / sasUpdateProgress.total) *
+                        100
+                    )}
+                    %
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-200">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all duration-200"
+                    style={{
+                      width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

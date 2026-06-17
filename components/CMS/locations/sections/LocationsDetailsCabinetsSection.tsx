@@ -385,8 +385,9 @@ export default function LocationsDetailsCabinetsSection({
 
       {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
       <div className="mt-4 hidden w-full rounded-lg rounded-b-none bg-buttonActive p-4 shadow-sm md:block">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full flex-1 md:max-w-none lg:max-w-2xl xl:max-w-3xl">
+        <div className="flex w-full flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative w-full md:max-w-[240px] lg:max-w-[280px] xl:max-w-[320px] 2xl:max-w-[360px]">
             <Input
               type="text"
               placeholder="Search machines (Asset, SMID, Serial, Game)..."
@@ -397,103 +398,92 @@ export default function LocationsDetailsCabinetsSection({
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Filter Buttons - On the right */}
-          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:min-w-min lg:gap-4">
-            {showLocationSelect && (
-              <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
-                <LocationSingleSelect
-                  locations={locationSelectOptions}
-                  selectedLocation={selectedLocationId || locationId}
-                  onSelectionChange={handleLocationChangeInPlace}
-                  includeAllOption={true}
-                  allOptionLabel="All Locations"
-                  showSasBadge={false}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {/* Game Type Filter */}
-            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[140px] lg:min-w-[180px]">
-              <CustomSelect
-                value={selectedGameType}
-                onValueChange={setSelectedGameType}
-                options={[
-                  { value: 'all', label: 'All Games' },
-                  ...gameTypes
-                    .filter((gameType): gameType is string => !!gameType)
-                    .map(gameType => ({
-                      value: gameType,
-                      label: gameType,
-                    })),
-                ]}
-                placeholder="All Games"
+          {showLocationSelect && (
+            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[160px] xl:min-w-[180px]">
+              <LocationSingleSelect
+                locations={locationSelectOptions}
+                selectedLocation={selectedLocationId || locationId}
+                onSelectionChange={handleLocationChangeInPlace}
+                includeAllOption={true}
+                allOptionLabel="All Locations"
+                showSasBadge={false}
                 className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={true}
-                emptyMessage="No game types found"
               />
             </div>
+          )}
 
-            {/* Status Filter */}
-            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
-              <CustomSelect
-                value={selectedStatus}
-                onValueChange={value => handleFilterChange(value)}
-                options={[
-                  { value: 'All', label: 'All Status' },
-                  { value: 'Online', label: 'Online' },
-                  { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  {
-                    value: 'OfflineShortest',
-                    label: 'Offline (Shortest First)',
-                  },
-                  { value: 'NeverOnline', label: 'Never Online' },
-                ]}
-                placeholder="All Status"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={false}
-                emptyMessage="No status options found"
-              />
-            </div>
+          {/* Game Type Filter */}
+          <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[140px] lg:min-w-[150px] xl:min-w-[160px]">
+            <CustomSelect
+              value={selectedGameType}
+              onValueChange={setSelectedGameType}
+              options={[
+                { value: 'all', label: 'All Games' },
+                ...gameTypes
+                  .filter((gameType): gameType is string => !!gameType)
+                  .map(gameType => ({
+                    value: gameType,
+                    label: gameType,
+                  })),
+              ]}
+              placeholder="All Games"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={true}
+              emptyMessage="No game types found"
+            />
+          </div>
 
-            {/* SMIB Status Filter */}
-            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
-              <CustomSelect
-                value={selectedSmibStatus}
-                onValueChange={setSelectedSmibStatus}
-                options={[
-                  { value: 'all', label: 'All SMIB Status' },
-                  { value: 'smib', label: 'Only SMIB' },
-                  { value: 'no-smib', label: 'No SMIB' },
-                ]}
-                placeholder="SMIB Status"
-                className="w-full"
-                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
-                searchable={false}
-                emptyMessage="No SMIB options found"
-              />
-            </div>
+          {/* Status Filter */}
+          <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[160px] xl:min-w-[180px]">
+            <CustomSelect
+              value={showArchived ? 'Archived' : selectedStatus}
+              onValueChange={value => {
+                if (value === 'Archived') {
+                  setShowArchived(true);
+                  handleFilterChange('All');
+                } else {
+                  setShowArchived(false);
+                  handleFilterChange(value);
+                }
+              }}
+              options={[
+                { value: 'All', label: 'All Status' },
+                { value: 'Online', label: 'Online' },
+                { value: 'OfflineLongest', label: 'Offline (Longest First)' },
+                {
+                  value: 'OfflineShortest',
+                  label: 'Offline (Shortest First)',
+                },
+                { value: 'NeverOnline', label: 'Never Online' },
+                ...(canViewArchived
+                  ? [{ value: 'Archived', label: 'Archived' }]
+                  : []),
+              ]}
+              placeholder="All Status"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={false}
+              emptyMessage="No status options found"
+            />
+          </div>
 
-            {/* Show Archived Toggle */}
-            {canViewArchived && (
-              <div className="flex items-center gap-2 px-2">
-                <input
-                  type="checkbox"
-                  id="showArchivedDesktop"
-                  checked={showArchived}
-                  onChange={e => setShowArchived(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
-                />
-                <label
-                  htmlFor="showArchivedDesktop"
-                  className="cursor-pointer select-none text-sm font-medium text-white"
-                >
-                  View Archived
-                </label>
-              </div>
-            )}
+          {/* SMIB Status Filter */}
+          <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[160px] xl:min-w-[180px]">
+            <CustomSelect
+              value={selectedSmibStatus}
+              onValueChange={setSelectedSmibStatus}
+              options={[
+                { value: 'all', label: 'All SMIB Status' },
+                { value: 'smib', label: 'Only SMIB' },
+                { value: 'no-smib', label: 'No SMIB' },
+              ]}
+              placeholder="SMIB Status"
+              className="w-full"
+              triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+              searchable={false}
+              emptyMessage="No SMIB options found"
+            />
           </div>
         </div>
       </div>
@@ -550,8 +540,16 @@ export default function LocationsDetailsCabinetsSection({
             </div>
             <div className="relative w-44 flex-shrink-0">
               <CustomSelect
-                value={selectedStatus}
-                onValueChange={value => handleFilterChange(value)}
+                value={showArchived ? 'Archived' : selectedStatus}
+                onValueChange={value => {
+                  if (value === 'Archived') {
+                    setShowArchived(true);
+                    handleFilterChange('All');
+                  } else {
+                    setShowArchived(false);
+                    handleFilterChange(value);
+                  }
+                }}
                 options={[
                   { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
@@ -561,6 +559,9 @@ export default function LocationsDetailsCabinetsSection({
                     label: 'Offline (Shortest First)',
                   },
                   { value: 'NeverOnline', label: 'Never Online' },
+                  ...(canViewArchived
+                    ? [{ value: 'Archived', label: 'Archived' }]
+                    : []),
                 ]}
                 placeholder="All Status"
                 className="w-full"
@@ -667,25 +668,6 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No sort options found"
               />
             </div>
-
-            {/* Show Archived Toggle - Mobile */}
-            {canViewArchived && (
-              <div className="flex h-10 items-center gap-2 rounded-full border border-gray-300 bg-white px-4">
-                <input
-                  type="checkbox"
-                  id="showArchivedMobile"
-                  checked={showArchived}
-                  onChange={e => setShowArchived(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
-                />
-                <label
-                  htmlFor="showArchivedMobile"
-                  className="cursor-pointer select-none whitespace-nowrap text-sm font-medium text-gray-700"
-                >
-                  View Archived
-                </label>
-              </div>
-            )}
           </div>
         </div>
       </div>

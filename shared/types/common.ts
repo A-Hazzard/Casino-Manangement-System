@@ -84,6 +84,7 @@ export type CollectionMetersHistoryEntry = {
   prevIn?: number;
   prevOut?: number;
   locationReportId: string;
+  reportVersion?: number;
 };
 
 export type BillValidatorData = {

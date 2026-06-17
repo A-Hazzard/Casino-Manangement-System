@@ -32,7 +32,7 @@ export default function CollectionReportTableSkeleton() {
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: 8 }).map((_, index) => (
+          {Array.from({ length: 20 }).map((_, index) => (
             <tr key={index} className="border-b hover:bg-lighterGreenHighlight">
               {/* Collector */}
               <td className="px-4 py-2">

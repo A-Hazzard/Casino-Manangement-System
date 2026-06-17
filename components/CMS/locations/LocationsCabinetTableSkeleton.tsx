@@ -1,8 +1,8 @@
 import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
-interface LocationsCabinetTableSkeletonProps {
-  includeJackpot?: boolean;
+type LocationsCabinetTableSkeletonProps = {
+  showArchived?: boolean;
 }
 
 /**
@@ -10,7 +10,7 @@ interface LocationsCabinetTableSkeletonProps {
  * Matches the exact structure of CabinetTable component
  */
 const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
-  includeJackpot = false,
+  showArchived = false,
 }) => {
   // ============================================================================
   // Render
@@ -24,9 +24,6 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
               <span>ASSET NUMBER</span>
             </th>
             <th className="relative p-3 text-center font-semibold text-white">
-              <span>NETWORK</span>
-            </th>
-            <th className="relative p-3 text-center font-semibold text-white">
               <span>MONEY IN</span>
             </th>
             <th className="relative p-3 text-center font-semibold text-white">
@@ -38,10 +35,15 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
             <th className="relative p-3 text-center font-semibold text-white">
               <span>GROSS</span>
             </th>
-            {includeJackpot && (
-              <th className="relative p-3 text-center font-semibold text-white">
-                <span>INCLUDE JACKPOT</span>
-              </th>
+            {showArchived && (
+              <>
+                <th className="relative p-3 text-center font-semibold text-white">
+                  <span>ARCHIVED WHEN</span>
+                </th>
+                <th className="relative p-3 text-center font-semibold text-white">
+                  <span>ARCHIVED FOR</span>
+                </th>
+              </>
             )}
             <th className="p-3 text-center font-semibold text-white">
               <span>ACTIONS</span>
@@ -78,13 +80,7 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
                   </div>
                 </div>
               </td>
-              {/* Network Row 1 */}
-              <td className="p-3">
-                <div className="flex justify-center">
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                </div>
-              </td>
-              {/* Financial Columns (Centered) */}
+              {/* Financial Columns (Centered) - Money In, Money Out, Jackpot, Gross */}
               {[...Array(4)].map((_, colIndex) => (
                 <td
                   key={colIndex}
@@ -93,11 +89,16 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
                   <Skeleton className="mx-auto h-4 w-20" />
                 </td>
               ))}
-              {/* Include Jackpot Column */}
-              {includeJackpot && (
-                <td className="p-3 text-center align-middle text-sm">
-                  <Skeleton className="mx-auto h-4 w-20" />
-                </td>
+              {/* Archived Columns */}
+              {showArchived && (
+                <>
+                  <td className="p-3 text-center align-middle text-sm">
+                    <Skeleton className="mx-auto h-4 w-24" />
+                  </td>
+                  <td className="p-3 text-center align-middle text-sm">
+                    <Skeleton className="mx-auto h-4 w-20" />
+                  </td>
+                </>
               )}
               {/* Actions Column (Centered) */}
               <td className="p-3 text-center align-middle text-sm">

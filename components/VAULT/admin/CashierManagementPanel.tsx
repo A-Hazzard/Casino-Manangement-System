@@ -102,8 +102,8 @@ export default function CashierManagementPanel({
   // ============================================================================
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } =
     useUserStore();
-  const isAdminOrDev = user?.roles?.some(r =>
-    ['admin', 'developer'].includes(r.toLowerCase())
+  const isAdminOrDev = user?.roles?.some(role =>
+    ['admin', 'developer'].includes(role.toLowerCase())
   );
   const { formatAmount } = useCurrencyFormat();
   const { licenceeId: selectedLicencee } = useVaultLicencee();
@@ -270,9 +270,9 @@ export default function CashierManagementPanel({
 
         // Init denominations
         const denoms = getInitialDenominationRecord(selectedLicencee);
-        req.denominations.forEach((d: Denomination) => {
-          if (denoms[d.denomination.toString()] !== undefined) {
-            denoms[d.denomination.toString()] = d.quantity;
+        req.denominations.forEach((denomination: Denomination) => {
+          if (denoms[denomination.denomination.toString()] !== undefined) {
+            denoms[denomination.denomination.toString()] = denomination.quantity;
           }
         });
         setReviewDenominations(denoms);

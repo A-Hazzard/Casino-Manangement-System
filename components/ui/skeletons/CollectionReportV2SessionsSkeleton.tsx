@@ -53,7 +53,7 @@ export default function CollectionReportV2SessionsSkeleton() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 8 }).map((_, index) => (
+              {Array.from({ length: 20 }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
@@ -90,7 +90,7 @@ export default function CollectionReportV2SessionsSkeleton() {
 
       {/* Mobile skeleton */}
       <div className="space-y-4 md:hidden">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 20 }).map((_, index) => (
           <div
             key={index}
             className="transform overflow-hidden rounded-lg bg-white shadow-sm"

@@ -1,5 +1,21 @@
 import type { ReportedMachineStatus } from '@/app/api/lib/models/reportedMachines';
 
+export type VariationMachineResult = {
+  machineId: string;
+  machineName: string;
+  variation: number;
+  meterGross: number;
+  sasGross: number | null;
+  sasStartTime: Date | undefined;
+  sasEndTime: Date | undefined;
+};
+
+export type VariationResult = {
+  hasVariations: boolean;
+  totalVariation: number;
+  machines: VariationMachineResult[];
+};
+
 export type CaptureMachinePayload = {
   sessionId: string;
   machineId: string;
@@ -19,6 +35,9 @@ export type CaptureMachinePayload = {
   /** Manual meters entered by the collector (only when metersMatch === false) */
   manualMetersIn?: number | null;
   manualMetersOut?: number | null;
+  /** Soft meters — supplemental values not captured by SAS, added to machineGross */
+  softMetersIn?: number | null;
+  softMetersOut?: number | null;
   sasStartTime?: string;
   sasEndTime?: string;
   metersMatch?: boolean;
@@ -40,6 +59,8 @@ export type UpdateMachinePayload = Partial<
     | 'sasMetersOut'
     | 'manualMetersIn'
     | 'manualMetersOut'
+    | 'softMetersIn'
+    | 'softMetersOut'
     | 'metersMatch'
     | 'sasStartTime'
     | 'sasEndTime'

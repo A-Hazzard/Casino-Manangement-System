@@ -118,7 +118,7 @@ export default function CashierShiftOpenModal({
   };
 
   const handleAuthVerified = async () => {
-    const filteredDenominations = denominations.filter(d => d.quantity > 0);
+    const filteredDenominations = denominations.filter(denom => denom.quantity > 0);
     try {
       await onSubmit(filteredDenominations);
       handleClose();
@@ -208,7 +208,7 @@ export default function CashierShiftOpenModal({
                   </thead>
                   <tbody className="divide-y">
                     {denominations
-                      .filter(d => d.quantity > 0)
+                      .filter(denom => denom.quantity > 0)
                       .map(d => (
                         <tr key={d.denomination} className="bg-white">
                           <td className="px-4 py-3 font-semibold text-gray-700">

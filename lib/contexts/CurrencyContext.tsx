@@ -18,6 +18,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,9 +28,17 @@ type CurrencyProviderProps = {
   initialCurrency?: CurrencyCode;
 };
 
+// ============================================================================
+// Context Definition
+// ============================================================================
+
 const CurrencyContext = createContext<CurrencyContextType | undefined>(
   undefined
 );
+
+// ============================================================================
+// CurrencyProvider Component
+// ============================================================================
 
 export function CurrencyProvider({
   children,
@@ -306,14 +315,20 @@ export function CurrencyProvider({
     }
   }, [user, isSingleLicenceeNonAdmin]); // Reduced dependencies to prevent infinite loop
 
-  const value: CurrencyContextType = {
+  const value = useMemo((): CurrencyContextType => ({
     displayCurrency,
     setDisplayCurrency: handleSetDisplayCurrency,
     formatAmount: formatAmountWithCurrency,
     convertAmount: convertAmountWithCurrency,
     isAllLicencee,
     shouldApplyConversion: isAllLicencee,
-  };
+  }), [
+    displayCurrency,
+    handleSetDisplayCurrency,
+    formatAmountWithCurrency,
+    convertAmountWithCurrency,
+    isAllLicencee,
+  ]);
 
   return (
     <CurrencyContext.Provider value={value}>
@@ -321,6 +336,10 @@ export function CurrencyProvider({
     </CurrencyContext.Provider>
   );
 }
+
+// ============================================================================
+// Consumer Hook
+// ============================================================================
 
 export function useCurrency(): CurrencyContextType {
   const context = useContext(CurrencyContext);

@@ -30,7 +30,7 @@ type ForceEndShiftCashier = {
   cashierName?: string;
 };
 
-interface VaultOverviewCloseDayModalsProps {
+type VaultOverviewCloseDayModalsProps = {
   activeStep: CloseDayStep;
   vaultBalance: VaultBalance | null;
   machines: GamingMachine[];

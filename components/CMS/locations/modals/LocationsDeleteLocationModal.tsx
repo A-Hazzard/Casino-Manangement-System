@@ -43,7 +43,7 @@ export default function LocationsDeleteLocationModal({
   const canPermanentlyDelete = useMemo(() => {
     const roles = user?.roles || [];
     return ['developer', 'owner', 'admin', 'location admin'].some(r =>
-      roles.map((x: string) => x.toLowerCase()).includes(r)
+      roles.map((role: string) => role.toLowerCase()).includes(r)
     );
   }, [user]);
 

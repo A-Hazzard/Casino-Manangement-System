@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-export interface CheckVariationsMachine {
+export type CheckVariationsMachine = {
   machineId: string;
   machineName?: string;
   metersIn: number;
@@ -28,19 +28,23 @@ export interface CheckVariationsMachine {
    * When provided the API uses this value directly instead of recalculating from raw meters,
    * which ensures RAM-clear entries produce the same meterGross as the report detail page. */
   movementGross?: number;
+  /** Pre-computed SAS gross from a saved collection's sasMeters.gross.
+   * When provided the API uses this value directly instead of querying live Meters,
+   * which prevents offline SMIB machines from showing phantom variation. */
+  storedSasGross?: number;
 }
 
-export interface MachineVariationData {
+export type MachineVariationData = {
   machineId: string;
   machineName: string;
-  variation: number | string;
-  sasGross: number | string;
+  variation: number | null;
+  sasGross: number | null;
   meterGross: number;
   sasStartTime?: string | Date | null;
   sasEndTime?: string | Date | null;
 }
 
-export interface VariationsCheckResponse {
+export type VariationsCheckResponse = {
   hasVariations: boolean;
   totalVariation: number;
   machines: MachineVariationData[];
@@ -62,7 +66,7 @@ export type PreCreateMeterPayload = {
   sasEndTime?: string | Date;
 };
 
-interface VariationCheckState {
+type VariationCheckState = {
   isChecking: boolean;
   checkComplete: boolean;
   hasVariations: boolean | null;
@@ -86,7 +90,7 @@ const DEFAULT_STATE: VariationCheckState = {
   meterCreationError: null,
 };
 
-interface UseVariationCheckOptions {
+type UseVariationCheckOptions = {
   autoCheckOnEdit?: boolean; // Auto re-check when machines change
   debounceMs?: number; // Debounce delay for auto-check
 }

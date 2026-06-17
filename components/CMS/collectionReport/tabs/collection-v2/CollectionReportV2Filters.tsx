@@ -16,9 +16,6 @@ type V2FiltersProps = {
   selectedLocation: string | string[];
   onLocationChange: (value: string | string[]) => void;
   onClearFilters: () => void;
-  showArchived: boolean;
-  onShowArchivedChange?: (value: boolean) => void;
-  canViewArchived?: boolean;
 };
 
 export default function CollectionReportV2Filters({
@@ -30,9 +27,6 @@ export default function CollectionReportV2Filters({
   selectedLocation,
   onLocationChange,
   onClearFilters,
-  showArchived,
-  onShowArchivedChange,
-  canViewArchived = false,
 }: V2FiltersProps) {
   // ============================================================================
   // Render
@@ -78,7 +72,7 @@ export default function CollectionReportV2Filters({
           className="w-full md:max-w-[300px] md:flex-1 lg:w-[240px] lg:min-w-[200px] lg:flex-none"
         />
 
-        {/* Clear Filters + View Archived (desktop) */}
+        {/* Clear Filters (desktop) */}
         <div className="hidden items-center gap-4 lg:flex">
           <Button
             variant="outline"
@@ -87,21 +81,10 @@ export default function CollectionReportV2Filters({
           >
             Clear Filters
           </Button>
-          {canViewArchived && (
-            <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm font-medium text-white">
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={event => onShowArchivedChange?.(event.target.checked)}
-                className="h-4 w-4 cursor-pointer accent-amber-400"
-              />
-              View Archived
-            </label>
-          )}
         </div>
       </div>
 
-      {/* Bottom row - Clear Button + View Archived (mobile and tablet) */}
+      {/* Bottom row - Clear Button (mobile and tablet) */}
       <div className="flex flex-col gap-y-3 lg:hidden">
         <div className="flex items-center gap-4">
           <Button
@@ -111,17 +94,6 @@ export default function CollectionReportV2Filters({
           >
             Clear Filters
           </Button>
-          {canViewArchived && (
-            <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-sm font-medium text-white">
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={event => onShowArchivedChange?.(event.target.checked)}
-                className="h-4 w-4 cursor-pointer accent-amber-400"
-              />
-              View Archived
-            </label>
-          )}
         </div>
       </div>
     </div>

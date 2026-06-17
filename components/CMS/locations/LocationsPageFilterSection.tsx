@@ -51,20 +51,21 @@ export default function LocationsPageFilterSection({
   return (
     <div className="space-y-4">
       {/* Search and Desktop Filter Bar */}
-      <div className="flex flex-col items-center gap-4 rounded-t-lg bg-buttonActive p-4 md:flex-row">
-        <div className="relative w-full md:w-[320px]">
-          <Input
-            type="text"
-            placeholder="Search locations..."
-            className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 pr-9 text-sm focus:ring-2 focus:ring-purple-200"
-            value={searchTerm}
-            onChange={e => onSearchChange(e.target.value)}
-          />
-          <MagnifyingGlassIcon className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
+      <div className="flex flex-col gap-4 rounded-t-lg bg-buttonActive p-4">
+        {/* Top Row: Search Input, Status Dropdown, and Location Type */}
+        <div className="flex w-full flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative w-full md:max-w-[240px] lg:max-w-[280px] xl:max-w-[320px] 2xl:max-w-[360px]">
+            <Input
+              type="text"
+              placeholder="Search locations..."
+              className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 pr-9 text-sm focus:ring-2 focus:ring-purple-200"
+              value={searchTerm}
+              onChange={e => onSearchChange(e.target.value)}
+            />
+            <MagnifyingGlassIcon className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
 
-        {/* Combined Status and Location Type Dropdowns Container */}
-        <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
           {/* Status Dropdown */}
           <div className="w-full sm:w-[180px]">
             <CustomSelect
@@ -101,8 +102,8 @@ export default function LocationsPageFilterSection({
           </div>
         </div>
 
-        {/* XL+ Toolbar Checkboxes */}
-        <div className="ml-2 hidden flex-1 items-center justify-end gap-x-6 border-l border-white/20 pl-6 2xl:flex">
+        {/* Bottom Row: 2XL+ Toolbar Checkboxes */}
+        <div className="hidden flex-wrap items-center gap-x-6 gap-y-2 2xl:flex">
           {/* Connection Group */}
           <div className="flex items-center gap-4">
             {STATUS_OPTIONS.slice(0, 4).map(opt => (

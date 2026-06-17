@@ -5,6 +5,7 @@ import { TimePeriod } from '@/shared/types';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 import type { CollectionReportLocationWithMachines } from '../api';
 import type { LocationSelectItem } from '../location';
+import type { AggregatedLocation } from '@/shared/types/entities';
 
 export type ChartProps = {
   loadingChartData: boolean;
@@ -32,6 +33,7 @@ export type DateFiltersProps = {
   showQuarterly?: boolean;
   mode?: 'auto' | 'mobile' | 'desktop';
   enableTimeInputs?: boolean;
+  calendarFooterContent?: ReactNode;
 };
 
 export type HeaderProps = {
@@ -132,13 +134,9 @@ export type CollectionReportEditCollectionModalProps = {
 export type CollectionReportTableProps = {
   data: CollectionReportRow[];
   loading?: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  onRestore?: (reportId: string) => void;
-  onPermanentDelete?: (reportId: string) => void;
-  canManage?: boolean;
-  canPermanentlyDelete?: boolean;
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
@@ -149,13 +147,9 @@ export type CollectionReportTableProps = {
 export type CollectionReportCardsProps = {
   data: CollectionReportRow[];
   gridLayout?: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  onRestore?: (reportId: string) => void;
-  onPermanentDelete?: (reportId: string) => void;
-  canManage?: boolean;
-  canPermanentlyDelete?: boolean;
   editableReportIds?: Set<string>;
   loading?: boolean;
   onRefresh?: () => void;
@@ -190,19 +184,13 @@ export type CollectionReportDesktopUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
-  showArchived: boolean;
-  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  onRestore?: (reportId: string) => void;
-  onPermanentDelete?: (reportId: string) => void;
-  canManage?: boolean;
-  canPermanentlyDelete?: boolean;
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
@@ -239,19 +227,13 @@ export type CollectionReportMobileUIProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
-  showArchived: boolean;
-  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
   isSearching: boolean;
-  reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
+  reportIssues?: ReportIssuesMap;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  onRestore?: (reportId: string) => void;
-  onPermanentDelete?: (reportId: string) => void;
-  canManage?: boolean;
-  canPermanentlyDelete?: boolean;
   selectedLicencee?: string;
   editableReportIds?: Set<string>;
 };
@@ -467,8 +449,6 @@ export type CollectionReportFiltersProps = {
   onSearchSubmit: () => void;
   showUncollectedOnly: boolean;
   onShowUncollectedOnlyChange: (checked: boolean) => void;
-  showArchived: boolean;
-  onShowArchivedChange: (checked: boolean) => void;
   selectedFilters: string[];
   onFilterChange: (filter: string, checked: boolean) => void;
   onClearFilters: () => void;
@@ -497,9 +477,43 @@ export type CollectionReportCollectorScheduleCardsProps = {
 export type CollectorScheduleCardsProps =
   CollectionReportCollectorScheduleCardsProps;
 
+type ReportIssuesMap = Record<
+  string,
+  { issueCount: number; hasIssues: boolean }
+>;
+
+export type MapPreviewLocation = {
+  _id: string;
+  name?: string;
+  locationName?: string;
+  deletedAt?: Date;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    longtitude?: number;
+    lat?: number;
+    lng?: number;
+    [key: string]: number | undefined;
+  };
+  totalMachines?: number;
+  onlineMachines?: number;
+  moneyIn?: number;
+  moneyOut?: number;
+  gross?: number;
+  googleMapsIframe?: string;
+  googleMapsLink?: string;
+  licenceeId?: string | null;
+  includeJackpot?: boolean;
+  rel?: {
+    licencee?: string | string[] | null;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
 export type MapPreviewProps = {
-  gamingLocations?: Record<string, unknown>[];
-  locationAggregates?: Record<string, unknown>[];
+  gamingLocations?: MapPreviewLocation[];
+  locationAggregates?: AggregatedLocation[];
   aggLoading?: boolean;
   zoom?: number;
   center?: { lat: number; lng: number };
@@ -513,7 +527,7 @@ export type DashboardMobileLayoutProps = {
   activeTab: import('@/lib/types').ActiveTab;
   totals: import('@/lib/types').DashboardTotals | null;
   chartData: import('@/lib/types').dashboardData[];
-  gamingLocations: import('@/lib/types').locations;
+  gamingLocations: MapPreviewLocation[];
   loadingChartData: boolean;
   loadingTotals?: boolean;
   loadingLocations?: boolean;

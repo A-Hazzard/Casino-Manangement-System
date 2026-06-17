@@ -52,6 +52,9 @@ export type ReportedMachineDocument = {
   prevSasMetersOut?: number;
   // Calculated movement deltas (current - previous), manual meters only
   movement?: ReportedMachineMovement;
+  // Soft meters — supplemental meter values not captured by SAS (added to machineGross)
+  softMetersIn?: number | null;
+  softMetersOut?: number | null;
   // RAM clear — when true, the machine's meters were reset between collections.
   // ramClearMetersIn/Out hold the pre-reset peak readings; sasMetersIn/Out (or
   // manualMetersIn/Out for no-SMIB) hold the post-reset readings starting from 0.
@@ -113,6 +116,8 @@ const reportedMachineSchema = new Schema<ReportedMachineDocument>(
         { _id: false }
       ),
     },
+    softMetersIn: { type: Number, default: null },
+    softMetersOut: { type: Number, default: null },
     ramClear: { type: Boolean, default: false },
     ramClearMetersIn: { type: Number },
     ramClearMetersOut: { type: Number },

@@ -38,7 +38,7 @@ import type {
   MongooseId,
 } from '@/shared/types';
 import type { GamingLocationDocument } from '@/shared/types';
-interface CheckVariationsRequest {
+type CheckVariationsRequest = {
   locationId: string;
   machines: Array<{
     machineId: string;
@@ -49,29 +49,31 @@ interface CheckVariationsRequest {
     sasEndTime?: string;
     prevMetersIn?: number;
     prevMetersOut?: number;
-    /** Pre-calculated movement gross from a saved collection document.
-     * When provided, used as meterGross instead of recalculating from raw meters.
-     * Ensures RAM-clear entries match the report detail page calculation. */
     movementGross?: number;
+    /** Pre-computed SAS gross from a saved collection's sasMeters.gross.
+     * When provided, skips the live Meters query for this machine and uses
+     * this value directly. Required for offline SMIB machines to avoid
+     * double-counting pre-offline SAS meters with the supplemental meter. */
+    storedSasGross?: number;
   }>;
   includeJackpot?: boolean;
-}
+};
 
-interface MachineVariationData {
+type MachineVariationData = {
   machineId: string;
   machineName: string;
-  variation: number | string;
-  sasGross: number | string;
+  variation: number | null;
+  sasGross: number | null;
   meterGross: number;
   sasStartTime?: string | null;
   sasEndTime?: string | null;
-}
+};
 
-interface CheckVariationsResponse {
+type CheckVariationsResponse = {
   hasVariations: boolean;
   totalVariation: number;
   machines: MachineVariationData[];
-}
+};
 
 /**
  * Main POST handler for checking collection report variations
@@ -190,16 +192,35 @@ export async function POST(request: NextRequest) {
 
     // ============================================================================
     // STEP 5: Fetch SAS meter data for machines with SAS time ranges
+    // Machines that provide storedSasGross skip the live query — their value
+    // is pre-computed from the saved collection's sasMeters.gross, which is the
+    // authoritative source for finalized collections (matches Machine Metrics).
     // ============================================================================
     const { Meters } = await import('@/app/api/lib/models/meters');
 
     const meterQueries = machines
-      .filter(machine => machine.sasStartTime && machine.sasEndTime)
+      .filter(machine => machine.sasStartTime && machine.sasEndTime && machine.storedSasGross === undefined)
       .map(machine => ({
         machineId: machine.machineId,
         startTime: new Date(machine.sasStartTime!),
         endTime: new Date(machine.sasEndTime!),
       }));
+
+    console.log(
+      '[check-variations] RECEIVED ' + machines.length + ' machine(s) for location=' + locationId + ' includeJackpot=' + includeJackpot,
+      machines.map(m => ({
+        id: m.machineId,
+        storedSasGross: m.storedSasGross,
+        movementGross: m.movementGross,
+        metersIn: m.metersIn,
+        prevMetersIn: m.prevMetersIn,
+        hasSasWindow: !!(m.sasStartTime && m.sasEndTime),
+      }))
+    );
+    console.log(
+      '[check-variations] Will query live Meters for ' + meterQueries.length + ' machine(s) ' +
+      '(' + (machines.length - meterQueries.length) + ' machine(s) use storedSasGross, skipping live query)'
+    );
 
     const allMeterData: Array<{
       _id: string;
@@ -216,6 +237,7 @@ export async function POST(request: NextRequest) {
               machine: query.machineId,
               readAt: { $gte: query.startTime, $lte: query.endTime },
             })),
+            meterSource: { $ne: 'COLLECTION_REPORT' },
           },
         },
         {
@@ -233,6 +255,16 @@ export async function POST(request: NextRequest) {
       for await (const doc of cursor) {
         allMeterData.push(doc);
       }
+
+      console.log(
+        '[check-variations] Live meter query returned data for ' + allMeterData.length + ' machine(s):',
+        allMeterData.map(d => ({
+          machineId: d._id,
+          totalDrop: d.totalDrop,
+          totalCancelled: d.totalCancelled,
+          sasGross: d.totalDrop - d.totalCancelled,
+        }))
+      );
     }
 
     // Create lookup map
@@ -291,16 +323,41 @@ export async function POST(request: NextRequest) {
             (machine.prevMetersIn || 0) -
             ((machine.metersOut || 0) - (machine.prevMetersOut || 0));
 
-      // Get SAS data
+      // Get SAS data — prefer storedSasGross when provided (finalized collections),
+      // otherwise query the live Meters collection.
       let sasGross = 0;
       let jackpot = 0;
+      let hasNoSasData: boolean;
 
-      if (machine.sasStartTime && machine.sasEndTime) {
+      if (machine.storedSasGross !== undefined) {
+        sasGross = machine.storedSasGross;
+        hasNoSasData = false;
+        console.log(
+          '[check-variations] STORED machine=' + machine.machineId + ' using storedSasGross=' + sasGross + ' (skipped live query)'
+        );
+      } else if (machine.sasStartTime && machine.sasEndTime) {
         const meterData = meterDataMap.get(machine.machineId);
         if (meterData) {
           sasGross = meterData.drop - meterData.cancelled;
           jackpot = meterData.jackpot;
+          console.log(
+            '[check-variations] LIVE_FOUND machine=' + machine.machineId +
+            ' drop=' + meterData.drop + ' cancelled=' + meterData.cancelled +
+            ' sasGross=' + sasGross + ' jackpot=' + jackpot
+          );
+        } else {
+          console.log(
+            '[check-variations] NO_LIVE_DATA machine=' + machine.machineId +
+            ' for SAS window ' + String(machine.sasStartTime) + ' -> ' + String(machine.sasEndTime) +
+            ' (meterSource!=COLLECTION_REPORT filter applied)'
+          );
         }
+        hasNoSasData = !meterDataMap.has(machine.machineId);
+      } else {
+        hasNoSasData = true;
+        console.log(
+          '[check-variations] NO_SAS_WINDOW machine=' + machine.machineId + ' -- hasNoSasData=true'
+        );
       }
 
       // Apply jackpot adjustment
@@ -308,29 +365,30 @@ export async function POST(request: NextRequest) {
         ? sasGross - (jackpot || 0)
         : sasGross;
 
-      const hasNoSasData =
-        !machine.sasStartTime ||
-        !machine.sasEndTime ||
-        !meterDataMap.has(machine.machineId);
-
       // Skip variation check for no-SMIB machines (machines without relayId)
       let variation = 0;
       if (!hasRelayId) {
         variation = 0; // No-SMIB machines don't contribute to variation
       } else {
-        variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
+        variation = meterGross - adjustedSasGross;
         totalVariation += variation;
       }
 
+      console.log(
+        '[check-variations] RESULT machine=' + machine.machineId +
+        ' hasRelayId=' + !!hasRelayId +
+        ' meterGross=' + meterGross + ' sasGross=' + sasGross + ' adjustedSasGross=' + adjustedSasGross +
+        ' hasNoSasData=' + hasNoSasData + ' variation=' + variation
+      );
       machineVariations.push({
         machineId: machine.machineId,
         machineName,
-        variation: hasRelayId ? variation : 'No SMIB',
+        variation: hasRelayId ? variation : null,
         sasGross: hasRelayId
           ? hasNoSasData
-            ? 'No SAS Data'
+            ? null
             : adjustedSasGross
-          : 'No SMIB',
+          : null,
         meterGross,
         sasStartTime: machine.sasStartTime || null,
         sasEndTime: machine.sasEndTime || null,
@@ -341,10 +399,7 @@ export async function POST(request: NextRequest) {
     // STEP 7: Return variation data and total variance
     // ============================================================================
     const hasVariations = machineVariations.some(
-      m =>
-        typeof m.variation === 'number' &&
-        m.variation !== 0 &&
-        Math.abs(m.variation) > 0.1
+      m => m.variation !== null && m.variation !== 0
     );
 
     const duration = Date.now() - startTime;

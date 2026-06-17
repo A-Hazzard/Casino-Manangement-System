@@ -2,22 +2,18 @@
  * Collection Report V2 — Machine Edit Cascade
  *
  * When a machine in a submitted session is edited mid-wizard, this helper
- * cascades the changes to the Machine document only:
+ * cascades the changes to the Machine document and Meter documents:
  *   1. Machine.collectionMetersHistory entry for this session
  *   2. Machine.collectionMeters (only if this session is the most recent
  *      history entry for this machine)
- *
- * Meter document creation/replacement is intentionally NOT done here.
- * Meters are only written once — by the submit route — after the user
- * presses the final Submit button. This prevents duplicate or premature
- * meter records from being created on every per-machine wizard save.
+ *   3. Meter documents for offline/no-SMIB machines (replaceOne upsert)
  */
 
 import { Machine } from '@/app/api/lib/models/machines';
 
 import { Meters } from '@/app/api/lib/models/meters';
-import { generateMongoId } from '@/lib/utils/id';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
+import type { ReportedMachineDocument } from '@/app/api/lib/models/reportedMachines';
 
 type CascadeInput = {
   machineId: string;
@@ -78,16 +74,9 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
   const prevOut = prevSasMetersOut ?? 0;
 
   if (isNoSMIBLocation || isOffline) {
-    // Delete existing meters for this machine and session
-    await Meters.deleteMany({
-      machine: machineId,
-      locationSession: sessionId,
-    }).catch(deleteErr => {
-      console.error(
-        `[cascadeMachineEdit] Failed to delete existing Meters for machine ${machineId} session ${sessionId}:`,
-        deleteErr
-      );
-    });
+    // Use replaceOne with upsert instead of deleteMany+create for idempotency.
+    // Concurrent calls with the same machine+session target the same document
+    // atomically — no duplicate meters possible.
 
     const baseReadAt = timestamp;
     const isRamClear =
@@ -99,9 +88,12 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
 
     if (isRamClear) {
       // 1. RAM clear meter - captures drop up to reset point
-      const ramClearMeterId = await generateMongoId();
+      const ramClearFilter = {
+        machine: machineId,
+        locationSession: sessionId,
+        isRamClear: true as const,
+      };
       const ramClearMeterDoc = {
-        _id: ramClearMeterId,
         machine: machineId,
         location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
@@ -133,17 +125,22 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
         createdAt: new Date(),
       };
 
-      await Meters.create(ramClearMeterDoc).catch(meterCreateError => {
+      await Meters.replaceOne(ramClearFilter, ramClearMeterDoc, {
+        upsert: true,
+      }).catch(meterCreateError => {
         console.error(
-          `[cascadeMachineEdit] Failed to create RAM-clear Meter for machine ${machineId}:`,
+          `[cascadeMachineEdit] Failed to upsert RAM-clear Meter for machine ${machineId}:`,
           meterCreateError
         );
       });
 
       // 2. Current meter - captures drop from 0 after reset
-      const currentMeterId = await generateMongoId();
+      const currentFilter = {
+        machine: machineId,
+        locationSession: sessionId,
+        isRamClear: false as const,
+      };
       const currentMeterDoc = {
-        _id: currentMeterId,
         machine: machineId,
         location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
@@ -175,17 +172,22 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
         createdAt: new Date(new Date().getTime() + 1000),
       };
 
-      await Meters.create(currentMeterDoc).catch(meterCreateError => {
+      await Meters.replaceOne(currentFilter, currentMeterDoc, {
+        upsert: true,
+      }).catch(meterCreateError => {
         console.error(
-          `[cascadeMachineEdit] Failed to create post-RAM-clear Meter for machine ${machineId}:`,
+          `[cascadeMachineEdit] Failed to upsert post-RAM-clear Meter for machine ${machineId}:`,
           meterCreateError
         );
       });
     } else {
       // Non-RAM-clear path: single Meter doc with the normal delta
-      const meterId = await generateMongoId();
+      const meterFilter = {
+        machine: machineId,
+        locationSession: sessionId,
+        isRamClear: false as const,
+      };
       const meterDoc = {
-        _id: meterId,
         machine: machineId,
         location: String(machineDoc?.gamingLocation || locationId || ''),
         locationSession: sessionId,
@@ -216,9 +218,11 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
         createdAt: new Date(),
       };
 
-      await Meters.create(meterDoc).catch(meterCreateError => {
+      await Meters.replaceOne(meterFilter, meterDoc, {
+        upsert: true,
+      }).catch(meterCreateError => {
         console.error(
-          `[cascadeMachineEdit] Failed to create Meter document for machine ${machineId}:`,
+          `[cascadeMachineEdit] Failed to upsert Meter document for machine ${machineId}:`,
           meterCreateError
         );
       });
@@ -235,25 +239,39 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
     prevMetersOut: prevOut,
     timestamp,
     locationReportId: sessionId,
+    reportVersion: 2,
   };
 
-  await Machine.findOneAndUpdate(
-    { _id: machineId, 'collectionMetersHistory.locationReportId': sessionId },
-    {
-      $set: {
-        'collectionMetersHistory.$.metersIn': historyEntry.metersIn,
-        'collectionMetersHistory.$.metersOut': historyEntry.metersOut,
-        'collectionMetersHistory.$.prevMetersIn': historyEntry.prevMetersIn,
-        'collectionMetersHistory.$.prevMetersOut': historyEntry.prevMetersOut,
-        'collectionMetersHistory.$.timestamp': historyEntry.timestamp,
-      },
-    }
-  ).catch(err => {
-    console.error(
-      `[cascadeMachineEdit] Failed to update collectionMetersHistory for machine ${machineId}:`,
-      err
+  // Use find-modify-save to reliably update subdocument fields including new ones.
+  const machine = await Machine.findOne({ _id: machineId });
+  if (machine) {
+    const historyArray = machine.collectionMetersHistory as Array<{
+      locationReportId?: string;
+      metersIn: number;
+      metersOut: number;
+      prevMetersIn: number;
+      prevMetersOut: number;
+      timestamp: Date;
+      reportVersion?: number;
+    }> | undefined;
+    const entry = historyArray?.find(
+      (item) => item.locationReportId === sessionId
     );
-  });
+    if (entry) {
+      entry.metersIn = historyEntry.metersIn;
+      entry.metersOut = historyEntry.metersOut;
+      entry.prevMetersIn = historyEntry.prevMetersIn;
+      entry.prevMetersOut = historyEntry.prevMetersOut;
+      entry.timestamp = historyEntry.timestamp;
+      entry.reportVersion = historyEntry.reportVersion;
+      await machine.save().catch((err: unknown) => {
+        console.error(
+          `[cascadeMachineEdit] Failed to update collectionMetersHistory for machine ${machineId}:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+      });
+    }
+  }
 
   // ============================================================================
   // 2. Update collectionMeters (and sasMeters for noSMIB) only if this session
@@ -324,7 +342,7 @@ export async function propagateV2MetersToNextSession(
     $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
   })
     .sort({ sasEndTime: 1 })
-    .lean();
+    .lean<ReportedMachineDocument>();
 
   if (!nextReport) return;
 

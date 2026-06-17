@@ -73,8 +73,8 @@ export function useLocationsPageData() {
   // Pagination Constants
   // ============================================================================
   const ITEMS_PER_PAGE = 20;
-  const ITEMS_PER_BATCH = 40;
-  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
+  const ITEMS_PER_BATCH = 100;
+  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 
@@ -129,28 +129,38 @@ export function useLocationsPageData() {
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return (
-      locationData.length <= startIndex && totalCount > locationData.length
-    );
-  }, [locationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+    const currentBatch = calculateBatchNumber(currentPage);
+    if (!loadedBatches.has(currentBatch)) {
+      return true;
+    }
+    if (locationData.length <= startIndex && totalCount > locationData.length) {
+      return loading;
+    }
+    return false;
+  }, [
+    locationData.length,
+    currentPage,
+    ITEMS_PER_PAGE,
+    totalCount,
+    loadedBatches,
+    calculateBatchNumber,
+    loading,
+  ]);
 
   const isDataComplete = useMemo(
     () => locationData.length >= totalCount && totalCount > 0,
     [locationData.length, totalCount]
   );
 
+  const hasMoreLocations = totalCount > 0 && locationData.length < totalCount;
+
   const effectiveTotalPages = useMemo(() => {
-    const displayedCount = locationData.length;
-    const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
-
-    // If server has more data not yet fetched, allow +1 page to trigger next batch
-    if (locationData.length < totalCount && totalCount > 0) {
-      const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-      return Math.min(displayedPages + 1, serverTotalPages);
+    if (hasMoreLocations) {
+      const loadedBatchCount = Math.ceil(locationData.length / ITEMS_PER_BATCH) || 1;
+      return loadedBatchCount * PAGES_PER_BATCH;
     }
-
-    return displayedPages;
-  }, [locationData.length, totalCount, ITEMS_PER_PAGE]);
+    return Math.max(1, Math.ceil(locationData.length / ITEMS_PER_PAGE));
+  }, [locationData.length, hasMoreLocations, ITEMS_PER_BATCH, ITEMS_PER_PAGE, PAGES_PER_BATCH]);
 
   // ============================================================================
   // Handlers
@@ -276,13 +286,21 @@ export function useLocationsPageData() {
   // Consolidated data fetch effect
   useEffect(() => {
     if (filtersInitialized) {
-      const currentBatch = calculateBatchNumber(currentPage);
-      if (!loadedBatches.has(currentBatch)) {
+      const startIndex = currentPage * ITEMS_PER_PAGE;
+      let targetBatch = calculateBatchNumber(currentPage);
+
+      // If we are trying to view a page that is beyond our currently loaded data,
+      // but the server has more data, we should fetch the next batch.
+      if (locationData.length <= startIndex && totalCount > locationData.length) {
+        targetBatch = Math.ceil(locationData.length / ITEMS_PER_BATCH) + 1;
+      }
+
+      if (!loadedBatches.has(targetBatch)) {
         console.warn(
-          `[useLocationsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`
+          `[useLocationsPageData] Fetching batch ${targetBatch} for page ${currentPage + 1}`
         );
-        setLoadedBatches(prev => new Set([...prev, currentBatch]));
-        void fetchData(currentBatch, ITEMS_PER_BATCH);
+        setLoadedBatches(prev => new Set([...prev, targetBatch]));
+        void fetchData(targetBatch, ITEMS_PER_BATCH);
       }
     }
   }, [
@@ -297,9 +315,12 @@ export function useLocationsPageData() {
     fetchData,
     selectedStatus,
     ITEMS_PER_BATCH,
+    ITEMS_PER_PAGE,
     loadedBatches,
     calculateBatchNumber,
     debouncedSearchTerm, // Added to ensure fetch re-triggers when term settles
+    locationData.length,
+    totalCount,
   ]);
 
   // Metrics totals fetch
@@ -381,6 +402,7 @@ export function useLocationsPageData() {
     setSelectedStatus,
     fetchData,
     totalCount,
+    hasMoreLocations,
     locationDataLength: paginatedLocationData.length,
     isDataComplete,
   };

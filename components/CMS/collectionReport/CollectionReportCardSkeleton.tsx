@@ -19,7 +19,7 @@ type CollectionReportCardSkeletonProps = {
 
 export default function CollectionReportCardSkeleton({
   gridLayout = false,
-  count = 4,
+  count = 20,
 }: CollectionReportCardSkeletonProps) {
   // ============================================================================
   // Render
@@ -101,9 +101,11 @@ export default function CollectionReportCardSkeleton({
                 <div className="skeleton-bg h-4 w-24 rounded"></div>
               </div>
 
-              {/* Button */}
-              <div className="mt-3 flex justify-center">
-                <div className="skeleton-bg h-8 w-32 rounded border border-gray-300"></div>
+              {/* Action Buttons */}
+              <div className="mt-3 flex flex-col justify-center gap-2 md:flex-row">
+                <div className="skeleton-bg h-10 w-full rounded md:w-32"></div>
+                <div className="skeleton-bg h-10 w-full rounded md:w-32"></div>
+                <div className="skeleton-bg h-10 w-full rounded md:w-32"></div>
               </div>
             </div>
           </div>

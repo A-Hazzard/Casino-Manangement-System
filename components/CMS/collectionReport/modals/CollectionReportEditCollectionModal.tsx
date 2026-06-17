@@ -37,7 +37,11 @@ import {
   useMobileEditCollectionModal,
   type MobileModalState,
 } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
-import { useCollectionReportVariationCheck } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import {
+  useCollectionReportVariationCheck,
+  type CheckVariationsMachine,
+  type PreCreateMeterPayload,
+} from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
 import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
@@ -113,7 +117,15 @@ function DesktopEditWrapper({
     onRefresh,
     onClose: handleCloseWithForce,
   });
+
+  // Online/offline status for machines in the edit modal (Desktop)
+  const desktopMachineIds = desktopHook.collectedMachineEntries.map(entry => String(entry.machineId));
+  const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
+
   const variation = useCollectionReportVariationCheck();
+  const lastDesktopPreCreateRef = useRef<PreCreateMeterPayload[]>([]);
+  const lastDesktopMachinesForCheckRef = useRef<CheckVariationsMachine[]>([]);
+
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
   );
@@ -171,45 +183,37 @@ function DesktopEditWrapper({
         );
         if (isNoSmib) return;
 
-        const machinesForCheck = desktopHook.collectedMachineEntries.map(
-          entry => ({
-            machineId: entry.machineId,
-            machineName:
-              entry.machineCustomName ||
-              entry.machineName ||
-              entry.serialNumber ||
-              entry.machineId,
-            metersIn: entry.metersIn || 0,
-            metersOut: entry.metersOut || 0,
-            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-            prevMetersIn: entry.prevIn || 0,
-            prevMetersOut: entry.prevOut || 0,
-          })
-        );
-
-        // Exclude offline/non-SMIB machines from auto-check
-        const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-        const offlineMachineIds = new Set(
-          (desktopHook.machinesOfSelectedLocation || [])
-            .filter(machine => {
-              if (!machine.relayId) return true;
-              if (!machine.lastActivity) return true;
-              return (
-                Date.now() -
-                  new Date(machine.lastActivity).getTime() >=
-                OFFLINE_THRESHOLD_MS
-              );
-            })
-            .map(machine => machine._id)
-        );
-        const onlineMachinesForCheck = machinesForCheck.filter(
-          m => !offlineMachineIds.has(m.machineId)
-        );
+        // Pass storedSasGross from each collection's sasMeters.gross.
+        // This lets the check-variations route use the stored value instead of
+        // re-querying live Meters, which correctly handles offline SMIB machines
+        // (where pre-offline SAS meters would otherwise double-count with the
+        // supplemental meter and produce phantom variation).
+        const machinesForCheck = desktopHook.collectedMachineEntries
+          .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+          .map(entry => {
+            const isOffline =
+              entry.machineId && desktopMachineStatusMap[entry.machineId] === false;
+            return {
+              machineId: entry.machineId,
+              machineName:
+                entry.machineCustomName ||
+                entry.machineName ||
+                entry.serialNumber ||
+                entry.machineId,
+              metersIn: entry.metersIn || 0,
+              metersOut: entry.metersOut || 0,
+              sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+              sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+              prevMetersIn: entry.prevIn || 0,
+              prevMetersOut: entry.prevOut || 0,
+              movementGross: entry.movement.gross,
+              storedSasGross: isOffline ? entry.movement.gross : undefined,
+            };
+          });
 
         variation.checkVariations(
           desktopHook.selectedLocationId ?? '',
-          onlineMachinesForCheck
+          machinesForCheck
         );
       };
       runAutoCheck();
@@ -254,41 +258,90 @@ function DesktopEditWrapper({
       }
 
       setShowVariationPopover(true);
-      const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
+
+      // ── Build pre-create payloads (updates supplemental meters for offline/previously-offline machines) ──
+      const desktopPreCreate = desktopHook.collectedMachineEntries.map(entry => ({
         machineId: entry.machineId,
-        machineName:
+        collectionId: String(entry._id),
+        locationId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        sasEndTime: entry.sasMeters?.sasEndTime,
+        customName:
           entry.machineCustomName ||
           entry.machineName ||
           entry.serialNumber ||
           entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
+        ramClear: entry.ramClear,
+        ramClearMetersIn:
+          entry.ramClearMetersIn != null ? Number(entry.ramClearMetersIn) : undefined,
+        ramClearMetersOut:
+          entry.ramClearMetersOut != null ? Number(entry.ramClearMetersOut) : undefined,
       }));
 
-      // Exclude offline/non-SMIB machines — no live SAS data to compare against
-      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-      const offlineMachineIds = new Set(
-        (desktopHook.machinesOfSelectedLocation || [])
-          .filter(machine => {
-            if (!machine.relayId) return true;
-            if (!machine.lastActivity) return true;
-            return (
-              Date.now() -
-                new Date(machine.lastActivity).getTime() >=
-              OFFLINE_THRESHOLD_MS
-            );
-          })
-          .map(machine => machine._id)
-      );
-      const onlineMachinesForCheck = machinesForCheck.filter(
-        m => !offlineMachineIds.has(m.machineId)
+      // ── Build variation-check machines ──
+      // IMPORTANT: check-variations filters out meterSource='COLLECTION_REPORT' from its
+      // live Meters query, so it can NEVER see the supplemental meter.
+      // For offline SMIB machines: pass storedSasGross computed from current edited inputs.
+      // For online machines: no storedSasGross — the backend queries live meters.
+      const machinesForCheck = desktopHook.collectedMachineEntries
+        .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+        .map(entry => {
+          const currentlyOffline =
+            entry.machineId && desktopMachineStatusMap[entry.machineId] === false;
+          const useStoredSasGross = currentlyOffline;
+          const movementGross = (entry as { movement?: { gross?: number } }).movement?.gross;
+          // Compute fresh movement from current inputs for offline SMIB machines
+          // (reflects edits, unlike entry.movement.gross)
+          const freshMovementGross = useStoredSasGross
+            ? (entry.metersIn || 0) - (entry.prevIn || 0) - ((entry.metersOut || 0) - (entry.prevOut || 0))
+            : movementGross;
+
+          console.log(
+            `[handleDesktopSubmit] 🔎 machine=${entry.machineId} ` +
+            `currentlyOffline=${currentlyOffline} useStoredSasGross=${useStoredSasGross} ` +
+            `movementGross=${movementGross} ` +
+            `freshMovementGross=${freshMovementGross} ` +
+            `metersIn=${entry.metersIn} prevIn=${entry.prevIn} metersOut=${entry.metersOut} prevOut=${entry.prevOut} ` +
+            `sasMeters.gross=${entry.sasMeters?.gross} meterId=${entry.meterId ?? 'none'} ` +
+            `statusMapValue=${desktopMachineStatusMap[entry.machineId]}`
+          );
+
+          return {
+            machineId: entry.machineId,
+            machineName:
+              entry.machineCustomName ||
+              entry.machineName ||
+              entry.serialNumber ||
+              entry.machineId,
+            metersIn: entry.metersIn || 0,
+            metersOut: entry.metersOut || 0,
+            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+            movementGross: freshMovementGross,
+            storedSasGross: useStoredSasGross ? (freshMovementGross ?? 0) : undefined,
+          };
+        });
+
+      console.log(
+        `[handleDesktopSubmit] 📤 preCreateThenCheck locationId=${locationId} ` +
+        `preCreate=${desktopPreCreate.length} variationMachines=${machinesForCheck.length}`,
+        machinesForCheck.map(m => ({
+          id: m.machineId,
+          storedSasGross: m.storedSasGross,
+          movementGross: m.movementGross,
+          metersIn: m.metersIn,
+          prevMetersIn: m.prevMetersIn,
+        }))
       );
 
-      variation.checkVariations(locationId, onlineMachinesForCheck);
+      lastDesktopPreCreateRef.current = desktopPreCreate;
+      lastDesktopMachinesForCheckRef.current = machinesForCheck;
+      variation.preCreateThenCheck(locationId, machinesForCheck, desktopPreCreate);
     } catch (e) {
       console.error('[handleDesktopSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       toast.error('Failed to submit. Please try again.');
@@ -351,12 +404,23 @@ function DesktopEditWrapper({
           variation.toggleMinimize();
           setVariationsCollapsibleExpanded(true);
         }}
+        onRetry={() => {
+          const locationId =
+            desktopHook.selectedLocationId ||
+            desktopHook.collectedMachineEntries[0]?.location ||
+            '';
+          variation.preCreateThenCheck(
+            locationId,
+            lastDesktopMachinesForCheckRef.current,
+            lastDesktopPreCreateRef.current
+          );
+        }}
         onSubmit={() => {
           setShowVariationPopover(false);
           // Filter out machines with "No SMIB" (no relayId)
           const machinesWithSmib =
             variation.variationsData?.machines.filter(
-              m => typeof m.variation === 'number'
+              m => m.variation !== null
             ) || [];
 
           // If no machines have SMIB or no variations, skip variation confirmation and go straight to update
@@ -369,9 +433,6 @@ function DesktopEditWrapper({
             setShowVariationsConfirmation(true);
           }
         }}
-        onRetry={() => {
-          /* retry logic */
-        }}
         onClose={() => {
           setShowVariationPopover(false);
           variation.reset();
@@ -382,7 +443,7 @@ function DesktopEditWrapper({
         isOpen={showVariationsConfirmation}
         machineCount={
           variation.variationsData?.machines.filter(
-            (m: MachineVariationData) => typeof m.variation === 'number'
+            (m: MachineVariationData) => m.variation !== null
           ).length || 0
         }
         totalVariation={variation.variationsData?.totalVariation || 0}
@@ -468,7 +529,7 @@ function MobileEditWrapper({
   });
 
   // Online/offline status for machines in the edit modal
-  const editMobileIds = mobileHook.availableMachines.map(m => String(m._id));
+  const editMobileIds = mobileHook.availableMachines.map(machine => String(machine._id));
   const editMachineStatusMap = useMachineOnlineStatus(editMobileIds);
 
   // ============================================================================
@@ -480,6 +541,9 @@ function MobileEditWrapper({
       (unsavedEditsRef.current = mobileHook.modalState.hasUnsavedEdits);
   }, [mobileHook.modalState.hasUnsavedEdits, unsavedEditsRef]);
   const variation = useCollectionReportVariationCheck();
+  const lastMobilePreCreateRef = useRef<PreCreateMeterPayload[]>([]);
+  const lastMobileMachinesForCheckRef = useRef<CheckVariationsMachine[]>([]);
+
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
   );
@@ -537,41 +601,88 @@ function MobileEditWrapper({
       }
 
       setShowVariationPopover(true);
-      const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+
+      // ── Build pre-create payloads ──
+      const mobilePreCreate = mobileHook.collectedMachines.map(entry => ({
         machineId: entry.machineId,
-        machineName:
+        collectionId: String(entry._id),
+        locationId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        sasEndTime: entry.sasMeters?.sasEndTime,
+        customName:
           entry.machineCustomName ||
           entry.machineName ||
           entry.serialNumber ||
           entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
+        ramClear: entry.ramClear,
+        ramClearMetersIn:
+          entry.ramClearMetersIn != null ? Number(entry.ramClearMetersIn) : undefined,
+        ramClearMetersOut:
+          entry.ramClearMetersOut != null ? Number(entry.ramClearMetersOut) : undefined,
       }));
 
-      // Exclude offline/non-SMIB machines — no live SAS data to compare against
-      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-      const offlineMachineIds = new Set(
-        mobileHook.availableMachines
-          .filter(machine => {
-            if (!machine.relayId) return true;
-            if (!machine.lastActivity) return true;
-            return (
-              Date.now() -
-                new Date(machine.lastActivity).getTime() >=
-              OFFLINE_THRESHOLD_MS
-            );
-          })
-          .map(machine => machine._id)
-      );
-      const onlineMachinesForCheck = machinesForCheck.filter(
-        m => !offlineMachineIds.has(m.machineId)
+      // ── Build variation-check machines ──
+      // IMPORTANT: check-variations filters out meterSource='COLLECTION_REPORT' from its
+      // live Meters query, so the supplemental meter is never visible via live query.
+      // Offline SMIB machines: pass storedSasGross from current edited inputs.
+      // Online machines: no storedSasGross — the backend queries live meters.
+      const machinesForCheck = mobileHook.collectedMachines
+        .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+        .map(entry => {
+          const currentlyOffline =
+            entry.machineId && editMachineStatusMap[entry.machineId] === false;
+          const useStoredSasGross = currentlyOffline;
+          const movementGross = (entry as { movement?: { gross?: number } }).movement?.gross;
+          const freshMovementGross = useStoredSasGross
+            ? (entry.metersIn || 0) - (entry.prevIn || 0) - ((entry.metersOut || 0) - (entry.prevOut || 0))
+            : movementGross;
+
+          console.log(
+            `[handleMobileSubmit] 🔎 machine=${entry.machineId} ` +
+            `currentlyOffline=${currentlyOffline} useStoredSasGross=${useStoredSasGross} ` +
+            `movementGross=${movementGross} ` +
+            `freshMovementGross=${freshMovementGross} ` +
+            `metersIn=${entry.metersIn} prevIn=${entry.prevIn} metersOut=${entry.metersOut} prevOut=${entry.prevOut} ` +
+            `sasMeters.gross=${entry.sasMeters?.gross} meterId=${entry.meterId ?? 'none'} ` +
+            `statusMapValue=${editMachineStatusMap[entry.machineId]}`
+          );
+
+          return {
+            machineId: entry.machineId,
+            machineName:
+              entry.machineCustomName ||
+              entry.machineName ||
+              entry.serialNumber ||
+              entry.machineId,
+            metersIn: entry.metersIn || 0,
+            metersOut: entry.metersOut || 0,
+            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+            movementGross: freshMovementGross,
+            storedSasGross: useStoredSasGross ? (freshMovementGross ?? 0) : undefined,
+          };
+        });
+
+      console.log(
+        `[handleMobileSubmit] 📤 preCreateThenCheck locationId=${locationId} ` +
+        `preCreate=${mobilePreCreate.length} variationMachines=${machinesForCheck.length}`,
+        machinesForCheck.map(m => ({
+          id: m.machineId,
+          storedSasGross: m.storedSasGross,
+          movementGross: m.movementGross,
+          metersIn: m.metersIn,
+          prevMetersIn: m.prevMetersIn,
+        }))
       );
 
-      variation.checkVariations(locationId, onlineMachinesForCheck);
+      lastMobilePreCreateRef.current = mobilePreCreate;
+      lastMobileMachinesForCheckRef.current = machinesForCheck;
+      variation.preCreateThenCheck(locationId, machinesForCheck, mobilePreCreate);
     } catch (e) {
       console.error('[handleMobileSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       toast.error('Failed to submit. Please try again.');
@@ -596,41 +707,32 @@ function MobileEditWrapper({
         const isNoSmib = await checkLocationNoSMIB(locationId);
         if (isNoSmib) return;
 
-        const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
-          machineId: entry.machineId,
-          machineName:
-            entry.machineCustomName ||
-            entry.machineName ||
-            entry.serialNumber ||
-            entry.machineId,
-          metersIn: entry.metersIn || 0,
-          metersOut: entry.metersOut || 0,
-          sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
-          sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
-          prevMetersIn: entry.prevIn || 0,
-          prevMetersOut: entry.prevOut || 0,
-        }));
+        const machinesForCheck = mobileHook.collectedMachines
+          .filter(entry => entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime)
+          .map(entry => {
+            const isOffline =
+              entry.machineId && editMachineStatusMap[entry.machineId] === false;
+            return {
+              machineId: entry.machineId,
+              machineName:
+                entry.machineCustomName ||
+                entry.machineName ||
+                entry.serialNumber ||
+                entry.machineId,
+              metersIn: entry.metersIn || 0,
+              metersOut: entry.metersOut || 0,
+              sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+              sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+              prevMetersIn: entry.prevIn || 0,
+              prevMetersOut: entry.prevOut || 0,
+              movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
+              storedSasGross: isOffline
+                ? (entry as { movement?: { gross?: number } }).movement?.gross ?? 0
+                : undefined,
+            };
+          });
 
-        // Exclude offline/non-SMIB machines from auto-check
-        const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-        const offlineMachineIds = new Set(
-          mobileHook.availableMachines
-            .filter(machine => {
-              if (!machine.relayId) return true;
-              if (!machine.lastActivity) return true;
-              return (
-                Date.now() -
-                  new Date(machine.lastActivity).getTime() >=
-                OFFLINE_THRESHOLD_MS
-              );
-            })
-            .map(machine => machine._id)
-        );
-        const onlineMachinesForCheck = machinesForCheck.filter(
-          m => !offlineMachineIds.has(m.machineId)
-        );
-
-        variation.checkVariations(locationId, onlineMachinesForCheck);
+        variation.checkVariations(locationId, machinesForCheck);
       };
       runAutoCheck();
     }
@@ -657,14 +759,16 @@ function MobileEditWrapper({
             <h2 className="text-xl font-bold tracking-tight text-gray-900">
               Edit Collection Report
             </h2>
-            <DialogClose asChild>
-              <button
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </DialogClose>
+            {!mobileHook.modalState.isProcessing && (
+              <DialogClose asChild>
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogClose>
+            )}
           </div>
         </div>
       )}
@@ -675,6 +779,7 @@ function MobileEditWrapper({
       ) : (
         <MobileEditLayout
           {...mobileHook}
+          onClose={onClose}
           handleStartSubmit={handleMobileSubmit}
           variationsData={variation.variationsData}
           hasChanges={mobileHook.hasUnsavedEdits}
@@ -698,7 +803,7 @@ function MobileEditWrapper({
           // Filter out machines with "No SMIB" (no relayId)
           const machinesWithSmib =
             variation.variationsData?.machines.filter(
-              m => typeof m.variation === 'number'
+              m => m.variation !== null
             ) || [];
 
           // If no machines have SMIB or no variations, skip variation confirmation and go straight to update
@@ -712,7 +817,13 @@ function MobileEditWrapper({
           }
         }}
         onRetry={() => {
-          /* retry logic */
+          const locationId =
+            mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
+          variation.preCreateThenCheck(
+            locationId,
+            lastMobileMachinesForCheckRef.current,
+            lastMobilePreCreateRef.current
+          );
         }}
         onClose={() => {
           setShowVariationPopover(false);
@@ -724,7 +835,7 @@ function MobileEditWrapper({
         isOpen={showVariationsConfirmation}
         machineCount={
           variation.variationsData?.machines.filter(
-            (m: MachineVariationData) => typeof m.variation === 'number'
+            (m: MachineVariationData) => m.variation !== null
           ).length || 0
         }
         totalVariation={variation.variationsData?.totalVariation || 0}

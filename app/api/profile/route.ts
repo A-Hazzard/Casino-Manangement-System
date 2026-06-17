@@ -30,25 +30,10 @@
  * @module app/api/profile/route
  */
 
-import {
-  getInvalidProfileFields,
-  hasInvalidProfileFields,
-} from '@/app/api/lib/helpers/profileValidation';
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
-import { comparePassword, hashPassword } from '@/app/api/lib/utils/validation';
-import {
-  containsEmailPattern,
-  isValidDateInput,
-  normalizePhoneNumber,
-  validateEmail,
-  validateNameField,
-  validateOptionalGender,
-  validatePasswordStrength,
-  validatePhoneNumber,
-  validateUsername,
-} from '@/lib/utils/validation';
+import { hashPassword } from '@/app/api/lib/utils/validation';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import type { ProfileUpdatePayload } from '@/shared/types/users';
@@ -57,6 +42,19 @@ import {
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
+import { getInvalidProfileFields, hasInvalidProfileFields } from '@/app/api/lib/helpers/profileValidation';
+import {
+  normalizeProfileFields,
+  validateProfileFields,
+  validateNonAdminAssignments,
+  checkDuplicateUsernameEmail,
+  verifyCurrentPassword,
+  checkPasswordAgainstHistory,
+  normalizeIdArray,
+  canManageAssignments,
+  getExistingAssignments,
+  buildUpdateOperation,
+} from '@/app/api/lib/helpers/profileOperations';
 
 export async function PUT(request: NextRequest) {
   const startTime = Date.now();
@@ -74,18 +72,9 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     const userId = await getUserIdFromServer();
     if (!userId) {
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/profile',
-        'Unauthorized',
-        logUser
-      );
+      logRouteError(functionName, 'PUT', '/api/profile', 'Unauthorized', logUser);
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Unauthorized - Invalid or missing session',
-        },
+        { success: false, message: 'Unauthorized - Invalid or missing session' },
         { status: 401 }
       );
     }
@@ -94,19 +83,7 @@ export async function PUT(request: NextRequest) {
     // STEP 3: Parse and validate request body
     // ============================================================================
     const body = (await request.json()) as ProfileUpdatePayload;
-    const errors: Record<string, string> = {};
-
-    const username = body.username?.trim() || '';
-    const firstName = body.firstName?.trim() || '';
-    const lastName = body.lastName?.trim() || '';
-    const otherName = body.otherName?.trim() || '';
-    const gender = body.gender?.trim().toLowerCase() || '';
-    const emailAddress = body.emailAddress?.trim() || '';
-    const phone = body.phone?.trim() || '';
-    const dateOfBirth = body.dateOfBirth?.trim() || '';
-    const newPassword = body.newPassword?.trim() || '';
-    const confirmPassword = body.confirmPassword?.trim() || '';
-    const currentPassword = body.currentPassword?.trim() || '';
+    const fields = normalizeProfileFields(body);
 
     // ============================================================================
     // STEP 4: Fetch user for validation and security checks
@@ -124,165 +101,13 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     // STEP 5: Validate all profile fields
     // ============================================================================
-    if (!validateUsername(username)) {
-      errors.username =
-        'Username must use letters/numbers and cannot look like an email or phone number.';
-    }
+    const { isValid, errors, passwordChangeRequested } = validateProfileFields(
+      fields,
+      body.gender,
+      isTemporaryPassword
+    );
 
-    if (firstName && !validateNameField(firstName)) {
-      errors.firstName =
-        'First name may only contain letters and spaces and cannot resemble a phone number.';
-    }
-
-    if (lastName && !validateNameField(lastName)) {
-      errors.lastName =
-        'Last name may only contain letters and spaces and cannot resemble a phone number.';
-    }
-
-    if (otherName && !validateNameField(otherName)) {
-      errors.otherName =
-        'Other name may only contain letters and spaces and cannot resemble a phone number.';
-    }
-
-    // Only enforce mandatory gender if it's being sent
-    if (
-      body.gender !== undefined &&
-      body.gender !== '' &&
-      (!gender || !validateOptionalGender(gender))
-    ) {
-      errors.gender = !gender
-        ? 'Gender is required.'
-        : 'Select a valid gender option.';
-    }
-
-    if (emailAddress && !validateEmail(emailAddress)) {
-      errors.emailAddress = 'Provide a valid email address.';
-    } else if (
-      emailAddress &&
-      (containsEmailPattern(username) ||
-        emailAddress.toLowerCase() === username.toLowerCase())
-    ) {
-      errors.emailAddress =
-        'Email address must differ from username and other identifiers.';
-    }
-
-    // Phone is optional - only validate if provided
-    if (phone && !validatePhoneNumber(phone)) {
-      errors.phone =
-        'Provide a valid phone number (digits, spaces, hyphen, parentheses, optional leading +).';
-    } else if (
-      phone &&
-      normalizePhoneNumber(phone) === normalizePhoneNumber(username)
-    ) {
-      errors.phone = 'Phone number cannot match the username.';
-    }
-
-    // Only validate dateOfBirth if provided (it's optional for profile validation updates)
-    if (dateOfBirth) {
-      if (!isValidDateInput(dateOfBirth)) {
-        errors.dateOfBirth = 'Provide a valid date of birth.';
-      } else {
-        const parsedDob = new Date(dateOfBirth);
-        const today = new Date();
-        if (parsedDob > today) {
-          errors.dateOfBirth = 'Date of birth cannot be in the future.';
-        }
-      }
-    }
-
-    const passwordChangeRequested =
-      !!newPassword || !!confirmPassword || !!currentPassword;
-
-    if (passwordChangeRequested) {
-      // REQUIRE current password ONLY if it's NOT a temporary password change
-      if (!isTemporaryPassword && !currentPassword) {
-        errors.currentPassword = 'Current password is required.';
-      }
-      if (!newPassword) {
-        errors.newPassword = 'New password is required.';
-      }
-      if (newPassword !== confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match.';
-      } else if (newPassword) {
-        const passwordValidation = validatePasswordStrength(newPassword);
-        if (!passwordValidation.isValid) {
-          errors.newPassword = passwordValidation.feedback.join(', ');
-        }
-      }
-    }
-
-    const normalizeIdArray = (value: unknown): string[] | undefined => {
-      if (!Array.isArray(value)) return undefined;
-      const cleaned = Array.from(
-        new Set(
-          value
-            .map(item =>
-              typeof item === 'string'
-                ? item.trim()
-                : item != null
-                  ? String(item)
-                  : ''
-            )
-            .filter(Boolean)
-        )
-      );
-      return cleaned;
-    };
-
-    const requestedLicenceeIds = normalizeIdArray(body.licenceeIds);
-    const requestedLocationIds = normalizeIdArray(body.locationIds);
-
-    // Use only new fields
-    let existingLicencees: string[] = [];
-    if (
-      Array.isArray(
-        (user as { assignedLicencees?: string[] })?.assignedLicencees
-      )
-    ) {
-      existingLicencees = (
-        user as { assignedLicencees: string[] }
-      ).assignedLicencees.map(id => String(id));
-    }
-
-    let existingLocations: string[] = [];
-    if (
-      Array.isArray(
-        (user as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      existingLocations = (
-        user as { assignedLocations: string[] }
-      ).assignedLocations.map(id => String(id));
-    }
-
-    const userRoles =
-      (user.roles as string[] | undefined)?.map(role =>
-        String(role).toLowerCase()
-      ) || [];
-    const canManageAssignments =
-      userRoles.includes('admin') ||
-      userRoles.includes('developer') ||
-      userRoles.includes('owner');
-
-    // DO NOT require locations or licencees for admin and developer roles
-    if (!canManageAssignments) {
-      // Only validate if the fields are explicitly provided (not undefined)
-      // This allows users to update other fields without changing licencees/locations
-      if (requestedLicenceeIds !== undefined) {
-        if (requestedLicenceeIds.length === 0) {
-          errors.licenceeIds =
-            'Please contact your Administrator or Tech Support to be assigned to a licencee.';
-        }
-      }
-      if (requestedLocationIds !== undefined) {
-        if (requestedLocationIds.length === 0) {
-          errors.locationIds =
-            'Please contact your Administrator or Tech Support to be assigned to a location.';
-        }
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: 'Validation failed', errors },
         { status: 400 }
@@ -290,185 +115,93 @@ export async function PUT(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Check for duplicate username/email
+    // STEP 6: Check non-admin assignment restrictions
     // ============================================================================
-    if (
-      username.toLowerCase() !== (user.username || '').toLowerCase() &&
-      (await UserModel.findOne({
-        _id: { $ne: userId },
-        username: { $regex: new RegExp(`^${username}$`, 'i') },
-      }))
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Username already in use',
-          errors: { username: 'Username already in use' },
-        },
-        { status: 409 }
-      );
-    }
+    const userRoles = (user.roles as string[] | undefined)?.map(role =>
+      String(role).toLowerCase()
+    ) || [];
+    const hasAssignmentPermission = canManageAssignments(userRoles);
 
-    if (
-      emailAddress.toLowerCase() !== (user.emailAddress || '').toLowerCase() &&
-      (await UserModel.findOne({
-        _id: { $ne: userId },
-        emailAddress: { $regex: new RegExp(`^${emailAddress}$`, 'i') },
-      }))
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Email address already in use',
-          errors: { emailAddress: 'Email address already in use' },
-        },
-        { status: 409 }
-      );
-    }
+    const requestedLicenceeIds = normalizeIdArray(body.licenceeIds);
+    const requestedLocationIds = normalizeIdArray(body.locationIds);
 
-    // ============================================================================
-    // STEP 7: Verify current password if changing password
-    // For cashiers with a temp password, we still verify the entered current password
-    // against their hashed password so they can't bypass with any random input.
-    // ============================================================================
-    if (passwordChangeRequested && currentPassword) {
-      const matches = await comparePassword(
-        currentPassword,
-        user.password || ''
+    if (!hasAssignmentPermission) {
+      const assignmentErrors = validateNonAdminAssignments(
+        requestedLicenceeIds,
+        requestedLocationIds
       );
-      if (!matches) {
+      if (Object.keys(assignmentErrors).length > 0) {
         return NextResponse.json(
-          {
-            success: false,
-            message: isTemporaryPassword
-              ? 'Current password is incorrect. Please check the password given to you.'
-              : 'Current password is incorrect.',
-            errors: {
-              currentPassword: isTemporaryPassword
-                ? 'Current password is incorrect.'
-                : 'Current password is incorrect.',
-            },
-          },
+          { success: false, message: 'Validation failed', errors: assignmentErrors },
           { status: 400 }
         );
       }
-    } else if (
-      passwordChangeRequested &&
-      !isTemporaryPassword &&
-      !currentPassword
-    ) {
-      // Non-cashier must provide current password
+    }
+
+    // ============================================================================
+    // STEP 7: Check for duplicate username/email
+    // ============================================================================
+    const duplicateResult = await checkDuplicateUsernameEmail(
+      userId,
+      fields.username,
+      fields.emailAddress,
+      user.username || '',
+      user.emailAddress || ''
+    );
+
+    if (duplicateResult?.isDuplicate) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Current password is required.',
-          errors: { currentPassword: 'Current password is required.' },
+          message: duplicateResult.message,
+          errors: { [duplicateResult.field as string]: duplicateResult.message },
+        },
+        { status: 409 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 8: Verify current password if changing password
+    // ============================================================================
+    const passwordVerifyResult = await verifyCurrentPassword(
+      passwordChangeRequested,
+      fields.currentPassword,
+      user.password || '',
+      isTemporaryPassword
+    );
+
+    if (!passwordVerifyResult.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: passwordVerifyResult.errorMessage,
+          errors: passwordVerifyResult.fieldErrors,
         },
         { status: 400 }
       );
     }
 
     // ============================================================================
-    // STEP 8: Build update operation
+    // STEP 9: Check password against history
     // ============================================================================
-    const updateSet: Record<string, unknown> = {
-      username,
-      emailAddress,
-      'profile.firstName': firstName,
-      'profile.lastName': lastName,
-      'profile.phoneNumber': phone,
-    };
+    if (passwordChangeRequested && fields.newPassword) {
+      const historyResult = await checkPasswordAgainstHistory(
+        fields.newPassword,
+        user.password || '',
+        (user.previousPasswords as string[]) || []
+      );
 
-    if (dateOfBirth) {
-      updateSet['profile.identification.dateOfBirth'] = new Date(dateOfBirth);
-    }
-
-    const unsetMap: Record<string, ''> = {
-      'profile.contact': '',
-      'profile.phone': '',
-    };
-
-    if (otherName) {
-      updateSet['profile.otherName'] = otherName;
-    } else {
-      unsetMap['profile.otherName'] = '';
-    }
-
-    if (gender) {
-      updateSet['profile.gender'] = gender;
-    } else {
-      unsetMap['profile.gender'] = '';
-    }
-
-    const updateOperation: Record<string, unknown> = {
-      $set: updateSet,
-      $unset: unsetMap,
-    };
-
-    let incrementSession = false;
-
-    const sortIds = (arr: string[]) => [...arr].sort();
-    const arraysEqual = (a: string[], b: string[]) =>
-      a.length === b.length && a.every((value, index) => value === b[index]);
-
-    if (passwordChangeRequested && newPassword) {
-      // Check against current password
-      if (await comparePassword(newPassword, user.password || '')) {
+      if (!historyResult.ok) {
         return NextResponse.json(
           {
             success: false,
-            message: 'New password cannot be the same as current password.',
-            errors: {
-              newPassword:
-                'New password cannot be the same as current password.',
-            },
+            message: historyResult.errorMessage,
+            errors: historyResult.fieldErrors,
           },
           { status: 400 }
         );
       }
-
-      // Check against historical passwords (last 2)
-      if (user.previousPasswords && Array.isArray(user.previousPasswords)) {
-        for (const prevHashed of user.previousPasswords) {
-          if (await comparePassword(newPassword, prevHashed)) {
-            return NextResponse.json(
-              {
-                success: false,
-                message:
-                  'New password cannot match any of your last 2 passwords.',
-                errors: {
-                  newPassword:
-                    'New password cannot match any of your last 2 passwords.',
-                },
-              },
-              { status: 400 }
-            );
-          }
-        }
-      }
-
-      const oldPasswordHash = user.password;
-      updateSet.password = await hashPassword(newPassword);
-      updateSet.passwordUpdatedAt = new Date();
-      updateSet.tempPasswordChanged = true;
-      updateSet.previousPassword = oldPasswordHash;
-      updateSet.requiresPasswordUpdate = false; // Successfully updated to a strong password
-      unsetMap.tempPassword = ''; // Delete plain text temp password after first password change
-
-      // Update previousPasswords array (last 2 unique)
-      const previousPasswords = [...(user.previousPasswords || [])];
-      if (oldPasswordHash) {
-        previousPasswords.push(oldPasswordHash);
-      }
-      updateSet.previousPasswords = Array.from(
-        new Set(previousPasswords)
-      ).slice(-2);
-
-      if (!isTemporaryPassword) {
-        incrementSession = true;
-      }
     } else if (!user.passwordUpdatedAt && !isTemporaryPassword) {
-      // Non-cashier user (no temp password) must set a new password if never set before
       return NextResponse.json(
         {
           success: false,
@@ -479,34 +212,42 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update licencees if user can manage assignments and licenceeIds are provided
-    if (canManageAssignments && requestedLicenceeIds !== undefined) {
-      // Update only new field - no longer writing to old fields
-      updateSet['assignedLicencees'] = requestedLicenceeIds;
-      const sortedExistingLicencees = sortIds(existingLicencees);
-      const sortedRequestedLicencees = sortIds(requestedLicenceeIds);
-      if (!arraysEqual(sortedRequestedLicencees, sortedExistingLicencees)) {
-        incrementSession = true;
-      }
-    }
+    // ============================================================================
+    // STEP 10: Build update operation
+    // ============================================================================
+    const { existingLicencees, existingLocations } = getExistingAssignments(
+      user as { assignedLicencees?: string[]; assignedLocations?: string[] }
+    );
 
-    // Update locations if user can manage assignments and locationIds are provided
-    if (canManageAssignments && requestedLocationIds !== undefined) {
-      // Update only new field - no longer writing to old fields
-      updateSet['assignedLocations'] = requestedLocationIds;
-      const sortedExistingLocations = sortIds(existingLocations);
-      const sortedRequestedLocations = sortIds(requestedLocationIds);
-      if (!arraysEqual(sortedRequestedLocations, sortedExistingLocations)) {
-        incrementSession = true;
-      }
-    }
+    const newPasswordHash = passwordChangeRequested && fields.newPassword
+      ? await hashPassword(fields.newPassword)
+      : undefined;
+    const oldPasswordHash = user.password;
+
+    const { updateSet, unsetMap, incrementSession } = buildUpdateOperation({
+      fields,
+      existingLicencees,
+      existingLocations,
+      hasAssignmentPermission,
+      passwordChangeRequested,
+      isTemporaryPassword,
+      newPasswordHash,
+      oldPasswordHash,
+      requestedLicenceeIds,
+      requestedLocationIds,
+    });
+
+    const updateOperation: Record<string, unknown> = {
+      $set: updateSet,
+      $unset: unsetMap,
+    };
 
     if (incrementSession) {
       updateOperation.$inc = { sessionVersion: 1 };
     }
 
     // ============================================================================
-    // STEP 9: Update user in database
+    // STEP 11: Update user in database
     // ============================================================================
     const updatedUser = await UserModel.findOneAndUpdate(
       { _id: userId },
@@ -522,10 +263,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 10: Return updated user with validation status
+    // STEP 12: Return updated user with validation status
     // ============================================================================
     const { invalidFields, reasons } = getInvalidProfileFields(updatedUser, {
-      rawPassword: newPassword || undefined,
+      rawPassword: fields.newPassword || undefined,
     });
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
@@ -533,9 +274,8 @@ export async function PUT(request: NextRequest) {
     delete updatedObject.password;
 
     const duration = Date.now() - startTime;
-    logRouteUpdate(functionName, 'PUT', '/api/profile', 1, user, duration);
+    logRouteUpdate(functionName, 'PUT', '/api/profile', 1, logUser, duration);
 
-    // Fire-and-forget activity log — never fail the response for a logging error
     logActivity({
       action: 'update',
       details: passwordChangeRequested
@@ -547,42 +287,23 @@ export async function PUT(request: NextRequest) {
         resource: 'profile',
         resourceId: String(userId),
         resourceName: user.username || String(userId),
-        // Log only the non-sensitive changed fields (never log password values)
         changes: [
-          user.username !== username
-            ? { field: 'username', oldValue: user.username, newValue: username }
+          user.username !== fields.username
+            ? { field: 'username', oldValue: user.username, newValue: fields.username }
             : null,
-          user.emailAddress !== emailAddress
-            ? {
-                field: 'emailAddress',
-                oldValue: user.emailAddress,
-                newValue: emailAddress,
-              }
+          user.emailAddress !== fields.emailAddress
+            ? { field: 'emailAddress', oldValue: user.emailAddress, newValue: fields.emailAddress }
             : null,
           passwordChangeRequested
-            ? {
-                field: 'password',
-                oldValue: '[redacted]',
-                newValue: '[redacted]',
-              }
+            ? { field: 'password', oldValue: '[redacted]', newValue: '[redacted]' }
             : null,
           incrementSession
-            ? {
-                field: 'sessionVersion',
-                oldValue: 'previous',
-                newValue: 'incremented',
-              }
+            ? { field: 'sessionVersion', oldValue: 'previous', newValue: 'incremented' }
             : null,
         ].filter(Boolean),
       },
     }).catch(err =>
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/profile',
-        err instanceof Error ? err : String(err),
-        user
-      )
+      logRouteError(functionName, 'PUT', '/api/profile', err instanceof Error ? err : String(err), logUser)
     );
 
     return NextResponse.json({
@@ -610,8 +331,7 @@ export async function PUT(request: NextRequest) {
       sessionVersionIncremented: incrementSession,
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to update profile';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
     logRouteError(functionName, 'PUT', '/api/profile', errorMessage, logUser);
     return NextResponse.json(
       { success: false, message: errorMessage },

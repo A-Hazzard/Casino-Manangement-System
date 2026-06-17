@@ -106,7 +106,7 @@ export function CollectionReportDetailsCollectionsTable({
   const detailsMachineIds = useMemo(
     () =>
       metrics
-        .map(m => m.actualMachineId)
+        .map(metric => metric.actualMachineId)
         .filter((id): id is string => Boolean(id)),
     [metrics]
   );
@@ -115,7 +115,7 @@ export function CollectionReportDetailsCollectionsTable({
   // ============================================================================
   // Computed
   // ============================================================================
-  const hasRamClears = metrics.some(m => m.ramClear);
+  const hasRamClears = metrics.some(metric => metric.ramClear);
 
   // ============================================================================
   // Handlers
@@ -153,11 +153,11 @@ export function CollectionReportDetailsCollectionsTable({
         <div className="flex items-center gap-3 rounded-lg border-l-4 border-orange-500 bg-orange-50 p-4 text-orange-800">
           <Zap className="h-5 w-5 text-orange-500" />
           <p className="text-sm font-semibold">
-            {metrics.filter(m => m.ramClear).length}{' '}
-            {metrics.filter(m => m.ramClear).length > 1
+            {metrics.filter(metric => metric.ramClear).length}{' '}
+            {metrics.filter(metric => metric.ramClear).length > 1
               ? 'machines'
               : 'machine'}{' '}
-            {metrics.filter(m => m.ramClear).length > 1 ? 'were' : 'was'} ram
+            {metrics.filter(metric => metric.ramClear).length > 1 ? 'were' : 'was'} ram
             cleared
           </p>
         </div>
@@ -171,6 +171,20 @@ export function CollectionReportDetailsCollectionsTable({
               <CollectionReportDetailsSortableHeader
                 label="MACHINE"
                 field="machineId"
+                currentField={sortField}
+                direction={sortDirection}
+                onClick={onSort}
+              />
+              <CollectionReportDetailsSortableHeader
+                label="METER IN/OUT"
+                field="metersIn"
+                currentField={sortField}
+                direction={sortDirection}
+                onClick={onSort}
+              />
+              <CollectionReportDetailsSortableHeader
+                label="PREV IN/OUT"
+                field="prevIn"
                 currentField={sortField}
                 direction={sortDirection}
                 onClick={onSort}
@@ -244,6 +258,14 @@ export function CollectionReportDetailsCollectionsTable({
                       )}
                     </div>
                   </div>
+                </TableCell>
+
+                <TableCell className="px-4 py-4 text-gray-600">
+                  {smartNum(metric.metersIn ?? 0)} / {smartNum(metric.metersOut ?? 0)}
+                </TableCell>
+
+                <TableCell className="px-4 py-4 text-gray-600">
+                  {smartNum(metric.prevIn ?? 0)} / {smartNum(metric.prevOut ?? 0)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4 text-gray-600">
@@ -333,6 +355,14 @@ export function CollectionReportDetailsCollectionsTable({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <CollectionReportDetailsMobileField
+                  label="Meter In/Out"
+                  value={`${smartNum(metric.metersIn ?? 0)} / ${smartNum(metric.metersOut ?? 0)}`}
+                />
+                <CollectionReportDetailsMobileField
+                  label="Prev In/Out"
+                  value={`${smartNum(metric.prevIn ?? 0)} / ${smartNum(metric.prevOut ?? 0)}`}
+                />
                 <CollectionReportDetailsMobileField
                   label="Drop/Cancelled"
                   value={metric.dropCancelled}

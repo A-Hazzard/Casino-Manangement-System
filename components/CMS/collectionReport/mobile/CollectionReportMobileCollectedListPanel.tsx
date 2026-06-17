@@ -4,11 +4,13 @@ import { ReactElement } from 'react';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal, X } from 'lucide-react';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 
 type MobileCollectedListPanelProps = {
   isVisible: boolean;
   onBack: () => void;
+  onClose: () => void;
   isEditing?: boolean; // True when editing an existing report
 
   // Machine list
@@ -42,6 +44,7 @@ type MobileCollectedListPanelProps = {
   updateAllSasEndDate: Date | undefined;
   onUpdateAllSasEndDate: (date: Date | undefined) => void;
   onApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
 
   // Callbacks
   formatMachineDisplay: (machine: {
@@ -102,6 +105,7 @@ type MobileCollectedListPanelProps = {
 export default function CollectionReportMobileCollectedListPanel({
   isVisible,
   onBack,
+  onClose,
   isEditing = false,
   collectedMachines,
   searchTerm,
@@ -117,6 +121,7 @@ export default function CollectionReportMobileCollectedListPanel({
   updateAllSasEndDate,
   onUpdateAllSasEndDate,
   onApplyAllDates,
+  sasUpdateProgress,
   formatDate,
   sortMachines,
   onEditMachine,
@@ -130,10 +135,6 @@ export default function CollectionReportMobileCollectedListPanel({
   // ============================================================================
   // State & Variables
   // ============================================================================
-  // Submit button always enabled in edit mode (unless processing)
-  // hasChanges check removed - button should always be available
-  const showSubmitButton = true;
-
   // Convert newMachineIds to Set for O(1) lookup
   const newMachineIdsSet = new Set(newMachineIds);
 
@@ -185,8 +186,16 @@ export default function CollectionReportMobileCollectedListPanel({
                 Collected ({collectedMachines.length})
               </h3>
             </div>
-            {collectedMachines.length > 0 && (
-              <div className="mr-2 flex rounded-full bg-gray-100 p-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              {collectedMachines.length > 0 && (
+              <div className="flex rounded-full bg-gray-100 p-1">
                 <button
                   onClick={() => onToggleView(false)}
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
@@ -209,6 +218,7 @@ export default function CollectionReportMobileCollectedListPanel({
                 </button>
               </div>
             )}
+            </div>
           </div>
 
           {/* Content Area - Show either machine list or financial form */}
@@ -423,29 +433,6 @@ export default function CollectionReportMobileCollectedListPanel({
                     </div>
                   </div>
                 </div>
-
-                  {/* Financial Form Footer */}
-                {showSubmitButton && (
-                  <div className="border-t bg-gray-50 p-4">
-                    <button
-                      onClick={onCreateReport}
-                      disabled={isProcessing || !isCreateReportsEnabled}
-                      className={`w-full rounded-lg py-3 font-semibold transition-colors ${
-                        !isProcessing && isCreateReportsEnabled
-                          ? 'bg-green-600 text-white hover:bg-green-700'
-                          : 'cursor-not-allowed bg-gray-400 text-gray-200'
-                      }`}
-                    >
-                      {isProcessing
-                        ? isEditing
-                          ? 'Updating Report...'
-                          : 'Creating Report...'
-                        : isEditing
-                          ? `UPDATE COLLECTION REPORT (${collectedMachines.length} machines)`
-                          : `CREATE COLLECTION REPORT (${collectedMachines.length} machines)`}
-                    </button>
-                  </div>
-                )}
               </div>
             ) : collectedMachines.length === 0 ? (
               <div className="flex flex-1 items-center justify-center p-8 text-center text-gray-500">
@@ -523,6 +510,33 @@ export default function CollectionReportMobileCollectedListPanel({
                         >
                           {isProcessing ? 'Updating...' : 'Apply Times to All'}
                         </button>
+
+                        {sasUpdateProgress && (
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-semibold text-blue-700">
+                              <span>
+                                {sasUpdateProgress.completed}/
+                                {sasUpdateProgress.total}
+                              </span>
+                              <span>
+                                {Math.round(
+                                  (sasUpdateProgress.completed /
+                                    sasUpdateProgress.total) *
+                                    100
+                                )}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-2 w-full overflow-hidden rounded-full bg-blue-200">
+                              <div
+                                className="h-full rounded-full bg-blue-600 transition-all duration-200"
+                                style={{
+                                  width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -571,17 +585,14 @@ export default function CollectionReportMobileCollectedListPanel({
                               <div className="flex-1 space-y-2">
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <p
-                                      className={`mb-0.5 text-[10px] font-bold uppercase tracking-wider ${hasVariation ? 'text-amber-800' : isNewMachine ? 'text-green-700' : 'text-blue-600'}`}
-                                    >
-                                      {machine.serialNumber || 'No Serial'}
-                                    </p>
                                     <h4
                                       className={`text-sm font-black leading-tight ${hasVariation ? 'text-amber-950' : isNewMachine ? 'text-green-900' : 'text-gray-900'}`}
                                     >
-                                      {machine.machineCustomName ||
-                                        machine.machineName ||
-                                        'Unknown Machine'}
+                                      {formatMachineDisplayNameWithBold({
+                                        serialNumber: machine.serialNumber,
+                                        custom: { name: machine.machineCustomName },
+                                        game: machine.game,
+                                      })}
                                     </h4>
                                   </div>
                                   {hasVariation && (
@@ -666,28 +677,36 @@ export default function CollectionReportMobileCollectedListPanel({
                     )}
                   </div>
                 </div>
-
-                <div className="shrink-0 border-t bg-white/90 p-4 backdrop-blur-md">
-                  <button
-                    onClick={onCreateReport}
-                    disabled={isProcessing || !isCreateReportsEnabled}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
-                      !isProcessing && isCreateReportsEnabled
-                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-600/20'
-                        : 'cursor-not-allowed bg-gray-400 text-gray-200'
-                    }`}
-                  >
-                    <SendHorizontal className="h-5 w-5" />
-                    {isProcessing ? 'PROCESSING...' : 'SUBMIT FINAL REPORT'}
-                  </button>
-                  <p className="mt-2 text-center text-[10px] font-medium text-gray-400">
-                    Finalize readings for all {collectedMachines.length}{' '}
-                    machines.
-                  </p>
-                </div>
               </div>
             )}
           </div>
+
+          {/* Persistent Submit Footer — pinned across both List and Financial
+              sub-views so the create/update action is always reachable. */}
+          {collectedMachines.length > 0 && (
+            <div className="shrink-0 border-t bg-white p-4">
+              <button
+                onClick={onCreateReport}
+                disabled={isProcessing || !isCreateReportsEnabled}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-md transition-colors ${
+                  !isProcessing && isCreateReportsEnabled
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'cursor-not-allowed bg-gray-300 text-gray-500'
+                }`}
+              >
+                <SendHorizontal className="h-5 w-5" />
+                {isProcessing
+                  ? 'PROCESSING...'
+                  : isEditing
+                    ? `Update Report (${collectedMachines.length} machines)`
+                    : `Create Collection Report (${collectedMachines.length} machines)`}
+              </button>
+              <p className="mt-2 text-center text-[10px] font-medium text-gray-400">
+                {isEditing ? 'Update' : 'Finalize'} readings for all{' '}
+                {collectedMachines.length} machines.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

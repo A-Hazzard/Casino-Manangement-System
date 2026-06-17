@@ -28,8 +28,8 @@ import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
-const ITEMS_PER_BATCH = 40;
-const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
+const ITEMS_PER_BATCH = 100;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useCabinetsPageData() {
   const activeMetricsFilter = useDashBoardStore(
@@ -132,19 +132,15 @@ export function useCabinetsPageData() {
     );
   }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
-  // effectiveTotalPages is based on the client-visible filtered count.
-  // Adds +1 trigger page only if server has more raw data not yet fetched.
+  const hasMoreCabinets = totalCount > 0 && allCabinets.length < totalCount;
+
   const effectiveTotalPages = useMemo(() => {
-    const displayedPages =
-      Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
-
-    if (allCabinets.length < totalCount && totalCount > 0) {
-      const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-      return Math.min(displayedPages + 1, serverTotalPages);
+    if (hasMoreCabinets) {
+      const loadedBatchCount = Math.ceil(allCabinets.length / ITEMS_PER_BATCH) || 1;
+      return loadedBatchCount * PAGES_PER_BATCH;
     }
-
-    return displayedPages;
-  }, [filteredCabinets.length, allCabinets.length, totalCount]);
+    return Math.max(1, Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE));
+  }, [filteredCabinets.length, allCabinets.length, hasMoreCabinets]);
 
   // Custom column sort handler that triggers fresh fetch
   const handleColumnSort = useCallback(
@@ -543,6 +539,7 @@ export function useCabinetsPageData() {
     isUploadSmibOpen,
     refreshTrigger,
     totalCount,
+    hasMoreCabinets,
     chartData,
     loadingChart,
     totalPages: effectiveTotalPages,

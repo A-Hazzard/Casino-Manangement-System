@@ -17,18 +17,18 @@ import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { TimePeriod } from '@/shared/types/common';
-import type { AcceptedBillDocument } from '@/shared/types/models';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import {
+  processBillsData,
+  createDateFilter,
+  DEFAULT_BILL_VALIDATOR_OPTIONS,
+  type BillDocument,
+} from '@/app/api/lib/helpers/billValidator/validatorOperations';
 import {
   logRouteFetch,
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
-
-type BillDocument = AcceptedBillDocument & {
-  toObject?: () => Record<string, unknown>;
-};
 
 /**
  * GET /api/bill-validator/[machineId]
@@ -46,9 +46,9 @@ type BillDocument = AcceptedBillDocument & {
  *                    '7d', '30d', 'Quarterly', 'All Time', or 'LastHour'. Defaults to '7d'.
  *                    Ignored when startDate + endDate are both supplied.
  *                    Forced to 'LastHour' for technician-only sessions.
- * @param startDate   {string} Optional. ISO 8601 date/datetime for the start of a custom range.
+ * @param startDate   {string} Optional. ISO 8601 date/datetime for custom range start.
  *                    Must be paired with endDate. Maps to createdAt (V1) or readAt (V2).
- * @param endDate     {string} Optional. ISO 8601 date/datetime for the end of a custom range.
+ * @param endDate     {string} Optional. ISO 8601 date/datetime for custom range end.
  *                    Must be paired with startDate.
  *
  * Flow:
@@ -58,8 +58,8 @@ type BillDocument = AcceptedBillDocument & {
  * 4. Parse query parameters (timePeriod, dates)
  * 5. Get machine and location data
  * 6. Determine gaming day offset
- * 7. Build date filter (V1 vs V2)
- * 8. Query accepted bills
+ * 7. Restrict technicians to last hour
+ * 8. Build date filter and query bills
  * 9. Process bills data (V1 or V2)
  * 10. Return processed bill validator data
  */
@@ -123,28 +123,22 @@ export async function GET(req: NextRequest) {
     // STEP 5: Get machine and location data
     // ============================================================================
     let gamingLocation = null;
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = await Machine.findOne({ _id: machineId });
 
     if (machine?.gamingLocation) {
-      // CRITICAL: Use findOne with _id instead of findById (repo rule)
       gamingLocation = await GamingLocations.findOne({
         _id: machine.gamingLocation,
       });
     }
 
     // ============================================================================
-    // STEP 5.5: Technician Restriction - Force last hour meter data
+    // STEP 6: Technician restriction — force LastHour for technicians only
     // ============================================================================
-    // User check for restriction
     const { getUserFromServer: getUser } =
       await import('@/app/api/lib/helpers/users/users');
     const userPayload = await getUser();
     const userRoles = (userPayload?.roles as string[]) || [];
 
-    const isAdmin = userRoles
-      .map(r => r?.toLowerCase?.() ?? r)
-      .some(r => r === 'admin' || r === 'developer');
     const userRolesLower = userRoles.map(
       r => r?.toLowerCase?.() ?? String(r).toLowerCase()
     );
@@ -154,50 +148,21 @@ export async function GET(req: NextRequest) {
         ['admin', 'developer', 'manager', 'location admin'].includes(r)
       );
 
-    if (isOnlyTechnician && !isAdmin) {
+    if (isOnlyTechnician) {
       timePeriod = 'LastHour' as TimePeriod;
     }
 
     // ============================================================================
-    // STEP 6: Determine gaming day offset
+    // STEP 7: Determine gaming day offset
     // ============================================================================
-    const gameDayOffset = gamingLocation?.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
+    const gameDayOffset = gamingLocation?.gameDayOffset ?? 8;
 
     // ============================================================================
-    // STEP 7: Build date filter (V1 vs V2)
+    // STEP 8: Query bills with appropriate date filter
     // ============================================================================
-    let dateFilter: Record<string, unknown> = {};
-    if (startDate && endDate) {
-      // Custom date range - use the exact dates provided by the user without gaming day offset
-      // The Date constructor already handles the local time to UTC conversion
-      const customStart = new Date(startDate);
-      const customEnd = new Date(endDate);
-
-      dateFilter = {
-        createdAt: { $gte: customStart, $lte: customEnd },
-      };
-    } else if (timePeriod && timePeriod !== 'All Time') {
-      // Predefined time period - use gaming day range utilities
-      const gamingDayRange = getGamingDayRangeForPeriod(
-        timePeriod,
-        gameDayOffset
-      );
-      dateFilter = {
-        createdAt: {
-          $gte: gamingDayRange.rangeStart,
-          $lte: gamingDayRange.rangeEnd,
-        },
-      };
-    }
-
-    // ============================================================================
-    // STEP 8: Query accepted bills
-    // ============================================================================
-    let bills;
-    let v2DateFilter: Record<string, unknown> = {};
-
-    // Check if we have V1 or V2 data by looking at one bill
+    let bills: BillDocument[] = [];
     const sampleBill = await AcceptedBill.findOne({ machine: machineId });
+
     if (sampleBill) {
       const sampleBillObj = sampleBill.toObject
         ? sampleBill.toObject()
@@ -208,81 +173,53 @@ export async function GET(req: NextRequest) {
         sampleBillObj.value === undefined;
 
       if (isV2) {
-        // V2: Use readAt field for filtering
-        if (startDate && endDate) {
-          // Custom date range - use the exact dates provided by the user without gaming day offset
-          // The Date constructor already handles the local time to UTC conversion
-          const customStart = new Date(startDate);
-          const customEnd = new Date(endDate);
-
-          v2DateFilter = {
-            readAt: { $gte: customStart, $lte: customEnd },
-          };
-        } else if (timePeriod && timePeriod !== 'All Time') {
-          // Predefined time period - use gaming day range utilities
-          const gamingDayRange = getGamingDayRangeForPeriod(
-            timePeriod,
-            gameDayOffset
-          );
-          v2DateFilter = {
-            readAt: {
-              $gte: gamingDayRange.rangeStart,
-              $lte: gamingDayRange.rangeEnd,
-            },
-          };
-        }
-
+        const v2DateFilter = createDateFilter(
+          startDate,
+          endDate,
+          timePeriod,
+          'readAt',
+          gameDayOffset
+        );
         bills = await AcceptedBill.find({
           machine: machineId,
           ...v2DateFilter,
-        }).sort({ readAt: -1 });
+        })
+          .sort({ readAt: -1 })
+          .lean<BillDocument[]>();
       } else {
-        // V1: Use createdAt field for filtering
+        const v1DateFilter = createDateFilter(
+          startDate,
+          endDate,
+          timePeriod,
+          'createdAt',
+          gameDayOffset
+        );
         bills = await AcceptedBill.find({
           machine: machineId,
-          ...dateFilter,
-        }).sort({ createdAt: -1 });
+          ...v1DateFilter,
+        })
+          .sort({ createdAt: -1 })
+          .lean<BillDocument[]>();
       }
-    } else {
-      bills = [];
     }
 
     // Get current balance from machine
     const currentBalance = machine?.billValidator?.balance || 0;
 
-    // If no location found via machine, try to get it from the bills data
+    // Resolve location from bills if not found via machine
     if (!gamingLocation && bills.length > 0) {
-      const firstBill = bills[0];
-      // Convert Mongoose document to plain object to access all fields
-      const billObj = firstBill.toObject ? firstBill.toObject() : firstBill;
+      const billObj = bills[0].toObject ? bills[0].toObject() : bills[0];
       const billLocationId = billObj.location;
 
       if (billLocationId) {
-        // CRITICAL: Use findOne with _id instead of findById (repo rule)
-        gamingLocation = await GamingLocations.findOne({ _id: billLocationId });
+        gamingLocation = await GamingLocations.findOne({
+          _id: billLocationId,
+        });
       }
     }
 
-    // Location lookup completed - filtering will be applied based on billValidatorOptions
-
-    const billValidatorOptions = gamingLocation?.billValidatorOptions || {
-      denom1: true,
-      denom2: true,
-      denom5: true,
-      denom10: true,
-      denom20: true,
-      denom50: true,
-      denom100: true,
-      denom200: true,
-      denom500: true,
-      denom1000: true,
-      denom2000: true,
-      denom5000: true,
-      denom10000: true,
-    };
-
-    // console.warn(`[BILL VALIDATOR] Final bill validator options:`, billValidatorOptions);
-    // console.warn(`[BILL VALIDATOR] Number of bills to process:`, bills.length);
+    const billValidatorOptions =
+      gamingLocation?.billValidatorOptions || DEFAULT_BILL_VALIDATOR_OPTIONS;
 
     // ============================================================================
     // STEP 9: Process bills data (V1 or V2)
@@ -290,7 +227,7 @@ export async function GET(req: NextRequest) {
     const processedData = processBillsData(
       bills,
       currentBalance,
-      billValidatorOptions
+      billValidatorOptions as Record<string, boolean>
     );
 
     // ============================================================================
@@ -325,333 +262,4 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
-}
-
-function processBillsData(
-  bills: BillDocument[],
-  currentBalance: number,
-  billValidatorOptions: Record<string, boolean>
-) {
-  if (bills.length === 0) {
-    const allDenomsMap = [
-      { key: 'dollar1', value: 1, optionKey: 'denom1' },
-      { key: 'dollar2', value: 2, optionKey: 'denom2' },
-      { key: 'dollar5', value: 5, optionKey: 'denom5' },
-      { key: 'dollar10', value: 10, optionKey: 'denom10' },
-      { key: 'dollar20', value: 20, optionKey: 'denom20' },
-      { key: 'dollar50', value: 50, optionKey: 'denom50' },
-      { key: 'dollar100', value: 100, optionKey: 'denom100' },
-      { key: 'dollar200', value: 200, optionKey: 'denom200' },
-      { key: 'dollar500', value: 500, optionKey: 'denom500' },
-      { key: 'dollar1000', value: 1000, optionKey: 'denom1000' },
-      { key: 'dollar2000', value: 2000, optionKey: 'denom2000' },
-      { key: 'dollar5000', value: 5000, optionKey: 'denom5000' },
-      { key: 'dollar10000', value: 10000, optionKey: 'denom10000' },
-    ];
-
-    const emptyDenominations = allDenomsMap
-      .filter(({ optionKey }) => billValidatorOptions[optionKey] === true)
-      .map(({ value }) => ({
-        denomination: value,
-        label: `$${value}`,
-        quantity: 0,
-        subtotal: 0,
-      }));
-
-    return {
-      version: 'v2', // Uses v2 to trick the UI into showing the table instead of empty state
-      denominations: emptyDenominations,
-      totalAmount: 0,
-      totalQuantity: 0,
-      unknownBills: 0,
-      currentBalance,
-    };
-  }
-
-  // Check if we have V1 or V2 data by looking at the first bill
-  const firstBill = bills[0];
-
-  // Convert Mongoose document to plain object to access actual properties
-  const firstBillObj = firstBill.toObject ? firstBill.toObject() : firstBill;
-
-  // V1: Uses value field (e.g., value: 5) - filter by createdAt (legacy format)
-  // V2: Uses movement object (e.g., movement.dollar1) - filter by readAt (current format)
-  // V1 data has BOTH value and movement fields, but we prioritize value field for counting
-  const isV1 = firstBillObj.value !== undefined;
-  const isV2 =
-    firstBillObj.movement &&
-    typeof firstBillObj.movement === 'object' &&
-    firstBillObj.value === undefined;
-
-  if (isV1) {
-    return processV1Data(bills, currentBalance, billValidatorOptions);
-  } else if (isV2) {
-    return processV2Data(bills, currentBalance, billValidatorOptions);
-  } else {
-    return processV1Data(bills, currentBalance, billValidatorOptions);
-  }
-}
-
-function processV1Data(
-  bills: BillDocument[],
-  currentBalance: number,
-  billValidatorOptions: Record<string, boolean>
-) {
-  // V1: Count documents by value field
-  const denominationTotals: Record<number, number> = {};
-  let maxDenomination = 0; // Track the highest denomination found in the data
-
-  // console.warn(`[BILL VALIDATOR] Processing ${bills.length} V1 bills`);
-
-  bills.forEach((bill: BillDocument) => {
-    // Convert Mongoose document to plain object
-    const billObj = bill.toObject ? bill.toObject() : bill;
-
-    if (billObj.value !== undefined) {
-      const value = Number(billObj.value);
-
-      // Track the maximum denomination found in the data
-      maxDenomination = Math.max(maxDenomination, value);
-
-      // Always initialize denomination totals, but only add values if enabled
-      if (!denominationTotals[value]) {
-        denominationTotals[value] = 0;
-      }
-
-      // Check if this denomination is allowed by billValidatorOptions
-      const denominationKey = getDenominationKey(value);
-      const isEnabled = billValidatorOptions[denominationKey] === true;
-
-      if (isEnabled) {
-        denominationTotals[value]++;
-        // console.warn(`[BILL VALIDATOR] ADDED V1 bill value ${value} (${denominationKey} enabled)`);
-      } else {
-        // console.warn(`[BILL VALIDATOR] FILTERED OUT V1 bill value ${value} (${denominationKey} disabled) - showing as 0`);
-      }
-    }
-  });
-
-  // console.warn("[BILL VALIDATOR] V1 denomination totals:", denominationTotals);
-
-  // Create dynamic denomination range based on billValidatorOptions
-  const allDenominations = [
-    { value: 1, optionKey: 'denom1' },
-    { value: 2, optionKey: 'denom2' },
-    { value: 5, optionKey: 'denom5' },
-    { value: 10, optionKey: 'denom10' },
-    { value: 20, optionKey: 'denom20' },
-    { value: 50, optionKey: 'denom50' },
-    { value: 100, optionKey: 'denom100' },
-    { value: 200, optionKey: 'denom200' },
-    { value: 500, optionKey: 'denom500' },
-    { value: 1000, optionKey: 'denom1000' },
-    { value: 2000, optionKey: 'denom2000' },
-    { value: 5000, optionKey: 'denom5000' },
-    { value: 10000, optionKey: 'denom10000' },
-  ].filter(({ optionKey }) => billValidatorOptions[optionKey] === true);
-
-  const denominations = allDenominations.map(({ value }) => ({
-    denomination: value,
-    label: `$${value}`,
-    quantity: denominationTotals[value] || 0,
-    subtotal: (denominationTotals[value] || 0) * value,
-  }));
-
-  const totalAmount = denominations.reduce(
-    (sum, item) => sum + item.subtotal,
-    0
-  );
-  const totalQuantity = denominations.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
-
-  return {
-    version: 'v1',
-    denominations,
-    totalAmount,
-    totalQuantity,
-    unknownBills: 0, // V1 doesn't have unknown bills
-    currentBalance,
-  };
-}
-
-function processV2Data(
-  bills: BillDocument[],
-  currentBalance: number,
-  billValidatorOptions: Record<string, boolean>
-) {
-  // V2: Use movement object from each bill
-  const denominationTotals: Record<
-    string,
-    { quantity: number; subtotal: number }
-  > = {};
-  let maxDenomination = 0; // Track the highest denomination found in the data
-
-  // console.warn(`[BILL VALIDATOR] Processing ${bills.length} V2 bills`);
-
-  bills.forEach((bill: BillDocument) => {
-    // Convert Mongoose document to plain object
-    const billObj = bill.toObject ? bill.toObject() : bill;
-
-    if (billObj.movement) {
-      const denominationMap = [
-        { key: 'dollar1', value: 1, optionKey: 'denom1' },
-        { key: 'dollar2', value: 2, optionKey: 'denom2' },
-        { key: 'dollar5', value: 5, optionKey: 'denom5' },
-        { key: 'dollar10', value: 10, optionKey: 'denom10' },
-        { key: 'dollar20', value: 20, optionKey: 'denom20' },
-        { key: 'dollar50', value: 50, optionKey: 'denom50' },
-        { key: 'dollar100', value: 100, optionKey: 'denom100' },
-        { key: 'dollar200', value: 200, optionKey: 'denom200' },
-        { key: 'dollar500', value: 500, optionKey: 'denom500' },
-        { key: 'dollar1000', value: 1000, optionKey: 'denom1000' },
-        { key: 'dollar2000', value: 2000, optionKey: 'denom2000' },
-        { key: 'dollar5000', value: 5000, optionKey: 'denom5000' },
-        { key: 'dollar10000', value: 10000, optionKey: 'denom10000' },
-      ];
-
-      denominationMap.forEach(({ key, value, optionKey }) => {
-        const quantity =
-          (billObj.movement as Record<string, number>)?.[key] || 0;
-
-        // Track the maximum denomination found in the data
-        if (quantity > 0) {
-          maxDenomination = Math.max(maxDenomination, value);
-        }
-
-        // Always initialize denomination totals, but only add values if enabled
-        if (!denominationTotals[key]) {
-          denominationTotals[key] = { quantity: 0, subtotal: 0 };
-        }
-
-        // Check if this denomination is allowed by billValidatorOptions
-        if (quantity > 0) {
-          const isEnabled = billValidatorOptions[optionKey] === true;
-
-          if (isEnabled) {
-            denominationTotals[key].quantity += quantity;
-            denominationTotals[key].subtotal += quantity * value;
-            // console.warn(`[BILL VALIDATOR]  ADDED ${key}: ${quantity} bills (${optionKey} enabled)`);
-          } else {
-            // console.warn(`[BILL VALIDATOR] ❌ FILTERED OUT ${key}: ${quantity} bills (${optionKey} disabled) - showing as 0`);
-          }
-        }
-      });
-    }
-  });
-
-  // Create dynamic denomination range based on the location's allowed denominations
-  const allDenominations = [
-    { key: 'dollar1', value: 1, optionKey: 'denom1' },
-    { key: 'dollar2', value: 2, optionKey: 'denom2' },
-    { key: 'dollar5', value: 5, optionKey: 'denom5' },
-    { key: 'dollar10', value: 10, optionKey: 'denom10' },
-    { key: 'dollar20', value: 20, optionKey: 'denom20' },
-    { key: 'dollar50', value: 50, optionKey: 'denom50' },
-    { key: 'dollar100', value: 100, optionKey: 'denom100' },
-    { key: 'dollar200', value: 200, optionKey: 'denom200' },
-    { key: 'dollar500', value: 500, optionKey: 'denom500' },
-    { key: 'dollar1000', value: 1000, optionKey: 'denom1000' },
-    { key: 'dollar2000', value: 2000, optionKey: 'denom2000' },
-    { key: 'dollar5000', value: 5000, optionKey: 'denom5000' },
-    { key: 'dollar10000', value: 10000, optionKey: 'denom10000' },
-  ].filter(({ optionKey }) => billValidatorOptions[optionKey] === true);
-
-  const denominations = allDenominations
-    .map(({ key, value }) => {
-      const data = denominationTotals[key] || { quantity: 0, subtotal: 0 };
-      return {
-        denomination: value,
-        label: `$${value}`,
-        quantity: data.quantity,
-        subtotal: data.subtotal,
-      };
-    })
-    .sort((a, b) => a.denomination - b.denomination);
-
-  const totalAmount = denominations.reduce(
-    (sum, item) => sum + item.subtotal,
-    0
-  );
-  const totalQuantity = denominations.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
-
-  // Calculate total known and unknown amounts from movement objects, respecting billValidatorOptions
-  const totalKnownAmount = bills.reduce((sum: number, bill: BillDocument) => {
-    const billObj = bill.toObject ? bill.toObject() : bill;
-    const movement = billObj.movement as
-      | (Record<string, number> & { dollarTotal?: number })
-      | undefined;
-
-    if (!movement) return sum;
-
-    // Only include amounts for enabled denominations
-    const denominationMap = [
-      { key: 'dollar1', optionKey: 'denom1' },
-      { key: 'dollar2', optionKey: 'denom2' },
-      { key: 'dollar5', optionKey: 'denom5' },
-      { key: 'dollar10', optionKey: 'denom10' },
-      { key: 'dollar20', optionKey: 'denom20' },
-      { key: 'dollar50', optionKey: 'denom50' },
-      { key: 'dollar100', optionKey: 'denom100' },
-      { key: 'dollar200', optionKey: 'denom200' },
-      { key: 'dollar500', optionKey: 'denom500' },
-      { key: 'dollar1000', optionKey: 'denom1000' },
-      { key: 'dollar2000', optionKey: 'denom2000' },
-      { key: 'dollar5000', optionKey: 'denom5000' },
-      { key: 'dollar10000', optionKey: 'denom10000' },
-    ];
-
-    let billKnownAmount = 0;
-    denominationMap.forEach(({ key, optionKey }) => {
-      const quantity = movement[key] || 0;
-      const denominationValue = parseInt(key.replace('dollar', ''));
-      if (quantity > 0 && billValidatorOptions[optionKey] === true) {
-        billKnownAmount += quantity * denominationValue;
-      }
-    });
-
-    return sum + billKnownAmount;
-  }, 0);
-
-  const totalUnknownAmount = bills.reduce((sum: number, bill: BillDocument) => {
-    const billObj = bill.toObject ? bill.toObject() : bill;
-    const movement = billObj.movement as
-      | (Record<string, number> & { dollarTotalUnknown?: number })
-      | undefined;
-    return sum + (movement?.dollarTotalUnknown || 0);
-  }, 0);
-
-  return {
-    version: 'v2',
-    denominations,
-    totalAmount,
-    totalQuantity,
-    totalKnownAmount,
-    totalUnknownAmount,
-    unknownBills: totalUnknownAmount, // Keep for backward compatibility
-    currentBalance,
-  };
-}
-
-// getDenominationValue function removed - no longer needed
-
-function getDenominationKey(value: number): string {
-  const map: Record<number, string> = {
-    1: 'denom1',
-    2: 'denom2',
-    5: 'denom5',
-    10: 'denom10',
-    20: 'denom20',
-    50: 'denom50',
-    100: 'denom100',
-    500: 'denom500',
-    1000: 'denom1000',
-    2000: 'denom2000',
-    5000: 'denom5000',
-  };
-  return map[value] || '';
 }

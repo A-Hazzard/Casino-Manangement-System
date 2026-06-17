@@ -62,7 +62,7 @@ export function MachineSearchSelect({
   }, [machines, searchTerm]);
 
   // Find selected Machine
-  const selectedMachine = machines.find(m => m._id === value);
+  const selectedMachine = machines.find(machine => machine._id === value);
 
   // ============================================================================
   // Effects

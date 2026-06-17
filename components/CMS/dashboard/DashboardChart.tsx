@@ -159,7 +159,7 @@ export default function Chart({
     const [mostCommonDay] =
       Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0] || [];
     if (mostCommonDay) {
-      dayFilteredChartData = chartData.filter(d => d.day === mostCommonDay);
+      dayFilteredChartData = chartData.filter(data => data.day === mostCommonDay);
     }
   }
 
@@ -343,8 +343,8 @@ export default function Chart({
   if (filteredChartData.length > 0) {
     // Find first non-zero entry based on selected metrics
     let firstNonZeroIndex = 0;
-    for (let i = 0; i < filteredChartData.length; i++) {
-      const item = filteredChartData[i];
+    for (let index = 0; index < filteredChartData.length; index++) {
+      const item = filteredChartData[index];
       const hasData =
         (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
         (selectedMetrics.includes('Money Out') &&
@@ -352,22 +352,22 @@ export default function Chart({
         (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01) ||
         (selectedMetrics.includes('Jackpot') && (item.jackpot || 0) >= 0.01);
       if (hasData) {
-        firstNonZeroIndex = i;
+        firstNonZeroIndex = index;
         break;
       }
     }
 
     // Find last non-zero entry based on selected metrics
     let lastNonZeroIndex = filteredChartData.length - 1;
-    for (let i = filteredChartData.length - 1; i >= 0; i--) {
-      const item = filteredChartData[i];
+    for (let index = filteredChartData.length - 1; index >= 0; index--) {
+      const item = filteredChartData[index];
       const hasData =
         (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
         (selectedMetrics.includes('Money Out') &&
           (item.moneyOut || 0) >= 0.01) ||
         (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
       if (hasData) {
-        lastNonZeroIndex = i;
+        lastNonZeroIndex = index;
         break;
       }
     }
@@ -384,11 +384,11 @@ export default function Chart({
   if (trimmedChartData.length > 2) {
     gapFilteredChartData = [];
 
-    for (let i = 0; i < trimmedChartData.length; i++) {
-      const current = trimmedChartData[i];
-      const previous = i > 0 ? trimmedChartData[i - 1] : null;
+    for (let index = 0; index < trimmedChartData.length; index++) {
+      const current = trimmedChartData[index];
+      const previous = index > 0 ? trimmedChartData[index - 1] : null;
       const next =
-        i < trimmedChartData.length - 1 ? trimmedChartData[i + 1] : null;
+        index < trimmedChartData.length - 1 ? trimmedChartData[index + 1] : null;
 
       // Check if current point has any activity for selected metrics
       const hasActivity =
@@ -429,7 +429,7 @@ export default function Chart({
         : true;
 
       // Keep the point if it's first/last, has activity, is a transition, or values changed
-      const isFirstOrLast = i === 0 || i === trimmedChartData.length - 1;
+      const isFirstOrLast = index === 0 || index === trimmedChartData.length - 1;
       const isTransition =
         previousHasActivity !== hasActivity || nextHasActivity !== hasActivity;
 
@@ -505,7 +505,7 @@ export default function Chart({
                     setSelectedMetrics(prev => [...prev, item.label]);
                   } else {
                     setSelectedMetrics(prev =>
-                      prev.filter(m => m !== item.label)
+                      prev.filter(label => label !== item.label)
                     );
                   }
                 }}

@@ -25,6 +25,10 @@ import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
 
+// ============================================================================
+// Cabinet List Fetching
+// ============================================================================
+
 /**
  * Fetch all cabinets with optional filtering by licencee and time period.
  *
@@ -225,6 +229,10 @@ export const fetchCabinets = async (
   }
 };
 
+// ============================================================================
+// Single Cabinet Fetching
+// ============================================================================
+
 /**
  * Fetch a single cabinet by its ID with optional date filtering.
  *
@@ -238,7 +246,8 @@ export const fetchCabinetById = async (
   customDateRange?: DateRange,
   currency?: string,
   licencee?: string | null,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  dateField?: string
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
@@ -246,6 +255,10 @@ export const fetchCabinetById = async (
 
     // Add query parameters
     const queryParams = [];
+
+    if (dateField && dateField !== 'readAt') {
+      queryParams.push(`dateField=${encodeURIComponent(dateField)}`);
+    }
 
     if (timePeriod === 'Custom') {
       // For Custom time period, dates are required
@@ -327,6 +340,10 @@ export const fetchCabinetById = async (
   }
 };
 
+// ============================================================================
+// Cabinet CRUD Operations
+// ============================================================================
+
 /**
  * Create a new cabinet using provided form data.
  *
@@ -389,6 +406,10 @@ export const updateCabinet = async (data: CabinetFormData) => {
   }
 };
 
+// ============================================================================
+// Location Operations
+// ============================================================================
+
 /**
  * Fetch all cabinet locations, optionally filtered by licencee.
  *
@@ -428,6 +449,10 @@ export const fetchCabinetLocations = async (licencee?: string) => {
     return []; // Return empty array instead of throwing
   }
 };
+
+// ============================================================================
+// Location-Specific Cabinets
+// ============================================================================
 
 /**
  * Fetch cabinets for a specific location, with optional filters.
@@ -613,6 +638,10 @@ export async function fetchCabinetsForLocation(
   }
 }
 
+// ============================================================================
+// Cabinet Lifecycle (Restore & Delete)
+// ============================================================================
+
 /**
  * Restore a soft-deleted (archived) cabinet.
  *
@@ -669,6 +698,10 @@ export async function permanentlyDeleteCabinet(
     throw error;
   }
 }
+
+// ============================================================================
+// Cabinet Totals & Aggregation
+// ============================================================================
 
 /**
  * Fetches cabinet/machine totals using the machines aggregation API
@@ -869,6 +902,10 @@ export async function fetchCabinetTotals(
     return null;
   }
 }
+
+// ============================================================================
+// Collection History Operations
+// ============================================================================
 
 export const updateMachineCollectionHistory = async (
   machineId: string,

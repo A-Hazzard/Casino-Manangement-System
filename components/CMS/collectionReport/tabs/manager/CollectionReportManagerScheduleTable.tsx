@@ -12,6 +12,7 @@
  */
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -38,8 +39,37 @@ export default function CollectionReportManagerScheduleTable({
   // ============================================================================
   if (loading) {
     return (
-      <div className="hidden items-center justify-center py-8 lg:flex">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-4 border-t-4 border-buttonActive"></div>
+      <div className="hidden w-full min-w-0 overflow-x-auto rounded-lg bg-white shadow lg:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-button hover:bg-button">
+              <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
+              <TableHead className="font-semibold text-white">LOCATION</TableHead>
+              <TableHead className="font-semibold text-white">MANAGER</TableHead>
+              <TableHead className="font-semibold text-white">VISIT TIME</TableHead>
+              <TableHead className="font-semibold text-white">CREATED AT</TableHead>
+              <TableHead className="font-semibold text-white">STATUS</TableHead>
+              {showActions && (
+                <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+              )}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i} className="hover:bg-gray-50">
+                <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                {showActions && (
+                  <TableCell><div className="flex gap-1"><Skeleton className="h-8 w-8 rounded" /><Skeleton className="h-8 w-8 rounded" /></div></TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }

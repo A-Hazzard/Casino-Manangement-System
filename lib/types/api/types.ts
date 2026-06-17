@@ -201,6 +201,10 @@ export type MachineMetric = {
   netGross?: number;
   sasGross?: number | string;
   variation?: number | string;
+  metersIn: number;
+  metersOut: number;
+  prevIn: number;
+  prevOut: number;
   sasStartTime?: Date | string | null;
   sasEndTime?: Date | string | null;
   hasIssue?: boolean;
@@ -255,8 +259,8 @@ export type CollectionReportData = {
 export type MachineVariationData = {
   machineId: string;
   machineName: string;
-  variation: number | string;
-  sasGross: number | string;
+  variation: number | null;
+  sasGross: number | null;
   meterGross: number;
   sasStartTime?: Date | string | null;
   sasEndTime?: Date | string | null;

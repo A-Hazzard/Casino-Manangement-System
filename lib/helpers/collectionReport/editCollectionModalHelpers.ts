@@ -7,6 +7,7 @@
 
 import { updateMachineCollectionHistory } from '@/lib/helpers/cabinets';
 import type { CollectionDocument } from '@/lib/types/collection';
+import { calculateCabinetMovement } from '@/lib/utils/movement';
 import axios from 'axios';
 
 // Note: fetchCollectionReportById is exported from './fetching' to avoid duplication
@@ -83,4 +84,102 @@ export function sortMachinesAlphabetically<
 
     return numAInt - numBInt;
   });
+}
+
+// ============================================================================
+// Pure Calculation Helpers
+// ============================================================================
+
+/**
+ * Determine the effective SAS end time based on mode and captured values.
+ *
+ * In simple mode: capturedEndTime is the user-selected collectionTime.
+ * In advanced mode: capturedEndTime is the custom sasEndTime set by the user.
+ * Falls back to defaultTime only if no capturedEndTime exists.
+ */
+export function getSasEndTime(
+  showAdvanced: boolean,
+  capturedEndTime: Date | null,
+  defaultTime: Date
+): Date {
+  if (capturedEndTime) {
+    return capturedEndTime instanceof Date
+      ? capturedEndTime
+      : new Date(String(capturedEndTime));
+  }
+  return defaultTime;
+}
+
+/**
+ * Calculate total movement data from collected machine entries.
+ * Returns aggregated drop, cancelledCredits, gross, and sasGross sums.
+ */
+export function calculateTotalMovementFromEntries(
+  entries: CollectionDocument[]
+): {
+  drop: number;
+  cancelledCredits: number;
+  gross: number;
+  sasGross: number;
+} {
+  const totalMovementData = entries.map(entry => {
+    const movement = calculateCabinetMovement(
+      entry.metersIn || 0,
+      entry.metersOut || 0,
+      entry.prevIn || 0,
+      entry.prevOut || 0,
+      entry.ramClear || false,
+      undefined,
+      undefined,
+      entry.ramClearMetersIn,
+      entry.ramClearMetersOut
+    );
+    return {
+      drop: movement.metersIn,
+      cancelledCredits: movement.metersOut,
+      gross: movement.gross,
+      sasGross: entry.sasMeters?.gross || 0,
+    };
+  });
+
+  return totalMovementData.reduce(
+    (prev, curr) => ({
+      drop: prev.drop + curr.drop,
+      cancelledCredits: prev.cancelledCredits + curr.cancelledCredits,
+      gross: prev.gross + curr.gross,
+      sasGross: prev.sasGross + curr.sasGross,
+    }),
+    { drop: 0, cancelledCredits: 0, gross: 0, sasGross: 0 }
+  );
+}
+
+/**
+ * Calculate the amount to collect for a collection report.
+ *
+ * Formula:
+ *   partnerProfit = floor((gross - variance - advance) * profitShare / 100) - taxes
+ *   amountToCollect = gross - variance - advance - partnerProfit + previousBalance
+ */
+export function calculateAmountToCollect(params: {
+  gross: number;
+  variance: number;
+  advance: number;
+  taxes: number;
+  profitShare: number;
+  previousBalance: number;
+}): number {
+  const partnerProfit =
+    Math.floor(
+      ((params.gross - params.variance - params.advance) *
+        params.profitShare) /
+        100
+    ) - params.taxes;
+
+  return (
+    params.gross -
+    params.variance -
+    params.advance -
+    partnerProfit +
+    params.previousBalance
+  );
 }

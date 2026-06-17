@@ -21,13 +21,33 @@ import type {
   ExtendedVaultTransaction,
   FloatRequest,
   InterLocationTransfer,
-  SoftCount,
   UnbalancedShiftInfo,
   VaultBalance,
   VaultMetrics,
   VaultTransaction,
   VaultTransfer,
 } from '@/shared/types/vault';
+import {
+  calculateEndOfDayMetrics,
+  generateTempPassword,
+  getTransactionTypeBadge,
+  handleExportCSV,
+  handleExportPDF,
+  handleNotificationClick,
+  handlePrint,
+  sortTransfers,
+} from '@/lib/helpers/vault/vaultCalculationHelpers';
+
+export {
+  calculateEndOfDayMetrics,
+  generateTempPassword,
+  getTransactionTypeBadge,
+  handleExportCSV,
+  handleExportPDF,
+  handleNotificationClick,
+  handlePrint,
+  sortTransfers,
+};
 
 // ============================================================================
 // API Data Fetching Functions
@@ -255,7 +275,7 @@ export async function fetchGlobalVaultOverviewData(
       if (!Array.isArray(shifts)) return [];
 
       return shifts.map(item => {
-        const shift = item as Record<string, unknown>;
+        const shift = item as CashierShift & { locationName?: string };
         return {
           shiftId: String(shift._id || ''),
           cashierId: String(shift.cashierId || ''),
@@ -266,12 +286,9 @@ export async function fetchGlobalVaultOverviewData(
           ),
           expectedBalance: Number(shift.expectedClosingBalance || 0),
           enteredBalance: Number(shift.cashierEnteredBalance || 0),
-          enteredDenominations:
-            (shift.cashierEnteredDenominations as Denomination[]) || [],
+          enteredDenominations: shift.cashierEnteredDenominations || [],
           discrepancy: Number(shift.discrepancy || 0),
-          closedAt: shift.closedAt
-            ? new Date(shift.closedAt as string)
-            : new Date(),
+          closedAt: shift.closedAt ? new Date(shift.closedAt) : new Date(),
           locationName: String(shift.locationName || ''), // Extra field for global view
         };
       });
@@ -284,7 +301,8 @@ export async function fetchGlobalVaultOverviewData(
 
       return requests.map(req => ({
         ...(req as FloatRequest),
-        locationName: (req as Record<string, unknown>).locationName as string, // Extra field for global view
+        locationName: (req as FloatRequest & { locationName?: string })
+          .locationName as string, // Extra field for global view
       }));
     };
 
@@ -342,7 +360,7 @@ export async function fetchGlobalVaultOverviewData(
       pendingShifts,
       floatRequests,
       cashDesks: (resultData.cashDesks || []).map(
-        (desk: Record<string, unknown>) => ({
+        (desk: CashDesk) => ({
           ...desk,
           _id: String(desk._id || ''),
           locationName: String(desk.locationName || ''),
@@ -350,7 +368,7 @@ export async function fetchGlobalVaultOverviewData(
           openingBalance: Number(desk.openingBalance || 0),
           payoutsTotal: Number(desk.payoutsTotal || 0),
         })
-      ) as CashDesk[],
+      ),
       notifications,
     };
 
@@ -553,17 +571,16 @@ export async function fetchAuditTrail(
       if (data.success) {
         const txs = data.items || data.transactions || [];
         return {
-          entries: txs.map((tx: Record<string, unknown>) => {
+          entries: txs.map((tx: ExtendedVaultTransaction) => {
             const isReconcile = tx.type === 'vault_reconciliation';
             const adj = isReconcile
               ? Number(tx.vaultBalanceAfter || 0) -
                 Number(tx.vaultBalanceBefore || 0)
               : Number(tx.amount || 0);
 
-            const from = tx.from as Record<string, unknown> | undefined;
             return {
               id: String(tx._id || ''),
-              timestamp: new Date(tx.timestamp as string).toLocaleString(),
+              timestamp: new Date(tx.timestamp).toLocaleString(),
               type: String(tx.type || ''),
               description: String(
                 tx.notes || `${String(tx.type || '').replace(/_/g, ' ')}`
@@ -572,7 +589,7 @@ export async function fetchAuditTrail(
                 tx.performedByName || tx.performedBy || 'System'
               ),
               amount: adj,
-              isOutflow: isReconcile ? adj < 0 : from?.type === 'vault',
+              isOutflow: isReconcile ? adj < 0 : tx.from?.type === 'vault',
               balanceBefore: Number(tx.vaultBalanceBefore || 0),
               balanceAfter: Number(tx.vaultBalanceAfter || 0),
               location: String(tx.locationId || ''),
@@ -615,8 +632,8 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         if (!metricsData.rangeStart) rangeStart.setHours(0, 0, 0, 0);
 
         const todayTxs = transactions.filter(
-          (tx: Record<string, unknown>) =>
-            new Date(tx.timestamp as string).getTime() >= rangeStart.getTime()
+          (tx: VaultTransaction) =>
+            new Date(tx.timestamp).getTime() >= rangeStart.getTime()
         );
 
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart
@@ -631,11 +648,9 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           };
         });
 
-        todayTxs.forEach((tx: Record<string, unknown>) => {
+        todayTxs.forEach((tx: VaultTransaction) => {
           // Skip reconciliation and opening transactions for charts/trends
-          if (
-            ['vault_reconciliation', 'vault_open'].includes(tx.type as string)
-          )
+          if (['vault_reconciliation', 'vault_open'].includes(tx.type))
             return;
 
           const hour = new Date(
@@ -647,8 +662,8 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           // But 'amount' accumulates blindly, so let's check direction
           hourlyStats[hour].transactions++;
 
-          const to = tx.to as { type?: string } | undefined;
-          const from = tx.from as { type?: string } | undefined;
+          const to = tx.to;
+          const from = tx.from;
 
           if (to?.type === 'vault') {
             hourlyStats[hour].amount += Math.abs(Number(tx.amount || 0));
@@ -673,9 +688,9 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
 
         // Calculate total Payouts amount (metrics.payouts is a COUNT)
         const totalPayoutsAmount = todayTxs
-          .filter((tx: Record<string, unknown>) => tx.type === 'payout')
+          .filter((tx: VaultTransaction) => tx.type === 'payout')
           .reduce(
-            (sum: number, tx: Record<string, unknown>) =>
+            (sum: number, tx: VaultTransaction) =>
               sum + Math.abs(Number(tx.amount || 0)),
             0
           ); // Ensure positive magnitude
@@ -806,34 +821,34 @@ export async function fetchVaultTransactions(
       if (data.success) {
         const txs = data.items || data.transactions || [];
         return {
-          transactions: txs.map((tx: Record<string, unknown>) => ({
+          transactions: txs.map((tx: ExtendedVaultTransaction) => ({
             ...tx,
             _id: String(tx._id || ''),
-            timestamp: new Date(tx.timestamp as string),
+            timestamp: new Date(tx.timestamp),
             performedByName: String(
               tx.performedByName || tx.performedBy || 'System'
             ),
             fromName: String(
               tx.fromName ||
-                ((tx.from as Record<string, unknown>)?.type === 'vault'
+                (tx.from?.type === 'vault'
                   ? 'Vault'
-                  : (tx.from as Record<string, unknown>)?.type === 'cashier'
+                  : tx.from?.type === 'cashier'
                     ? 'Cashier'
-                    : (tx.from as Record<string, unknown>)?.type === 'machine'
+                    : tx.from?.type === 'machine'
                       ? 'Machine'
-                      : (tx.from as Record<string, unknown>)?.id || 'External')
+                      : tx.from?.id || 'External')
             ),
             toName: String(
               tx.toName ||
-                ((tx.to as Record<string, unknown>)?.type === 'vault'
+                (tx.to?.type === 'vault'
                   ? 'Vault'
-                  : (tx.to as Record<string, unknown>)?.type === 'cashier'
+                  : tx.to?.type === 'cashier'
                     ? 'Cashier'
-                    : (tx.to as Record<string, unknown>)?.type === 'machine'
+                    : tx.to?.type === 'machine'
                       ? 'Machine'
-                      : (tx.to as Record<string, unknown>)?.id || 'External')
+                      : tx.to?.id || 'External')
             ),
-          })) as ExtendedVaultTransaction[],
+          })),
           total: data.total || data.pagination?.total || txs.length,
           totalPages:
             data.pagination?.totalPages ||
@@ -966,11 +981,13 @@ export async function fetchFloatTransactionsData(
     // Create user map for name resolution
     const userMap = new Map<string, string>();
     if (usersData?.success && Array.isArray(usersData.users)) {
-      usersData.users.forEach((userItem: Record<string, unknown>) => {
-        if (userItem._id && userItem.username) {
-          userMap.set(String(userItem._id), String(userItem.username));
+      usersData.users.forEach(
+        (userItem: { _id?: unknown; username?: unknown }) => {
+          if (userItem._id && userItem.username) {
+            userMap.set(String(userItem._id), String(userItem.username));
+          }
         }
-      });
+      );
     }
 
     const result: {
@@ -992,18 +1009,14 @@ export async function fetchFloatTransactionsData(
     // Process cashier data
     if (cashierData?.success) {
       result.cashierFloats = (cashierData.shifts || []).map(
-        (shift: Record<string, unknown>) => ({
+        (shift: CashierShift) => ({
           ...shift,
           cashierName: String(
             shift.cashierName ||
               shift.cashierUsername ||
               `Cashier ${String(shift.cashierId || '').substring(0, 4)}`
           ),
-          balance: Number(
-            (shift.currentBalance as number) ??
-              (shift.openingBalance as number) ??
-              0
-          ),
+          balance: Number(shift.currentBalance ?? shift.openingBalance ?? 0),
           status: String(shift.status || 'active'),
         })
       ) as CashierFloat[];
@@ -1030,28 +1043,26 @@ export async function fetchFloatTransactionsData(
         transactionsData.transactions ||
         []
       )
-        .filter((tx: Record<string, unknown>) =>
-          floatTypes.includes(tx.type as string)
+        .filter((tx: ExtendedVaultTransaction) =>
+          floatTypes.includes(tx.type)
         )
-        .map((tx: Record<string, unknown>) => {
-          const txTo = tx.to as Record<string, string> | undefined;
-          const txFrom = tx.from as Record<string, string> | undefined;
+        .map((tx: ExtendedVaultTransaction) => {
           // Resolve names
-          let toName = tx.toName as string | undefined;
-          if (!toName && txTo?.type === 'cashier' && txTo?.id) {
-            toName = userMap.get(txTo.id) || txTo.id;
+          let toName = tx.toName;
+          if (!toName && tx.to?.type === 'cashier' && tx.to?.id) {
+            toName = userMap.get(tx.to.id) || tx.to.id;
           }
 
-          let fromName = tx.fromName as string | undefined;
-          if (!fromName && txFrom?.type === 'cashier' && txFrom?.id) {
-            fromName = userMap.get(txFrom.id) || txFrom.id;
+          let fromName = tx.fromName;
+          if (!fromName && tx.from?.type === 'cashier' && tx.from?.id) {
+            fromName = userMap.get(tx.from.id) || tx.from.id;
           }
 
           return {
             ...tx,
             toName,
             fromName,
-            timestamp: new Date(tx.timestamp as string), // Ensure date object
+            timestamp: new Date(tx.timestamp), // Ensure date object
             performedByName: String(
               tx.performedByName ||
                 userMap.get(String(tx.performedBy || '')) ||
@@ -1121,26 +1132,22 @@ export async function fetchCashiersData(
         // Client-side sorting as a fallback/enhancement if API doesn't handle it
         if (sortConfig && users.length > 0) {
           users.sort(
-            (a: Record<string, unknown>, b: Record<string, unknown>) => {
-              let valA: unknown = a[sortConfig.key];
-              let valB: unknown = b[sortConfig.key];
+            (a: Cashier, b: Cashier) => {
+              let valA: string | number = '';
+              let valB: string | number = '';
 
               // Handle nested profile fields
               if (sortConfig.key === 'name') {
-                const aProfile = a.profile as
-                  | Record<string, string>
-                  | undefined;
-                const bProfile = b.profile as
-                  | Record<string, string>
-                  | undefined;
-                valA = `${aProfile?.firstName || ''} ${aProfile?.lastName || ''}`;
-                valB = `${bProfile?.firstName || ''} ${bProfile?.lastName || ''}`;
-              }
-
-              // Handle email field mismatch
-              if (sortConfig.key === 'email') {
-                valA = (a.emailAddress || a.email || '') as string;
-                valB = (b.emailAddress || b.email || '') as string;
+                valA = `${a.profile?.firstName || ''} ${a.profile?.lastName || ''}`;
+                valB = `${b.profile?.firstName || ''} ${b.profile?.lastName || ''}`;
+              } else if (sortConfig.key === 'email') {
+                // Handle email field mismatch
+                valA = a.emailAddress || '';
+                valB = b.emailAddress || '';
+              } else {
+                const key = sortConfig.key as keyof Cashier;
+                valA = String(a[key] ?? '');
+                valB = String(b[key] ?? '');
               }
 
               const strA: string | number =
@@ -1713,19 +1720,6 @@ export async function handleCreateCashier(cashierData: {
 }
 
 /**
- * Generate a temporary password
- */
-function generateTempPassword(): string {
-  const chars =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  for (let charIndex = 0; charIndex < 12; charIndex++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
-/**
  * Handle reset cashier password operation
  */
 export async function handleResetCashierPassword(
@@ -1753,280 +1747,5 @@ export async function handleResetCashierPassword(
   }
 }
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-/**
- * Calculate end-of-day metrics
- */
-export function calculateEndOfDayMetrics(reportData: {
-  denominationBreakdown: Record<string, number>;
-  midDaySoftCounts: SoftCount[];
-  endOfDaySoftCounts: SoftCount[];
-  cashierFloats: CashierFloat[];
-  vaultBalance: VaultBalance;
-  floatRequests: FloatRequest[];
-  metrics?: VaultMetrics | null;
-}) {
-  const {
-    denominationBreakdown,
-    midDaySoftCounts,
-    endOfDaySoftCounts,
-    cashierFloats,
-    vaultBalance,
-    floatRequests,
-    metrics: apiMetrics,
-  } = reportData;
-
-  // Process denomination breakdown (calculate total value)
-  const totalDenominationValue = Object.entries(denominationBreakdown).reduce(
-    (sum, [denom, count]) => sum + Number(denom) * count,
-    0
-  );
-
-  const totalDenominationCount = Object.values(denominationBreakdown).reduce(
-    (sum, countItem) => sum + countItem,
-    0
-  );
-
-  const midDaySum = midDaySoftCounts.reduce(
-    (sum, softCountItem) => sum + (softCountItem.amount || 0),
-    0
-  );
-  const endOfDaySum = endOfDaySoftCounts.reduce(
-    (sum, softCountItem) => sum + (softCountItem.amount || 0),
-    0
-  );
-  const totalMachineBalance = midDaySum + endOfDaySum;
-
-  const totalCashierFloat = cashierFloats.reduce(
-    (sum, floatItem) => sum + (floatItem.balance || 0),
-    0
-  );
-
-  const totalFloatRequests = floatRequests.reduce(
-    (sum, requestItem) => sum + (requestItem.requestedAmount || 0),
-    0
-  );
-
-  // Use values from API metrics if available (these are real-time queried sums for the gaming day)
-  const totalInflows = apiMetrics?.totalCashIn || 0;
-  const totalOutflows = apiMetrics?.totalCashOut || 0;
-  const totalExpenses =
-    (apiMetrics as Record<string, number> | undefined)?.expenses || 0;
-  const totalPayouts = apiMetrics?.payouts || 0; // Note: This might be count or amount depending on API implementation
-
-  return {
-    totalDenominationValue,
-    totalDenominationCount,
-    totalMachineBalance,
-    totalCashierFloat,
-    totalCashDeskFloat: totalCashierFloat,
-    totalFloatRequests,
-    vaultBalance: vaultBalance?.balance || 0,
-    totalOnPremises:
-      (vaultBalance?.balance || 0) + totalMachineBalance + totalCashierFloat,
-    systemBalance: vaultBalance?.balance || 0,
-    totalInflows,
-    totalOutflows,
-    totalExpenses,
-    totalPayouts,
-    physicalCount: vaultBalance?.physicalCount ?? (vaultBalance?.balance || 0),
-    variance: vaultBalance?.variance || 0,
-    floatRequestsCount: floatRequests.length,
-  };
-}
-
-/**
- * Sort transfers
- */
-export function sortTransfers(
-  transfers: VaultTransfer[],
-  sortOption: string,
-  sortOrder: 'asc' | 'desc'
-) {
-  return [...transfers].sort((a, b) => {
-    let aValue: string | number;
-    let bValue: string | number;
-
-    switch (sortOption) {
-      case 'date':
-        aValue = new Date(a.date || a.createdAt || '').getTime();
-        bValue = new Date(b.date || b.createdAt || '').getTime();
-        break;
-      case 'from':
-        aValue = (a.from || '').toLowerCase();
-        bValue = (b.from || '').toLowerCase();
-        break;
-      case 'to':
-        aValue = (a.to || '').toLowerCase();
-        bValue = (b.to || '').toLowerCase();
-        break;
-      case 'amount':
-        aValue = a.amount;
-        bValue = b.amount;
-        break;
-      case 'initiatedBy':
-        aValue = (a.initiatedBy || '').toLowerCase();
-        bValue = (b.initiatedBy || '').toLowerCase();
-        break;
-      case 'approvedBy':
-        aValue = (a.approvedBy || '').toLowerCase();
-        bValue = (b.approvedBy || '').toLowerCase();
-        break;
-      case 'status':
-        aValue = a.status;
-        bValue = b.status;
-        break;
-      default:
-        return 0;
-    }
-
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-}
-
-/**
- * Handle PDF export (placeholder)
- */
-export function handleExportPDF() {
-  console.log('PDF export will be implemented');
-}
-
-/**
- * Handle CSV export (placeholder)
- */
-export function handleExportCSV() {
-  console.log('CSV export will be implemented');
-}
-
-/**
- * Handle print (placeholder)
- */
-export function handlePrint() {
-  console.log('Print functionality will be implemented');
-}
-
-/**
- * Format notification click actions
- */
-export function handleNotificationClick(notification: NotificationItem) {
-  switch (notification.type) {
-    case 'shift_review':
-      console.log('Navigate to shift review:', notification);
-      break;
-    case 'float_request':
-      console.log('Navigate to float requests:', notification);
-      break;
-    default:
-      console.log('Unknown notification type:', notification);
-  }
-}
-/**
- * Get badge configuration for a transaction type
- * Used by transaction history and audit trail components
- *
- * @param type - Transaction type
- * @returns Object with label, icon, and className for Badge component
- */
-export function getTransactionTypeBadge(type: string): {
-  label: string;
-  icon: 'arrow-up' | 'arrow-down' | 'receipt' | 'none';
-  className: string;
-} {
-  switch (type) {
-    case 'vault_open':
-      return {
-        label: 'Vault Open',
-        icon: 'none',
-        className:
-          'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50',
-      };
-    case 'vault_close':
-      return {
-        label: 'Outflow',
-        icon: 'arrow-up',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    case 'cashier_shift_open':
-      return {
-        label: 'Outflow',
-        icon: 'arrow-up',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    case 'cashier_shift_close':
-      return {
-        label: 'Cashier Shift Close',
-        icon: 'none',
-        className:
-          'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-50',
-      };
-    case 'float_increase':
-      return {
-        label: 'Outflow',
-        icon: 'arrow-up',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    case 'float_decrease':
-      return {
-        label: 'Inflow',
-        icon: 'arrow-down',
-        className: 'bg-button text-white hover:bg-button/90',
-      };
-    case 'payout':
-      return {
-        label: 'Outflow',
-        icon: 'arrow-up',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    case 'machine_collection':
-      return {
-        label: 'Inflow',
-        icon: 'arrow-down',
-        className: 'bg-button text-white hover:bg-button/90',
-      };
-    case 'soft_count':
-      return {
-        label: 'Inflow',
-        icon: 'arrow-down',
-        className: 'bg-button text-white hover:bg-button/90',
-      };
-    case 'expense':
-      return {
-        label: 'Expense',
-        icon: 'receipt',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    case 'vault_reconciliation':
-      return {
-        label: 'Vault Reconciliation',
-        icon: 'none',
-        className:
-          'bg-violet-50 text-violet-700 border-violet-100 hover:bg-violet-50',
-      };
-    case 'add_cash':
-      return {
-        label: 'Inflow',
-        icon: 'arrow-down',
-        className: 'bg-button text-white hover:bg-button/90',
-      };
-    case 'remove_cash':
-      return {
-        label: 'Outflow',
-        icon: 'arrow-up',
-        className: 'bg-red-600 text-white hover:bg-red-600/90',
-      };
-    default:
-      return {
-        label: type
-          .split('_')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' '),
-        icon: 'none',
-        className: 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50',
-      };
-  }
-}
+// Utility functions (calculateEndOfDayMetrics, sortTransfers, getTransactionTypeBadge, etc.)
+// are now exported from lib/helpers/vault/vaultCalculationHelpers.ts

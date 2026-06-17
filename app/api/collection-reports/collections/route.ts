@@ -1,1716 +1,474 @@
 /**
  * Collections API Route
  *
- * This route handles CRUD operations for machine collections.
- * It supports:
- * - Fetching collections with filtering, searching, and pagination
- * - Creating new collections with SAS metrics calculation
- * - Updating collections with recalculation of metrics
- * - Deleting collections with machine meter reversion
- * - Role-based access control
- * - Location-based filtering
- * - Activity logging
+ * Handles CRUD operations for machine collections with SAS metrics
+ * calculation, movement tracking, role-based access, and activity logging.
  *
  * @module app/api/collection-reports/collections/route
  */
 
+import { createCollectionWithCalculations } from '@/app/api/lib/helpers/collectionReport/creation'
 import {
-  calculateChanges,
-  logActivity,
-  mapDeletedFieldsToChanges,
-} from '@/app/api/lib/helpers/activityLogger';
+  buildCollectionData,
+  detectCollectionChanges,
+  handleRamClearToggle,
+  logCollectionActivity,
+  normalizeCollectionDates,
+  propagateSingleCollectionDeletion,
+  recalculateSasMetricsForPatch,
+  resolvePreviousMetersForPatch,
+  runPostUpdatePropagation,
+} from '@/app/api/lib/helpers/collectionReport/collectionOperations'
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter'
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users'
+import { connectDB } from '@/app/api/lib/middleware/db'
+import { Collections } from '@/app/api/lib/models/collections'
+import { Machine } from '@/app/api/lib/models/machines'
 import {
-  calculateSasMetrics,
-  createCollectionWithCalculations,
-  getSasTimePeriod,
-} from '@/app/api/lib/helpers/collectionReport/creation';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Collections } from '@/app/api/lib/models/collections';
-import { Machine } from '@/app/api/lib/models/machines';
-import {
-  logRouteFetch,
+  extractUserFromRequest,
   logRouteCreate,
-  logRouteUpdate,
   logRouteDelete,
   logRouteError,
-  extractUserFromRequest,
-} from '@/app/api/lib/utils/routeLogger';
+  logRouteFetch,
+  logRouteUpdate,
+} from '@/app/api/lib/utils/routeLogger'
 import type {
   CollectionDocument,
   CreateCollectionPayload,
-} from '@/lib/types/collection';
-import { generateMongoId } from '@/lib/utils/id';
-import { getClientIP } from '@/lib/utils/ipAddress';
-import { NextRequest, NextResponse } from 'next/server';
-import type { GamingMachine } from '@shared/types';
-import type { LocationDocument } from '@/lib/types/common';
+} from '@/lib/types/collection'
+import type { GamingMachine } from '@shared/types'
+import { NextRequest, NextResponse } from 'next/server'
 
-// Ensure this route is handled by Node.js runtime (not Edge)
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+const ROUTE_PATH = '/api/collection-reports/collections'
+
+// ============================================================================
+// GET — Fetch collections with filtering, searching, and pagination
+// ============================================================================
 
 /**
- * Main GET handler for fetching collections
- *
- * @param {string} locationReportId - Filter by specific location report ID
+ * @param {string} locationReportId - Filter by location report ID
  * @param {string} location - Filter by location name or ID
- * @param {string} collector - Filter by collector user ID
- * @param {boolean} isCompleted - Filter by completion status
- * @param {boolean} incompleteOnly - If true, returns only unlinked collections
+ * @param {string} licencee - Filter by licencee
  * @param {string} machineId - Filter by machine ID
- * @param {string} beforeTimestamp - ISO date to filter previous collections
- * @param {number} limit - Maximum results to return
+ * @param {boolean} incompleteOnly - Only unlinked collections
+ * @param {string} beforeTimestamp - ISO date for previous collections
  * @param {string} sortBy - Field to sort by
- * @param {string} sortOrder - Sort direction ('asc', 'desc')
- * @param {string} licencee - Filter by licencee name
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse query parameters
- * 3. Get user's accessible licencees and permissions
- * 4. Determine allowed location IDs
- * 5. Build filter query
- * 6. Apply sorting and pagination
- * 7. Execute query
- * 8. Return collections
+ * @param {string} sortOrder - Sort direction
+ * @param {number} limit - Maximum results
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'GET /api/collection-reports/collections';
-  const logUser = extractUserFromRequest(req);
+  const startTime = Date.now()
+  const functionName = 'GET /api/collection-reports/collections'
+  const logUser = extractUserFromRequest(req)
 
   try {
-    // ============================================================================
     // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+    await connectDB()
 
-    // ============================================================================
     // STEP 2: Parse query parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const locationReportId = searchParams.get('locationReportId');
-    const location =
-      searchParams.get('location') || searchParams.get('locationId'); // Accept both location and locationId
-    const collector = searchParams.get('collector');
-    const isCompleted = searchParams.get('isCompleted');
-    const incompleteOnly = searchParams.get('incompleteOnly');
-    const machineId = searchParams.get('machineId');
-    const beforeTimestamp = searchParams.get('beforeTimestamp');
-    const limit = searchParams.get('limit');
-    const sortBy = searchParams.get('sortBy');
-    const sortOrder = searchParams.get('sortOrder');
+    const { searchParams } = new URL(req.url)
+    const locationReportId = searchParams.get('locationReportId')
+    const location = searchParams.get('location') || searchParams.get('locationId')
+    const collector = searchParams.get('collector')
+    const isCompleted = searchParams.get('isCompleted')
+    const incompleteOnly = searchParams.get('incompleteOnly')
+    const machineId = searchParams.get('machineId')
+    const beforeTimestamp = searchParams.get('beforeTimestamp')
+    const limit = searchParams.get('limit')
+    const sortBy = searchParams.get('sortBy')
+    const sortOrder = searchParams.get('sortOrder')
 
-    // ============================================================================
     // STEP 3: Get user's accessible licencees and permissions
-    // ============================================================================
-    // SECURITY: Get user's accessible locations to prevent data leakage
-    const user = await getUserFromServer();
+    const user = await getUserFromServer()
     if (!user) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/collection-reports/collections',
-        'Unauthorized',
-        logUser
-      );
-      console.error('[Collections API GET] 401 — no user session');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      logRouteError(functionName, 'GET', ROUTE_PATH, 'Unauthorized', logUser)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const userRoles = (user.roles as string[]) || [];
-    // Use only new field
-    let userAccessibleLicencees: string[] = [];
-    if (
-      Array.isArray(
-        (user as { assignedLicencees?: string[] })?.assignedLicencees
-      )
-    ) {
-      userAccessibleLicencees = (user as { assignedLicencees: string[] })
-        .assignedLicencees;
-    }
-    // Use only new field
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (user as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (user as { assignedLocations: string[] })
-        .assignedLocations;
-    }
-    const isAdmin =
-      userRoles.includes('admin') ||
-      userRoles.includes('developer') ||
-      userRoles.includes('owner');
+    const userRoles = (user.roles as string[]) || []
+    const userAccessibleLicencees = (user as { assignedLicencees?: string[] }).assignedLicencees || []
+    const userLocationPermissions = (user as { assignedLocations?: string[] }).assignedLocations || []
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner')
+    const licencee = searchParams.get('licencee')
 
-    // Support both licencee spellings
-    const licencee = searchParams.get('licencee');
-
-    // ============================================================================
     // STEP 4: Determine allowed location IDs
-    // ============================================================================
-    // Get allowed locations for this user
     const allowedLocationIds = await getUserLocationFilter(
       isAdmin ? 'all' : userAccessibleLicencees,
       licencee || undefined,
       userLocationPermissions,
       userRoles
-    );
+    )
 
-    // ============================================================================
-    // STEP 4.5: Resolve allowed location IDs to Names
-    // ============================================================================
-    // The Collections model stores location NAMES, not IDs.
-    // We must convert the allowed IDs to names for the query to work.
-    let allowedLocationNames: string[] | 'all' = 'all';
-
-    if (allowedLocationIds !== 'all') {
-      if (allowedLocationIds.length === 0) {
-        return NextResponse.json([]);
-      }
-
-      // Get location names from location IDs
-      const GamingLocations = (
-        await import('@/app/api/lib/models/gaminglocations')
-      ).GamingLocations;
-      const locations = await GamingLocations.find({
-        _id: { $in: allowedLocationIds },
-      })
-        .select('name')
-        .lean<LocationDocument[]>();
-
-      allowedLocationNames = locations.map(loc => loc.name);
-
-      // If we found no matching locations for the IDs, user effectively has no access
-      if (allowedLocationNames.length === 0) {
-        return NextResponse.json([]);
-      }
-    }
-
-    // ============================================================================
     // STEP 5: Build filter query
-    // ============================================================================
-    const filter: Record<string, unknown> = {};
-    if (locationReportId) filter.locationReportId = locationReportId;
+    const filter: Record<string, unknown> = {}
+    if (locationReportId) filter.locationReportId = locationReportId
 
-    // CRITICAL: Filter by location parameter AND user's accessible locations
     if (location) {
-      // Check if user has access to this specific location
-      if (allowedLocationNames === 'all') {
-        filter.location = location;
-      } else if (allowedLocationNames.includes(location)) {
-        filter.location = location;
+      if (allowedLocationIds === 'all' || allowedLocationIds.includes(location)) {
+        filter.location = location
       } else {
-        // User requested a location they don't have access to
-        return NextResponse.json([]); // Return empty array
+        return NextResponse.json([])
       }
-    } else {
-      // No specific location requested - filter by all accessible locations
-      if (allowedLocationNames !== 'all') {
-        filter.location = { $in: allowedLocationNames };
-      }
+    } else if (allowedLocationIds !== 'all') {
+      filter.location = { $in: allowedLocationIds }
     }
 
-    if (collector) filter.collector = collector;
-    if (isCompleted !== null && isCompleted !== undefined)
-      filter.isCompleted = isCompleted === 'true';
-    if (machineId) filter.machineId = machineId;
+    if (collector) filter.collector = collector
+    if (isCompleted !== null && isCompleted !== undefined) filter.isCompleted = isCompleted === 'true'
+    if (machineId) filter.machineId = machineId
 
-    // If incompleteOnly is true, only return incomplete collections with empty locationReportId
-    // SECURITY: Incomplete collections are location-specific based on user's assigned locations
     if (incompleteOnly === 'true') {
-      filter.isCompleted = false;
-      filter.locationReportId = '';
-
-      // CRITICAL: Filter by location NAME (not collector)
-      // Collection.location field stores the gaming location NAME, not ID
-      // We need to get the names of user's accessible locations
+      filter.isCompleted = false
+      filter.locationReportId = ''
       if (allowedLocationIds !== 'all') {
-        // Get location names from location IDs
-        const GamingLocations = (
-          await import('@/app/api/lib/models/gaminglocations')
-        ).GamingLocations;
-        const locations = await GamingLocations.find({
-          _id: { $in: allowedLocationIds },
-        })
-          .select('name')
-          .lean<LocationDocument[]>();
-
-        const locationNames = locations.map(loc => loc.name);
-
-        if (locationNames.length > 0) {
-          filter.location = { $in: locationNames }; // ✅ Filter by location names
-        } else {
-          // User has no accessible locations
-          filter.location = 'IMPOSSIBLE_LOCATION_NAME'; // Force empty result
-        }
+        filter.location = allowedLocationIds.length > 0
+          ? { $in: allowedLocationIds }
+          : 'IMPOSSIBLE_LOCATION'
       }
-      // If allowedLocationIds === 'all', don't add location filter (admin/developer sees all)
     }
 
-    // Support querying for collections before a specific timestamp (for historical prevIn/prevOut)
-    if (beforeTimestamp) {
-      filter.timestamp = { $lt: new Date(beforeTimestamp) };
-    }
+    if (beforeTimestamp) filter.timestamp = { $lt: new Date(beforeTimestamp) }
 
-    // ============================================================================
     // STEP 6: Apply sorting and pagination
-    // ============================================================================
-    // Always include soft-deleted documents in queries (as per user preference)
-    let query = Collections.find(filter);
+    let query = Collections.find(filter)
+    if (sortBy) query = query.sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
+    if (limit) query = query.limit(parseInt(limit, 10))
 
-    // Apply sorting if specified
-    if (sortBy) {
-      const sortDirection = sortOrder === 'desc' ? -1 : 1;
-      query = query.sort({ [sortBy]: sortDirection });
-    }
-
-    // Apply limit if specified
-    if (limit) {
-      query = query.limit(parseInt(limit, 10));
-    }
-
-    // ============================================================================
-    // STEP 7: Execute query
-    // ============================================================================
-    const collections = await query.lean<CollectionDocument[]>();
-
-    // ============================================================================
-    // STEP 8: Return collections
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/collection-reports/collections',
-      collections.length,
-      logUser,
-      duration
-    );
-    if (duration > 1000) {
-      console.warn(`[Collections GET API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json(collections);
+    // STEP 7: Execute query and return
+    const collections = await query.lean<CollectionDocument[]>()
+    const duration = Date.now() - startTime
+    logRouteFetch(functionName, 'GET', ROUTE_PATH, collections.length, logUser, duration)
+    if (duration > 1000) console.warn(`[Collections GET] Completed in ${duration}ms`)
+    return NextResponse.json(collections)
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch collections';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/collection-reports/collections',
-      errorMessage,
-      logUser
-    );
-    console.error(
-      `[Collections API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch collections'
+    logRouteError(functionName, 'GET', ROUTE_PATH, errorMessage, logUser)
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
+// ============================================================================
+// POST — Create a new collection with SAS metrics calculation
+// ============================================================================
+
 /**
- * Main POST handler for creating a new collection
- *
- * @body {string} machineId - REQUIRED. The MongoDB ID of the machine being collected
- * @body {string} location - REQUIRED. The name of the gaming location
- * @body {string} collector - Optional. User ID of collector (defaults to current user)
- * @body {number} metersIn - REQUIRED. Current meter reading for currency in
- * @body {number} metersOut - REQUIRED. Current meter reading for currency out
- * @body {string} locationReportId - Optional. Links collection to an existing report
- * @body {string} timestamp - Optional. ISO date string for when the collection occurred
- * @body {string} collectionTime - Optional. ISO date string specifically for collection timing
- * @body {string} sasStartTime - Optional. Manual override for SAS data window start
- * @body {string} sasEndTime - Optional. Manual override for SAS data window end
- * @body {boolean} ramClear - Optional. Flag indicating if a RAM clear occurred
- * @body {number} ramClearMetersIn - Optional. Starting meter in after RAM clear
- * @body {number} ramClearMetersOut - Optional. Starting meter out after RAM clear
- * @body {number} prevIn - Optional. Manual override for previous meter in reading
- * @body {number} prevOut - Optional. Manual override for previous meter out reading
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse and validate request body
- * 3. Validate required fields
- * 4. Get machine details
- * 5. Extract SAS times from payload
- * 6. Calculate SAS metrics and movement
- * 7. Create collection document
- * 8. Save collection to database
- * 9. Log activity
- * 10. Return created collection
+ * @body {string} machineId - Machine ID
+ * @body {string} location - Location name
+ * @body {number} metersIn - Current meter in reading
+ * @body {number} metersOut - Current meter out reading
+ * @body {string} [collector] - Collector user ID
+ * @body {string} [locationReportId] - Links to existing report
+ * @body {string} [timestamp] - Collection timestamp
+ * @body {boolean} [ramClear] - RAM clear flag
  */
 export async function POST(req: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'POST /api/collection-reports/collections';
-  const user = extractUserFromRequest(req);
+  const startTime = Date.now()
+  const functionName = 'POST /api/collection-reports/collections'
+  const user = extractUserFromRequest(req)
 
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate request
-    // ============================================================================
-    const apiUser = await getUserFromServer();
+    // STEP 1: Connect and authenticate
+    await connectDB()
+    const apiUser = await getUserFromServer()
     if (!apiUser) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/collection-reports/collections',
-        'Unauthorized',
-        user
-      );
-      console.error('[Collections API POST] Unauthorized — no user session');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      logRouteError(functionName, 'POST', ROUTE_PATH, 'Unauthorized', user)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ============================================================================
-    // STEP 2.5: Parse and validate request body
-    // ============================================================================
-    const payload: CreateCollectionPayload = await req.json();
-
-    // ============================================================================
-    // STEP 3: Validate required fields
-    // ============================================================================
-    // Fall back to the authenticated user's ID if the client didn't send collector
-    // (handles the case where userId hasn't loaded yet on the frontend)
-    const effectiveCollector = payload.collector || String(apiUser._id);
-
+    // STEP 2: Parse and validate
+    const payload: CreateCollectionPayload = await req.json()
+    const effectiveCollector = payload.collector || String(apiUser._id)
     const missingFields = [
       !payload.machineId && 'machineId',
       !payload.location && 'location',
       !effectiveCollector && 'collector',
-    ].filter(Boolean) as string[];
+    ].filter(Boolean) as string[]
 
     if (missingFields.length > 0) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/collection-reports/collections',
-        `Missing required fields: ${missingFields.join(', ')}`,
-        user
-      );
-      console.error(
-        '[Collections API POST] 400 — missing required fields:',
-        missingFields,
-        {
-          machineId: payload.machineId,
-          location: payload.location,
-          collector: payload.collector,
-        }
-      );
-      return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
-        { status: 400 }
-      );
+      logRouteError(functionName, 'POST', ROUTE_PATH, `Missing: ${missingFields.join(', ')}`, user)
+      return NextResponse.json({ error: `Missing required fields: ${missingFields.join(', ')}` }, { status: 400 })
     }
 
-    // CRITICAL: Do NOT generate locationReportId when adding machines to the list
-    // locationReportId should only be set when the collection report is actually created
-    // This prevents orphaned collections and ensures proper timing
-    let finalLocationReportId = payload.locationReportId;
-    if (!finalLocationReportId || finalLocationReportId.trim() === '') {
-      // Keep it empty - will be set when report is created
-      finalLocationReportId = '';
+    let finalLocationReportId = payload.locationReportId?.trim() || ''
+
+    if (typeof payload.metersIn !== 'number' || typeof payload.metersOut !== 'number') {
+      logRouteError(functionName, 'POST', ROUTE_PATH, 'Invalid meters', user)
+      return NextResponse.json({ error: 'metersIn and metersOut must be valid numbers' }, { status: 400 })
     }
 
-    if (
-      typeof payload.metersIn !== 'number' ||
-      typeof payload.metersOut !== 'number'
-    ) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/collection-reports/collections',
-        'metersIn and metersOut must be valid numbers',
-        user
-      );
-      console.error(
-        '[Collections API POST] 400 — metersIn/metersOut not numbers:',
-        { metersIn: payload.metersIn, metersOut: payload.metersOut }
-      );
-      return NextResponse.json(
-        { error: 'metersIn and metersOut must be valid numbers' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Get machine details
-    // ============================================================================
-    // Get machine details for additional fields
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({
-      _id: payload.machineId,
-    }).lean<GamingMachine>();
+    // STEP 3: Get machine
+    const machine = await Machine.findOne({ _id: payload.machineId }).lean<GamingMachine>()
     if (!machine) {
-      console.error(
-        '[Collections API POST] 404 — machine not found:',
-        payload.machineId
-      );
-      return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Machine not found' }, { status: 404 })
     }
 
-    // Safely access machine properties with type assertion
-    const machineData = machine as Record<string, unknown>;
-
-    // ============================================================================
-    // STEP 5: Extract and normalize dates from payload
-    // ============================================================================
-    // Extract SAS times from payload for backend calculation
-    const payloadWithSasMeters = payload as CreateCollectionPayload & {
-      sasMeters?: { sasStartTime?: string | Date; sasEndTime?: string | Date };
-    };
-
-    // Ensure all date-like fields are actual Date objects
-    const rawSasStartTime =
-      payloadWithSasMeters.sasMeters?.sasStartTime ??
-      payload.sasStartTime ??
-      undefined;
-    const rawSasEndTime =
-      payloadWithSasMeters.sasMeters?.sasEndTime ??
-      payload.sasEndTime ??
-      (payload.timestamp ? new Date(payload.timestamp) : undefined);
-
-    // Convert to Date objects if they are strings
-    const sasStartTime = rawSasStartTime
-      ? typeof rawSasStartTime === 'string'
-        ? new Date(rawSasStartTime)
-        : rawSasStartTime
-      : undefined;
-    const sasEndTime = rawSasEndTime
-      ? typeof rawSasEndTime === 'string'
-        ? new Date(rawSasEndTime)
-        : rawSasEndTime
-      : undefined;
-
+    // STEP 4: Normalize dates and calculate metrics
+    const normalizedDates = normalizeCollectionDates(payload)
     const calculationPayload: Record<string, unknown> = {
       ...payload,
-      sasStartTime,
-      sasEndTime,
-      timestamp: payload.timestamp
-        ? typeof payload.timestamp === 'string'
-          ? new Date(payload.timestamp)
-          : new Date(payload.timestamp)
-        : new Date(),
-      collectionTime: payload.collectionTime
-        ? typeof payload.collectionTime === 'string'
-          ? new Date(payload.collectionTime)
-          : new Date(payload.collectionTime)
-        : payload.timestamp
-          ? typeof payload.timestamp === 'string'
-            ? new Date(payload.timestamp)
-            : new Date(payload.timestamp)
-          : new Date(),
-    };
-
-    // ============================================================================
-    // STEP 6: Calculate SAS metrics and movement
-    // ============================================================================
-    // Calculate SAS metrics, movement, and update machine
-    const {
-      sasMeters,
-      movement,
-      previousMeters,
-      locationReportId: calculatedLocationReportId,
-    } = await createCollectionWithCalculations(calculationPayload);
-
-    // Use the calculated locationReportId if one was generated during the calculation
-    if (
-      calculatedLocationReportId &&
-      calculatedLocationReportId !== finalLocationReportId
-    ) {
-      finalLocationReportId = calculatedLocationReportId;
+      sasStartTime: normalizedDates.sasStartTime,
+      sasEndTime: normalizedDates.sasEndTime,
+      timestamp: normalizedDates.timestamp,
+      collectionTime: normalizedDates.collectionTime,
     }
 
-    // ============================================================================
-    // STEP 7: Create collection document
-    // ============================================================================
+    const { sasMeters, movement, previousMeters, locationReportId: calculatedLocationReportId } =
+      await createCollectionWithCalculations(calculationPayload)
 
-    // Create collection document with all calculated fields
-    const collectionData = {
-      _id: await generateMongoId(),
-      isCompleted: calculationPayload.isCompleted ?? false,
-      metersIn: calculationPayload.metersIn,
-      metersOut: calculationPayload.metersOut,
-      // CRITICAL: Use client-provided prevIn/prevOut if available, otherwise use calculated values
-      // This ensures accuracy when client has the correct previous meter values
-      prevIn:
-        calculationPayload.prevIn !== undefined
-          ? calculationPayload.prevIn
-          : previousMeters.metersIn,
-      prevOut:
-        calculationPayload.prevOut !== undefined
-          ? calculationPayload.prevOut
-          : previousMeters.metersOut,
-      softMetersIn: calculationPayload.metersIn,
-      softMetersOut: calculationPayload.metersOut,
-      notes: calculationPayload.notes || '',
-      timestamp: calculationPayload.timestamp,
-      collectionTime: calculationPayload.collectionTime,
-      location: calculationPayload.location,
-      collector: effectiveCollector,
-      locationReportId: finalLocationReportId,
-      sasMeters: {
-        machine:
-          (machineData.serialNumber as string) ||
-          (machineData.custom as { name?: string })?.name ||
-          (machineData.machineName as string) ||
-          calculationPayload.machineId,
-        drop: sasMeters.drop,
-        totalCancelledCredits: sasMeters.totalCancelledCredits,
-        gross: sasMeters.gross,
-        gamesPlayed: sasMeters.gamesPlayed,
-        jackpot: sasMeters.jackpot,
-        sasStartTime: sasMeters.sasStartTime,
-        sasEndTime: sasMeters.sasEndTime,
-      },
-      movement: {
-        metersIn: movement.metersIn,
-        metersOut: movement.metersOut,
-        gross: movement.gross,
-      },
-      machineCustomName:
-        calculationPayload.machineCustomName ||
-        (machineData.custom as { name?: string })?.name ||
-        (machineData.machineName as string) ||
-        (machineData.serialNumber as string) ||
-        'Unknown Machine',
-      custom: {
-        name:
-          calculationPayload.machineCustomName ||
-          (machineData.custom as { name?: string })?.name ||
-          (machineData.machineName as string) ||
-          (machineData.serialNumber as string) ||
-          'Unknown Machine',
-      },
-      machineId: calculationPayload.machineId,
-      machineName:
-        calculationPayload.machineName ||
-        (machineData.custom as { name?: string })?.name ||
-        (machineData.machineName as string) ||
-        (machineData.serialNumber as string) ||
-        'Unknown Machine',
-      game:
-        (machineData.game as string) ||
-        (machineData.installedGame as string) ||
-        '',
-      ramClear: calculationPayload.ramClear || false,
-      ramClearMetersIn: calculationPayload.ramClearMetersIn,
-      ramClearMetersOut: calculationPayload.ramClearMetersOut,
-      serialNumber:
-        calculationPayload.serialNumber ||
-        (machineData.serialNumber as string) ||
-        '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // ============================================================================
-    // STEP 8: Save collection to database
-    // ============================================================================
-    // Create the collection
-    const created = await Collections.create(collectionData);
-
-    // CRITICAL: Do NOT create collection history entries when adding machines to the list
-    // Collection history entries should only be created when the user presses "Create Report"
-    // This prevents duplicate history entries and ensures proper timing
-
-    // ============================================================================
-    // STEP 9: Log activity
-    // ============================================================================
-    // Reuse the apiUser already fetched in step 2 — no need for a second DB call
-    const currentUser = apiUser;
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = calculateChanges(
-          {},
-          created.toObject ? created.toObject() : created
-        ).filter(
-          c =>
-            ![
-              '_id',
-              '__v',
-              'createdAt',
-              'updatedAt',
-              'collector',
-              'locationReportId',
-              'isCompleted',
-            ].includes(c.field)
-        );
-
-        await logActivity({
-          action: 'CREATE',
-          details: `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`,
-          ipAddress: getClientIP(req) || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            resource: 'collection',
-            resourceId: created._id.toString(),
-            resourceName: `${created.machineCustomName || created.machineName || payload.machineId} at ${payload.location}`,
-            userId: currentUser._id as string,
-            username: currentUser.emailAddress as string,
-            changes: changes,
-            previousData: null,
-            newData: created,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
+    if (calculatedLocationReportId && calculatedLocationReportId !== finalLocationReportId) {
+      finalLocationReportId = calculatedLocationReportId
     }
 
-    // ============================================================================
-    // STEP 10: Return created collection
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/collection-reports/collections',
-      1,
-      user,
-      duration
-    );
-    if (duration > 1000) {
-      console.warn(`[Collections POST API] Completed in ${duration}ms`);
+    // OFFLINE SMIB: calculateSasMetrics returns gross=0 when no live meters exist.
+    // Storing gross=0 causes computeTotalVariation to produce a phantom variation equal to
+    // movement.gross. For offline machines collector-entered values are the source of truth
+    // for both movement and SAS — variation must be $0.
+    const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000
+    const hasRelay = !!machine.relayId?.trim()
+    const isOfflineMachine =
+      hasRelay &&
+      (!machine.lastActivity ||
+        Date.now() - new Date(machine.lastActivity).getTime() >= OFFLINE_THRESHOLD_MS)
+    if (isOfflineMachine) {
+      sasMeters.drop = movement.metersIn
+      sasMeters.totalCancelledCredits = movement.metersOut
+      sasMeters.gross = movement.gross
     }
+
+    // STEP 5: Build and save
+    const collectionData = await buildCollectionData(
+      calculationPayload, machine, sasMeters, movement,
+      previousMeters, effectiveCollector, finalLocationReportId
+    )
+    const created = await Collections.create(collectionData)
+
+    // STEP 6: Log activity and return
+    const createdObj = created.toObject ? created.toObject() : created
+    await logCollectionActivity('CREATE', createdObj as CollectionDocument, req, null, createdObj as Record<string, unknown>,
+      `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`)
+
+    const duration = Date.now() - startTime
+    logRouteCreate(functionName, 'POST', ROUTE_PATH, 1, user, duration)
+    if (duration > 1000) console.warn(`[Collections POST] Completed in ${duration}ms`)
     return NextResponse.json({
       success: true,
       data: created,
-      calculations: {
-        sasMeters,
-        movement,
-        previousMeters,
-      },
-    });
+      calculations: { sasMeters, movement, previousMeters },
+    })
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to create collection';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/collection-reports/collections',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Collections API POST] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create collection'
+    logRouteError(functionName, 'POST', ROUTE_PATH, errorMessage, user)
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
+// ============================================================================
+// PATCH — Update a collection with recalculation of metrics
+// ============================================================================
+
 /**
- * Main PATCH handler for updating a collection
- *
- * @param {string} id - REQUIRED. Query param: The MongoDB ID of the collection to update
- * @body {Object} updateData - Partial collection document fields to update
- * @body {number} [updateData.metersIn] - Updated currency in reading (triggers recalculation)
- * @body {number} [updateData.metersOut] - Updated currency out reading (triggers recalculation)
- * @body {string} [updateData.timestamp] - Updated ISO date (triggers SAS window recalculation)
- * @body {string} [updateData.sasStartTime] - Manual override for SAS period start
- * @body {string} [updateData.sasEndTime] - Manual override for SAS period end
- * @body {number} [updateData.prevIn] - Manual override for previous meter in
- * @body {number} [updateData.prevOut] - Manual override for previous meter out
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse query parameters and request body
- * 3. Validate collection ID
- * 4. Get original collection data
- * 5. Check if meters or timestamp changed
- * 6. Recalculate prevIn/prevOut and movement if meters changed
- * 7. Recalculate SAS metrics if timestamp or meters changed
- * 8. Update collection document
- * 9. Log activity
- * 10. Return updated collection
+ * @param {string} id - Collection ID to update
+ * @body {Object} updateData - Partial collection fields
+ * @body {number} [updateData.metersIn] - Updated meter in
+ * @body {number} [updateData.metersOut] - Updated meter out
+ * @body {string} [updateData.timestamp] - Updated timestamp
+ * @body {string} [updateData.sasStartTime] - SAS window start override
+ * @body {string} [updateData.sasEndTime] - SAS window end override
  */
 export async function PATCH(req: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'PATCH /api/collection-reports/collections';
-  const user = extractUserFromRequest(req);
+  const startTime = Date.now()
+  const functionName = 'PATCH /api/collection-reports/collections'
+  const user = extractUserFromRequest(req)
 
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse query parameters and request body
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    // STEP 1: Connect and parse
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
     if (!id) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/collection-reports/collections',
-        'Missing id',
-        user
-      );
-      console.error('[Collections API PATCH] 400 — missing id param');
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+      logRouteError(functionName, 'PATCH', ROUTE_PATH, 'Missing id', user)
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
 
-    const updateData = await req.json();
-
-    // Convert SAS times to Date objects if they are passed as strings
+    const updateData = await req.json()
     if (updateData.sasStartTime) {
-      updateData.sasStartTime =
-        typeof updateData.sasStartTime === 'string'
-          ? new Date(updateData.sasStartTime)
-          : updateData.sasStartTime;
+      updateData.sasStartTime = typeof updateData.sasStartTime === 'string'
+        ? new Date(updateData.sasStartTime) : updateData.sasStartTime
     }
     if (updateData.sasEndTime) {
-      updateData.sasEndTime =
-        typeof updateData.sasEndTime === 'string'
-          ? new Date(updateData.sasEndTime)
-          : updateData.sasEndTime;
+      updateData.sasEndTime = typeof updateData.sasEndTime === 'string'
+        ? new Date(updateData.sasEndTime) : updateData.sasEndTime
     }
 
-    // ============================================================================
-    // STEP 3: Validate collection ID
-    // ============================================================================
-    // ============================================================================
-    // STEP 4: Get original collection data
-    // ============================================================================
-    // Get original collection data for change tracking
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const originalCollection = await Collections.findOne({ _id: id });
+    // STEP 2: Get original collection and resolve location
+    const originalCollection = await Collections.findOne({ _id: id })
     if (!originalCollection) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/collection-reports/collections',
-        `Collection not found: ${id}`,
-        user
-      );
-      console.error('[Collections API PATCH] 404 — collection not found:', id);
-      return NextResponse.json(
-        { error: 'Collection not found' },
-        { status: 404 }
-      );
+      logRouteError(functionName, 'PATCH', ROUTE_PATH, `Not found: ${id}`, user)
+      return NextResponse.json({ error: 'Collection not found' }, { status: 404 })
     }
 
-    // ============================================================================
-    // STEP 4.5: Resolve location ID and check chronological constraints
-    // ============================================================================
-    let locationId = '';
-
+    let locationId = ''
+    let patchMachineDoc: GamingMachine | null = null
     if (originalCollection.machineId) {
-      const machineDoc = await Machine.findOne({
-        _id: originalCollection.machineId,
-      }).lean<GamingMachine>();
-      if (machineDoc?.gamingLocation) {
-        locationId = String(machineDoc.gamingLocation);
-      }
+      patchMachineDoc = await Machine.findOne({ _id: originalCollection.machineId }).lean<GamingMachine>()
+      if (patchMachineDoc?.gamingLocation) locationId = String(patchMachineDoc.gamingLocation)
     }
 
-    // ============================================================================
-    // STEP 5: Check if meters or timestamp changed
-    // ============================================================================
+    // STEP 3: Detect changes
+    const { metersChanged, timestampChanged, sasTimesChanged } =
+      detectCollectionChanges(originalCollection, updateData)
 
-    // CRITICAL FIX: When editing a collection, we must recalculate prevIn/prevOut and movement
-    // If metersIn or metersOut changed, we need to recalculate everything
-    const metersChanged =
-      (updateData.metersIn !== undefined &&
-        updateData.metersIn !== originalCollection.metersIn) ||
-      (updateData.metersOut !== undefined &&
-        updateData.metersOut !== originalCollection.metersOut) ||
-      (updateData.ramClear !== undefined &&
-        updateData.ramClear !== originalCollection.ramClear) ||
-      updateData.ramClearMetersIn !== undefined ||
-      updateData.ramClearMetersOut !== undefined;
-
-    // CRITICAL FIX: When timestamp changes, we must recalculate SAS times and metrics
-    // This fixes the "Update All Dates" button issue where SAS times weren't being recalculated
-    const timestampChanged =
-      (updateData.timestamp !== undefined &&
-        new Date(updateData.timestamp).getTime() !==
-          new Date(originalCollection.timestamp).getTime()) ||
-      (updateData.collectionTime !== undefined &&
-        new Date(updateData.collectionTime).getTime() !==
-          new Date(
-            originalCollection.collectionTime || originalCollection.timestamp
-          ).getTime());
-
-    // CRITICAL FIX: When only SAS window times change (but meters/timestamp stay the same),
-    // we still need to recalculate SAS metrics for the new window.
-    // Compare incoming Date values against the nested sasMeters sub-document stored in DB.
-    const existingSasStartTime = originalCollection.sasMeters?.sasStartTime
-      ? new Date(originalCollection.sasMeters.sasStartTime as Date).getTime()
-      : null;
-    const existingSasEndTime = originalCollection.sasMeters?.sasEndTime
-      ? new Date(originalCollection.sasMeters.sasEndTime as Date).getTime()
-      : null;
-    const sasTimesChanged =
-      (updateData.sasStartTime !== undefined &&
-        new Date(updateData.sasStartTime as Date).getTime() !==
-          existingSasStartTime) ||
-      (updateData.sasEndTime !== undefined &&
-        new Date(updateData.sasEndTime as Date).getTime() !==
-          existingSasEndTime);
-
-    console.log('[Collections API PATCH] Change detection flags:', {
-      timestampChanged,
-      metersChanged,
-      sasTimesChanged,
-      updateDataSasStartTime: updateData.sasStartTime,
-      updateDataSasEndTime: updateData.sasEndTime,
-      existingSasStartTime: originalCollection.sasMeters?.sasStartTime,
-      existingSasEndTime: originalCollection.sasMeters?.sasEndTime,
-    });
-
-    // ============================================================================
-    // STEP 6: Resolve prevIn/prevOut and recalculate movement if meters changed
-    // ============================================================================
+    // STEP 4: Resolve previous meters if meters changed
     if (metersChanged) {
-      // CRITICAL: If the client explicitly provides BOTH prevIn AND prevOut we must trust
-      // them unconditionally. These values come from the edit form where the operator has
-      // already set the correct baseline. Overwriting them from a DB lookup is what was
-      // causing edits to revert — the old completed collection's metersIn/Out were being
-      // injected as prevIn/prevOut, discarding whatever the user typed.
-      const prevInProvided =
-        updateData.prevIn !== undefined && updateData.prevIn !== null;
-      const prevOutProvided =
-        updateData.prevOut !== undefined && updateData.prevOut !== null;
-
-      if (!prevInProvided || !prevOutProvided) {
-        // Both (or one) prev values are missing — fall back to DB lookup
-        const previousCollection = await Collections.findOne({
-          machineId: originalCollection.machineId,
-          timestamp: {
-            $lt:
-              originalCollection.timestamp || originalCollection.collectionTime,
-          },
-          isCompleted: true,
-          locationReportId: { $exists: true, $ne: '' },
-          $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-          _id: { $ne: id },
-        })
-          .sort({ timestamp: -1 })
-          .lean<CollectionDocument>();
-
-        if (previousCollection) {
-          if (!prevInProvided)
-            updateData.prevIn = previousCollection.metersIn ?? 0;
-          if (!prevOutProvided)
-            updateData.prevOut = previousCollection.metersOut ?? 0;
-        } else {
-          // No previous collection — first collection for the machine.
-          const editMachine = await Machine.findOne({
-            _id: originalCollection.machineId,
-          }).lean<GamingMachine>();
-          const sasM = editMachine?.sasMeters as
-            | Record<string, unknown>
-            | undefined;
-          const colM = editMachine?.collectionMeters as
-            | Record<string, unknown>
-            | undefined;
-
-          const sasIn = (sasM?.drop as number) ?? null;
-          const sasOut = (sasM?.totalCancelledCredits as number) ?? null;
-          const legacyIn = (colM?.metersIn as number) ?? null;
-          const legacyOut = (colM?.metersOut as number) ?? null;
-
-          if (!prevInProvided) {
-            // CRITICAL: Prioritize collectionMeters (manual baseline) over sasMeters
-            updateData.prevIn =
-              legacyIn !== null && legacyIn > 0 ? legacyIn : (sasIn ?? 0);
-          }
-          if (!prevOutProvided) {
-            updateData.prevOut =
-              legacyOut !== null && legacyOut > 0 ? legacyOut : (sasOut ?? 0);
-          }
-        }
-      }
-
-      // Recalculate movement using the resolved prevIn/prevOut
-      const currentMetersIn =
-        updateData.metersIn ?? originalCollection.metersIn;
-      const currentMetersOut =
-        updateData.metersOut ?? originalCollection.metersOut;
-      const ramClear = updateData.ramClear ?? originalCollection.ramClear;
-      const ramClearMetersIn =
-        updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn;
-      const ramClearMetersOut =
-        updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut;
-
-      let movementIn: number;
-      let movementOut: number;
-
-      if (ramClear) {
-        if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
-          movementIn = ramClearMetersIn - updateData.prevIn + currentMetersIn;
-          movementOut =
-            ramClearMetersOut - updateData.prevOut + currentMetersOut;
-        } else {
-          movementIn = currentMetersIn;
-          movementOut = currentMetersOut;
-        }
-      } else {
-        movementIn = currentMetersIn - updateData.prevIn;
-        movementOut = currentMetersOut - updateData.prevOut;
-      }
-
-      updateData.movement = {
-        metersIn: Number(movementIn.toFixed(2)),
-        metersOut: Number(movementOut.toFixed(2)),
-        gross: Number((movementIn - movementOut).toFixed(2)),
-      };
+      await resolvePreviousMetersForPatch(originalCollection, updateData, id)
     }
 
-    // ============================================================================
-    // STEP 7: Recalculate SAS metrics if timestamp, meters, or SAS window changed
-    // ============================================================================
-    // Trigger recalculation when:
-    //   - Main timestamp / collectionTime changed, OR
-    //   - Meter values changed (movement recalculation), OR
-    //   - SAS start/end times changed explicitly (pure window override)
+    // STEP 5: Recalculate SAS metrics if needed
     if (timestampChanged || metersChanged || sasTimesChanged) {
-      try {
-        console.log('[Collections API PATCH] Running Step 7 recalculation...');
-        // Use the new timestamp if provided, otherwise use original
-        const collectionTimestamp = updateData.timestamp
-          ? new Date(updateData.timestamp)
-          : originalCollection.timestamp;
+      await recalculateSasMetricsForPatch(originalCollection, updateData)
+    }
 
-        // When only SAS times changed, the caller is explicitly overriding the window.
-        // Pass them directly so getSasTimePeriod treats them as a fully-custom pair
-        // (bypasses the auto-detect that would re-derive start from the previous collection).
-        const customStartTime = updateData.sasStartTime
-          ? new Date(updateData.sasStartTime as Date)
-          : undefined;
-        const customEndTime = updateData.sasEndTime
-          ? new Date(updateData.sasEndTime as Date)
-          : (collectionTimestamp as Date);
-
-        console.log('[Collections API PATCH] Inputs for getSasTimePeriod:', {
-          machineId: originalCollection.machineId,
-          customStartTime,
-          customEndTime,
-        });
-
-        const { sasStartTime, sasEndTime } = await getSasTimePeriod(
-          originalCollection.machineId as string,
-          customStartTime,
-          customEndTime || (collectionTimestamp as Date)
-        );
-
-        console.log('[Collections API PATCH] Resolved SAS Time Period:', {
-          sasStartTime,
-          sasEndTime,
-        });
-
-        // Recalculate SAS metrics with the correct time window
-        const sasMetrics = await calculateSasMetrics(
-          originalCollection.machineId as string,
-          sasStartTime,
-          sasEndTime
-        );
-
+    // STEP 5.1: For offline SMIB machines, override sasMeters.gross/drop/tcc with the
+    // computed movement values. calculateSasMetrics includes the supplemental
+    // COLLECTION_REPORT meter in its query, so it returns a stale gross (from the old
+    // meter) instead of the newly-entered values. Offline = collector values are truth.
+    // Also triggers when originalCollection.meterId is set: the collection was taken while
+    // the machine was offline (supplemental meter exists) even if the relay is back online now.
+    if (updateData.sasMeters && patchMachineDoc) {
+      const hasRelay = !!patchMachineDoc.relayId?.trim()
+      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000
+      const lastActivityMs = patchMachineDoc.lastActivity
+        ? Date.now() - new Date(patchMachineDoc.lastActivity as Date).getTime()
+        : null
+      const isOfflinePatch =
+        (hasRelay &&
+          (!patchMachineDoc.lastActivity ||
+            (lastActivityMs !== null && lastActivityMs >= OFFLINE_THRESHOLD_MS))) ||
+        !!originalCollection.meterId
+      console.log(
+        '[PATCH STEP 5.1] machine=' + String(originalCollection.machineId) +
+        ' hasRelay=' + hasRelay + ' lastActivityAgo=' + (lastActivityMs !== null ? Math.round(lastActivityMs / 1000) + 's' : 'never') +
+        ' hasMeterId=' + !!originalCollection.meterId + ' isOfflinePatch=' + isOfflinePatch
+      )
+      if (isOfflinePatch) {
+        const newIn = Number(updateData.metersIn ?? originalCollection.metersIn ?? 0)
+        const newPrevIn = Number(updateData.prevIn ?? originalCollection.prevIn ?? 0)
+        const newOut = Number(updateData.metersOut ?? originalCollection.metersOut ?? 0)
+        const newPrevOut = Number(updateData.prevOut ?? originalCollection.prevOut ?? 0)
+        const newDrop = Number((newIn - newPrevIn).toFixed(2))
+        const newCancelled = Number((newOut - newPrevOut).toFixed(2))
+        const sm = updateData.sasMeters as Record<string, unknown>
+        sm.drop = newDrop
+        sm.totalCancelledCredits = newCancelled
+        sm.gross = Number((newDrop - newCancelled).toFixed(2))
         console.log(
-          '[Collections API PATCH] Recalculated SAS metrics:',
-          sasMetrics
-        );
-
-        // Convert the mongoose document to a plain object first to safely extract and spread sasMeters
-        const originalCollectionObj =
-          originalCollection &&
-          typeof originalCollection.toObject === 'function'
-            ? originalCollection.toObject()
-            : originalCollection;
-        const existingSasMetersObj = originalCollectionObj.sasMeters || {};
-
-        // Update sasMeters in the update data
-        updateData.sasMeters = {
-          ...existingSasMetersObj,
-          drop: sasMetrics.drop,
-          totalCancelledCredits: sasMetrics.totalCancelledCredits,
-          gross: sasMetrics.gross,
-          gamesPlayed: sasMetrics.gamesPlayed,
-          jackpot: sasMetrics.jackpot,
-          sasStartTime: sasMetrics.sasStartTime,
-          sasEndTime: sasMetrics.sasEndTime,
-          machine: existingSasMetersObj.machine || originalCollection.machineId,
-        };
-
-        console.log(
-          '[Collections API PATCH] Resulting updateData.sasMeters to save:',
-          updateData.sasMeters
-        );
-      } catch (sasError) {
-        console.error(
-          '[Collections API] Error recalculating SAS metrics:',
-          sasError
-        );
-        // Continue with update even if SAS calculation fails
-        // This prevents the entire update from failing
+          '[PATCH STEP 5.1] OVERRIDE machine=' + String(originalCollection.machineId) +
+          ' newIn=' + newIn + ' prevIn=' + newPrevIn + ' newOut=' + newOut + ' prevOut=' + newPrevOut +
+          ' drop=' + newDrop + ' tcc=' + newCancelled + ' gross=' + sm.gross
+        )
       }
     }
 
-    // ============================================================================
-    // STEP 7.5: Fallback — ensure sasMeters.sasEndTime / sasMeters.sasStartTime are updated
-    // ============================================================================
-    // If the SAS recalculation in step 7 ran successfully, updateData.sasMeters is already
-    // populated with correct nested sasEndTime/sasStartTime values.
-    //
-    // If step 7 was skipped (no timestamp/meter change) OR threw an error, updateData.sasMeters
-    // is not set. In that case, if the caller explicitly sent sasEndTime / sasStartTime, we must
-    // apply them to the nested sasMeters sub-document using MongoDB dot notation.
-    // We cannot add BOTH updateData.sasMeters (full object) AND a dot-notation path like
-    // 'sasMeters.sasEndTime' in the same $set — MongoDB would reject that as a conflict.
-    // So we only apply dot notation when sasMeters was NOT set by step 7.
+    // STEP 5.5: Fallback dot notation for sasMeters when recalc was skipped
     if (!updateData.sasMeters) {
-      if (updateData.sasEndTime) {
-        updateData['sasMeters.sasEndTime'] = updateData.sasEndTime;
-      }
-      if (updateData.sasStartTime) {
-        updateData['sasMeters.sasStartTime'] = updateData.sasStartTime;
-      }
+      if (updateData.sasEndTime) updateData['sasMeters.sasEndTime'] = updateData.sasEndTime
+      if (updateData.sasStartTime) updateData['sasMeters.sasStartTime'] = updateData.sasStartTime
     }
-    // Snapshot the caller-supplied sasEndTime BEFORE deletion so Step 8.5 can
-    // detect a real change and use the explicit value rather than whatever
-    // getSasTimePeriod/calculateSasMetrics may have rewritten in Step 7.
-    const explicitSasEndTime: string | Date | undefined = updateData.sasEndTime;
+    const explicitSasEndTime: string | Date | undefined = updateData.sasEndTime
+    delete updateData.sasEndTime
+    delete updateData.sasStartTime
+    delete updateData.collector
 
-    // Remove fields that should not be updated manually or by system automatically during edit
-    delete updateData.sasEndTime;
-    delete updateData.sasStartTime;
-    delete updateData.collector;
+    // STEP 6: Handle RAM clear toggle
+    const { unsetData } = await handleRamClearToggle(
+      originalCollection, updateData, locationId, explicitSasEndTime
+    )
 
-    // ============================================================================
-    // STEP 7.8: Handle RAM clear check/uncheck
-    // ============================================================================
-    const unsetData: Record<string, number> = {};
+    // STEP 7: Update collection and propagate
+    const updateQuery: Record<string, unknown> = { $set: updateData }
+    if (Object.keys(unsetData).length > 0) updateQuery.$unset = unsetData
 
-    if (originalCollection.ramClear === true && updateData.ramClear === false) {
-      console.log(
-        `[Collections PATCH] RAM clear unchecked for collection ${id}. Deleting existing meters and creating new single regular meter.`
-      );
-      const { Meters } = await import('@/app/api/lib/models/meters');
-
-      // Delete existing meters
-      if (originalCollection.meterId) {
-        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
-      }
-      if (originalCollection.ramClearMeterId) {
-        await Meters.findOneAndDelete({
-          _id: originalCollection.ramClearMeterId,
-        });
-      }
-
-      // Create new regular meter
-      const currentMeterId = await generateMongoId();
-
-      const newMetersIn =
-        updateData.metersIn ?? originalCollection.metersIn ?? 0;
-      const newMetersOut =
-        updateData.metersOut ?? originalCollection.metersOut ?? 0;
-      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
-      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
-
-      const movementIn = newMetersIn - newPrevIn;
-      const movementOut = newMetersOut - newPrevOut;
-
-      const collectionTimestamp = updateData.timestamp
-        ? new Date(updateData.timestamp)
-        : new Date(originalCollection.timestamp);
-
-      const currentMeter = {
-        _id: currentMeterId,
-        machine: originalCollection.machineId,
-        location: locationId,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: movementOut,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: movementIn,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
-        totalCancelledCredits: newMetersOut,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
-        drop: newMetersIn,
-        meterSource: 'COLLECTION_REPORT' as const,
-        readAt:
-          explicitSasEndTime !== undefined
-            ? new Date(explicitSasEndTime as Date)
-            : collectionTimestamp,
-        createdAt: new Date(),
-      };
-
-      await Meters.create(currentMeter);
-
-      updateData.meterId = currentMeterId;
-      unsetData.ramClearMeterId = 1;
-      unsetData.ramClearMetersIn = 1;
-      unsetData.ramClearMetersOut = 1;
-
-      delete updateData.ramClearMeterId;
-      delete updateData.ramClearMetersIn;
-      delete updateData.ramClearMetersOut;
-    } else if (
-      (originalCollection.ramClear === false || !originalCollection.ramClear) &&
-      updateData.ramClear === true
-    ) {
-      console.log(
-        `[Collections PATCH] RAM clear checked for collection ${id}. Deleting existing meters and creating two new RAM clear meters.`
-      );
-      const { Meters } = await import('@/app/api/lib/models/meters');
-
-      // Delete existing meters
-      if (originalCollection.meterId) {
-        await Meters.findOneAndDelete({ _id: originalCollection.meterId });
-      }
-      if (originalCollection.ramClearMeterId) {
-        await Meters.findOneAndDelete({
-          _id: originalCollection.ramClearMeterId,
-        });
-      }
-
-      // Create new RAM clear meter (Meter 1) and current meter (Meter 2)
-      const ramClearMeterId = await generateMongoId();
-      const currentMeterId = await generateMongoId();
-
-      const newMetersIn =
-        updateData.metersIn ?? originalCollection.metersIn ?? 0;
-      const newMetersOut =
-        updateData.metersOut ?? originalCollection.metersOut ?? 0;
-      const newPrevIn = updateData.prevIn ?? originalCollection.prevIn ?? 0;
-      const newPrevOut = updateData.prevOut ?? originalCollection.prevOut ?? 0;
-      const newRamClearMetersIn =
-        updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn ?? 0;
-      const newRamClearMetersOut =
-        updateData.ramClearMetersOut ??
-        originalCollection.ramClearMetersOut ??
-        0;
-
-      const ramClearMovementIn = newRamClearMetersIn - newPrevIn;
-      const ramClearMovementOut = newRamClearMetersOut - newPrevOut;
-
-      const postResetMovementIn = newMetersIn;
-      const postResetMovementOut = newMetersOut;
-
-      const collectionTimestamp = updateData.timestamp
-        ? new Date(updateData.timestamp)
-        : new Date(originalCollection.timestamp);
-
-      const baseReadAt =
-        explicitSasEndTime !== undefined
-          ? new Date(explicitSasEndTime as Date)
-          : collectionTimestamp;
-      const baseCreatedAt = new Date();
-
-      const ramClearMeter = {
-        _id: ramClearMeterId,
-        machine: originalCollection.machineId,
-        location: locationId,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: ramClearMovementOut,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: ramClearMovementIn,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
-        totalCancelledCredits: newRamClearMetersOut,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
-        drop: newRamClearMetersIn,
-        meterSource: 'COLLECTION_REPORT' as const,
-        isRamClear: true,
-        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
-        createdAt: baseCreatedAt,
-      };
-
-      const currentMeter = {
-        _id: currentMeterId,
-        machine: originalCollection.machineId,
-        location: locationId,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: postResetMovementOut,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: postResetMovementIn,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
-        totalCancelledCredits: newMetersOut,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
-        drop: newMetersIn,
-        meterSource: 'COLLECTION_REPORT' as const,
-        readAt: baseReadAt, // exactly at collection time
-        createdAt: new Date(baseCreatedAt.getTime() + 1000),
-      };
-
-      await Meters.create(ramClearMeter);
-      await Meters.create(currentMeter);
-
-      updateData.ramClearMeterId = ramClearMeterId;
-      updateData.meterId = currentMeterId;
-    }
-
-    // ============================================================================
-    // STEP 8: Update collection document
-    // ============================================================================
-    const updateQuery: Record<string, unknown> = { $set: updateData };
-    if (Object.keys(unsetData).length > 0) {
-      updateQuery.$unset = unsetData;
-    }
-
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    const updated = await Collections.findOneAndUpdate(
-      { _id: id },
-      updateQuery,
-      { new: true }
-    );
-
-    // ============================================================================
-    // STEP 8.5: Update meters' readAt and movement metrics, propagate, and recalculate
-    // ============================================================================
+    const updated = await Collections.findOneAndUpdate({ _id: id }, updateQuery, { new: true })
     if (updated) {
-      const {
-        updateRegularAndRamClearMeters: updateMetersMovement,
-        propagateMetersToNextReport,
-      } = await import('@/app/api/lib/helpers/collectionReport/reportCreation');
-      await updateMetersMovement(updated);
-
-      try {
-        await propagateMetersToNextReport(
-          String(updated.machineId),
-          String(updated.location),
-          updated.collectionTime || updated.timestamp || new Date(),
-          updated.metersIn || 0,
-          updated.metersOut || 0
-        );
-      } catch (propagateError) {
-        console.error(
-          'Failed to propagate meters to next report in bulk update:',
-          propagateError
-        );
-      }
-
-      // Re-sync machine's current meters and history from database
-      if (updated.machineId) {
-        try {
-          const { recalculateMachineCollections } =
-            await import('@/app/api/lib/helpers/collectionReport/recalculation');
-          await recalculateMachineCollections(String(updated.machineId), true);
-        } catch (recalcError) {
-          console.error(
-            'Failed to recalculate machine collections in bulk update:',
-            recalcError
-          );
-        }
-      }
+      await runPostUpdatePropagation(updated as unknown as CollectionDocument)
     }
 
-    // ============================================================================
-    // STEP 9: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        // Calculate granular changes — compare original vs request body only (not full updated doc)
-        const changes = calculateChanges(
-          originalCollection.toObject
-            ? originalCollection.toObject()
-            : originalCollection,
-          updateData as Record<string, unknown>
-        );
+    // STEP 8: Log activity and return
+    const originalObj = originalCollection.toObject
+      ? originalCollection.toObject() : originalCollection
+    await logCollectionActivity('UPDATE', originalCollection, req,
+      originalObj as Record<string, unknown>,
+      (updated || originalCollection) as unknown as Record<string, unknown>)
 
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
-          ipAddress: getClientIP(req) || undefined,
-          userId: (currentUser._id ||
-            currentUser.id ||
-            currentUser.sub) as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            resource: 'collection',
-            resourceId: id,
-            resourceName: `${originalCollection.machineCustomName || originalCollection.machineName || originalCollection.machineId} at ${originalCollection.location}`,
-            userId: (currentUser._id ||
-              currentUser.id ||
-              currentUser.sub) as string,
-            username: currentUser.emailAddress as string,
-            changes: changes,
-            previousData: originalCollection,
-            newData: updated || originalCollection,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
-
-    // ============================================================================
-    // STEP 10: Return updated collection
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      '/api/collection-reports/collections',
-      1,
-      user,
-      duration
-    );
-    if (duration > 1000) {
-      console.warn(`[Collections PATCH API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json({ success: true, data: updated });
+    const duration = Date.now() - startTime
+    logRouteUpdate(functionName, 'PATCH', ROUTE_PATH, 1, user, duration)
+    if (duration > 1000) console.warn(`[Collections PATCH] Completed in ${duration}ms`)
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to update collection';
-    logRouteError(
-      functionName,
-      'PATCH',
-      '/api/collection-reports/collections',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Collections API PATCH] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update collection'
+    logRouteError(functionName, 'PATCH', ROUTE_PATH, errorMessage, user)
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
+// ============================================================================
+// DELETE — Delete a collection with machine meter reversion
+// ============================================================================
+
 /**
- * Main DELETE handler for deleting a collection
- *
- * @param {string} id - REQUIRED. Query param: The MongoDB ID of the collection to delete
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse query parameters
- * 3. Validate collection ID
- * 4. Get collection data before deletion
- * 5. Delete collection document
- * 6. Revert machine collectionMeters and remove history entry
- * 7. Log activity
- * 8. Return success response
+ * @param {string} id - Collection ID to delete
  */
 export async function DELETE(req: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'DELETE /api/collection-reports/collections';
-  const user = extractUserFromRequest(req);
+  const startTime = Date.now()
+  const functionName = 'DELETE /api/collection-reports/collections'
+  const user = extractUserFromRequest(req)
 
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse query parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    // STEP 1: Connect and validate
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
     if (!id) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/collection-reports/collections',
-        'Missing id',
-        user
-      );
-      console.error('[Collections API DELETE] 400 — missing id param');
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+      logRouteError(functionName, 'DELETE', ROUTE_PATH, 'Missing id', user)
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
     }
 
-    // ============================================================================
-    // STEP 3: Validate collection ID
-    // ============================================================================
-    // ============================================================================
-    // STEP 4: Get collection data before deletion
-    // ============================================================================
-    // Get collection data before deletion for logging
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const collectionToDelete = await Collections.findOne({ _id: id });
+    const collectionToDelete = await Collections.findOne({ _id: id })
     if (!collectionToDelete) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/collection-reports/collections',
-        `Collection not found: ${id}`,
-        user
-      );
-      console.error('[Collections API DELETE] 404 — collection not found:', id);
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      logRouteError(functionName, 'DELETE', ROUTE_PATH, `Not found: ${id}`, user)
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    // ============================================================================
-    // STEP 5: Delete collection document
-    // ============================================================================
-    // CRITICAL: Use findOneAndDelete with _id instead of findByIdAndDelete (repo rule)
-    const deletedCollection = await Collections.findOneAndDelete({ _id: id });
+    // STEP 2: Delete collection
+    const deletedCollection = await Collections.findOneAndDelete({ _id: id })
     if (!deletedCollection) {
-      return NextResponse.json(
-        { error: 'Failed to delete collection' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to delete collection' }, { status: 500 })
     }
 
-    // ============================================================================
-    // STEP 6: Propagate deletion and recalculate machine collections
-    // ============================================================================
+    // STEP 3: Propagate deletion
     if (collectionToDelete.machineId) {
-      try {
-        const { Meters } = await import('@/app/api/lib/models/meters');
-
-        // Delete Meters associated with the deleted collection
-        if (collectionToDelete.meterId) {
-          await Meters.findOneAndDelete({ _id: collectionToDelete.meterId });
-        }
-        if (collectionToDelete.ramClearMeterId) {
-          await Meters.findOneAndDelete({
-            _id: collectionToDelete.ramClearMeterId,
-          });
-        }
-
-        // Find successor report
-        const nextReport = await Collections.findOne({
-          machineId: collectionToDelete.machineId,
-          timestamp: {
-            $gt:
-              collectionToDelete.timestamp ||
-              collectionToDelete.collectionTime ||
-              new Date(),
-          },
-          deletedAt: { $exists: false },
-        })
-          .sort({ timestamp: 1 })
-          .lean<CollectionDocument>();
-
-        if (nextReport) {
-          console.log(
-            `[DELETE /api/collection-reports/collections] Propagating deletion: setting successor ${nextReport._id} prevMeters to deleted report's prevMetersIn=${collectionToDelete.prevIn}, prevMetersOut=${collectionToDelete.prevOut}`
-          );
-
-          const newPrevIn = collectionToDelete.prevIn || 0;
-          const newPrevOut = collectionToDelete.prevOut || 0;
-          const currentMetersIn = nextReport.metersIn ?? 0;
-          const currentMetersOut = nextReport.metersOut ?? 0;
-          const ramClear = !!nextReport.ramClear;
-          const ramClearMetersIn = nextReport.ramClearMetersIn;
-          const ramClearMetersOut = nextReport.ramClearMetersOut;
-
-          let movementIn = 0;
-          let movementOut = 0;
-
-          if (ramClear) {
-            if (
-              ramClearMetersIn !== undefined &&
-              ramClearMetersOut !== undefined
-            ) {
-              movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
-              movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
-            } else {
-              movementIn = currentMetersIn;
-              movementOut = currentMetersOut;
-            }
-          } else {
-            movementIn = currentMetersIn - newPrevIn;
-            movementOut = currentMetersOut - newPrevOut;
-          }
-
-          const movement = {
-            metersIn: Number(movementIn.toFixed(2)),
-            metersOut: Number(movementOut.toFixed(2)),
-            gross: Number((movementIn - movementOut).toFixed(2)),
-          };
-
-          const collectionUpdate: Record<string, unknown> = {
-            prevIn: newPrevIn,
-            prevOut: newPrevOut,
-            movement,
-            softMetersIn:
-              ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-            softMetersOut:
-              ramClear && ramClearMetersOut
-                ? ramClearMetersOut
-                : currentMetersOut,
-          };
-
-          if (nextReport.sasMeters) {
-            const sasMetersData = {
-              ...nextReport.sasMeters,
-              drop: movement.metersIn,
-              totalCancelledCredits: movement.metersOut,
-              gross: movement.gross,
-            };
-            collectionUpdate.sasMeters = sasMetersData;
-          }
-
-          await Collections.updateOne(
-            { _id: nextReport._id },
-            { $set: collectionUpdate }
-          );
-
-          const updatedNextReport = {
-            ...nextReport,
-            ...collectionUpdate,
-          };
-
-          const { updateRegularAndRamClearMeters } =
-            await import('@/app/api/lib/helpers/collectionReport/reportCreation');
-          await updateRegularAndRamClearMeters(
-            updatedNextReport as CollectionDocument
-          );
-        }
-
-        // Re-sync machine's current meters and history from database
-        const { recalculateMachineCollections } =
-          await import('@/app/api/lib/helpers/collectionReport/recalculation');
-        await recalculateMachineCollections(
-          String(collectionToDelete.machineId),
-          true
-        );
-      } catch (machineUpdateError) {
-        console.error(
-          'Failed to propagate deletion or recalculate machine collections:',
-          machineUpdateError
-        );
-      }
+      const collectionObj = collectionToDelete.toObject
+        ? collectionToDelete.toObject() as CollectionDocument
+        : collectionToDelete as unknown as CollectionDocument
+      await propagateSingleCollectionDeletion(collectionObj)
     }
 
-    // ============================================================================
-    // STEP 7: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const changes = mapDeletedFieldsToChanges(
-          collectionToDelete.toObject
-            ? collectionToDelete.toObject()
-            : collectionToDelete
-        );
+    // STEP 4: Log activity and return
+    const deleteObj = collectionToDelete.toObject
+      ? collectionToDelete.toObject() : collectionToDelete
+    await logCollectionActivity('DELETE', collectionToDelete, req,
+      deleteObj as Record<string, unknown>, null)
 
-        await logActivity({
-          action: 'DELETE',
-          details: `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
-          ipAddress: getClientIP(req) || undefined,
-          userId: (currentUser._id ||
-            currentUser.id ||
-            currentUser.sub) as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            resource: 'collection',
-            resourceId: id,
-            resourceName: `${collectionToDelete.machineCustomName || collectionToDelete.machineName || collectionToDelete.machineId} at ${collectionToDelete.location}`,
-            userId: (currentUser._id ||
-              currentUser.id ||
-              currentUser.sub) as string,
-            username: currentUser.emailAddress as string,
-            changes: changes,
-            previousData: collectionToDelete,
-            newData: null,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
-
-    // ============================================================================
-    // STEP 8: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteDelete(
-      functionName,
-      'DELETE',
-      '/api/collection-reports/collections',
-      1,
-      user,
-      duration
-    );
-    if (duration > 1000) {
-      console.warn(`[Collections DELETE API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json({ success: true });
+    const duration = Date.now() - startTime
+    logRouteDelete(functionName, 'DELETE', ROUTE_PATH, 1, user, duration)
+    if (duration > 1000) console.warn(`[Collections DELETE] Completed in ${duration}ms`)
+    return NextResponse.json({ success: true })
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to delete collection';
-    logRouteError(
-      functionName,
-      'DELETE',
-      '/api/collection-reports/collections',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Collections API DELETE] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete collection'
+    logRouteError(functionName, 'DELETE', ROUTE_PATH, errorMessage, user)
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

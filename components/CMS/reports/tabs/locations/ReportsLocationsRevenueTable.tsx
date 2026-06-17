@@ -81,13 +81,13 @@ export default function ReportsLocationsRevenueTable({
     const searchQuery = (searchTerm || '').toLowerCase().trim();
     return locations.filter(location => {
       const name = String(
-        (location as Record<string, unknown>).name ||
-          (location as Record<string, unknown>).locationName ||
+        location.name ||
+          location.locationName ||
           ''
       ).toLowerCase();
       const id = String(
-        (location as Record<string, unknown>)._id ||
-          (location as Record<string, unknown>).location ||
+        location._id ||
+          location.location ||
           ''
       ).toLowerCase();
       return name.includes(searchQuery) || id.includes(searchQuery);
@@ -97,16 +97,16 @@ export default function ReportsLocationsRevenueTable({
   // Sort locations
   const sortedLocations = useMemo(() => {
     return [...filteredLocations].sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sortField];
-      const bVal = (b as Record<string, unknown>)[sortField];
+      const aVal = a[sortField as keyof AggregatedLocation];
+      const bVal = b[sortField as keyof AggregatedLocation];
 
       let aValue =
         aVal === undefined && sortField === 'name'
-          ? (a as Record<string, unknown>).locationName
+          ? a.locationName
           : aVal;
       let bValue =
         bVal === undefined && sortField === 'name'
-          ? (b as Record<string, unknown>).locationName
+          ? b.locationName
           : bVal;
 
       // Handle special cases for calculated fields
@@ -249,12 +249,11 @@ export default function ReportsLocationsRevenueTable({
             {(() => {
               // Get location ID - try multiple possible fields
               const locationId =
-                (location as Record<string, unknown>).location ||
-                location._id ||
-                (location as Record<string, unknown>).locationId;
+                location.location ||
+                location._id;
               const locationName: string = String(
-                (location as Record<string, unknown>).name ||
-                  (location as Record<string, unknown>).locationName ||
+                location.name ||
+                  location.locationName ||
                   'Unknown'
               );
 
@@ -283,9 +282,8 @@ export default function ReportsLocationsRevenueTable({
             })()}
             <p className="truncate text-xs text-gray-500">
               {String(
-                (location as Record<string, unknown>).location ||
+                location.location ||
                   location._id ||
-                  (location as Record<string, unknown>).locationId ||
                   ''
               )}
             </p>
@@ -456,11 +454,10 @@ export default function ReportsLocationsRevenueTable({
                     return (
                       <TableRow
                         key={String(
-                          (location as Record<string, unknown>)._id ||
-                            (location as Record<string, unknown>).location ||
-                            (location as Record<string, unknown>).name ||
-                            (location as Record<string, unknown>)
-                              .locationName ||
+                          location._id ||
+                            location.location ||
+                            location.name ||
+                            location.locationName ||
                             ''
                         )}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -470,13 +467,11 @@ export default function ReportsLocationsRevenueTable({
                           {(() => {
                             // Get location ID - try multiple possible fields
                             const locationId =
-                              (location as Record<string, unknown>).location ||
-                              location._id ||
-                              (location as Record<string, unknown>).locationId;
+                              location.location ||
+                              location._id;
                             const locationName: string = String(
                               location.name ||
-                                (location as Record<string, unknown>)
-                                  .locationName ||
+                                location.locationName ||
                                 'Unknown'
                             );
 
@@ -568,10 +563,10 @@ export default function ReportsLocationsRevenueTable({
             paginatedLocations.map(location => (
               <LocationCard
                 key={String(
-                  (location as Record<string, unknown>)._id ||
-                    (location as Record<string, unknown>).location ||
-                    (location as Record<string, unknown>).name ||
-                    (location as Record<string, unknown>).locationName ||
+                  location._id ||
+                    location.location ||
+                    location.name ||
+                    location.locationName ||
                     ''
                 )}
                 location={location}

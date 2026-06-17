@@ -31,8 +31,9 @@ type UserWithMultiplier = JwtPayload & {
  */
 const formatSmartDecimal = (value: number): string => {
   if (isNaN(value)) return '0';
-  const hasDecimals = value % 1 !== 0;
-  const decimalPart = value % 1;
+  const absValue = Math.abs(value);
+  const hasDecimals = absValue % 1 !== 0;
+  const decimalPart = absValue % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
@@ -436,7 +437,18 @@ export async function getCollectionReportById(
         $match: {
           $or: meterQueries.map(q => ({
             machine: q.machineId,
-            readAt: { $gte: q.startTime, $lte: q.endTime },
+            readAt: {
+              $gte: q.startTime,
+              $lte: q.endTime,
+            },
+            $or: [
+              { meterSource: { $ne: 'COLLECTION_REPORT' } },
+              {
+                meterSource: 'COLLECTION_REPORT',
+                isSupplemental: true,
+                readAt: q.endTime,
+              },
+            ],
           })),
         },
       },
@@ -797,6 +809,10 @@ export async function getCollectionReportById(
         machineId: machineDisplayName,
         actualMachineId: collection.machineId,
         dropCancelled: `${formatSmartDecimal(scaled.drop)} / ${formatSmartDecimal(scaled.cancelled)}`,
+        metersIn: Math.round((collection.metersIn ?? 0) * 100) / 100,
+        metersOut: Math.round((collection.metersOut ?? 0) * 100) / 100,
+        prevIn: Math.round((collection.prevIn ?? 0) * 100) / 100,
+        prevOut: Math.round((collection.prevOut ?? 0) * 100) / 100,
         metersGross: scaled.meterGross,
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
@@ -805,11 +821,11 @@ export async function getCollectionReportById(
             ? 'No SMIB for this Machine'
             : hasNoSasData
               ? 'No SAS Data'
-              : formatSmartDecimal(scaled.sasGross),
+              : scaled.sasGross,
         variation:
           isNoSMIBLocation || !hasSmib
             ? 'No SMIB for this Machine'
-            : formatSmartDecimal(scaled.variation),
+            : scaled.variation,
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,

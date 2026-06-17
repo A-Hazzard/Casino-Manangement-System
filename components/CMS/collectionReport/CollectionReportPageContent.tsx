@@ -35,8 +35,6 @@ import CollectionReportV2StartSessionDialog from '@/components/CMS/collectionRep
 import CollectionReportV2DeleteSessionModal from '@/components/CMS/collectionReport/modals/CollectionReportV2DeleteSessionModal';
 import CollectionReportV2EditSessionModal from '@/components/CMS/collectionReport/modals/CollectionReportV2EditSessionModal';
 import CollectionReportV2WizardModal from '@/components/CMS/collectionReport/modals/CollectionReportV2WizardModal';
-import CollectionReportV1RestoreModal from '@/components/CMS/collectionReport/modals/CollectionReportV1RestoreModal';
-import CollectionReportV2RestoreSessionModal from '@/components/CMS/collectionReport/modals/CollectionReportV2RestoreSessionModal';
 
 // === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
@@ -109,15 +107,9 @@ const CollectionReportPageContent: FC = () => {
   const [showV2StartSession, setShowV2StartSession] = useState(false);
   const [v2DeleteConfirm, setV2DeleteConfirm] = useState<string | null>(null);
   const [v2EditSessionId, setV2EditSessionId] = useState<string | null>(null);
-  const [v2IncludeDeleted, setV2IncludeDeleted] = useState(false);
   const [v2WizardSessionId, setV2WizardSessionId] = useState<string | null>(
     null
   );
-  const [restoreReportId, setRestoreReportId] = useState<string | null>(null);
-  const [v2RestoreSessionId, setV2RestoreSessionId] = useState<string | null>(null);
-  const [permanentDeleteReportId, setPermanentDeleteReportId] =
-    useState<string | null>(null);
-  const [isV2PermanentDelete, setIsV2PermanentDelete] = useState(false);
   const v2SessionsRef = useRef<{ sessionId: string; deletedAt?: unknown }[]>(
     []
   );
@@ -141,10 +133,6 @@ const CollectionReportPageContent: FC = () => {
   const openV2View = useCallback(
     (sessionId: string) => {
       setV2EditSessionId(sessionId);
-      const session = v2SessionsRef.current?.find(
-        s => s.sessionId === sessionId
-      );
-      setV2IncludeDeleted(!!session?.deletedAt);
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('view', sessionId);
       router.push(`/collection-report?${params.toString()}`, { scroll: false });
@@ -155,7 +143,6 @@ const CollectionReportPageContent: FC = () => {
   // Close the view modal AND strip ?view= from the URL.
   const closeV2View = useCallback(() => {
     setV2EditSessionId(null);
-    setV2IncludeDeleted(false);
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('view');
     const query = params.toString();
@@ -188,7 +175,6 @@ const CollectionReportPageContent: FC = () => {
     handleEdit,
     handleDelete,
     confirmDelete,
-    showArchived,
     setSearchTerm,
     setCurrentPage,
     setShowNewCollectionMobile,
@@ -197,7 +183,6 @@ const CollectionReportPageContent: FC = () => {
     setShowEditDesktop,
     setEditingReportId,
     onRefreshLocations,
-    handleShowArchivedChange,
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
@@ -218,25 +203,7 @@ const CollectionReportPageContent: FC = () => {
   const userRoles = (user?.roles || []) as UserRole[];
   const canSeeManagerTabs = hasManagerAccess(userRoles);
   const isDeveloper = userRoles.includes('developer');
-  const canManage =
-    isDeveloper ||
-    userRoles.includes('owner') ||
-    userRoles.includes('admin') ||
-    userRoles.includes('manager') ||
-    userRoles.includes('location admin');
-  const canPermanentlyDelete =
-    isDeveloper ||
-    userRoles.includes('owner') ||
-    userRoles.includes('admin') ||
-    userRoles.includes('location admin');
   const canManageV2 = isDeveloper || userRoles.includes('admin');
-  // Only these roles may view and restore archived V2 sessions.
-  // location admin sees only their assigned locations (enforced by the API).
-  const canViewArchivedV2 =
-    userRoles.includes('developer') ||
-    userRoles.includes('owner') ||
-    userRoles.includes('admin') ||
-    userRoles.includes('location admin');
 
   const visibleTabs = COLLECTION_TABS_CONFIG.filter(tab => {
     if (tab.id === 'monthly' || tab.id === 'manager') return canSeeManagerTabs;
@@ -251,56 +218,6 @@ const CollectionReportPageContent: FC = () => {
       : activeTab === 'collection-v2' && !isDeveloper
         ? ('collection' as const)
         : activeTab;
-
-  const handleRestore = useCallback((reportId: string) => {
-    setRestoreReportId(reportId);
-  }, []);
-
-  const confirmRestore = useCallback(
-    async (reportId: string) => {
-      await axios.patch(`/api/collection-reports/${reportId}`, {
-        action: 'restore',
-      });
-      handleRefresh();
-    },
-    [handleRefresh]
-  );
-
-  const handleV2Restore = useCallback((sessionId: string) => {
-    setV2RestoreSessionId(sessionId);
-  }, []);
-
-  const confirmV2Restore = useCallback(
-    async (sessionId: string) => {
-      await axios.patch(`/api/collection-reports-v2/sessions/${sessionId}`, {
-        action: 'restore',
-      });
-      v2Hook.onRefresh();
-    },
-    [v2Hook]
-  );
-
-  // Permanent delete (hard delete, not archive)
-  const handlePermanentDelete = useCallback(
-    async (reportId: string) => {
-      setPermanentDeleteReportId(reportId);
-    },
-    []
-  );
-
-  const confirmPermanentDelete = useCallback(async () => {
-    if (!permanentDeleteReportId) return;
-    try {
-      await axios.delete(`/api/collection-reports/${permanentDeleteReportId}`, {
-        params: { action: 'permanent' },
-      });
-      handleRefresh();
-    } catch {
-      console.error('[CollectionReportPageContent] Error permanently deleting report');
-    } finally {
-      setPermanentDeleteReportId(null);
-    }
-  }, [permanentDeleteReportId, handleRefresh]);
 
   // Wrapped refresh that calls correct hook based on active tab
   const handleRefreshAll = () => {
@@ -406,11 +323,6 @@ const CollectionReportPageContent: FC = () => {
                 selectedLocation={filters.selectedLocation}
                 onLocationChange={filters.setSelectedLocation}
                 onClearFilters={filters.clearFilters}
-                showArchived={canViewArchivedV2 ? v2Hook.showArchived : false}
-                onShowArchivedChange={
-                  canViewArchivedV2 ? v2Hook.handleShowArchivedChange : undefined
-                }
-                canViewArchived={canViewArchivedV2}
               />
             )}
           </div>
@@ -450,8 +362,6 @@ const CollectionReportPageContent: FC = () => {
                       onShowUncollectedOnlyChange={
                         filters.setShowUncollectedOnly
                       }
-                      showArchived={showArchived}
-                      onShowArchivedChange={handleShowArchivedChange}
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
@@ -459,10 +369,6 @@ const CollectionReportPageContent: FC = () => {
                       reportIssues={undefined}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      onRestore={handleRestore}
-                      onPermanentDelete={handlePermanentDelete}
-                      canManage={canManage}
-                      canPermanentlyDelete={canPermanentlyDelete}
                       sortField={filters.sortField}
                       sortDirection={filters.sortDirection}
                       onSort={filters.handleSort}
@@ -492,18 +398,12 @@ const CollectionReportPageContent: FC = () => {
                       onShowUncollectedOnlyChange={
                         filters.setShowUncollectedOnly
                       }
-                      showArchived={showArchived}
-                      onShowArchivedChange={handleShowArchivedChange}
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
                       isSearching={isSearching}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      onRestore={handleRestore}
-                      onPermanentDelete={handlePermanentDelete}
-                      canManage={canManage}
-                      canPermanentlyDelete={canPermanentlyDelete}
                       selectedLicencee={selectedLicencee}
                       editableReportIds={hook.editableReportIds}
                     />
@@ -609,8 +509,6 @@ const CollectionReportPageContent: FC = () => {
                       loading={v2Hook.loading}
                       isRefreshing={v2Hook.isRefreshing}
                       canManage={canManageV2}
-                      canPermanentlyDelete={canPermanentlyDelete}
-                      showArchived={v2Hook.showArchived}
                       onViewSession={sessionId => openV2View(sessionId)}
                       onEditSession={sessionId =>
                         setV2WizardSessionId(sessionId)
@@ -632,11 +530,6 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
-                      }}
-                      onRestoreSession={handleV2Restore}
-                      onPermanentDeleteSession={sessionId => {
-                        setV2DeleteConfirm(sessionId);
-                        setIsV2PermanentDelete(true);
                       }}
                       sortField={v2Hook.sortField}
                       sortDirection={v2Hook.sortDirection}
@@ -650,8 +543,6 @@ const CollectionReportPageContent: FC = () => {
                       loading={v2Hook.loading}
                       isRefreshing={v2Hook.isRefreshing}
                       canManage={canManageV2}
-                      canPermanentlyDelete={canPermanentlyDelete}
-                      showArchived={v2Hook.showArchived}
                       onViewSession={sessionId => openV2View(sessionId)}
                       onEditSession={sessionId =>
                         setV2WizardSessionId(sessionId)
@@ -673,11 +564,6 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
-                      }}
-                      onRestoreSession={handleV2Restore}
-                      onPermanentDeleteSession={sessionId => {
-                        setV2DeleteConfirm(sessionId);
-                        setIsV2PermanentDelete(true);
                       }}
                     />
                   </div>
@@ -772,9 +658,8 @@ const CollectionReportPageContent: FC = () => {
         showEditMobile={showEditMobile}
         showEditDesktop={showEditDesktop}
         editingReportId={editingReportId}
-        showDeleteConfirm={!!permanentDeleteReportId || showDeleteConfirmation}
-        reportToDelete={permanentDeleteReportId || hook.reportToDelete}
-        isArchived={!!permanentDeleteReportId}
+        showDeleteConfirm={showDeleteConfirmation}
+        reportToDelete={hook.reportToDelete}
         allReports={allReports}
         locationsWithMachines={locationsWithMachines}
         onCloseNewMobile={() => setShowNewCollectionMobile(false)}
@@ -786,15 +671,8 @@ const CollectionReportPageContent: FC = () => {
         }}
         onCloseDelete={() => {
           hook.setShowDeleteConfirmation(false);
-          setPermanentDeleteReportId(null);
         }}
-        onConfirmDelete={
-          permanentDeleteReportId
-            ? async () => {
-                await confirmPermanentDelete();
-              }
-            : confirmDelete
-        }
+        onConfirmDelete={confirmDelete}
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
       />
@@ -813,16 +691,8 @@ const CollectionReportPageContent: FC = () => {
       <CollectionReportV2DeleteSessionModal
         isOpen={!!v2DeleteConfirm}
         sessionId={v2DeleteConfirm ?? ''}
-        isArchived={isV2PermanentDelete}
         onClose={() => {
           setV2DeleteConfirm(null);
-          setIsV2PermanentDelete(false);
-        }}
-        onArchive={async sessionId => {
-          await axios.delete(
-            `/api/collection-reports-v2/sessions/${sessionId}?action=archive`
-          );
-          v2Hook.onRefresh();
         }}
         onDelete={async sessionId => {
           await axios.delete(
@@ -835,7 +705,6 @@ const CollectionReportPageContent: FC = () => {
       <CollectionReportV2EditSessionModal
         isOpen={!!v2EditSessionId}
         sessionId={v2EditSessionId ?? ''}
-        includeDeleted={v2IncludeDeleted}
         onClose={closeV2View}
         onEdit={sessionId => {
           closeV2View();
@@ -850,28 +719,6 @@ const CollectionReportPageContent: FC = () => {
           setV2WizardSessionId(null);
           v2Hook.onRefresh();
         }}
-      />
-
-      <CollectionReportV1RestoreModal
-        isOpen={!!restoreReportId}
-        reportId={restoreReportId ?? ''}
-        locationName={
-          allReports.find(r => r.locationReportId === restoreReportId)
-            ?.location ?? ''
-        }
-        onClose={() => setRestoreReportId(null)}
-        onConfirm={confirmRestore}
-      />
-
-      <CollectionReportV2RestoreSessionModal
-        isOpen={!!v2RestoreSessionId}
-        sessionId={v2RestoreSessionId ?? ''}
-        locationName={
-          v2Hook.sessions.find(s => s.sessionId === v2RestoreSessionId)
-            ?.locationName ?? ''
-        }
-        onClose={() => setV2RestoreSessionId(null)}
-        onConfirm={confirmV2Restore}
       />
     </>
   );

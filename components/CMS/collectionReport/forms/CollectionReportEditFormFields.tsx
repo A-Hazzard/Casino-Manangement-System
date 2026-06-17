@@ -477,7 +477,7 @@ export default function CollectionReportEditFormFields({
                 (inputsEnabled &&
                   !!sasStartTime &&
                   !!sasEndTime &&
-                  sasStartTime >= sasEndTime)
+                  sasStartTime > sasEndTime)
               }
             >
               {isProcessing ? 'Processing...' : 'Update Entry'}
@@ -497,7 +497,7 @@ export default function CollectionReportEditFormFields({
                     (inputsEnabled &&
                       !!sasStartTime &&
                       !!sasEndTime &&
-                      sasStartTime >= sasEndTime)
+                      sasStartTime > sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

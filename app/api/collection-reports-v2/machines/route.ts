@@ -13,14 +13,16 @@
  *
  * Flow (POST):
  *   1. Validate required fields and status.
- *   2. Call computeMovement to get prevSas values, movement deltas, and sasGross.
- *   3. For metersMatch false, sasMetersIn/Out are overridden with Machine.sasMeters values.
+ *   2. Call computeMovement to get prev values, movement deltas, and sasGross.
+ *   3. For metersMatch false, sasMetersIn/Out are overridden with Machine.sasMeters.
  *   4. Persist the ReportedMachine document.
  *
  * Flow (PATCH):
  *   1. Build updateData from body fields.
  *   2. Re-run computeMovement whenever meters or metersMatch changes.
  *   3. Persist via findOneAndUpdate.
+ *
+ * @module app/api/collection-reports-v2/machines/route
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -32,22 +34,27 @@ import {
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { generateMongoId } from '@/lib/utils/id';
-import { deleteDriveFile } from '@/lib/utils/drive';
+import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
 import { NextRequest, NextResponse } from 'next/server';
 import type {
-  ReportedMachineStatus,
-  ReportedMachineDocument,
-} from '@/app/api/lib/models/reportedMachines';
-import {
   CaptureMachinePayload,
   UpdateMachinePayload,
 } from '@/app/api/lib/types/collectionReportV2';
-import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
 import {
-  cascadeMachineEdit,
-  propagateV2MetersToNextSession,
-} from '@/app/api/lib/helpers/collectionReportV2/recalculation';
+  validateCapturePayload,
+  validateRamClearPeak,
+  buildCaptureDocumentData,
+  checkChronologicalEdit,
+  buildUpdateDataFromPayload,
+  enforceNoRelayNullSas,
+  handleImageUpdates,
+  shouldRecalculateMovement,
+  resolveAndRecalculateMovement,
+  applyMongoUpdate,
+  handlePostSubmitCascade,
+} from '@/app/api/lib/helpers/collectionReportV2/machineOperations';
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -72,77 +79,19 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Parse request body
+    // STEP 3: Parse and validate request body
     // ============================================================================
     const body = (await req.json()) as CaptureMachinePayload;
-    const {
-      sessionId,
-      machineId,
-      locationId,
-      locationName,
-      status,
-      metersMatch,
-    } = body;
-
-    if (!sessionId || !machineId || !locationId || !locationName) {
+    const parsed = validateCapturePayload(body);
+    if ('error' in parsed) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'sessionId, machineId, locationId, locationName are required',
-        },
-        { status: 400 }
-      );
-    }
-
-    const validStatuses: ReportedMachineStatus[] = [
-      'pending',
-      'captured',
-      'confirmed',
-      'skipped',
-    ];
-    if (!validStatuses.includes(status)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid status value' },
-        { status: 400 }
+        { success: false, error: parsed.error },
+        { status: parsed.status }
       );
     }
 
     // ============================================================================
-    // STEP 4: RAM clear validation
-    // ============================================================================
-    // When ramClear is true, both peak meter values are required.
-    const ramClear = body.ramClear === true;
-    const ramClearIn =
-      body.ramClearMetersIn !== undefined && body.ramClearMetersIn !== null
-        ? Number(body.ramClearMetersIn)
-        : undefined;
-    const ramClearOut =
-      body.ramClearMetersOut !== undefined && body.ramClearMetersOut !== null
-        ? Number(body.ramClearMetersOut)
-        : undefined;
-    if (ramClear && (ramClearIn === undefined || ramClearOut === undefined)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'ramClearMetersIn and ramClearMetersOut are required when ramClear is true',
-        },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 5: Build the base document
-    // ============================================================================
-    const id = await generateMongoId();
-
-    const sasStartTime = body.sasStartTime
-      ? new Date(body.sasStartTime)
-      : undefined;
-    const sasEndTime = body.sasEndTime ? new Date(body.sasEndTime) : new Date();
-
-    // ============================================================================
-    // STEP 6: Compute movement delta (current - previous submitted session)
+    // STEP 4: Compute movement delta
     // ============================================================================
     const {
       prevMeters,
@@ -152,8 +101,8 @@ export async function POST(req: NextRequest) {
       resolvedSasMetersOut,
       isSupplemental,
     } = await computeMovement(
-      machineId,
-      sessionId,
+      parsed.data.machineId,
+      parsed.data.sessionId,
       Number(body.sasMetersIn) || 0,
       Number(body.sasMetersOut) || 0,
       body.manualMetersIn !== undefined
@@ -162,143 +111,77 @@ export async function POST(req: NextRequest) {
       body.manualMetersOut !== undefined
         ? Number(body.manualMetersOut)
         : undefined,
-      metersMatch,
-      sasStartTime,
-      sasEndTime,
-      ramClear,
-      ramClearIn,
-      ramClearOut
+      parsed.data.metersMatch,
+      parsed.data.sasStartTime,
+      parsed.data.sasEndTime,
+      parsed.data.ramClear,
+      parsed.data.ramClearIn,
+      parsed.data.ramClearOut,
+      body.softMetersIn !== undefined ? Number(body.softMetersIn) : undefined,
+      body.softMetersOut !== undefined ? Number(body.softMetersOut) : undefined
     );
 
-    // Now that prev values are known, enforce the V1 invariant:
-    //   ramClearMetersIn  >= prevSasMetersIn
-    //   ramClearMetersOut >= prevSasMetersOut
-    if (ramClear) {
-      if (
-        (ramClearIn as number) < prevMeters.prevSasMetersIn ||
-        (ramClearOut as number) < prevMeters.prevSasMetersOut
-      ) {
+    // Enforce V1 invariant: ramClear peak >= prev
+    if (parsed.data.ramClear) {
+      const peakError = validateRamClearPeak(
+        parsed.data.ramClearIn as number,
+        parsed.data.ramClearOut as number,
+        prevMeters.prevSasMetersIn,
+        prevMeters.prevSasMetersOut
+      );
+      if (peakError) {
         return NextResponse.json(
-          {
-            success: false,
-            error:
-              'ramClearMetersIn/Out must be greater than or equal to previous meters',
-          },
-          { status: 400 }
+          { success: false, error: peakError.error },
+          { status: peakError.status }
         );
       }
     }
 
     // ============================================================================
-    // STEP 7: Log computed values
+    // STEP 5: Build and persist the document
     // ============================================================================
-    console.log(
-      `[${functionName}] POST captured machine:`,
-      JSON.stringify(
-        {
-          machineId,
-          sessionId,
-          status,
-          metersMatch,
-          bodySasIn: body.sasMetersIn,
-          bodySasOut: body.sasMetersOut,
-          bodyManualIn: body.manualMetersIn,
-          bodyManualOut: body.manualMetersOut,
-          resolvedSasIn: resolvedSasMetersIn,
-          resolvedSasOut: resolvedSasMetersOut,
-          prevSasIn: prevMeters.prevSasMetersIn,
-          prevSasOut: prevMeters.prevSasMetersOut,
-          movement,
-          sasGross,
-          sasStartTime: sasStartTime?.toISOString(),
-          sasEndTime: sasEndTime?.toISOString(),
-        },
-        null,
-        2
-      )
+    const id = await generateMongoId();
+    const docData = buildCaptureDocumentData(
+      id,
+      parsed.data,
+      body,
+      String(userPayload._id),
+      { prevMeters, movement, sasGross, resolvedSasMetersIn, resolvedSasMetersOut, isSupplemental }
     );
 
-    // ============================================================================
-    // STEP 8: Build the final document
-    // ============================================================================
-    const docData: Omit<ReportedMachineDocument, 'createdAt' | 'updatedAt'> = {
-      _id: id,
-      sessionId,
-      sessionStatus: 'in-progress',
-      locationId,
-      locationName,
-      licencee: body.licencee || '',
-      machineId,
-      machineName: body.machineName || '',
-      machineCustomName: body.machineCustomName || '',
-      serialNumber: body.serialNumber || '',
-      manufacturer: body.manufacturer || '',
-      game: body.game || '',
-      collector: body.collector || String(userPayload._id),
-      collectorName: body.collectorName || '',
-      sasMetersIn: resolvedSasMetersIn,
-      sasMetersOut: resolvedSasMetersOut,
-      sasGross,
-      // For noSMIB, resolvedSasMetersIn/Out are null (no relay), so manual
-      // meters must come from the body directly — not from the null SAS value.
-      manualMetersIn:
-        body.manualMetersIn !== undefined
-          ? Number(body.manualMetersIn)
-          : metersMatch === true
-            ? resolvedSasMetersIn
-            : undefined,
-      manualMetersOut:
-        body.manualMetersOut !== undefined
-          ? Number(body.manualMetersOut)
-          : metersMatch === true
-            ? resolvedSasMetersOut
-            : undefined,
-      prevSasMetersIn: prevMeters.prevSasMetersIn,
-      prevSasMetersOut: prevMeters.prevSasMetersOut,
-      movement,
-      isSupplemental,
-      ramClear,
-      ramClearMetersIn: ramClear ? ramClearIn : undefined,
-      ramClearMetersOut: ramClear ? ramClearOut : undefined,
-      sasStartTime,
-      sasEndTime,
-      metersMatch: body.metersMatch ?? undefined,
-      sequenceOrder: Number(body.sequenceOrder) || 0,
-      status,
-      deletedAt: null,
-      // Store base64 image temporarily until session is submitted,
-      // at which point it gets uploaded to Google Drive and this field is cleared.
-      tempImageData: body.imageData?.startsWith('data:image/')
-        ? body.imageData
-        : undefined,
-    };
-
-    // ============================================================================
-    // STEP 9: Save document and log activity
-    // ============================================================================
     const doc = await ReportedMachine.create(docData);
 
+    const machineName = String(body.machineCustomName || body.machineName || parsed.data.machineId);
+    logActivity({
+      action: 'CREATE',
+      details: `Captured machine ${machineName} in V2 session ${parsed.data.sessionId}`,
+      userId: String(userPayload._id),
+      username: String(userPayload.emailAddress ?? userPayload._id),
+      metadata: {
+        userId: String(userPayload._id),
+        userEmail: String(userPayload.emailAddress ?? ''),
+        resource: 'collection-report-v2-machine',
+        resourceId: String(doc._id),
+        resourceName: machineName,
+        changes: [
+          { field: 'sessionId', oldValue: null, newValue: parsed.data.sessionId },
+          { field: 'machineId', oldValue: null, newValue: parsed.data.machineId },
+          { field: 'sasMetersIn', oldValue: null, newValue: docData.sasMetersIn },
+          { field: 'sasMetersOut', oldValue: null, newValue: docData.sasMetersOut },
+        ],
+      },
+    }).catch(logError => {
+      console.error('[POST machines] Failed to log activity:', logError instanceof Error ? logError.message : 'Unknown error');
+    });
+
     const duration = Date.now() - startTime;
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/collection-reports-v2/machines',
-      1,
-      user,
-      duration
-    );
+    logRouteCreate(functionName, 'POST', '/api/collection-reports-v2/machines', 1, user, duration);
 
     return NextResponse.json({ success: true, data: doc });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/collection-reports-v2/machines',
-      errorMessage,
-      user
-    );
+    logRouteError(functionName, 'POST', '/api/collection-reports-v2/machines', errorMessage, user);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -333,7 +216,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Parse request body
+    // STEP 3: Parse ID and request body
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const reportedMachineId = searchParams.get('id');
@@ -347,11 +230,11 @@ export async function PATCH(req: NextRequest) {
     const body = (await req.json()) as UpdateMachinePayload;
 
     // ============================================================================
-    // STEP 3.5: Chronological edit check
+    // STEP 4: Fetch target document and check chronological validity
     // ============================================================================
     const targetMachine = await ReportedMachine.findOne({
       _id: reportedMachineId,
-    }).lean<ReportedMachineDocument>();
+    }).lean<import('@/app/api/lib/models/reportedMachines').ReportedMachineDocument>();
     if (!targetMachine) {
       return NextResponse.json(
         { success: false, error: 'Machine capture not found' },
@@ -359,317 +242,56 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const keyFields = [
-      'sasMetersIn',
-      'sasMetersOut',
-      'manualMetersIn',
-      'manualMetersOut',
-      'ramClear',
-      'ramClearMetersIn',
-      'ramClearMetersOut',
-      'sasStartTime',
-      'sasEndTime',
-    ];
-    const isModifyingKeyFields = keyFields.some(
-      key => body[key as keyof UpdateMachinePayload] !== undefined
-    );
-
-    if (isModifyingKeyFields && targetMachine.machineId) {
-      const targetTime = body.sasEndTime
-        ? new Date(body.sasEndTime as string)
-        : targetMachine.sasEndTime || new Date();
-
-      const nextReport = await ReportedMachine.findOne({
-        machineId: targetMachine.machineId,
-        sessionStatus: 'submitted',
-        sessionId: { $ne: targetMachine.sessionId },
-        sasEndTime: { $gt: targetTime },
-        $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-      }).lean();
-
-      if (nextReport) {
-        const prevReport = await ReportedMachine.findOne({
-          machineId: targetMachine.machineId,
-          sessionStatus: 'submitted',
-          sessionId: { $ne: targetMachine.sessionId },
-          sasEndTime: { $lt: targetTime },
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-        }).lean();
-
-        if (prevReport) {
-          return NextResponse.json(
-            {
-              success: false,
-              error:
-                'Chronological check failed: cannot edit into a middle-date report. A more recent collection session has already been submitted for this machine. To make changes, you must revert or delete the newer session(s) first.',
-            },
-            { status: 400 }
-          );
-        }
-      }
-    }
-
-    const updateData: Partial<ReportedMachineDocument> = {};
-    const dateFields = [
-      'sasStartTime',
-      'sasEndTime',
-      'imageCapturedAt',
-    ] as const;
-
-    for (const field of dateFields) {
-      if (body[field]) {
-        updateData[field] = new Date(body[field] as string);
-      }
-    }
-
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.sasMetersIn !== undefined)
-      updateData.sasMetersIn = body.sasMetersIn;
-    if (body.sasMetersOut !== undefined)
-      updateData.sasMetersOut = body.sasMetersOut;
-    if (body.manualMetersIn !== undefined)
-      updateData.manualMetersIn = body.manualMetersIn;
-    if (body.manualMetersOut !== undefined)
-      updateData.manualMetersOut = body.manualMetersOut;
-    if (body.metersMatch !== undefined)
-      updateData.metersMatch = body.metersMatch;
-    if (body.notes !== undefined) updateData.notes = body.notes;
-
-    // RAM clear toggle handling. When body.ramClear is explicitly false we
-    // also unset the peak fields so the doc matches V1's $unset behavior on
-    // toggle-off (see collections/[id]/route.ts).
-    const unsetData: Record<string, 1> = {};
-    if (body.ramClear !== undefined) {
-      updateData.ramClear = body.ramClear;
-      if (body.ramClear === false) {
-        unsetData.ramClearMetersIn = 1;
-        unsetData.ramClearMetersOut = 1;
-      }
-    }
-    if (body.ramClearMetersIn !== undefined && body.ramClearMetersIn !== null) {
-      updateData.ramClearMetersIn = Number(body.ramClearMetersIn);
-    }
-    if (
-      body.ramClearMetersOut !== undefined &&
-      body.ramClearMetersOut !== null
-    ) {
-      updateData.ramClearMetersOut = Number(body.ramClearMetersOut);
+    const chronoError = await checkChronologicalEdit(targetMachine, body);
+    if (chronoError) {
+      return NextResponse.json(
+        { success: false, error: chronoError.error },
+        { status: chronoError.status }
+      );
     }
 
     // ============================================================================
-    // STEP 4: For non-relay machines enforce null on all SAS fields
+    // STEP 5: Build update data from body
     // ============================================================================
-    // Machines without a relayId have no SAS relay; any stale non-null SAS values
-    // from sessions captured before this rule existed must be wiped on every edit
-    // so they never leak into SAS columns.
-    {
-      if (targetMachine?.machineId) {
-        const { Machine: MachineModel } =
-          await import('@/app/api/lib/models/machines');
-        const machineDoc = await MachineModel.findOne(
-          { _id: targetMachine.machineId },
-          'relayId'
-        ).lean<{ relayId?: string | null }>();
+    const { updateData, unsetData } = buildUpdateDataFromPayload(body);
 
-        if (!machineDoc?.relayId) {
-          updateData.sasMetersIn = null;
-          updateData.sasMetersOut = null;
-          updateData.sasGross = null;
-        }
-      }
+    // Applicable when ramClear toggled off — strip peak fields from $set
+    if (Object.keys(unsetData).length > 0) {
+      if ('ramClearMetersIn' in unsetData) delete updateData.ramClearMetersIn;
+      if ('ramClearMetersOut' in unsetData) delete updateData.ramClearMetersOut;
     }
 
     // ============================================================================
-    // STEP 5: Handle image updates
+    // STEP 6: Enforce null SAS for non-relay machines
     // ============================================================================
-    // Handle removeImage flag — delete existing Drive file and clear temp data
+    if (targetMachine.machineId) {
+      await enforceNoRelayNullSas(targetMachine.machineId, updateData);
+    }
+
+    // ============================================================================
+    // STEP 7: Handle image updates
+    // ============================================================================
     const removeImage = body.removeImage === true;
-    if (removeImage) {
-      const existing = await ReportedMachine.findOne(
-        { _id: reportedMachineId },
-        'driveFileId'
-      ).lean();
-
-      const oldDriveFileId = existing?.driveFileId as string | undefined;
-      if (oldDriveFileId) {
-        await deleteDriveFile(oldDriveFileId).catch(deleteError => {
-          console.error(
-            '[PATCH machines] Failed to delete Drive file on remove:',
-            deleteError
-          );
-        });
-        updateData.driveFileId = null;
-        updateData.driveFolderId = null;
-      }
-      // Also clear any temporary base64 image stored during in-progress capture
-      updateData.tempImageData = undefined;
-    }
-
-    // Handle imageData — store base64 temporarily in MongoDB until session submit
-    if (!removeImage && body.imageData !== undefined) {
-      if (body.imageData?.startsWith('data:image/')) {
-        updateData.tempImageData = body.imageData;
-      }
-    }
+    await handleImageUpdates(reportedMachineId, body, updateData, removeImage);
 
     // ============================================================================
-    // STEP 6: Recompute movement if meters, metersMatch, or RAM clear changed
+    // STEP 8: Recompute movement if meters, metersMatch, or RAM clear changed
     // ============================================================================
-    const shouldRecalcMovement =
-      body.status === 'confirmed' ||
-      body.status === 'captured' ||
-      body.sasMetersIn !== undefined ||
-      body.sasMetersOut !== undefined ||
-      body.manualMetersIn !== undefined ||
-      body.manualMetersOut !== undefined ||
-      body.metersMatch !== undefined ||
-      body.ramClear !== undefined ||
-      body.ramClearMetersIn !== undefined ||
-      body.ramClearMetersOut !== undefined;
-
-    if (shouldRecalcMovement) {
-      // Fetch the current document to get machineId, sessionId, and latest meters
-      const currentDoc = await ReportedMachine.findOne(
-        { _id: reportedMachineId },
-        'machineId sessionId sasMetersIn sasMetersOut manualMetersIn manualMetersOut metersMatch sasStartTime sasEndTime ramClear ramClearMetersIn ramClearMetersOut'
-      ).lean<{
-        machineId: string;
-        sessionId: string;
-        sasMetersIn: number;
-        sasMetersOut: number;
-        manualMetersIn?: number;
-        manualMetersOut?: number;
-        metersMatch?: boolean;
-        sasStartTime?: Date;
-        sasEndTime?: Date;
-        ramClear?: boolean;
-        ramClearMetersIn?: number;
-        ramClearMetersOut?: number;
-      }>();
-
-      if (currentDoc) {
-        // Merge incoming values with existing stored values.
-        // Use explicit null check instead of ?? so that an intentional null
-        // (noSMIB enforcement above) is honoured rather than falling back to
-        // the stale stored value.
-        const resolvedSasIn =
-          updateData.sasMetersIn !== undefined
-            ? updateData.sasMetersIn
-            : currentDoc.sasMetersIn;
-        const resolvedSasOut =
-          updateData.sasMetersOut !== undefined
-            ? updateData.sasMetersOut
-            : currentDoc.sasMetersOut;
-        const resolvedMetersMatch =
-          updateData.metersMatch ?? currentDoc.metersMatch;
-        // For noSMIB metersMatch===true but sasMetersIn is null (no relay).
-        // Prefer the explicit body value, then existing stored manual meters,
-        // and only fall back to SAS meters when they are non-null (SMIB case).
-        const resolvedManualIn =
-          updateData.manualMetersIn !== undefined
-            ? updateData.manualMetersIn
-            : resolvedMetersMatch === true && resolvedSasIn !== null
-              ? resolvedSasIn
-              : (currentDoc.manualMetersIn ?? undefined);
-        const resolvedManualOut =
-          updateData.manualMetersOut !== undefined
-            ? updateData.manualMetersOut
-            : resolvedMetersMatch === true && resolvedSasOut !== null
-              ? resolvedSasOut
-              : (currentDoc.manualMetersOut ?? undefined);
-        const resolvedSasStart =
-          updateData.sasStartTime ?? currentDoc.sasStartTime;
-        const resolvedSasEnd = updateData.sasEndTime ?? currentDoc.sasEndTime;
-
-        // Resolve RAM clear: explicit body value wins, else use stored value.
-        // When ramClear ends up false, peak values are ignored downstream.
-        const resolvedRamClear =
-          body.ramClear !== undefined
-            ? body.ramClear
-            : (currentDoc.ramClear ?? false);
-        const resolvedRamClearIn = resolvedRamClear
-          ? (updateData.ramClearMetersIn ?? currentDoc.ramClearMetersIn)
-          : undefined;
-        const resolvedRamClearOut = resolvedRamClear
-          ? (updateData.ramClearMetersOut ?? currentDoc.ramClearMetersOut)
-          : undefined;
-
-        const {
-          prevMeters,
-          movement,
-          sasGross,
-          resolvedSasMetersIn,
-          resolvedSasMetersOut,
-          isSupplemental,
-        } = await computeMovement(
-          currentDoc.machineId,
-          currentDoc.sessionId,
-          resolvedSasIn ?? 0,
-          resolvedSasOut ?? 0,
-          resolvedManualIn ?? undefined,
-          resolvedManualOut ?? undefined,
-          resolvedMetersMatch,
-          resolvedSasStart,
-          resolvedSasEnd,
-          resolvedRamClear,
-          resolvedRamClearIn,
-          resolvedRamClearOut
+    if (shouldRecalculateMovement(body)) {
+      const recalcResult = await resolveAndRecalculateMovement(
+        reportedMachineId,
+        body,
+        updateData
+      );
+      if ('error' in recalcResult) {
+        return NextResponse.json(
+          { success: false, error: recalcResult.error },
+          { status: recalcResult.status }
         );
-
-        // Enforce ramClear peak >= prev invariant (mirrors V1).
-        if (
-          resolvedRamClear &&
-          resolvedRamClearIn !== undefined &&
-          resolvedRamClearOut !== undefined &&
-          (resolvedRamClearIn < prevMeters.prevSasMetersIn ||
-            resolvedRamClearOut < prevMeters.prevSasMetersOut)
-        ) {
-          return NextResponse.json(
-            {
-              success: false,
-              error:
-                'ramClearMetersIn/Out must be greater than or equal to previous meters',
-            },
-            { status: 400 }
-          );
-        }
-
-        console.log(
-          `[${functionName}] PATCH recomputed movement:`,
-          JSON.stringify(
-            {
-              reportedMachineId,
-              resolvedSasIn,
-              resolvedSasOut,
-              resolvedManualIn,
-              resolvedManualOut,
-              resolvedMetersMatch,
-              prevMeters,
-              resolvedSasMetersIn,
-              resolvedSasMetersOut,
-              movement,
-              sasGross,
-            },
-            null,
-            2
-          )
-        );
-
-        updateData.sasMetersIn = resolvedSasMetersIn;
-        updateData.sasMetersOut = resolvedSasMetersOut;
-        updateData.sasGross = sasGross;
-        updateData.isSupplemental = isSupplemental;
-        updateData.prevSasMetersIn = prevMeters.prevSasMetersIn;
-        updateData.prevSasMetersOut = prevMeters.prevSasMetersOut;
-        updateData.movement = movement;
-        // For SMIB locations with metersMatch===true, mirror SAS into manual.
-        // Skip for noSMIB (resolvedSasMetersIn is null) — manual meters were
-        // already set correctly from the payload above.
-        if (resolvedMetersMatch === true && resolvedSasMetersIn !== null) {
-          updateData.manualMetersIn = resolvedSasMetersIn;
-          updateData.manualMetersOut = resolvedSasMetersOut;
-        }
       }
+
+      // Merge recalculated fields into updateData
+      Object.assign(updateData, recalcResult.data);
     }
 
     if (
@@ -683,43 +305,10 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // When toggling ramClear off the peak fields are also being set above by
-    // recalc — strip them from updateData so $unset is the only operation
-    // applied to those keys (otherwise Mongo would error on conflict).
-    if (Object.keys(unsetData).length > 0) {
-      if ('ramClearMetersIn' in unsetData) delete updateData.ramClearMetersIn;
-      if ('ramClearMetersOut' in unsetData) delete updateData.ramClearMetersOut;
-    }
-
-    const updateOps: Record<string, unknown> = {};
-    if (Object.keys(updateData).length > 0) updateOps.$set = updateData;
-    if (Object.keys(unsetData).length > 0) updateOps.$unset = unsetData;
-
     // ============================================================================
-    // STEP 7: Update document
+    // STEP 9: Apply MongoDB update
     // ============================================================================
-    let result = await ReportedMachine.findOneAndUpdate(
-      { _id: reportedMachineId },
-      updateOps,
-      { new: true }
-    ).lean();
-
-    // Legacy fallback: documents created with insertMany + _id: undefined
-    // may have ObjectId _id instead of string. Try native query.
-    if (!result) {
-      const mongoose = (await import('mongoose')).default;
-      if (mongoose.Types.ObjectId.isValid(reportedMachineId)) {
-        const nativeResult = await ReportedMachine.collection.findOneAndUpdate(
-          { _id: new mongoose.Types.ObjectId(reportedMachineId) },
-          updateOps,
-          { returnDocument: 'after' }
-        );
-        if (nativeResult) {
-          result = JSON.parse(JSON.stringify(nativeResult));
-        }
-      }
-    }
-
+    const result = await applyMongoUpdate(reportedMachineId, updateData, unsetData);
     if (!result) {
       return NextResponse.json(
         { success: false, error: 'Machine capture not found' },
@@ -728,43 +317,39 @@ export async function PATCH(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 8: Cascade to Machine + Meters if session is submitted (edit mode)
+    // STEP 10: Cascade to Machine + Meters if session is submitted
     // ============================================================================
     if (result.sessionStatus === 'submitted') {
-      cascadeMachineEdit({
-        machineId: result.machineId,
-        sessionId: result.sessionId,
-        locationId: result.locationId,
-        locationName: result.locationName,
-        sasEndTime: result.sasEndTime,
-        manualMetersIn: result.manualMetersIn,
-        manualMetersOut: result.manualMetersOut,
-        sasMetersIn: result.sasMetersIn,
-        sasMetersOut: result.sasMetersOut,
-        prevSasMetersIn: result.prevSasMetersIn,
-        prevSasMetersOut: result.prevSasMetersOut,
-        ramClear: result.ramClear,
-        ramClearMetersIn: result.ramClearMetersIn,
-        ramClearMetersOut: result.ramClearMetersOut,
-      }).catch(cascadeErr => {
-        console.error(`[${functionName}] Cascade failed:`, cascadeErr);
-      });
-
-      // Propagate updated meters forward to the next session if this was a middle-date edit
-      propagateV2MetersToNextSession(
-        result.machineId,
-        result.sessionId,
-        result.manualMetersIn ?? result.sasMetersIn,
-        result.manualMetersOut ?? result.sasMetersOut,
-        result.sasEndTime
-      ).catch(propErr => {
-        console.error(`[${functionName}] Propagation failed:`, propErr);
-      });
+      handlePostSubmitCascade(result, functionName);
     }
 
     // ============================================================================
-    // STEP 9: Return success response
+    // STEP 11: Log activity and return response
     // ============================================================================
+    const patchMachineName = String(
+      result.machineCustomName || result.machineName || reportedMachineId
+    );
+    logActivity({
+      action: 'UPDATE',
+      details: `Edited machine ${patchMachineName} in V2 session ${result.sessionId}`,
+      userId: String(userPayload._id),
+      username: String(userPayload.emailAddress ?? userPayload._id),
+      metadata: {
+        userId: String(userPayload._id),
+        userEmail: String(userPayload.emailAddress ?? ''),
+        resource: 'collection-report-v2-machine',
+        resourceId: reportedMachineId,
+        resourceName: patchMachineName,
+        changes: Object.entries(updateData).map(([field, newValue]) => ({
+          field,
+          oldValue: null,
+          newValue,
+        })),
+      },
+    }).catch(logError => {
+      console.error('[PATCH machines] Failed to log activity:', logError instanceof Error ? logError.message : 'Unknown error');
+    });
+
     const duration = Date.now() - startTime;
     logRouteUpdate(
       functionName,
@@ -779,13 +364,7 @@ export async function PATCH(req: NextRequest) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'PATCH',
-      '/api/collection-reports-v2/machines',
-      errorMessage,
-      user
-    );
+    logRouteError(functionName, 'PATCH', '/api/collection-reports-v2/machines', errorMessage, user);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

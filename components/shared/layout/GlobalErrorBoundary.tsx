@@ -215,8 +215,8 @@ export default function GlobalErrorBoundary({
 
   const isDeveloper =
     user?.roles
-      ?.filter((r): r is string => typeof r === 'string')
-      ?.some(r => r === 'developer') ?? false;
+      ?.filter((role): role is string => typeof role === 'string')
+      ?.some(role => role === 'developer') ?? false;
 
   // ============================================================================
   // Handlers

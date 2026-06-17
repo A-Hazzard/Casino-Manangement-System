@@ -149,7 +149,8 @@ export async function getMachineChartData(
   displayCurrency?: string,
   selectedLicencee?: string | null,
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  dateField?: string
 ): Promise<{
   data: dashboardData[];
   dataSpan?: {
@@ -160,6 +161,10 @@ export async function getMachineChartData(
   try {
     // Build URL for machine chart API
     let url = `/api/cabinets/${machineId}/chart?timePeriod=${timePeriod}`;
+
+    if (dateField && dateField !== 'readAt') {
+      url += `&dateField=${encodeURIComponent(dateField)}`;
+    }
 
     if (timePeriod === 'Custom' && startDate && endDate) {
       const sd = startDate instanceof Date ? startDate : new Date(startDate);

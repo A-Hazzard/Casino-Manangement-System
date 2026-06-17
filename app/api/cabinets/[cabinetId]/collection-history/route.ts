@@ -178,6 +178,11 @@ export async function PATCH(request: NextRequest) {
           );
         }
 
+        // Preserve reportVersion from the existing entry — full element replacement
+        // would otherwise strip it, breaking "VIEW REPORT" routing in the UI.
+        const existingReportVersion =
+          machine.collectionMetersHistory[entryIndex]?.reportVersion;
+
         machine.collectionMetersHistory[entryIndex] = {
           _id: entryId,
           metersIn: entry.metersIn,
@@ -186,6 +191,9 @@ export async function PATCH(request: NextRequest) {
           prevMetersOut: entry.prevMetersOut,
           timestamp: new Date(entry.timestamp),
           locationReportId: entry.locationReportId,
+          ...(existingReportVersion !== undefined
+            ? { reportVersion: existingReportVersion }
+            : {}),
         };
         updated = true;
         break;

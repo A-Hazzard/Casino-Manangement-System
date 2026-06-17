@@ -27,7 +27,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
 import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 
-interface VariationCheckPopoverProps {
+type VariationCheckPopoverProps = {
   isOpen: boolean;
   isChecking: boolean;
   hasVariations: boolean | null;
@@ -74,7 +74,7 @@ export function VariationCheckPopover({
   // ============================================================================
   const machineWithVariationsCount =
     variationsData?.machines.filter(
-      m => typeof m.variation === 'number' && m.variation !== 0
+      m => m.variation !== null && m.variation !== 0
     ).length || 0;
   const totalMachinesCount = variationsData?.machines.length || 0;
 

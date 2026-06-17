@@ -36,9 +36,10 @@ type SessionMachine = {
   sessionStartTime?: string;
   sessionEndTime?: string;
   imageData?: string;
+  driveFileId?: string;
   metersMatch?: boolean;
   machineGross?: number;
-  grossDifference?: number;
+  variation?: number;
   isSupplemental?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -77,6 +78,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
   const [currentPage, setCurrentPage] = useState(1);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [photoPreviewName, setPhotoPreviewName] = useState('');
+  const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
+  const [photoPreviewDriveId, setPhotoPreviewDriveId] = useState<string | null>(null);
 
   // ============================================================================
   // Handlers
@@ -163,7 +166,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
             (a.movement?.machineGross ?? 0) - (b.movement?.machineGross ?? 0);
           break;
         case 'variation':
-          cmp = (a.grossDifference ?? 0) - (b.grossDifference ?? 0);
+          cmp = (a.variation ?? 0) - (b.variation ?? 0);
           break;
       }
 
@@ -317,7 +320,32 @@ export default function CollectionReportV2SessionReportMachinesTab({
     machine: SessionMachine;
     onPhotoClick: () => void;
   }) => {
+    const [previewFailed, setPreviewFailed] = useState(false);
+
     if (machine.imageData) {
+      if (previewFailed) {
+        return (
+          <button
+            type="button"
+            onClick={onPhotoClick}
+            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-400 transition-opacity hover:opacity-80"
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </button>
+        );
+      }
       return (
         <button
           type="button"
@@ -328,6 +356,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
             src={machine.imageData}
             alt={machine.machineName}
             className="h-full w-full object-cover"
+            onError={() => setPreviewFailed(true)}
           />
         </button>
       );
@@ -491,6 +520,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                             setPhotoPreviewName(
                               machine.machineCustomName || machine.machineName
                             );
+                            setPhotoPreviewDriveId(machine.driveFileId || null);
+                            setPhotoPreviewFailed(false);
                           }}
                         />
                       </td>
@@ -566,14 +597,14 @@ export default function CollectionReportV2SessionReportMachinesTab({
                       ) : (
                         <td
                           className={`whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-semibold tabular-nums last:border-r-0 ${
-                            machine.grossDifference !== null &&
-                            machine.grossDifference !== undefined &&
-                            machine.grossDifference !== 0
+                            machine.variation !== null &&
+                            machine.variation !== undefined &&
+                            machine.variation !== 0
                               ? 'text-red-600'
                               : 'text-gray-900'
                           }`}
                         >
-                          {formatNum(machine.grossDifference ?? null)}
+                          {formatNum(machine.variation ?? null)}
                         </td>
                       )}
 
@@ -615,6 +646,8 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         setPhotoPreviewName(
                           machine.machineCustomName || machine.machineName
                         );
+                        setPhotoPreviewDriveId(machine.driveFileId || null);
+                        setPhotoPreviewFailed(false);
                       }}
                     />
                     <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -718,14 +751,14 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         </p>
                         <p
                           className={`mt-0.5 font-semibold tabular-nums ${
-                            machine.grossDifference !== null &&
-                            machine.grossDifference !== undefined &&
-                            machine.grossDifference !== 0
+                            machine.variation !== null &&
+                            machine.variation !== undefined &&
+                            machine.variation !== 0
                               ? 'text-red-600'
                               : 'text-gray-900'
                           }`}
                         >
-                          {formatNum(machine.grossDifference ?? null)}
+                          {formatNum(machine.variation ?? null)}
                         </p>
                       </div>
                     ) : (
@@ -827,7 +860,14 @@ export default function CollectionReportV2SessionReportMachinesTab({
       {/* ================================================================
           Photo preview modal
       ================================================================ */}
-      {photoPreviewUrl && (
+      {photoPreviewUrl && (() => {
+        const driveMatch = photoPreviewUrl.match(/\/api\/collection-reports-v2\/drive-files\/([a-zA-Z0-9_-]+)/);
+        const driveId = photoPreviewDriveId ?? driveMatch?.[1] ?? null;
+        const driveViewUrl = driveId
+          ? `https://drive.google.com/file/d/${driveId}/view`
+          : null;
+
+        return (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setPhotoPreviewUrl(null)}
@@ -855,17 +895,95 @@ export default function CollectionReportV2SessionReportMachinesTab({
                 />
               </svg>
             </button>
-            <img
-              src={photoPreviewUrl}
-              alt={photoPreviewName}
-              className="max-h-[80vh] rounded-lg object-contain shadow-2xl"
-            />
-            <p className="mt-2 text-center text-sm text-white/70">
-              {photoPreviewName}
-            </p>
+            {photoPreviewFailed ? (
+              <div className="flex flex-col items-center gap-4 rounded-lg bg-gray-900 p-8">
+                <svg
+                  className="h-16 w-16 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <p className="text-center text-base font-medium text-white">
+                  Preview not available
+                </p>
+                <p className="max-w-xs text-center text-sm text-white/60">
+                  This file type can&apos;t be previewed in the browser.
+                  {driveViewUrl
+                    ? ' Tap below to open it in Google Drive.'
+                    : ' Try downloading the file to view it.'}
+                </p>
+                {driveViewUrl ? (
+                  <a
+                    href={driveViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                    Open in Google Drive
+                  </a>
+                ) : (
+                  <a
+                    href={photoPreviewUrl}
+                    download
+                    className="mt-2 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                      />
+                    </svg>
+                    Download File
+                  </a>
+                )}
+                <p className="mt-1 text-center text-xs text-white/40">
+                  {photoPreviewName}
+                </p>
+              </div>
+            ) : (
+              <img
+                src={photoPreviewUrl}
+                alt={photoPreviewName}
+                className="max-h-[80vh] rounded-lg object-contain shadow-2xl"
+                onError={() => setPhotoPreviewFailed(true)}
+              />
+            )}
+            {!photoPreviewFailed && (
+              <p className="mt-2 text-center text-sm text-white/70">
+                {photoPreviewName}
+              </p>
+            )}
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

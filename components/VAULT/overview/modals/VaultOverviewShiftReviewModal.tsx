@@ -43,7 +43,7 @@ import type { Denomination, UnbalancedShiftInfo } from '@/shared/types/vault';
 import CashierActivityLogModal from '../../admin/modals/CashierActivityLogModal';
 import CashierShiftHistoryModal from '../../admin/modals/CashierShiftHistoryModal';
 
-interface VaultOverviewShiftReviewModalProps {
+type VaultOverviewShiftReviewModalProps = {
   open: boolean;
   onClose: () => void;
   shift: UnbalancedShiftInfo | null;
@@ -94,9 +94,9 @@ export default function VaultOverviewShiftReviewModal({
 
       const denoms = getInitialDenominationRecord(selectedLicencee);
       if (shift.enteredDenominations) {
-        shift.enteredDenominations.forEach(d => {
-          if (denoms[d.denomination.toString()] !== undefined) {
-            denoms[d.denomination.toString()] = d.quantity;
+        shift.enteredDenominations.forEach(denomination => {
+          if (denoms[denomination.denomination.toString()] !== undefined) {
+            denoms[denomination.denomination.toString()] = denomination.quantity;
           }
         });
       }
@@ -183,8 +183,8 @@ export default function VaultOverviewShiftReviewModal({
   };
 
   const denomValues = getDenominationValues(selectedLicencee);
-  const allTouched = denomValues.every(d =>
-    touchedDenominations.has(d.toString())
+  const allTouched = denomValues.every(value =>
+    touchedDenominations.has(value.toString())
   );
   const isValidResolution = !isEditingBreakdown || shiftTotal > 0 || allTouched;
 
@@ -224,7 +224,7 @@ export default function VaultOverviewShiftReviewModal({
     const direction = discrepancy > 0 ? 'over' : 'short';
     let message = `Your count is $${absDisc.toFixed(2)} ${direction}. `;
     const commonDenoms = getDenominationValues(selectedLicencee);
-    const matchingDenom = commonDenoms.find(d => Math.abs(absDisc - d) < 0.01);
+    const matchingDenom = commonDenoms.find(value => Math.abs(absDisc - value) < 0.01);
     if (matchingDenom)
       message += `It looks like you might have miscounted a $${matchingDenom} bill. `;
     message += 'Carefully re-count your physical cash and please resubmit.';
@@ -449,17 +449,17 @@ export default function VaultOverviewShiftReviewModal({
 
                       <DenominationInputGrid
                         denominations={Object.entries(shiftDenominations).map(
-                          ([d, q]) => ({
+                          ([denom, qty]) => ({
                             denomination: Number(
-                              d
+                              denom
                             ) as Denomination['denomination'],
-                            quantity: q,
+                            quantity: qty,
                           })
                         )}
                         onChange={(newDenoms: Denomination[]) => {
                           const newRecord: Record<string, number> = {};
-                          newDenoms.forEach((d: Denomination) => {
-                            newRecord[d.denomination.toString()] = d.quantity;
+                          newDenoms.forEach((denomination: Denomination) => {
+                            newRecord[denomination.denomination.toString()] = denomination.quantity;
                           });
                           setShiftDenominations(newRecord);
                         }}
@@ -520,24 +520,24 @@ export default function VaultOverviewShiftReviewModal({
                     Rejection Primary Reason
                   </h4>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {['Miscount', 'Variance', 'Denoms', 'Other'].map(r => (
+                    {['Miscount', 'Variance', 'Denoms', 'Other'].map(reason => (
                       <button
-                        key={r}
+                        key={reason}
                         onClick={() => {
-                          if (r === 'Other') setAuditComment('');
+                          if (reason === 'Other') setAuditComment('');
                           else
                             setAuditComment(
-                              `[${r.toUpperCase()}] ${getSuggestedRejectionReason(shift)}`
+                              `[${reason.toUpperCase()}] ${getSuggestedRejectionReason(shift)}`
                             );
                         }}
                         className={cn(
                           'rounded-xl border-2 p-3 text-[10px] font-black uppercase tracking-tighter transition-all',
-                          auditComment.includes(r.toUpperCase())
+                          auditComment.includes(reason.toUpperCase())
                             ? 'border-red-600 bg-red-600 text-white shadow-xl shadow-red-200'
                             : 'border-transparent bg-gray-50 text-gray-400 hover:border-red-200 hover:text-red-600'
                         )}
                       >
-                        {r}
+                        {reason}
                       </button>
                     ))}
                   </div>

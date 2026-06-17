@@ -38,14 +38,18 @@ import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 
-/**
- * Calculates pie chart label position data for rendering
- * @param props - Customized label properties
- * @returns Object with calculated position and styling data
- */
+// ============================================================================
+// Gaming Location Data Fetching
+// ============================================================================
 
 /**
- * Fetches and sets gaming locations data
+ * Fetches gaming locations from the API and sets them via the provided callback.
+ * Supports licencee filtering, force-all mode, and request deduplication.
+ * Falls back to getAllGamingLocations on primary request failure.
+ * @param {(locations: locations) => void} setGamingLocations - Callback to store fetched locations.
+ * @param {string} [selectedLicencee] - Optional licencee ID to filter locations.
+ * @param {{ forceAll?: boolean }} [options] - Optional settings including forceAll flag.
+ * @returns {Promise<locations[] | undefined>} The fetched locations array or empty array on failure.
  */
 export const loadGamingLocations = async (
   setGamingLocations: (locations: locations) => void,
@@ -113,9 +117,27 @@ export const loadGamingLocations = async (
   return [];
 };
 
+// ============================================================================
+// Dashboard Totals Fetching
+// ============================================================================
+
 /**
- * Fetches dashboard totals using the location aggregation API (same as locations page)
- * This ensures consistency between dashboard and locations page totals
+ * Fetches dashboard totals using the location aggregation API.
+ * Ensures consistency between dashboard and locations page totals by summing
+ * moneyIn, moneyOut, gross, and jackpot across all filtered locations.
+ * Supports time period filtering, custom date ranges, licencee selection,
+ * currency conversion, machine type filtering, search, and online status filtering.
+ * @param {TimePeriod} activeMetricsFilter - The selected time period filter.
+ * @param {DateRange} customDateRange - Custom date range when time period is 'Custom'.
+ * @param {string | undefined} selectedLicencee - Optional licencee ID to filter by.
+ * @param {(totals: DashboardTotals | null) => void} setTotals - State setter for dashboard totals.
+ * @param {string} [displayCurrency] - Optional currency code for conversion.
+ * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request.
+ * @param {string | null} [machineTypeFilter] - Optional machine type filter.
+ * @param {() => boolean} [validateFilters] - Optional callback to validate current filters.
+ * @param {string} [searchTerm] - Optional search term for location filtering.
+ * @param {string} [selectedStatus] - Optional online status filter.
+ * @returns {Promise<void>}
  */
 export const fetchDashboardTotals = async (
   activeMetricsFilter: TimePeriod,
@@ -328,8 +350,25 @@ export const fetchDashboardTotals = async (
   }
 };
 
+// ============================================================================
+// Metrics & Chart Data Fetching
+// ============================================================================
+
 /**
- * Fetches metrics data based on active filter and licencee
+ * Fetches both dashboard totals and chart data in parallel.
+ * Uses fetchDashboardTotals for totals and switchFilter for chart data,
+ * ensuring the skeleton doesn't disappear until both complete.
+ * @param {TimePeriod} activeMetricsFilter - The selected time period filter.
+ * @param {DateRange} customDateRange - Custom date range for 'Custom' period.
+ * @param {string | undefined} selectedLicencee - Optional licencee ID to filter by.
+ * @param {(totals: DashboardTotals | null) => void} setTotals - State setter for totals.
+ * @param {(data: dashboardData[]) => void} setChartData - State setter for chart data.
+ * @param {(filters: ActiveFilters) => void} setActiveFilters - State setter for filters.
+ * @param {(show: boolean) => void} setShowDatePicker - State setter for date picker visibility.
+ * @param {string} [displayCurrency] - Optional currency code for conversion.
+ * @param {AbortSignal} [signal] - Optional AbortSignal to cancel requests.
+ * @param {'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'} [granularity] - Optional chart granularity.
+ * @returns {Promise<void>}
  */
 export const fetchMetricsData = async (
   activeMetricsFilter: TimePeriod,
@@ -392,8 +431,23 @@ export const fetchMetricsData = async (
   ]);
 };
 
+// ============================================================================
+// Top Performing Data Fetching
+// ============================================================================
+
 /**
- * Fetches top performing data based on active tab and filter
+ * Fetches top-performing locations or cabinets data based on the active tab and time filter.
+ * Delegates to fetchTopPerformingData with optional custom date range support.
+ * Clears data on error to prevent stale/misleading display.
+ * @param {ActiveTab} activeTab - The active dashboard tab.
+ * @param {TimePeriod} activePieChartFilter - The selected time period for the pie chart.
+ * @param {(data: TopPerformingData) => void} setTopPerformingData - State setter for top data.
+ * @param {(loading: boolean) => void} setLoadingTopPerforming - State setter for loading flag.
+ * @param {string} [selectedLicencee] - Optional licencee ID to filter by.
+ * @param {string} [currency] - Optional currency code for conversion.
+ * @param {AbortSignal} [signal] - Optional AbortSignal to cancel the request.
+ * @param {DateRange} [customDateRange] - Optional custom date range for 'Custom' period.
+ * @returns {Promise<void>}
  */
 export const fetchTopPerformingDataHelper = async (
   activeTab: ActiveTab,
@@ -455,8 +509,29 @@ export const fetchTopPerformingDataHelper = async (
   }
 };
 
+// ============================================================================
+// Dashboard Refresh
+// ============================================================================
+
 /**
- * Handles the complete refresh functionality for dashboard
+ * Handles the complete dashboard refresh by re-fetching all data in parallel.
+ * Refreshes metrics totals, chart data, top-performing data, and gaming locations
+ * simultaneously, managing loading and refreshing state flags.
+ * @param {TimePeriod} activeMetricsFilter - The selected time period filter.
+ * @param {DateRange} customDateRange - Custom date range for 'Custom' period.
+ * @param {string | undefined} selectedLicencee - Optional licencee ID to filter by.
+ * @param {ActiveTab} activeTab - The active dashboard tab.
+ * @param {TimePeriod} activePieChartFilter - The selected time period for pie chart.
+ * @param {(refreshing: boolean) => void} setRefreshing - State setter for refresh flag.
+ * @param {(loading: boolean) => void} setLoadingChartData - State setter for chart loading flag.
+ * @param {(loading: boolean) => void} setLoadingTopPerforming - State setter for top data loading flag.
+ * @param {(totals: DashboardTotals | null) => void} setTotals - State setter for totals.
+ * @param {(data: dashboardData[]) => void} setChartData - State setter for chart data.
+ * @param {(filters: ActiveFilters) => void} setActiveFilters - State setter for filters.
+ * @param {(show: boolean) => void} setShowDatePicker - State setter for date picker visibility.
+ * @param {(data: TopPerformingData) => void} setTopPerformingData - State setter for top data.
+ * @param {string} [displayCurrency] - Optional currency code for conversion.
+ * @returns {Promise<void>}
  */
 export const handleDashboardRefresh = async (
   activeMetricsFilter: TimePeriod,

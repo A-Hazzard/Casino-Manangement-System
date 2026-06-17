@@ -23,7 +23,7 @@ import {
 import { getMoneyOutColorClass } from '@/lib/utils/financial/colors';
 import { Info } from 'lucide-react';
 
-interface MoneyOutCellProps {
+type MoneyOutCellProps = {
   moneyOut: number;
   moneyIn: number;
   jackpot: number;

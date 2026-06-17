@@ -42,7 +42,9 @@ export function validateEmail(
 }
 
 /**
- * Checks if a string looks like an email address.
+ * Checks if a string looks like an email address by testing against a basic email regex.
+ * @param {string} value - The string to check for email patterns.
+ * @returns {boolean} True if the value matches an email pattern, false otherwise.
  */
 export function containsEmailPattern(value: string): boolean {
   if (!value || typeof value !== 'string') {
@@ -52,8 +54,10 @@ export function containsEmailPattern(value: string): boolean {
 }
 
 /**
- * Checks if an email address is a placeholder/example email.
+ * Checks if an email address is a placeholder or example email.
  * Detects common patterns like example@example.com, test@test.com, etc.
+ * @param {string} email - The email address to check.
+ * @returns {boolean} True if the email matches a known placeholder pattern, false otherwise.
  */
 export function isPlaceholderEmail(email: string): boolean {
   if (!email || typeof email !== 'string') return false;
@@ -77,6 +81,10 @@ export function isPlaceholderEmail(email: string): boolean {
 
   return placeholderPatterns.some(pattern => pattern.test(normalized));
 }
+
+// ============================================================================
+// Password Validation
+// ============================================================================
 
 /**
  * Validates if a password meets strength requirements.
@@ -207,6 +215,10 @@ export function getPasswordStrengthLabel(score: number): string {
   }
 }
 
+// ============================================================================
+// Profile & Name Validation
+// ============================================================================
+
 /**
  * Validates if a string contains special characters that are not allowed in usernames, firstnames, or lastnames.
  * Also checks for phone number patterns.
@@ -229,6 +241,8 @@ export function validateProfileField(value: string): boolean {
  * Validates username rules:
  *  - Must pass profile field validation (no disallowed characters/phone patterns)
  *  - Must not resemble an email address
+ * @param {string} value - The username to validate.
+ * @returns {boolean} True if the username passes all rules, false otherwise.
  */
 export function validateUsername(value: string): boolean {
   if (!value) return false;
@@ -273,6 +287,11 @@ function validateGender(
   return (ALLOWED_GENDERS as readonly string[]).includes(normalized);
 }
 
+/**
+ * Validates an optional gender field, returning true when empty.
+ * @param {string | null | undefined} value - The gender value to validate.
+ * @returns {boolean} True if the value is empty (optional) or a valid gender, false otherwise.
+ */
 export function validateOptionalGender(
   value: string | null | undefined
 ): boolean {
@@ -280,6 +299,12 @@ export function validateOptionalGender(
   return validateGender(value);
 }
 
+/**
+ * Validates an optional alphabetic field, returning true when empty.
+ * Falls back to validateNameField for non-empty values.
+ * @param {string | null | undefined} value - The field value to validate.
+ * @returns {boolean} True if empty (optional) or passes alphabetic validation.
+ */
 export function validateAlphabeticField(
   value: string | null | undefined
 ): boolean {
@@ -303,6 +328,12 @@ export function validateStreetAddress(
   return allowedPattern.test(trimmed);
 }
 
+/**
+ * Validates whether a value can be parsed into a valid date.
+ * Returns true for empty/null/undefined values (treating them as optional).
+ * @param {string | Date | null | undefined} value - The value to check.
+ * @returns {boolean} True if empty or a valid date, false if parsing fails.
+ */
 export function isValidDateInput(
   value: string | Date | null | undefined
 ): boolean {
@@ -310,6 +341,10 @@ export function isValidDateInput(
   const date = value instanceof Date ? value : new Date(value);
   return !Number.isNaN(date.getTime());
 }
+
+// ============================================================================
+// Phone Validation
+// ============================================================================
 
 /**
  * Checks if a string contains phone number patterns.
@@ -377,11 +412,17 @@ export function validatePhoneNumber(value: string | undefined | null): boolean {
 }
 
 /**
- * Normalizes phone numbers by stripping everything except digits.
+ * Normalizes a phone number by stripping everything except digits.
+ * @param {string} value - The phone number string to normalize.
+ * @returns {string} The phone number containing only digits.
  */
 export function normalizePhoneNumber(value: string): string {
   return value.replace(/\D/g, '');
 }
+
+// ============================================================================
+// Collection Report Validation
+// ============================================================================
 
 /**
  * Validates a CreateCollectionReportPayload object (backend).
@@ -499,7 +540,13 @@ export function validateCollectionReportData(data: unknown): boolean {
     return false;
   }
 
-  const report = data as Record<string, unknown>;
+  const report = data as {
+    reportId?: unknown;
+    locationName?: unknown;
+    collectionDate?: unknown;
+    machineMetrics?: unknown;
+    locationMetrics?: unknown;
+  };
 
   // Check for essential fields that indicate a valid collection report
   // Note: API returns transformed data with different field names than database

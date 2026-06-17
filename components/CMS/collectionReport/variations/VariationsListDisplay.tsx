@@ -18,7 +18,7 @@
 import { format } from 'date-fns';
 import type { MachineVariationData } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 
-interface VariationsListDisplayProps {
+type VariationsListDisplayProps = {
   machines: MachineVariationData[];
   onMachineClick?: (machineId: string) => void;
   isCompact?: boolean;
@@ -34,7 +34,7 @@ export function VariationsListDisplay({
   // ============================================================================
   // Filter to only machines with actual variations (not "No SAS Data")
   const variationMachines = machines.filter(
-    m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+    m => m.variation !== null && m.variation !== 0
   );
 
   if (variationMachines.length === 0) {
@@ -61,14 +61,14 @@ export function VariationsListDisplay({
     try {
       const dateObj =
         typeof timeString === 'string' ? new Date(timeString) : timeString;
-      return format(dateObj, 'MMM dd, yyyy HH:mm');
+      return format(dateObj, 'MMM dd, yyyy HH:mm:ss');
     } catch {
       return String(timeString);
     }
   };
 
-  const getVariationColor = (variation: number | string): string => {
-    if (typeof variation === 'string') return 'text-gray-600';
+  const getVariationColor = (variation: number | null): string => {
+    if (variation === null) return 'text-gray-600';
     if (variation < 0) return 'text-red-600 font-bold';
     if (variation > 0) return 'text-green-600 font-bold';
     return 'text-gray-600';
@@ -82,13 +82,10 @@ export function VariationsListDisplay({
     (sum, machineItem) => sum + (Number(machineItem.sasGross) || 0),
     0
   );
-  const totalVariation = variationMachines.reduce((sum, machineItem) => {
-    const variationValue =
-      typeof machineItem.variation === 'number'
-        ? machineItem.variation
-        : Number(machineItem.variation) || 0;
-    return sum + variationValue;
-  }, 0);
+  const totalVariation = variationMachines.reduce(
+    (sum, machineItem) => sum + (machineItem.variation ?? 0),
+    0
+  );
 
   // ============================================================================
   // Render
@@ -116,7 +113,7 @@ export function VariationsListDisplay({
             </div>
             <div
               className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
-                typeof machine.variation === 'number' && machine.variation < 0
+                machine.variation !== null && machine.variation < 0
                   ? 'bg-red-500 text-white'
                   : 'bg-green-500 text-white'
               }`}
@@ -139,8 +136,8 @@ export function VariationsListDisplay({
                 SAS Gross
               </p>
               <p className="text-sm font-black text-gray-900">
-                {typeof machine.sasGross === 'string'
-                  ? machine.sasGross
+                {machine.sasGross === null
+                  ? 'No SAS Data'
                   : `$${formatNumber(machine.sasGross)}`}
               </p>
             </div>
@@ -213,24 +210,21 @@ export function VariationsListDisplay({
                     ${formatNumber(machine.meterGross)}
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-gray-600">
-                    {typeof machine.sasGross === 'string'
-                      ? machine.sasGross
+                    {machine.sasGross === null
+                      ? 'No SAS Data'
                       : `$${formatNumber(machine.sasGross)}`}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        typeof machine.variation === 'number' &&
-                        machine.variation < 0
+                        machine.variation !== null && machine.variation < 0
                           ? 'bg-red-50 text-red-600'
-                          : typeof machine.variation === 'number' &&
-                              machine.variation > 0
+                          : machine.variation !== null && machine.variation > 0
                             ? 'bg-green-50 text-green-600'
                             : 'bg-gray-50 text-gray-600'
                       }`}
                     >
-                      {typeof machine.variation === 'number' &&
-                      machine.variation > 0
+                      {machine.variation !== null && machine.variation > 0
                         ? '+'
                         : ''}
                       {formatNumber(machine.variation)}

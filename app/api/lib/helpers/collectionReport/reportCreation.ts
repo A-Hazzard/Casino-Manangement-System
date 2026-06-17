@@ -292,7 +292,23 @@ async function updateMachineCollectionData(
   const currentCollectionMeters = currentMachine.collectionMeters;
   const currentMachineCollectionTime = currentMachine.collectionTime;
 
-  // Determine true previous meters from the latest completed collection
+  // Determine true previous meters — most-recent-regardless-of-version
+  // Priority: 1. collectionMetersHistory entry (unified V1+V2, most recent before this)
+  //           2. Previous V1 collection (backward compat)
+  //           3. Machine.collectionMeters
+
+  // Scan unified collectionMetersHistory for the most recent entry chronologically
+  // before this collection (includes both V1 and V2 entries)
+  const historyBeforeThis = (currentMachine.collectionMetersHistory ?? [])
+    .filter(
+      entry => entry.timestamp && new Date(entry.timestamp).getTime() < collectionTime.getTime()
+    )
+    .sort(
+      (a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime()
+    );
+
+  const previousHistoryEntry = historyBeforeThis[0];
+
   const previousCompletedCollection = await Collections.findOne({
     machineId,
     isCompleted: true,
@@ -309,10 +325,12 @@ async function updateMachineCollectionData(
     .lean<CollectionDocument>();
 
   const baselinePrevIn =
+    previousHistoryEntry?.metersIn ??
     previousCompletedCollection?.metersIn ??
     currentCollectionMeters?.metersIn ??
     0;
   const baselinePrevOut =
+    previousHistoryEntry?.metersOut ??
     previousCompletedCollection?.metersOut ??
     currentCollectionMeters?.metersOut ??
     0;
@@ -338,6 +356,7 @@ async function updateMachineCollectionData(
     prevMetersOut: baselinePrevOut,
     timestamp: collectionTime,
     locationReportId,
+    reportVersion: 1,
   };
 
   // Prepare all update operations
@@ -691,10 +710,16 @@ async function createManualMetersForEachMachine(
 
       // Append 2 meter IDs (RAM clear + current)
       const thisMachineMeters = metersToCreate.slice(-2);
-      await appendMeterIdsToCollections(collectionId, thisMachineMeters);
-      console.log(
-        `[createManualMetersForEachMachine] Appended 2 meter IDs for collection ${collectionId}`
-      );
+      const appendResult = await appendMeterIdsToCollections(collectionId, thisMachineMeters);
+      if (!appendResult.success) {
+        console.error(
+          `[createManualMetersForEachMachine] ⚠️ Failed to link meters to collection ${collectionId} — meters may be orphaned`
+        );
+      } else {
+        console.log(
+          `[createManualMetersForEachMachine] Appended 2 meter IDs for collection ${collectionId}`
+        );
+      }
     } else {
       // NOT RAM CLEAR: Create 1 meter only
       const currentMeterId = await generateMongoId();
@@ -747,10 +772,16 @@ async function createManualMetersForEachMachine(
 
       // Append 1 meter ID
       const thisMachineMeters = metersToCreate.slice(-1);
-      await appendMeterIdsToCollections(collectionId, thisMachineMeters);
-      console.log(
-        `[createManualMetersForEachMachine] Appended 1 meter ID for collection ${collectionId}`
-      );
+      const appendResult = await appendMeterIdsToCollections(collectionId, thisMachineMeters);
+      if (!appendResult.success) {
+        console.error(
+          `[createManualMetersForEachMachine] ⚠️ Failed to link meter to collection ${collectionId} — meter may be orphaned`
+        );
+      } else {
+        console.log(
+          `[createManualMetersForEachMachine] Appended 1 meter ID for collection ${collectionId}`
+        );
+      }
     }
   }
 
@@ -892,8 +923,45 @@ export async function updateRegularAndRamClearMeters(
       newRamClearMeterIdGenerated = true;
     }
     if (!meterId) {
-      meterId = await generateMongoId();
-      newMeterIdGenerated = true;
+      // Look up existing supplemental meter for this machine to avoid duplicates.
+      // This handles the case where meterId was never set on the collection
+      // (e.g. online SMIB at report time, silent appendMeterIdsToCollections failure).
+      // Try strict match first (machine + location), then fallback to location only.
+      const baseFilter = {
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: { $lte: newReadAt },
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      };
+
+      let existingMeter = await Meters.findOne({
+        ...baseFilter,
+        machine: collectionDocument.machineId,
+        location: collectionDocument.location,
+      })
+        .sort({ readAt: -1 })
+        .lean<{ _id: string }>();
+
+      if (!existingMeter && collectionDocument.location) {
+        existingMeter = await Meters.findOne({
+          ...baseFilter,
+          location: collectionDocument.location,
+        })
+          .sort({ readAt: -1 })
+          .lean<{ _id: string }>();
+      }
+
+      if (existingMeter) {
+        meterId = existingMeter._id;
+        console.log(
+          `[updateRegularAndRamClearMeters] Reusing existing meter ${meterId} for machine ${collectionDocument.machineId}`
+        );
+      } else {
+        meterId = await generateMongoId();
+        newMeterIdGenerated = true;
+        console.log(
+          `[updateRegularAndRamClearMeters] No existing meter found, generated new ID ${meterId}`
+        );
+      }
     }
 
     if (isOffline) {
@@ -1321,7 +1389,30 @@ export async function createCollectionReport(
     // Create manual meters for each non-relay machine in this collection.
     // The function skips machines that have a relayId (SMIB machines) internally,
     // so we can call it unconditionally for all machines.
-    const collectionIds = body.collectionIds || [];
+    let collectionIds = body.collectionIds || [];
+
+    // When collectionIds is empty or incomplete, look up from DB by machine IDs.
+    // This handles cases where the frontend didn't supply collectionIds.
+    if (collectionIds.length === 0 && body.machines && body.machines.length > 0) {
+      const machineIds = body.machines.map(m => m.machineId).filter(Boolean);
+      if (machineIds.length > 0) {
+        const existingCollections = await Collections.find({
+          locationReportId: body.locationReportId,
+          machineId: { $in: machineIds },
+        })
+          .select({ _id: 1, machineId: 1 })
+          .lean<{ _id: string; machineId: string }[]>();
+        const collectionMap = new Map(
+          existingCollections.map(col => [String(col.machineId), col._id])
+        );
+        collectionIds = body.machines.map(
+          machine => collectionMap.get(String(machine.machineId)) || ''
+        );
+        console.log(
+          `[createCollectionReport] Resolved ${collectionIds.filter(Boolean).length}/${machineIds.length} collection IDs from DB`
+        );
+      }
+    }
 
     // Use each machine's timestamp from the payload directly — it is the authoritative
     // collection end time set by the user and already stored on the collection document.
@@ -1411,7 +1502,7 @@ export async function propagateMetersToNextReport(
       timestamp: { $gt: currentTimestamp },
     })
       .sort({ timestamp: 1 })
-      .lean();
+      .lean<CollectionDocument>();
 
     if (!nextReport) {
       // No subsequent report exists, nothing to propagate

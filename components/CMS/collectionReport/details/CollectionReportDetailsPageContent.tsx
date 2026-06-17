@@ -161,19 +161,6 @@ export default function CollectionReportDetailsPageContent() {
     );
   }
 
-  if (reportData.deletedAt) {
-    return (
-      <NotFoundError
-        title="Report Archived"
-        message="This collection report has been archived. Please contact your administrator if you need to restore it."
-        resourceType="report"
-        showRetry={false}
-        customBackText="Back to Collection Reports"
-        customBackHref="/collection-report"
-      />
-    );
-  }
-
   const TabButton = ({
     label,
   }: {

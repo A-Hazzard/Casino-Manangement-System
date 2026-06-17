@@ -174,6 +174,10 @@ export function useNewCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // ==========================================================================
   // Form Data Bindings - Derive from store and create setters
@@ -250,11 +254,17 @@ export function useNewCollectionModal({
   // ==========================================================================
 
   /**
-   * Find location ID for a given machine using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
   const getLocationIdFromCollection = useCallback(
-    (locationName: string) => {
-      const found = locations.find(location => location.name === locationName);
+    (locationIdentifier: string) => {
+      const found = locations.find(
+        location =>
+          String(location._id) === locationIdentifier ||
+          location.name === locationIdentifier
+      );
       return found ? String(found._id) : null;
     },
     [locations]
@@ -819,16 +829,11 @@ export function useNewCollectionModal({
         );
       } else {
         // New entry - fetch previous collection data
-        setPrevIn(
-          machineForDataEntry.collectionMeters?.metersIn ??
-            machineForDataEntry.sasMeters?.drop ??
-            0
-        );
-        setPrevOut(
-          machineForDataEntry.collectionMeters?.metersOut ??
-            machineForDataEntry.sasMeters?.totalCancelledCredits ??
-            0
-        );
+        // Note: never fall back to sasMeters.drop/tcc — for online SMIB machines those
+        // reflect the current absolute reading, which equals what the collector enters
+        // as currentMetersIn and would make prevIn = currentIn (zero movement).
+        setPrevIn(machineForDataEntry.collectionMeters?.metersIn ?? 0);
+        setPrevOut(machineForDataEntry.collectionMeters?.metersOut ?? 0);
         setCurrentMetersIn('');
         setCurrentMetersOut('');
         setCurrentMachineNotes('');
@@ -1039,31 +1044,23 @@ export function useNewCollectionModal({
       );
       console.log('[executeAddEntry] showAdvancedSas:', showAdvancedSas);
 
-      // Calculate prevIn/prevOut using helper (same as edit)
-      // Priority: 1. Previous collection, 2. Machine collectionMeters
-      const prevIn = (() => {
-        const sasDrop = machineForDataEntry.sasMeters?.drop ?? null;
-        const collectionIn = machineForDataEntry.collectionMeters?.metersIn;
-        return collectionIn !== null &&
-          collectionIn !== undefined &&
-          collectionIn > 0
-          ? collectionIn.toString()
-          : sasDrop !== null && sasDrop > 0
-            ? sasDrop.toString()
+      // Use form state prevIn/prevOut if user entered values, otherwise fall back to machine data.
+      // Never fall back to sasMeters.drop/tcc — for online SMIB machines those
+      // reflect the current absolute reading and would make prevIn = currentIn.
+      const { metersIn: collectionMetersIn, metersOut: collectionMetersOut } =
+        machineForDataEntry.collectionMeters ?? {};
+      const prevIn =
+        storePrevIn !== ''
+          ? storePrevIn
+          : collectionMetersIn != null && collectionMetersIn > 0
+            ? collectionMetersIn.toString()
             : '0';
-      })();
-      const prevOut = (() => {
-        const sasCancelled =
-          machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
-        const collectionOut = machineForDataEntry.collectionMeters?.metersOut;
-        return collectionOut !== null &&
-          collectionOut !== undefined &&
-          collectionOut > 0
-          ? collectionOut.toString()
-          : sasCancelled !== null && sasCancelled > 0
-            ? sasCancelled.toString()
+      const prevOut =
+        storePrevOut !== ''
+          ? storePrevOut
+          : collectionMetersOut != null && collectionMetersOut > 0
+            ? collectionMetersOut.toString()
             : '0';
-      })();
 
       // Determine the time to use for timestamp, collectionTime, and sasEndTime
       // In simple mode: use sasEndTime if available, otherwise currentCollectionTime
@@ -1076,7 +1073,7 @@ export function useNewCollectionModal({
 
       const entryData: Partial<CollectionDocument> = {
         machineId: selectedMachineId,
-        location: selectedLocationName,
+        location: selectedLocationId || '',
         collector: userId,
         metersIn: Number(currentMetersIn),
         metersOut: Number(currentMetersOut),
@@ -1105,7 +1102,7 @@ export function useNewCollectionModal({
       if (entryData.sasStartTime && entryData.sasEndTime) {
         const sasStart = new Date(entryData.sasStartTime as string | Date);
         const sasEnd = new Date(entryData.sasEndTime as string | Date);
-        if (sasStart >= sasEnd) {
+        if (sasStart > sasEnd) {
           toast.error('SAS start time must be before end time', {
             description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
             duration: 7000,
@@ -1734,7 +1731,7 @@ export function useNewCollectionModal({
    */
   const handleApplyAllDates = useCallback(async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
-    if (collectedMachineEntries.length < 2) return;
+    if (collectedMachineEntries.length < 1) return;
     try {
       setIsProcessing(true);
       const axiosInstance = (await import('axios')).default;
@@ -1746,13 +1743,24 @@ export function useNewCollectionModal({
       if (startTimeISO) patchData.sasStartTime = startTimeISO;
       if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
+      const total = collectedMachineEntries.length;
+      setSasUpdateProgress({ completed: 0, total });
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
-          if (!entry._id) return;
-          return await axiosInstance.patch(
-            `/api/collection-reports/collections?id=${entry._id}`,
+          if (!entry._id) {
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return;
+          }
+          const result = await axiosInstance.patch(
+            `/api/collection-reports/collections/${entry._id}`,
             patchData
           );
+          setSasUpdateProgress(prev =>
+            prev ? { ...prev, completed: prev.completed + 1 } : null
+          );
+          return result;
         })
       );
       const failed = results.filter(
@@ -1800,8 +1808,32 @@ export function useNewCollectionModal({
       toast.error('Failed to update SAS times');
     } finally {
       setIsProcessing(false);
+      setSasUpdateProgress(null);
     }
   }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
+
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (collectedMachineEntries.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = collectedMachineEntries
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [collectedMachineEntries]);
 
   // ==========================================================================
   // Handlers
@@ -1959,5 +1991,6 @@ export function useNewCollectionModal({
 
     // Event Handlers - Bulk
     handleApplyAllDates,
+    sasUpdateProgress,
   };
 }

@@ -568,18 +568,18 @@ export default function VaultOverviewShiftReviewPanel({
                             </p>
                             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                               {shift.enteredDenominations
-                                .filter(d => d.quantity > 0)
+                                .filter(denom => denom.quantity > 0)
                                 .sort((a, b) => b.denomination - a.denomination)
-                                .map((d, i) => (
+                                .map((data, index) => (
                                   <div
-                                    key={i}
+                                    key={index}
                                     className="flex flex-col items-center rounded border border-gray-100 bg-white py-1 shadow-sm"
                                   >
                                     <span className="text-[10px] font-bold text-gray-400">
-                                      ${d.denomination}
+                                      ${data.denomination}
                                     </span>
                                     <span className="text-sm font-black text-gray-900">
-                                      {d.quantity}
+                                      {data.quantity}
                                     </span>
                                   </div>
                                 ))}

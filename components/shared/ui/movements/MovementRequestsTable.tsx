@@ -133,14 +133,14 @@ export default function MovementRequestsTable({
                     className="inline-block max-w-[120px] truncate rounded bg-gray-100 px-1 py-0.5 text-xs"
                     title={
                       req.machineDetails && req.machineDetails.length > 0
-                        ? req.machineDetails.map(m => m.displayName).join(', ')
+                        ? req.machineDetails.map(machine => machine.displayName).join(', ')
                         : req.cabinetIn
                     }
                   >
                     {req.machineDetails && req.machineDetails.length > 0
                       ? req.machineDetails
                           .slice(0, 2)
-                          .map(m => m.displayName)
+                          .map(machine => machine.displayName)
                           .join(', ') +
                         (req.machineDetails.length > 2 ? '...' : '')
                       : req.cabinetIn}
@@ -276,15 +276,15 @@ export default function MovementRequestsTable({
           </DialogHeader>
           <div className="max-h-[60vh] space-y-4 overflow-y-auto py-4">
             <div className="grid gap-2">
-              {viewMachinesReq?.machineDetails?.map(m => (
+              {viewMachinesReq?.machineDetails?.map(machine => (
                 <div
-                  key={m._id}
+                  key={machine._id}
                   className="flex flex-col rounded-lg border bg-gray-50 p-3"
                 >
-                  <span className="text-sm font-semibold">{m.displayName}</span>
-                  {m.serialNumber && m.serialNumber !== m.displayName && (
+                  <span className="text-sm font-semibold">{machine.displayName}</span>
+                  {machine.serialNumber && machine.serialNumber !== machine.displayName && (
                     <span className="text-xs text-muted-foreground">
-                      SN: {m.serialNumber}
+                      SN: {machine.serialNumber}
                     </span>
                   )}
                 </div>

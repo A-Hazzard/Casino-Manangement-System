@@ -224,8 +224,8 @@ export async function computeTotalVariation(
 ): Promise<number> {
   const collections = await Collections.find(
     { locationReportId },
-    { movement: 1, sasMeters: 1, machineId: 1 }
-  ).lean<Pick<CollectionDocument, 'movement' | 'sasMeters' | 'machineId'>[]>();
+    { movement: 1, sasMeters: 1, machineId: 1, meterId: 1 }
+  ).lean<Pick<CollectionDocument, 'movement' | 'sasMeters' | 'machineId' | 'meterId'>[]>();
 
   if (!collections.length) return 0;
 
@@ -262,24 +262,25 @@ export async function computeTotalVariation(
     }
   }
 
-  // Batched SAS meter data query — same pattern as accountingDetails.ts
+  // Build live meter queries for collections that have SAS time windows.
+  // This batch query produces the same SAS gross the detail page and
+  // check-variations use, avoiding dependency on stored sasMeters.gross
+  // which may be stale from earlier bugs (e.g. SAS-overwrite).
   const meterQueries = collections
-    .filter(
-      collection =>
-        collection.machineId &&
-        collection.sasMeters?.sasStartTime &&
-        collection.sasMeters?.sasEndTime
-    )
-    .map(collection => ({
-      machineId: collection.machineId as string,
-      startTime: new Date(collection.sasMeters!.sasStartTime!),
-      endTime: new Date(collection.sasMeters!.sasEndTime!),
+    .filter(col => col.sasMeters?.sasStartTime && col.sasMeters?.sasEndTime)
+    .map(col => ({
+      machineId: col.machineId,
+      startTime: new Date(col.sasMeters!.sasStartTime!),
+      endTime: new Date(col.sasMeters!.sasEndTime!),
     }));
 
-  const meterDataMap = new Map<
-    string,
-    { drop: number; cancelled: number; jackpot: number }
-  >();
+  const allMeterData: Array<{
+    _id: string;
+    totalDrop: number;
+    totalCancelled: number;
+    totalJackpot: number;
+  }> = [];
+
   if (meterQueries.length > 0) {
     const cursor = Meters.aggregate([
       {
@@ -287,6 +288,14 @@ export async function computeTotalVariation(
           $or: meterQueries.map(q => ({
             machine: q.machineId,
             readAt: { $gte: q.startTime, $lte: q.endTime },
+            $or: [
+              { meterSource: { $ne: 'COLLECTION_REPORT' } },
+              {
+                meterSource: 'COLLECTION_REPORT',
+                isSupplemental: true,
+                readAt: q.endTime,
+              },
+            ],
           })),
         },
       },
@@ -303,45 +312,64 @@ export async function computeTotalVariation(
     ]).cursor({ batchSize: 1000 });
 
     for await (const doc of cursor) {
-      meterDataMap.set(doc._id, {
-        drop: doc.totalDrop,
-        cancelled: doc.totalCancelled,
-        jackpot: doc.totalJackpot,
-      });
+      allMeterData.push(doc);
     }
   }
 
-  // Sum per-machine variation — identical formula to accountingDetails.ts
+  const meterDataMap = new Map(
+    allMeterData.map(m => [
+      m._id,
+      {
+        drop: m.totalDrop,
+        cancelled: m.totalCancelled,
+        jackpot: m.totalJackpot,
+      },
+    ])
+  );
+
   return collections.reduce((sum, col) => {
     const hasSmib = smibMap.get(String(col.machineId)) ?? false;
     if (!hasSmib) return sum;
 
     const meterGross = col.movement?.gross ?? 0;
 
-    // Recalculate SAS gross from batched meter data (same as accountingDetails.ts)
     let sasGross = 0;
-    let machineJackpot = 0;
-    if (
-      col.machineId &&
-      col.sasMeters?.sasStartTime &&
-      col.sasMeters?.sasEndTime
-    ) {
-      const meterData = meterDataMap.get(col.machineId);
-      if (meterData) {
-        sasGross = meterData.drop - meterData.cancelled;
-        machineJackpot = meterData.jackpot;
+    let sasJackpot = col.sasMeters?.jackpot ?? 0;
+    let hasLiveData = false;
+
+    if (col.sasMeters?.sasStartTime && col.sasMeters?.sasEndTime) {
+      const liveData = meterDataMap.get(String(col.machineId));
+      if (liveData) {
+        sasGross = liveData.drop - liveData.cancelled;
+        sasJackpot = liveData.jackpot;
+        hasLiveData = true;
       }
     }
 
+    // Fallback for offline machines with supplemental meters: when no live SAS
+    // data is available, use meterGross so variation = 0 (collector's values are
+    // the sole source of truth for offline collections).
+    const hasSupplementalMeter = !!col.meterId;
+    const effectiveSasGross =
+      !hasLiveData && hasSupplementalMeter ? meterGross : sasGross;
+
     const adjustedSasGross = includeJackpot
-      ? sasGross - machineJackpot
-      : sasGross;
+      ? effectiveSasGross - sasJackpot
+      : effectiveSasGross;
 
-    const hasNoSasData =
-      !col.sasMeters?.sasStartTime ||
-      !col.sasMeters?.sasEndTime ||
-      !meterDataMap.has(String(col.machineId));
+    const variation = meterGross - adjustedSasGross;
+    console.log(
+      '[computeTotalVariation] machine=' + String(col.machineId) +
+      ' meterId=' + (col.meterId ?? 'none') +
+      ' hasLiveData=' + hasLiveData +
+      ' hasSupplementalMeter=' + hasSupplementalMeter +
+      ' meterGross=' + meterGross +
+      ' sasGross=' + sasGross +
+      ' effectiveSasGross=' + effectiveSasGross +
+      ' variation=' + variation
+    );
 
-    return sum + (meterGross - (hasNoSasData ? 0 : adjustedSasGross));
+    return sum + variation;
   }, 0);
 }
+

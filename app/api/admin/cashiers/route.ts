@@ -20,11 +20,11 @@ import {
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 
-interface CreateCashierRequest {
+type CreateCashierRequest = {
   name: string;
   email: string;
   locationId?: string;
-}
+};
 
 /**
  * POST /api/admin/cashiers

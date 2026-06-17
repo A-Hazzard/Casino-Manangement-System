@@ -6,6 +6,9 @@
  *
  * GET  /api/vault/float-request  - List float requests with filtering, pagination
  * POST /api/vault/float-request  - Submit a new float request from a cashier
+ * DELETE /api/vault/float-request - Cancel a pending float request
+ *
+ * @module app/api/vault/float-request/route
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
@@ -17,6 +20,18 @@ import {
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
+import {
+  buildFloatRequestQuery,
+  fetchFloatRequestsWithDetails,
+  validateFloatRequestBody,
+  getActiveVaultShift,
+  createFloatRequestRecord,
+  sendFloatRequestNotification,
+  validateCancellationPermissions,
+  cancelFloatRequestDocument,
+  cleanupFloatRequestNotifications,
+} from '@/app/api/lib/helpers/vault/floatRequestOperations';
+import type { FloatRequestDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -38,7 +53,7 @@ export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       // ============================================================================
-      // STEP 1: Parse query params
+      // STEP 1: Parse query params and determine cashier filter
       // ============================================================================
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isVM = normalizedRoles.some(role =>
@@ -57,173 +72,21 @@ export async function GET(request: NextRequest) {
       const endDate = searchParams.get('endDate');
 
       // ============================================================================
-      // STEP 2: Enforce permissions and build query
+      // STEP 2: Build query and fetch data
       // ============================================================================
-      const query: Record<string, unknown> = {};
-      if (locationId) query.locationId = locationId;
-      if (finalCashierId) query.cashierId = finalCashierId;
-      if (status !== 'all') query.status = status;
+      const query = buildFloatRequestQuery({
+        locationId,
+        cashierId: finalCashierId,
+        status,
+        startDate,
+        endDate,
+      });
 
-      if (startDate || endDate) {
-        query.requestedAt = {
-          $gte: startDate ? new Date(startDate) : undefined,
-          $lte: endDate ? new Date(endDate) : undefined,
-        };
-      }
-
-      // ============================================================================
-      // STEP 3: Fetch pending requests
-      // ============================================================================
-      const [pendingRequests, total] = await Promise.all([
-        FloatRequestModel.aggregate([
-          { $match: query },
-          { $sort: { createdAt: -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          {
-            $addFields: {
-              cashierIdStr: {
-                $ifNull: [{ $toString: '$cashierId' }, '$cashierId'],
-              },
-              processedByStr: {
-                $ifNull: [{ $toString: '$processedBy' }, '$processedBy'],
-              },
-            },
-          },
-          {
-            $lookup: {
-              from: 'users',
-              localField: 'cashierIdStr',
-              foreignField: '_id',
-              as: 'cashierDetails',
-            },
-          },
-          {
-            $lookup: {
-              from: 'users',
-              localField: 'processedByStr',
-              foreignField: '_id',
-              as: 'processedByDetails',
-            },
-          },
-          {
-            $addFields: {
-              cashierName: {
-                $let: {
-                  vars: { user: { $arrayElemAt: ['$cashierDetails', 0] } },
-                  in: {
-                    $cond: {
-                      if: { $ne: ['$$user', null] },
-                      then: {
-                        $let: {
-                          vars: {
-                            fullName: {
-                              $trim: {
-                                input: {
-                                  $concat: [
-                                    {
-                                      $ifNull: ['$$user.profile.firstName', ''],
-                                    },
-                                    ' ',
-                                    {
-                                      $ifNull: ['$$user.profile.lastName', ''],
-                                    },
-                                  ],
-                                },
-                              },
-                            },
-                          },
-                          in: {
-                            $cond: {
-                              if: {
-                                $and: [
-                                  { $ne: ['$$fullName', null] },
-                                  { $ne: ['$$fullName', ''] },
-                                  { $ne: ['$$fullName', ' '] },
-                                ],
-                              },
-                              then: {
-                                $concat: [
-                                  { $ifNull: ['$$user.username', 'Cashier'] },
-                                  ' (',
-                                  '$$fullName',
-                                  ')',
-                                ],
-                              },
-                              else: {
-                                $ifNull: ['$$user.username', '$cashierId'],
-                              },
-                            },
-                          },
-                        },
-                      },
-                      else: '$cashierId',
-                    },
-                  },
-                },
-              },
-              processedByName: {
-                $let: {
-                  vars: { user: { $arrayElemAt: ['$processedByDetails', 0] } },
-                  in: {
-                    $cond: {
-                      if: { $ne: ['$$user', null] },
-                      then: {
-                        $let: {
-                          vars: {
-                            fullName: {
-                              $trim: {
-                                input: {
-                                  $concat: [
-                                    {
-                                      $ifNull: ['$$user.profile.firstName', ''],
-                                    },
-                                    ' ',
-                                    {
-                                      $ifNull: ['$$user.profile.lastName', ''],
-                                    },
-                                  ],
-                                },
-                              },
-                            },
-                          },
-                          in: {
-                            $cond: {
-                              if: {
-                                $and: [
-                                  { $ne: ['$$fullName', null] },
-                                  { $ne: ['$$fullName', ''] },
-                                ],
-                              },
-                              then: '$$fullName',
-                              else: {
-                                $ifNull: ['$$user.username', '$processedBy'],
-                              },
-                            },
-                          },
-                        },
-                      },
-                      else: '$processedBy',
-                    },
-                  },
-                },
-              },
-            },
-          },
-          {
-            $project: {
-              cashierDetails: 0,
-              processedByDetails: 0,
-              cashierIdStr: 0,
-              processedByStr: 0,
-            },
-          },
-        ]),
-        FloatRequestModel.countDocuments(query),
-      ]);
+      const { data: pendingRequests, total } =
+        await fetchFloatRequestsWithDetails(query, page, limit, skip);
 
       // ============================================================================
-      // STEP 4: Return results
+      // STEP 3: Return paginated results
       // ============================================================================
       const duration = Date.now() - startTime;
       logRouteFetch(
@@ -285,37 +148,31 @@ export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
       // ============================================================================
-      // STEP 1: Parse request body
+      // STEP 1: Parse and validate request body
       // ============================================================================
       const body = await request.json();
-      const {
-        type,
-        amount,
-        denominations,
-        reason,
-        locationId,
-        cashierShiftId,
-      } = body;
-      if (!type || !amount || !locationId || !cashierShiftId) {
+      const { type, amount, denominations, reason, locationId, cashierShiftId } =
+        body;
+
+      const validation = validateFloatRequestBody(body);
+      if (!validation.valid) {
         logRouteError(
           functionName,
           'POST',
           '/api/vault/float-request',
-          'Missing required fields',
+          validation.error || 'Missing required fields',
           user
         );
         return NextResponse.json(
-          { success: false, error: 'Missing required fields' },
-          { status: 400 }
+          { success: false, error: validation.error },
+          { status: validation.status || 400 }
         );
       }
 
       // ============================================================================
-      // STEP 2: Fetch and validate vault shift
+      // STEP 2: Fetch and validate active vault shift
       // ============================================================================
-      const vaultShift = await (
-        await import('@/app/api/lib/models/vaultShift')
-      ).default.findOne({ locationId, status: 'active' });
+      const vaultShift = await getActiveVaultShift(locationId);
       if (!vaultShift) {
         logRouteError(
           functionName,
@@ -333,50 +190,31 @@ export async function POST(request: NextRequest) {
       // ============================================================================
       // STEP 3: Create float request
       // ============================================================================
-      const { generateMongoId } = await import('@/lib/utils/id');
-      const requestId = await generateMongoId();
-      const now = new Date();
-
-      const floatRequest = await FloatRequestModel.create({
-        _id: requestId,
+      const floatRequest = await createFloatRequestRecord({
         locationId,
         cashierId: userPayload._id,
         cashierShiftId,
-        vaultShiftId: vaultShift._id,
+        vaultShiftId: String(vaultShift._id),
         type,
-        requestedAmount: amount,
-        requestedDenominations: denominations,
-        requestNotes: reason,
-        requestedAt: now,
-        status: 'pending',
-        createdAt: now,
-        updatedAt: now,
-        auditLog: [
-          {
-            action: 'created',
-            performedBy: userPayload._id,
-            timestamp: now,
-            notes: reason,
-          },
-        ],
+        amount,
+        denominations: denominations || [],
+        reason,
       });
 
       // ============================================================================
-      // STEP 4: Notify and return
+      // STEP 4: Send notification to vault manager
       // ============================================================================
-      try {
-        const { createFloatRequestNotification } =
-          await import('@/lib/helpers/vault/notifications');
-        if (vaultShift.vaultManagerId)
-          await createFloatRequestNotification(
-            floatRequest.toObject(),
-            userPayload.username as string,
-            vaultShift.vaultManagerId
-          );
-      } catch (e) {
-        console.error('Notification failed:', e);
+      if (vaultShift.vaultManagerId) {
+        await sendFloatRequestNotification(
+          floatRequest,
+          userPayload.username as string,
+          String(vaultShift.vaultManagerId)
+        );
       }
 
+      // ============================================================================
+      // STEP 5: Return created request
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteCreate(
         functionName,
@@ -390,7 +228,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Float request submitted',
-        floatRequest: floatRequest.toObject(),
+        floatRequest,
       });
     } catch (e) {
       const errorMessage =
@@ -414,6 +252,11 @@ export async function POST(request: NextRequest) {
   });
 }
 
+/**
+ * DELETE handler for cancelling float requests
+ *
+ * @body {string} requestId - ID of the float request to cancel (REQUIRED)
+ */
 export async function DELETE(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'DELETE /api/vault/float-request';
@@ -422,7 +265,7 @@ export async function DELETE(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       // ============================================================================
-      // STEP 1: Parse request body
+      // STEP 1: Parse and validate request body
       // ============================================================================
       const { requestId } = await request.json();
       if (!requestId) {
@@ -457,70 +300,38 @@ export async function DELETE(request: NextRequest) {
         );
       }
 
-      const isVM = userRoles.some(r =>
-        ['admin', 'manager', 'vault-manager'].includes(String(r).toLowerCase())
+      const permCheck = validateCancellationPermissions(
+        requestDoc.toObject(),
+        userPayload._id,
+        userRoles
       );
-      if (requestDoc.cashierId.toString() !== userPayload._id && !isVM) {
+      if (!permCheck.valid) {
         logRouteError(
           functionName,
           'DELETE',
           '/api/vault/float-request',
-          'Unauthorized',
+          permCheck.error || 'Permission denied',
           user
         );
         return NextResponse.json(
-          { success: false, error: 'Unauthorized' },
-          { status: 403 }
-        );
-      }
-
-      const allowedStatuses = ['pending', 'approved_vm'];
-      if (!allowedStatuses.includes(requestDoc.status)) {
-        logRouteError(
-          functionName,
-          'DELETE',
-          '/api/vault/float-request',
-          `Cannot cancel ${requestDoc.status} requests`,
-          user
-        );
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Cannot cancel ${requestDoc.status} requests`,
-          },
-          { status: 400 }
+          { success: false, error: permCheck.error },
+          { status: permCheck.status || 403 }
         );
       }
 
       // ============================================================================
-      // STEP 3: Cancel request and cleanup notifications
+      // STEP 3: Cancel request and clean up notifications
       // ============================================================================
-      requestDoc.status = 'cancelled';
-      requestDoc.auditLog.push({
-        action: 'cancelled',
-        performedBy: userPayload._id,
-        timestamp: new Date(),
-        notes: '',
-      });
-      await requestDoc.save();
+      await cancelFloatRequestDocument(
+        requestDoc as FloatRequestDocument & { save: () => Promise<unknown> },
+        userPayload._id
+      );
 
-      try {
-        const VaultNotificationModel = (
-          await import('@/app/api/lib/models/vaultNotification')
-        ).default;
-        const notifDeleteResult = await VaultNotificationModel.deleteMany({
-          relatedEntityId: requestId,
-          relatedEntityType: 'float_request',
-        });
-        if (notifDeleteResult.deletedCount === 0) {
-          console.warn(
-            `[float-request cancel] No notifications found to delete for requestId: ${requestId}`
-          );
-        }
-      } catch (e) {
-        console.error('Notification cleanup failed:', e);
-      }
+      await cleanupFloatRequestNotifications(requestId);
 
+      // ============================================================================
+      // STEP 4: Return result
+      // ============================================================================
       const duration = Date.now() - startTime;
       logRouteUpdate(
         functionName,

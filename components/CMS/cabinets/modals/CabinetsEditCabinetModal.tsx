@@ -182,11 +182,10 @@ export default function CabinetsEditCabinetModal({
       const response = await axios.get('/api/locations');
       const locationsData = response.data.locations || [];
       const mappedLocations = locationsData.map(
-        (loc: Record<string, unknown>) => ({
-          id: loc._id as string,
-          name: loc.name as string,
-          sasEnabled:
-            ((loc as Record<string, unknown>).sasEnabled as boolean) || false,
+        (loc: { _id: string; name: string; sasEnabled?: boolean }) => ({
+          id: loc._id,
+          name: loc.name,
+          sasEnabled: loc.sasEnabled || false,
         })
       );
       setLocations(mappedLocations);
@@ -1049,7 +1048,7 @@ export default function CabinetsEditCabinetModal({
                   cabinetDataLoading={cabinetDataLoading}
                   collectionTime={collectionTime}
                   collectionMultiplierError={collectionMultiplierError}
-                  onFormDataChange={(updates: Record<string, unknown>) => {
+                  onFormDataChange={(updates) => {
                     setFormData(prev => ({ ...prev, ...updates }));
                   }}
                   onCollectionTimeChange={(date: Date) => {

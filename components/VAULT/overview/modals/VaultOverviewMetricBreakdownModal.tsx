@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 
 type VaultOverviewMetricType = 'in' | 'out' | 'payout';
 
-interface VaultOverviewMetricBreakdownModalProps {
+type VaultOverviewMetricBreakdownModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locationId: string;

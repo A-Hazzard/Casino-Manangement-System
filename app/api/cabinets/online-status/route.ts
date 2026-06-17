@@ -8,6 +8,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { MachineDocument } from '@/shared/types/models';
 import { NextRequest, NextResponse } from 'next/server';
 
 const THREE_MINUTES_MS = 3 * 60 * 1000;
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
       relayId: { $exists: true, $nin: [null, ''] },
     },
     { _id: 1, relayId: 1, lastActivity: 1 }
-  ).lean();
+  ).lean<MachineDocument[]>();
 
   // ============================================================================
   // STEP 4: Build Status Map

@@ -17,7 +17,7 @@
 import { AlertCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-interface MachineWithVariationBadgeProps {
+type MachineWithVariationBadgeProps = {
   children: ReactNode;
   hasVariation: boolean;
   className?: string;

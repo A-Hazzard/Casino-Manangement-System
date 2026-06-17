@@ -18,12 +18,12 @@ import {
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 
-interface CashierPerformanceQuery {
+type CashierPerformanceQuery = {
   locationId?: string;
   startDate?: string;
   endDate?: string;
   cashierId?: string;
-}
+};
 
 /**
  * Main GET handler for fetching cashier performance report
@@ -136,12 +136,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    interface CashierSummary {
+    type CashierSummary = {
       shifts: number;
       totalPayouts: number;
       averageAccuracy: number;
       totalDiscrepancy: number;
-    }
+    };
 
     // ============================================================================
     // STEP 7: Calculate summary statistics

@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
 
-interface VariationsConfirmationDialogProps {
+type VariationsConfirmationDialogProps = {
   isOpen: boolean;
   machineCount: number;
   totalVariation: number;

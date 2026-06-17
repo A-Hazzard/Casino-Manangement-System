@@ -45,6 +45,7 @@ type CabinetsCabinetContentDisplayProps = {
   sortOrder: 'asc' | 'desc';
   currentPage: number;
   totalPages: number;
+  hasMore?: boolean;
   onSort: (column: CabinetSortOption) => void;
   onPageChange: (page: number) => void;
   onEdit?: (machine: Machine) => void;
@@ -90,7 +91,7 @@ export const CabinetsCabinetContentDisplay = ({
   selectedLicencee = 'all',
   enableHeaderSorting = true,
   showSortIcons = true,
-  totalCount,
+  hasMore = false,
   includeJackpot = true,
   showArchived = false,
 }: CabinetsCabinetContentDisplayProps) => {
@@ -460,9 +461,8 @@ export const CabinetsCabinetContentDisplay = ({
       <PaginationControls
         currentPage={currentPage}
         totalPages={totalPages}
-        totalCount={totalCount}
         setCurrentPage={onPageChange}
-        showTotalCount
+        hasMore={hasMore}
       />
     </>
   );

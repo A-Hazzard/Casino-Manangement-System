@@ -82,7 +82,6 @@ export function useCollectionReportPageData() {
   // ==========================================================================
   // Local State - Search & Filter
   // ==========================================================================
-  const [showArchived, setShowArchived] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<
     | 'collector'
@@ -342,7 +341,6 @@ export function useCollectionReportPageData() {
             : filters.selectedLocation !== 'all'
               ? [filters.selectedLocation]
               : undefined,
-          showArchived
         );
 
         if (result && !controller.signal.aborted) {
@@ -379,7 +377,6 @@ export function useCollectionReportPageData() {
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
-      showArchived,
     ]
   );
 
@@ -444,18 +441,16 @@ export function useCollectionReportPageData() {
   /**
    * Execute report deletion
    */
-  const confirmDelete = async (archive?: boolean) => {
+  const confirmDelete = async () => {
     if (!reportToDelete) return;
     setIsDeleting(true);
     try {
-      const url = `/api/collection-reports/${reportToDelete}${archive ? '?action=archive' : ''}`;
+      const url = `/api/collection-reports/${reportToDelete}`;
       await axios.delete(url);
-      toast.success(archive ? 'Report archived' : 'Report deleted');
+      toast.success('Report deleted');
       refreshReports();
     } catch {
-      toast.error(
-        archive ? 'Failed to archive report' : 'Failed to delete report'
-      );
+      toast.error('Failed to delete report');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirmation(false);
@@ -481,20 +476,6 @@ export function useCollectionReportPageData() {
       }
     },
     [searchTerm]
-  );
-
-  const handleShowArchivedChange = useCallback(
-    (value: boolean) => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      setShowArchived(value);
-      setAllReports([]);
-      setTotalReports(0);
-      setLoadedBatches(new Set());
-      setCurrentPage(0);
-    },
-    []
   );
 
   // ==========================================================================
@@ -623,7 +604,6 @@ export function useCollectionReportPageData() {
     currentPage,
     totalPages,
     totalReports,
-    showArchived,
     searchTerm,
     searchType,
     locations,
@@ -651,7 +631,6 @@ export function useCollectionReportPageData() {
     // Setters
     setSearchTerm: handleSetSearchTerm,
     setSearchType,
-    handleShowArchivedChange,
     setCurrentPage,
     setShowNewCollectionMobile,
     setShowNewCollectionDesktop,

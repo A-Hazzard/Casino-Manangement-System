@@ -30,8 +30,9 @@ import { PipelineStage } from 'mongoose';
  */
 const formatSmartDecimal = (value: number): string => {
   if (isNaN(value)) return '0';
-  const hasDecimals = value % 1 !== 0;
-  const decimalPart = value % 1;
+  const absValue = Math.abs(value);
+  const hasDecimals = absValue % 1 !== 0;
+  const decimalPart = absValue % 1;
   const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
   return value.toFixed(hasSignificantDecimals ? 2 : 0);
 };
@@ -54,29 +55,19 @@ export async function getAllCollectionReportsWithMachineCounts(
   } | null,
   locationIds?: string[],
   search?: string,
-  searchType?: string,
-  includeArchived?: boolean
+  searchType?: string
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
   // Build match criteria
   const matchCriteria: Record<string, unknown> = {};
 
-  // Apply deletedAt filter
-  if (includeArchived) {
-    // Show ONLY archived reports
-    matchCriteria.$and = [
-      { deletedAt: { $exists: true } },
-      { deletedAt: { $ne: null } },
-    ];
-  } else {
-    // Show ONLY active reports (filter out archived)
-    matchCriteria.$or = [
-      { deletedAt: null },
-      { deletedAt: { $exists: false } },
-      { deletedAt: { $lt: new Date('2025-01-01') } },
-    ];
-  }
+  // Apply deletedAt filter - only show active reports (filter out archived)
+  matchCriteria.$or = [
+    { deletedAt: null },
+    { deletedAt: { $exists: false } },
+    { deletedAt: { $lt: new Date('2025-01-01') } },
+  ];
 
   // Add date range filtering if provided
   if (startDate && endDate) {

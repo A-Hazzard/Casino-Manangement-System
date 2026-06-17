@@ -1407,7 +1407,7 @@ test.describe('Supplemental Meter — Field Inheritance (20th → 23rd → 24th)
             },
             machineGross: 200,
             sasGross: 200,
-            grossDifference: 0,
+            variation: 0,
             // The SAS meter reading (24th) correctly uses prior jackpot=1500 as baseline:
             //   movement.jackpot (in Meters) = 2000 - 1500 = 500, not 2000 - 0 = 2000
             sasEndTime: new Date('2026-01-24T16:00:00.000Z').toISOString(),

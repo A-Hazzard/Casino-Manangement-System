@@ -18,6 +18,8 @@ import type {
 } from '@/shared/types/entities';
 import type { CollectionData } from '@/lib/types/cabinet/details';
 import type { TimePeriod as ApiTimePeriod } from '@/shared/types/common';
+import type { CollectionMetersHistoryEntry } from '@/shared/types/common';
+import type { MachineEventDocument } from '@/shared/types/models';
 
 // ============================================================================
 // Types
@@ -33,11 +35,13 @@ type ActivityLogFilters = {
 
 type ActivityLogPagination = {
   currentPage: number;
-  totalPages: number;
-  totalEvents: number;
+  totalPages: number | null;
+  totalEvents: number | null;
   hasNextPage: boolean;
   hasPrevPage: boolean;
   cursorResolved: boolean;
+  matchCount?: number;
+  matchIndex?: number;
 };
 
 type ActivityLogFilterOptions = {
@@ -46,16 +50,16 @@ type ActivityLogFilterOptions = {
   games: string[];
 };
 
-type ActivityLogItem = Record<string, unknown>;
-
 type UseCabinetAccountingDataProps = {
   cabinet: Cabinet;
   activeMetricsTabContent: string;
+  refreshTrigger?: number;
 };
 
 export function useCabinetAccountingData({
   cabinet,
   activeMetricsTabContent,
+  refreshTrigger,
 }: UseCabinetAccountingDataProps) {
   // ============================================================================
   // Store state
@@ -73,7 +77,7 @@ export function useCabinetAccountingData({
   const [collectionHistory, setCollectionHistory] = useState<CollectionData[]>(
     []
   );
-  const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
+  const [activityLog, setActivityLog] = useState<MachineEventDocument[]>([]);
   const [machine, setMachine] = useState<MachineDocument | null>(null);
 
   // Loading and error
@@ -95,6 +99,10 @@ export function useCabinetAccountingData({
   const [activityDisplayPage, setActivityDisplayPage] = useState(0);
   const [activityLogPagination, setActivityLogPagination] =
     useState<ActivityLogPagination | null>(null);
+
+  // Match navigation state for cursor seek (prev/next stepping through matches)
+  const [matchOrdinal, setMatchOrdinal] = useState(0);
+  const [, setMatchCount] = useState(0);
 
   // Prevents useEffect from triggering a re-fetch when activityLogPage is synced
   // after a cursor-seek (server resolved to a different batch than requested)
@@ -131,37 +139,17 @@ export function useCabinetAccountingData({
           Array.isArray(cabinet.collectionMetersHistory)
         ) {
           const transformedHistory = cabinet.collectionMetersHistory
-            .map((entry: Record<string, unknown>) => {
-              const id = entry._id;
-              const timestamp = entry.timestamp;
-
-              let entryId: string;
-              if (id && typeof id === 'object' && '$oid' in id) {
-                entryId = (id as { $oid: string }).$oid;
-              } else {
-                entryId = String(id || '');
-              }
-
-              let entryTimestamp: string | Date;
-              if (
-                timestamp &&
-                typeof timestamp === 'object' &&
-                '$date' in timestamp
-              ) {
-                entryTimestamp = (timestamp as { $date: string }).$date;
-              } else {
-                entryTimestamp = timestamp as string | Date;
-              }
-
+            .map((entry: CollectionMetersHistoryEntry) => {
               return {
-                _id: entryId,
-                timestamp: entryTimestamp,
-                metersIn: (entry.metersIn as number) || 0,
-                metersOut: (entry.metersOut as number) || 0,
-                prevIn: (entry.prevMetersIn as number) || 0,
-                prevOut: (entry.prevMetersOut as number) || 0,
-                locationReportId: (entry.locationReportId as string) || '',
+                _id: entry._id,
+                timestamp: entry.timestamp,
+                metersIn: entry.metersIn || 0,
+                metersOut: entry.metersOut || 0,
+                prevIn: entry.prevMetersIn || 0,
+                prevOut: entry.prevMetersOut || 0,
+                locationReportId: entry.locationReportId || '',
                 machineId: cabinet._id,
+                reportVersion: entry.reportVersion,
               };
             })
             .sort((a, b) => {
@@ -206,8 +194,8 @@ export function useCabinetAccountingData({
       ) {
         params.append('startDate', activityLogDateRange.from.toISOString());
         params.append('endDate', activityLogDateRange.to.toISOString());
-      } else if (activityLogTimePeriod && activityLogTimePeriod !== 'All Time') {
-        params.append('timePeriod', activityLogTimePeriod);
+      } else if (activityLogTimePeriod !== 'All Time') {
+        params.append('timePeriod', activityLogTimePeriod || '7d');
       }
 
       // Granular filters
@@ -225,6 +213,7 @@ export function useCabinetAccountingData({
       }
       if (activityLogFilters.command) {
         params.append('command', activityLogFilters.command);
+        params.append('matchOrdinal', String(matchOrdinal));
       }
 
       const eventsRes = await axios.get(
@@ -235,17 +224,21 @@ export function useCabinetAccountingData({
       setActivityLog(resData.events || []);
       setActivityLogPagination(resData.pagination || null);
 
-      // When cursor seek resolves to a different batch, sync activityLogPage
-      // without triggering a re-fetch (isCursorSyncRef guards the effect)
-      const serverBatchPage = resData.pagination?.currentPage;
-      if (
-        serverBatchPage &&
-        serverBatchPage !== activityLogPage &&
-        resData.pagination?.cursorResolved
-      ) {
-        isCursorSyncRef.current = true;
-        setActivityLogPage(serverBatchPage);
-        setActivityDisplayPage(0);
+      // When cursor seek resolves, sync to the exact batch + display page.
+      // matchIndex is the 0-based global rank of the Nth match; compute the
+      // local display page within the batch so the matching row is visible.
+      if (resData.pagination?.cursorResolved) {
+        const idx = resData.pagination?.matchIndex ?? -1;
+        setMatchCount(resData.pagination?.matchCount ?? 0);
+        if (idx >= 0) {
+          const batchSize = 100;
+          const displayPageSize = 20;
+          isCursorSyncRef.current = true;
+          setActivityLogPage(Math.floor(idx / batchSize) + 1);
+          setActivityDisplayPage(Math.floor((idx % batchSize) / displayPageSize));
+        }
+      } else {
+        setMatchCount(0);
       }
 
       // Populate filter dropdowns from first successful response
@@ -275,6 +268,8 @@ export function useCabinetAccountingData({
     activityLogTimePeriod,
     activityLogDateRange,
     activityLogFilters,
+    matchOrdinal,
+    refreshTrigger,
   ]);
 
   useEffect(() => {
@@ -290,6 +285,11 @@ export function useCabinetAccountingData({
   // ============================================================================
   const handleActivityLogFilterChange = useCallback(
     (filters: Partial<ActivityLogFilters>) => {
+      // Reset match navigation whenever the command changes (new seek or cleared)
+      if ('command' in filters) {
+        setMatchOrdinal(0);
+        setMatchCount(0);
+      }
       setActivityLogFilters(prev => ({ ...prev, ...filters }));
       setActivityLogPage(1);
       setActivityDisplayPage(0);
@@ -340,13 +340,13 @@ export function useCabinetAccountingData({
 
   const globalActivityDisplayPage = (activityLogPage - 1) * 5 + activityDisplayPage;
 
-  // Reveal 5 pages per batch loaded; peek one batch ahead so the next-page
-  // button is active on the last page of the current batch.
+  const currentBatchDisplayPages = Math.max(1, Math.ceil(activityLog.length / 20));
   const totalKnownDisplayPages = activityLogPagination
-    ? Math.min(
-        activityLogPage * 5 + (activityLogPagination.hasNextPage ? 5 : 0),
-        Math.ceil(activityLogPagination.totalEvents / 20)
-      )
+    ? activityLogPagination.totalEvents !== null
+      ? Math.max(1, Math.ceil(activityLogPagination.totalEvents / 20))
+      : activityLogPagination.hasNextPage
+        ? activityLogPage * 5
+        : (activityLogPage - 1) * 5 + currentBatchDisplayPages
     : 1;
 
   return {

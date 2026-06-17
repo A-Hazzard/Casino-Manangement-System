@@ -1,4 +1,9 @@
 import type { Denomination } from './vault';
+import type {
+  BillMovement,
+  LocationMembershipSettings,
+  MeterMovement,
+} from './entities';
 
 export type AcceptedBillDocument = {
   _id: string;
@@ -6,7 +11,7 @@ export type AcceptedBillDocument = {
   machine: string;
   location: string;
   member: string;
-  movement: Record<string, unknown>;
+  movement: BillMovement;
   readAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -73,7 +78,7 @@ export type ActivityLogDocument = {
     id?: string;
     name?: string;
   };
-  entityType?: string; // Entity type for backward compatibility
+  entityType?: string;
   changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>;
   description?: string;
   deletedAt?: Date;
@@ -335,6 +340,7 @@ export type FloatRequestDocument = {
     action: string;
     performedBy: string;
     timestamp: Date;
+    notes?: string;
   }>;
   createdAt: Date;
   updatedAt: Date;
@@ -394,8 +400,8 @@ export type GamingLocationDocument = {
   membershipEnabled?: boolean;
   aceEnabled?: boolean;
   enableMembership?: boolean;
-  locationMembershipSettings?: Record<string, unknown>;
-  billValidatorOptions?: Record<string, unknown>;
+  locationMembershipSettings?: LocationMembershipSettings;
+  billValidatorOptions?: Record<string, boolean>;
   status?: string;
   statusHistory?: Array<{
     status: string;
@@ -711,13 +717,13 @@ export type MachineSessionDocument = {
   startTime?: Date;
   endTime?: Date;
   startMeters?: {
-    movement?: Record<string, unknown>;
+    movement?: MeterMovement;
     coinIn?: number;
     coinOut?: number;
     jackpot?: number;
   };
   endMeters?: {
-    movement?: Record<string, unknown>;
+    movement?: MeterMovement;
     coinIn?: number;
     coinOut?: number;
     jackpot?: number;
@@ -734,7 +740,7 @@ export type MachineSessionDocument = {
   uaccount?: number;
   ucardId?: string;
   relayId?: string;
-  locationMembershipSettings?: Record<string, unknown>;
+  locationMembershipSettings?: LocationMembershipSettings;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -986,6 +992,7 @@ export type MeterDocument = {
     gamesWon?: number;
     totalCancelledCredits?: number;
     handPaidCancelledCredits?: number;
+    gross?: number;
   };
   coinIn?: number;
   coinOut?: number;
@@ -997,9 +1004,13 @@ export type MeterDocument = {
   gamesWon?: number;
   currentCredits?: number;
   totalWonCredits?: number;
+  meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'OTHER';
+  isSupplemental?: boolean;
+  isRamClear?: boolean;
   readAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  deletedAt?: Date;
 };
 
 export type MovementRequestDocument = {

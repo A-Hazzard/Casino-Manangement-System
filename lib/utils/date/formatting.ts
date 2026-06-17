@@ -16,17 +16,37 @@ import { format, isValid, parseISO } from 'date-fns';
 // ============================================================================
 // Object Formatting Functions
 // ============================================================================
+type ProfileField = {
+  firstName?: unknown;
+  lastName?: unknown;
+  middleName?: unknown;
+  gender?: unknown;
+  email?: unknown;
+  address?: {
+    street?: unknown;
+    town?: unknown;
+    country?: unknown;
+    [key: string]: unknown;
+  };
+  identification?: {
+    idType?: unknown;
+    idNumber?: unknown;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+
 /**
  * Formats a profile object with nested address and identification
  * @param profile - The profile object to format
  * @returns Formatted string representation
  */
-function formatProfileObject(profile: Record<string, unknown>): string {
+function formatProfileObject(profile: ProfileField): string {
   if (!profile) {
     console.error('[formatProfileObject] profile is required');
     return 'Empty profile';
   }
-  const parts = [];
+  const parts: string[] = [];
 
   // Handle basic profile fields
   if (profile.firstName && profile.firstName !== '')
@@ -42,8 +62,8 @@ function formatProfileObject(profile: Record<string, unknown>): string {
 
   // Handle nested address object
   if (profile.address && typeof profile.address === 'object') {
-    const address = profile.address as Record<string, unknown>;
-    const addressParts = [];
+    const address = profile.address;
+    const addressParts: string[] = [];
     if (address.street && address.street !== '')
       addressParts.push(`Street: ${address.street}`);
     if (address.town && address.town !== '')
@@ -56,8 +76,8 @@ function formatProfileObject(profile: Record<string, unknown>): string {
 
   // Handle nested identification object
   if (profile.identification && typeof profile.identification === 'object') {
-    const identification = profile.identification as Record<string, unknown>;
-    const idParts = [];
+    const identification = profile.identification;
+    const idParts: string[] = [];
     if (identification.idType && identification.idType !== '')
       idParts.push(`Type: ${identification.idType}`);
     if (identification.idNumber && identification.idNumber !== '')
@@ -211,6 +231,10 @@ export function safeFormatDate(
  * @param fieldName - Optional field name for context-specific formatting
  * @returns Formatted string representation
  */
+// ============================================================================
+// Value & Recursive Formatting
+// ============================================================================
+
 /**
  * Formats an object recursively into an elegant, Title Case human-readable string.
  * @param obj - The object to format
@@ -317,7 +341,7 @@ export function formatValue(value: unknown, fieldName?: string): string {
     typeof parsedValue === 'object' &&
     parsedValue !== null
   ) {
-    return formatProfileObject(parsedValue as Record<string, unknown>);
+    return formatProfileObject(parsedValue as ProfileField);
   }
 
   // Check if the value is a date string (ISO format or Date object)
@@ -403,7 +427,12 @@ export function formatValue(value: unknown, fieldName?: string): string {
       fieldName === 'sasMeters' ||
       ('drop' in parsedValue && 'gross' in parsedValue)
     ) {
-      const sas = parsedValue as Record<string, unknown>;
+      const sas = parsedValue as {
+        drop?: unknown;
+        gross?: unknown;
+        jackpot?: unknown;
+        gamesPlayed?: unknown;
+      };
       return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
     }
 
@@ -414,7 +443,11 @@ export function formatValue(value: unknown, fieldName?: string): string {
         'metersOut' in parsedValue &&
         'gross' in parsedValue)
     ) {
-      const movementData = parsedValue as Record<string, unknown>;
+      const movementData = parsedValue as {
+        metersIn?: unknown;
+        metersOut?: unknown;
+        gross?: unknown;
+      };
       return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
     }
 
@@ -425,8 +458,8 @@ export function formatValue(value: unknown, fieldName?: string): string {
       'gender' in parsedValue ||
       'middleName' in parsedValue
     ) {
-      const profile = parsedValue as Record<string, unknown>;
-      const parts = [];
+      const profile = parsedValue as ProfileField;
+      const parts: string[] = [];
 
       // Handle basic profile fields
       if (profile.firstName && profile.firstName !== '')
@@ -442,8 +475,8 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
       // Handle nested address object
       if (profile.address && typeof profile.address === 'object') {
-        const address = profile.address as Record<string, unknown>;
-        const addressParts = [];
+        const address = profile.address;
+        const addressParts: string[] = [];
         if (address.street && address.street !== '')
           addressParts.push(`Street: ${address.street}`);
         if (address.town && address.town !== '')
@@ -459,11 +492,8 @@ export function formatValue(value: unknown, fieldName?: string): string {
         profile.identification &&
         typeof profile.identification === 'object'
       ) {
-        const identification = profile.identification as Record<
-          string,
-          unknown
-        >;
-        const idParts = [];
+        const identification = profile.identification;
+        const idParts: string[] = [];
         if (identification.idType && identification.idType !== '')
           idParts.push(`Type: ${identification.idType}`);
         if (identification.idNumber && identification.idNumber !== '')
@@ -480,8 +510,12 @@ export function formatValue(value: unknown, fieldName?: string): string {
       'city' in parsedValue ||
       'country' in parsedValue
     ) {
-      const address = parsedValue as Record<string, unknown>;
-      const parts = [];
+      const address = parsedValue as {
+        street?: unknown;
+        city?: unknown;
+        country?: unknown;
+      };
+      const parts: string[] = [];
       if (address.street && address.street !== '')
         parts.push(`Street: ${address.street}`);
       if (address.city && address.city !== '')
@@ -493,8 +527,11 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
     // Check if it's an identification object
     if ('idType' in parsedValue || 'idNumber' in parsedValue) {
-      const identification = parsedValue as Record<string, unknown>;
-      const parts = [];
+      const identification = parsedValue as {
+        idType?: unknown;
+        idNumber?: unknown;
+      };
+      const parts: string[] = [];
       if (identification.idType && identification.idType !== '')
         parts.push(`Type: ${identification.idType}`);
       if (identification.idNumber && identification.idNumber !== '')

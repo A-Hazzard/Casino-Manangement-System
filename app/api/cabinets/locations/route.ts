@@ -97,12 +97,12 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Build aggregation pipeline
     // ============================================================================
-    interface MatchStage {
+    type MatchStage = {
       $or?: Array<Record<string, unknown>>;
       $and?: Array<Record<string, unknown>>;
       _id?: { $in: string[] };
       [key: string]: unknown;
-    }
+    };
 
     const matchStage: MatchStage = {};
 

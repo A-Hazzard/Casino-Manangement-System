@@ -14,7 +14,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
-import { FC } from 'react';
+import { FC, useState, useEffect, KeyboardEvent } from 'react';
 
 type CollectionReportDetailsPaginationProps = {
   currentPage: number;
@@ -25,6 +25,21 @@ type CollectionReportDetailsPaginationProps = {
 export const CollectionReportDetailsPagination: FC<
   CollectionReportDetailsPaginationProps
 > = ({ currentPage, totalPages, onPageChange }) => {
+  const [inputValue, setInputValue] = useState(String(currentPage));
+
+  useEffect(() => {
+    setInputValue(String(currentPage));
+  }, [currentPage]);
+
+  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      let val = Number(inputValue);
+      if (isNaN(val) || val < 1) val = 1;
+      if (val > totalPages) val = totalPages;
+      onPageChange(val);
+    }
+  };
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -53,8 +68,9 @@ export const CollectionReportDetailsPagination: FC<
           type="number"
           min={1}
           max={totalPages}
-          value={currentPage}
-          onChange={e => onPageChange(Number(e.target.value))}
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={handleInputKeyDown}
           className="w-12 rounded border border-gray-300 p-1 text-center text-sm focus:border-blue-500 focus:outline-none"
         />
         <span className="text-sm text-gray-500">of {totalPages}</span>

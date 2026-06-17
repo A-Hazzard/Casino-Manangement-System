@@ -45,6 +45,7 @@ type EditCollectionCollectedMachinesProps = {
   setUpdateAllSasEndDate: (date: Date | undefined) => void;
   onRefresh?: () => void;
   variationMachineIds?: string[];
+  sasUpdateProgress?: { completed: number; total: number } | null;
 
   onApplyAllDates: () => void;
 };
@@ -59,6 +60,7 @@ export default function CollectionReportEditCollectedMachines({
   updateAllSasEndDate,
   setUpdateAllSasEndDate,
   variationMachineIds = [],
+  sasUpdateProgress,
 
   onApplyAllDates,
 }: EditCollectionCollectedMachinesProps) {
@@ -96,8 +98,8 @@ export default function CollectionReportEditCollectedMachines({
         </h3>
       </div>
 
-      {/* Update All SAS Times - Only show if 2+ machines */}
-      {collectedMachineEntries.length >= 2 && (
+      {/* Update All SAS Times */}
+      {collectedMachineEntries.length >= 1 && (
         <div className="space-y-2 border-b border-gray-300 bg-blue-50 p-3">
           <label className="block text-xs font-semibold text-gray-700">
             Update All SAS Times
@@ -168,6 +170,31 @@ export default function CollectionReportEditCollectedMachines({
           >
             {isProcessing ? 'Updating...' : 'APPLY TIMES TO ALL'}
           </Button>
+
+          {sasUpdateProgress && (
+            <div className="mt-1 space-y-1">
+              <div className="flex items-center justify-between text-[9px] font-semibold text-blue-700">
+                <span>
+                  {sasUpdateProgress.completed}/{sasUpdateProgress.total}
+                </span>
+                <span>
+                  {Math.round(
+                    (sasUpdateProgress.completed / sasUpdateProgress.total) *
+                      100
+                  )}
+                  %
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-200">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all duration-200"
+                  style={{
+                    width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

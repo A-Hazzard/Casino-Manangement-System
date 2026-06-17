@@ -36,6 +36,7 @@ export function useCabinetPageData() {
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { displayCurrency } = useCurrency();
+  const initialSmibExpanded = searchParams?.get('smib') === 'true';
 
   // ============================================================================
   // Base Data Hooks
@@ -49,6 +50,7 @@ export function useCabinetPageData() {
     errorType,
     isOnline,
     fetchCabinetDetailsData,
+    fetchCabinetDetailsSilent,
     handleCabinetUpdated,
     metricsLoading: baseMetricsLoading,
   } = useCabinetDetailsData({
@@ -59,7 +61,7 @@ export function useCabinetPageData() {
     dateFilterInitialized,
   });
 
-  const smibHook = useSmibConfiguration();
+  const smibHook = useSmibConfiguration(initialSmibExpanded);
 
   // ============================================================================
   // Chart State
@@ -83,6 +85,7 @@ export function useCabinetPageData() {
   } | null>(null);
   const hasManuallySetGranularityRef = useRef(false);
   const makeChartRequest = useAbortableRequest();
+  const pollingChartAbortRef = useRef<AbortController | null>(null);
 
   // ============================================================================
   // UI State
@@ -95,6 +98,7 @@ export function useCabinetPageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
+    if (section === 'developer-options') return 'Developer Options';
     return 'Movement Metrics';
   });
 
@@ -195,6 +199,7 @@ export function useCabinetPageData() {
         'Collection History': 'collection-history',
         'Collection Settings': 'collection-settings',
         Configurations: 'configurations',
+        'Developer Options': 'developer-options',
       };
 
       const params = new URLSearchParams(searchParams?.toString() || '');
@@ -206,6 +211,18 @@ export function useCabinetPageData() {
     },
     [pathname, router, searchParams]
   );
+
+  const handleSmibToggle = useCallback(() => {
+    smibHook.toggleSmibConfig();
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    const isCurrentlyExpanded = params.get('smib') === 'true';
+    if (isCurrentlyExpanded) {
+      params.delete('smib');
+    } else {
+      params.set('smib', 'true');
+    }
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [smibHook.toggleSmibConfig, pathname, router, searchParams]);
 
   const copyToClipboard = useCallback(async (text: string, label: string) => {
     if (!text || text === 'N/A' || text.trim() === '') {
@@ -286,33 +303,21 @@ export function useCabinetPageData() {
     if (activeMetricsFilter) setDateFilterInitialized(true);
   }, [activeMetricsFilter]);
 
-  // Recalculate default granularity when date filters change
-  // Reset manual flag so auto-detection works for the new filter
+  // Recalculate the default granularity once whenever the date filter changes.
+  // Reset manual flag so auto-detection works for the new filter.
+  // We intentionally do NOT poll on a timer — granularity must stay put until the
+  // user changes it (or switches the date filter), per product requirement.
   useEffect(() => {
     hasManuallySetGranularityRef.current = false;
 
     if (!activeMetricsFilter) return;
 
-    const updateGranularity = () => {
-      const defaultGranularity = getDefaultChartGranularity(
-        activeMetricsFilter,
-        customDateRange?.startDate,
-        customDateRange?.endDate
-      );
-      setChartGranularity(defaultGranularity);
-    };
-
-    // Update immediately
-    updateGranularity();
-
-    // For "Today" filter, set up interval to recalculate every minute
-    // This ensures granularity switches from 'minute' to 'hourly' when 5 hours pass
-    if (activeMetricsFilter === 'Today') {
-      const interval = setInterval(updateGranularity, 60000); // Every minute
-      return () => clearInterval(interval);
-    }
-
-    return undefined;
+    const defaultGranularity = getDefaultChartGranularity(
+      activeMetricsFilter,
+      customDateRange?.startDate,
+      customDateRange?.endDate
+    );
+    setChartGranularity(defaultGranularity);
   }, [
     activeMetricsFilter,
     customDateRange?.startDate,
@@ -502,6 +507,116 @@ export function useCabinetPageData() {
     refreshTrigger,
   ]);
 
+  // ============================================================================
+  // Background Polling — Movement Metrics & Live Meters tabs
+  // ============================================================================
+
+  // Fetches chart data silently (no loading state changes) for background polling.
+  // Uses its own AbortController so it never interferes with the main chart request.
+  const fetchChartDataSilent = useCallback(async () => {
+    if (!cabinet?._id || !activeMetricsFilter) return;
+
+    pollingChartAbortRef.current?.abort();
+    const controller = new AbortController();
+    pollingChartAbortRef.current = controller;
+
+    try {
+      const isShortPeriod =
+        activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
+      const is30d =
+        activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
+      const isLongPeriod =
+        activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
+      const granularity =
+        isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod
+          ? chartGranularity
+          : undefined;
+
+      const customStart =
+        customDateRange?.startDate ||
+        customDateRange?.from ||
+        (customDateRange as Record<string, unknown>)?.start;
+      const customEnd =
+        customDateRange?.endDate ||
+        customDateRange?.to ||
+        (customDateRange as Record<string, unknown>)?.end;
+
+      const effectiveStartDate =
+        customStart instanceof Date
+          ? customStart
+          : customStart
+            ? new Date(customStart as unknown as string)
+            : undefined;
+
+      const effectiveEndDate =
+        customEnd instanceof Date
+          ? customEnd
+          : customEnd
+            ? new Date(customEnd as unknown as string)
+            : undefined;
+
+      const result = await getMachineChartData(
+        String(cabinet._id),
+        activeMetricsFilter,
+        effectiveStartDate,
+        effectiveEndDate,
+        displayCurrency,
+        selectedLicencee,
+        granularity,
+        controller.signal
+      );
+
+      if (result.data && !controller.signal.aborted) {
+        setChartData(result.data);
+        setDataSpan(result.dataSpan || null);
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        (err.name === 'AbortError' || err.message === 'canceled')
+      )
+        return;
+      // Silently ignore chart polling errors — never clear chart data
+    }
+  }, [
+    cabinet?._id,
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+    customDateRange?.from,
+    customDateRange?.to,
+    displayCurrency,
+    selectedLicencee,
+    chartGranularity,
+    isCustomShortPeriod,
+  ]);
+
+  // Poll cabinet and chart data every 3 seconds on the live data tabs.
+  // Skipped while a main (loading-state) fetch is in progress to avoid redundant requests.
+  useEffect(() => {
+    const isLiveTab =
+      activeTab === 'Movement Metrics' || activeTab === 'Live Meters';
+    if (!isLiveTab || !cabinet?._id) return;
+
+    const interval = setInterval(() => {
+      if (baseMetricsLoading || loadingChart) return;
+      fetchCabinetDetailsSilent();
+      fetchChartDataSilent();
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+      pollingChartAbortRef.current?.abort();
+    };
+  }, [
+    activeTab,
+    cabinet?._id,
+    baseMetricsLoading,
+    loadingChart,
+    fetchCabinetDetailsSilent,
+    fetchChartDataSilent,
+  ]);
+
   // SMIB Config Coordination
   useEffect(() => {
     if (!cabinet?._id) return;
@@ -518,6 +633,24 @@ export function useCabinetPageData() {
     // Only depend on cabinet._id, not the whole smibHook object
     // The smibHook functions are stable useCallback hooks, so they don't need to be in deps
   }, [cabinet?._id]);
+
+  // Auto-fetch SMIB config when URL has ?smib=true on page load
+  useEffect(() => {
+    if (
+      initialSmibExpanded &&
+      cabinet?.relayId &&
+      canAccessSmibConfig &&
+      !smibHook.hasConfigBeenFetched
+    ) {
+      smibHook.fetchSmibConfiguration(cabinet.relayId);
+    }
+  }, [
+    initialSmibExpanded,
+    cabinet?.relayId,
+    canAccessSmibConfig,
+    smibHook.hasConfigBeenFetched,
+    smibHook.fetchSmibConfiguration,
+  ]);
 
   return {
     slug,
@@ -540,7 +673,10 @@ export function useCabinetPageData() {
     canEditMachines,
     selectedLicencee,
     displayCurrency,
-    smibHook,
+    smibHook: {
+      ...smibHook,
+      toggleSmibConfig: handleSmibToggle,
+    },
     // Setters
     setEditingSection,
     setChartGranularity: (
@@ -549,6 +685,8 @@ export function useCabinetPageData() {
       hasManuallySetGranularityRef.current = true;
       setChartGranularity(value);
     },
+    refreshTrigger,
+    // Setters
     // Handlers
     handleTabChange,
     handleRefresh,

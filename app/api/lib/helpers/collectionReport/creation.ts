@@ -107,10 +107,12 @@ export async function calculateSasMetrics(
 
   const machineIdentifier = await getMachineIdentifier(machineId);
 
-  // Query all meters within the SAS time period
+  // Query all meters within the SAS time period, excluding COLLECTION_REPORT
+  // meters to avoid double-counting supplemental meters created for offline machines.
   const metersInPeriod = await Meters.find({
     machine: machineIdentifier,
     readAt: { $gte: sasStartTime, $lte: sasEndTime },
+    meterSource: { $ne: 'COLLECTION_REPORT' },
   })
     .sort({ readAt: 1 })
     .lean<MeterDocument[]>();
@@ -364,10 +366,10 @@ export async function getSasTimePeriod(
       }
     }
 
-    // FINAL VALIDATION: Ensure sasStartTime is strictly before sasEndTime
-    if (sasStartTime >= sasEndTime) {
+    // FINAL VALIDATION: Ensure sasStartTime is not after sasEndTime (equal is allowed)
+    if (sasStartTime > sasEndTime) {
       throw new Error(
-        `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after or equal to sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range.`
+        `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range.`
       );
     }
   } catch (error) {
@@ -738,10 +740,10 @@ export async function createCollectionWithCalculations(
     payload.sasEndTime as Date
   );
 
-  // CRITICAL VALIDATION: Ensure SAS times are valid before proceeding
-  if (sasStartTime >= sasEndTime) {
+  // CRITICAL VALIDATION: Ensure SAS times are valid before proceeding (equal is allowed)
+  if (sasStartTime > sasEndTime) {
     throw new Error(
-      `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after or equal to sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range for machine ${
+      `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range for machine ${
         payload.machineId
       }.`
     );

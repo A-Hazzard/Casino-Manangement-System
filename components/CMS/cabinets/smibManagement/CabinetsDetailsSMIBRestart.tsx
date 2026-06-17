@@ -166,15 +166,15 @@ export function CabinetsDetailsSMIBRestart({
               Confirm SMIB Restart
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>
+              <span>
                 Are you sure you want to restart SMIB{' '}
                 <span className="font-semibold">{relayId}</span>?
-              </p>
-              <p className="text-sm">
+              </span>
+              <span className="text-sm">
                 This will temporarily disconnect the device and may interrupt
                 active operations. The SMIB will automatically reconnect after
                 rebooting.
-              </p>
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

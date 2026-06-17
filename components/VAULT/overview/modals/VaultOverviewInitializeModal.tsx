@@ -110,7 +110,7 @@ export default function VaultOverviewInitializeModal({
                     expectedDenominations.length > 0 && (
                       <div className="mt-4 grid grid-cols-3 gap-2 border-t border-violet-200/50 pt-4">
                         {expectedDenominations
-                          .filter(d => d.quantity > 0)
+                          .filter(denom => denom.quantity > 0)
                           .map(d => (
                             <div key={d.denomination} className="flex flex-col">
                               <span className="text-[9px] font-black uppercase text-violet-400/80">

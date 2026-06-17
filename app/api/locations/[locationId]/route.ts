@@ -1,19 +1,53 @@
 /**
  * Location Detail API Route
+ *
+ * Multi-purpose endpoint for a single location. Behaviour changes based on which
+ * query params are present. Used by the Location Details page, cabinet list, and
+ * page header name lookups.
+ *
+ * URL params:
+ * @param {string} locationId - Required (path). The `_id` of the location.
+ *
+ * Query params — mode selectors (mutually exclusive, checked in order):
+ * @param {'true'} [nameOnly] - Returns only `{ _id, name, licenceeId, includeJackpot }`.
+ * @param {'true'} [basicInfo] - Returns the full location document (no machines).
+ *
+ * Query params — cabinet list mode:
+ * @param {TimePeriod} [timePeriod] - Required. Defines the aggregation window.
+ * @param {string} [startDate] - Required when timePeriod='Custom'.
+ * @param {string} [endDate] - Required when timePeriod='Custom'.
+ * @param {string} [licencee] - Optional extra access guard.
+ * @param {string} [search] - Filters cabinets by text match.
+ * @param {'online'|'offline'|'never-online'|'all'} [onlineStatus] - Connectivity filter.
+ * @param {'smib'|'no-smib'|'all'} [smibStatus] - SMIB board filter.
+ * @param {'true'} [includeArchived] - Includes soft-deleted machines.
+ * @param {number} [page] - Page number (default: 1).
+ * @param {number} [limit] - Items per page (default: all).
+ *
+ * @module app/api/locations/[locationId]/route
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import {
-  getMoneyInScale,
-  getMoneyOutAndJackpotScale,
-} from '@/app/api/lib/utils/reviewerScale';
+  computeAndUpdateSmibTags,
+  buildMachinesFilter,
+  fetchMachineMetrics,
+  buildMetricsMap,
+  filterMachinesBySearch,
+  mapMachinesToCabinetData,
+  sortCabinetData,
+  paginateAndTransformCabinets,
+  fetchLicenceeJackpotFlag,
+  computeReviewerScales,
+} from '@/app/api/lib/helpers/locations/locationByIdOperations';
+import type {
+  CabinetItemData,
+  CabinetMappingContext,
+} from '@/app/api/lib/helpers/locations/locationByIdOperations';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
-import { Meters } from '@/app/api/lib/models/meters';
-import { TimePeriod } from '@/app/api/lib/types';
-import type { GamingMachine, LicenceeDocument } from '@shared/types';
-import { LocationDocument, TransformedCabinet } from '@/lib/types/common';
+import type { GamingMachine, LocationDocument } from '@shared/types';
+import type { TimePeriod } from '@shared/types';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import {
   logRouteFetch,
@@ -26,43 +60,16 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * GET /api/locations/[locationId]
  *
- * Multi-purpose endpoint for a single location. Behaviour changes based on which
- * query params are present. Used by the Location Details page, cabinet list, and
- * page header name lookups.
- *
- * URL params:
- * @param {string} locationId - Required (path). The `_id` of the location.
- *
- * Query params — mode selectors (mutually exclusive, checked in order):
- * @param {'true'} [nameOnly] - Returns only `{ _id, name, licenceeId, includeJackpot }`.
- *                             Used by the page header to resolve a location name from its ID
- *                             without loading all cabinet data.
- * @param {'true'} [basicInfo] - Returns the full location document (no machines).
- *                             Used when the page only needs location settings (e.g. gameDayOffset,
- *                             membershipEnabled) without the cabinet metrics payload.
- *
- * Query params — cabinet list mode (used when neither nameOnly nor basicInfo is set):
- * @param {TimePeriod} [timePeriod] - Required in list mode. Defines the aggregation window for
- *                                 financial metrics (Today, Yesterday, Week, Month, All Time, Custom).
- *                                 Maps to a gaming-day-aware date range using the location's gameDayOffset.
- * @param {string} [startDate] - Required when timePeriod='Custom'. ISO date string (YYYY-MM-DD or full ISO).
- *                                 Start of the custom aggregation window.
- * @param {string} [endDate] - Required when timePeriod='Custom'. ISO date string. End of the window.
- * @param {string} [licencee] - Optional. Validates that the requesting user's licencee matches the
- *                                 location's licencee — used as an extra access guard for non-admin users.
- * @param {string} [search] - Optional. Filters cabinets by serial number, relayId, smibBoard,
- *                                 custom name, or machine ID (case-insensitive substring match).
- *                                 Prefix-matching results are ranked first.
- * @param {'online'|'offline'|'never-online'|'all'} [onlineStatus] - Optional. Filters cabinets by their
- *                                 connectivity status. Online = last activity within 3 minutes.
- *                                 Ignored for ACE-enabled locations (all machines treated as online).
- * @param {'smib'|'no-smib'|'all'} [smibStatus] - Optional. Filters cabinets by whether they have a
- *                                 SMIB board or relayId configured.
- * @param {'true'} [includeArchived] - Optional. When 'true', includes soft-deleted machines in the results.
- *                                 Used by the Archived Cabinets view within a location.
- * @param {number} [page] - Optional. Page number for pagination (default: 1).
- * @param {number} [limit] - Optional. Number of cabinets per page. When omitted, all matching
- *                                 cabinets are returned unpaginated.
+ * Flow:
+ * 1. Extract and validate location ID
+ * 2. Handle nameOnly quick-lookup mode
+ * 3. Authenticate user and verify location access + existence
+ * 4. Run SMIB auto-tag (fire-and-forget with in-memory update)
+ * 5. Handle basicInfo mode
+ * 6. Parse cabinet-list params, compute gaming-day range, reviewer scales
+ * 7. Build machine filter and fetch machines
+ * 8. Search-filter, aggregate metrics, map to cabinet items
+ * 9. Sort, paginate, transform to TransformedCabinet, respond
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -73,13 +80,7 @@ export async function GET(request: NextRequest) {
   const locationId = pathname.split('/').pop();
 
   if (!locationId) {
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/locations/[locationId]',
-      'Location ID required',
-      user
-    );
+    logRouteError(functionName, 'GET', '/api/locations/[locationId]', 'Location ID required', user);
     return NextResponse.json(
       { success: false, message: 'Location ID required' },
       { status: 400 }
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       // ============================================================================
-      // STEP 1: Parse Query Params and Check Basic/Name Only Modes
+      // STEP 1: Parse Query Params and Check Name-Only / Basic-Info Modes
       // ============================================================================
       const { searchParams } = new URL(request.url);
       const nameOnly = searchParams.get('nameOnly') === 'true';
@@ -100,36 +101,22 @@ export async function GET(request: NextRequest) {
           { _id: locationId },
           { _id: 1, name: 1, 'rel.licencee': 1 }
         ).lean<LocationDocument>();
-        if (!location)
+        if (!location) {
           return NextResponse.json(
             { success: false, message: 'Not found' },
             { status: 404 }
           );
+        }
 
         const licIdRaw = location.rel?.licencee || location.rel?.licencee;
         const licIdArr = licIdRaw
-          ? Array.isArray(licIdRaw)
-            ? licIdRaw
-            : [licIdRaw]
+          ? Array.isArray(licIdRaw) ? licIdRaw : [licIdRaw]
           : [];
-        let includeJackpot = false;
-        if (licIdArr.length > 0) {
-          const licDoc = await Licencee.findOne(
-            { _id: licIdArr[0] },
-            { includeJackpot: 1 }
-          ).lean<LicenceeDocument>();
-          includeJackpot = Boolean(licDoc?.includeJackpot);
-        }
+        const includeJackpot = licIdArr.length > 0
+          ? await fetchLicenceeJackpotFlag(licIdArr[0])
+          : false;
 
-        const duration = Date.now() - startTime;
-        logRouteFetch(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          1,
-          user,
-          duration
-        );
+        logRouteFetch(functionName, 'GET', '/api/locations/[locationId]', 1, user, Date.now() - startTime);
 
         return NextResponse.json({
           success: true,
@@ -148,13 +135,7 @@ export async function GET(request: NextRequest) {
         normalizedRoles.includes('developer') ||
         normalizedRoles.includes('owner');
       if (!isAdmin && !(await checkUserLocationAccess(locationId))) {
-        logRouteError(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          'Unauthorized',
-          user
-        );
+        logRouteError(functionName, 'GET', '/api/locations/[locationId]', 'Unauthorized', user);
         return NextResponse.json(
           { success: false, message: 'Unauthorized' },
           { status: 403 }
@@ -165,13 +146,7 @@ export async function GET(request: NextRequest) {
         _id: locationId,
       }).lean<LocationDocument>();
       if (!locationCheck) {
-        logRouteError(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          'Not found',
-          user
-        );
+        logRouteError(functionName, 'GET', '/api/locations/[locationId]', 'Not found', user);
         return NextResponse.json(
           { success: false, message: 'Not found' },
           { status: 404 }
@@ -179,154 +154,42 @@ export async function GET(request: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 2: SMIB AUTO-TAG — re-classify this location on every detail page load.
-      // Uses a lightweight projection (relayId only) so it doesn't slow the response.
-      // Fire-and-forget: result is not awaited.
+      // STEP 2: SMIB Auto-Tag (fire-and-forget + in-memory injection)
       // ============================================================================
       {
-        const activeMachinesForTag = await Machine.find(
-          {
-            gamingLocation: locationId,
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
-          { _id: 1, relayId: 1 }
-        ).lean<{ _id: string; relayId?: string }[]>();
-
-        const totalForTag = activeMachinesForTag.length;
-        const withRelayForTag = activeMachinesForTag.filter(
-          m => m.relayId && String(m.relayId).trim()
-        ).length;
-        const withoutRelayForTag = totalForTag - withRelayForTag;
-
-        const computedFull = totalForTag > 0 && withRelayForTag === totalForTag;
-        const computedSemi =
-          totalForTag > 0 &&
-          withRelayForTag > 0 &&
-          withRelayForTag < totalForTag;
-        const computedNone = !computedFull && !computedSemi;
-
-        const storedFull = Boolean(locationCheck.fullSMIBs);
-        const storedSemi = Boolean(locationCheck.semiSMIBs);
-        const storedNone = Boolean(locationCheck.noSMIBLocation);
-
-        const computedType = computedFull
-          ? 'fullSMIBs'
-          : computedSemi
-            ? 'semiSMIBs'
-            : 'noSMIBLocation';
-        const storedType = storedFull
-          ? 'fullSMIBs'
-          : storedSemi
-            ? 'semiSMIBs'
-            : storedNone
-              ? 'noSMIBLocation'
-              : 'unset';
-
-        console.log(
-          `[GET /api/locations/[locationId]] SMIB check for "${locationCheck.name}" (${locationId}) — ` +
-            `total machines: ${totalForTag}, with relayId: ${withRelayForTag}, without relayId: ${withoutRelayForTag} → computed: ${computedType}`
-        );
-
-        // Always inject computed values into locationCheck so this response reflects
-        // the fresh classification regardless of DB write timing
-        (locationCheck as Record<string, unknown>).fullSMIBs = computedFull;
-        (locationCheck as Record<string, unknown>).semiSMIBs = computedSemi;
-        (locationCheck as Record<string, unknown>).noSMIBLocation =
-          computedNone;
-
-        const unchanged =
-          storedFull === computedFull &&
-          storedSemi === computedSemi &&
-          storedNone === computedNone;
-
-        if (unchanged) {
-          console.log(
-            `[GET /api/locations/[locationId]] "${locationCheck.name}" — already "${storedType}", no update needed`
-          );
-        } else {
-          console.log(
-            `[GET /api/locations/[locationId]] "${locationCheck.name}" — queuing update: "${storedType}" → "${computedType}"`
-          );
-          GamingLocations.updateOne(
-            { _id: locationId },
-            {
-              $set: {
-                fullSMIBs: computedFull,
-                semiSMIBs: computedSemi,
-                noSMIBLocation: computedNone,
-              },
-            }
-          )
-            .then(result => {
-              console.log(
-                `[GET /api/locations/[locationId]] "${locationCheck.name}" — update complete, modified: ${result.modifiedCount}`
-              );
-            })
-            .catch(err => {
-              console.error(
-                `[GET /api/locations/[locationId]] "${locationCheck.name}" — update failed:`,
-                err
-              );
-            });
-        }
+        const smibTags = await computeAndUpdateSmibTags(locationId, locationCheck.name);
+        (locationCheck as Record<string, unknown>).fullSMIBs = smibTags.fullSMIBs;
+        (locationCheck as Record<string, unknown>).semiSMIBs = smibTags.semiSMIBs;
+        (locationCheck as Record<string, unknown>).noSMIBLocation = smibTags.noSMIBLocation;
       }
 
       if (basicInfo || !searchParams.toString().length) {
-        const licId = locationCheck.rel?.licencee;
-        const firstLicId = Array.isArray(licId) ? licId[0] : licId;
-        let includeJackpot = false;
-        if (firstLicId) {
-          const licDoc = await Licencee.findOne(
-            { _id: firstLicId },
-            { includeJackpot: 1 }
-          ).lean<LicenceeDocument>();
-          includeJackpot = Boolean(licDoc?.includeJackpot);
-        }
-        const duration = Date.now() - startTime;
-        logRouteFetch(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          1,
-          user,
-          duration
-        );
-
+        const includeJackpot = await fetchLicenceeJackpotFlag(locationCheck.rel?.licencee);
+        logRouteFetch(functionName, 'GET', '/api/locations/[locationId]', 1, user, Date.now() - startTime);
         return NextResponse.json({
           success: true,
           location: { ...locationCheck, includeJackpot },
         });
       }
 
+      // ============================================================================
+      // STEP 3: Parse Cabinet-List Parameters
+      // ============================================================================
       const licencee = searchParams.get('licencee');
       const searchTerm = searchParams.get('search');
       const timePeriod = searchParams.get('timePeriod') as TimePeriod;
       const customStart = searchParams.get('startDate');
       const customEnd = searchParams.get('endDate');
       const onlineStatus = searchParams.get('onlineStatus') || 'all';
-      const smibStatus = (
-        searchParams.get('smibStatus') || 'all'
-      ).toLowerCase();
+      const smibStatus = (searchParams.get('smibStatus') || 'all').toLowerCase();
       const limitParam = searchParams.get('limit');
       const limit = limitParam ? parseInt(limitParam) : undefined;
       const page = parseInt(searchParams.get('page') || '1');
       const skip = limit ? (page - 1) * limit : 0;
 
       if (!timePeriod) {
-        logRouteError(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          'timePeriod required',
-          user
-        );
-        return NextResponse.json(
-          { error: 'timePeriod required' },
-          { status: 400 }
-        );
+        logRouteError(functionName, 'GET', '/api/locations/[locationId]', 'timePeriod required', user);
+        return NextResponse.json({ error: 'timePeriod required' }, { status: 400 });
       }
 
       if (!isAdmin && licencee && licencee !== 'all') {
@@ -335,13 +198,7 @@ export async function GET(request: NextRequest) {
           locLicId !== licencee &&
           (!Array.isArray(locLicId) || !locLicId.includes(licencee))
         ) {
-          logRouteError(
-            functionName,
-            'GET',
-            '/api/locations/[locationId]',
-            'Access denied',
-            user
-          );
+          logRouteError(functionName, 'GET', '/api/locations/[locationId]', 'Access denied', user);
           return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
       }
@@ -354,26 +211,10 @@ export async function GET(request: NextRequest) {
         customEnd ? new Date(customEnd) : undefined
       );
 
-      const locLicId = locationCheck.rel?.licencee;
-      let includeJackpotSetting = false;
-      if (locLicId) {
-        const licDoc = await Licencee.findOne(
-          { _id: Array.isArray(locLicId) ? locLicId[0] : locLicId },
-          { includeJackpot: 1 }
-        ).lean<LicenceeDocument>();
-        includeJackpotSetting = !!licDoc?.includeJackpot;
-      }
-
-      const moneyInScale = getMoneyInScale(
+      const includeJackpotSetting = await fetchLicenceeJackpotFlag(locationCheck.rel?.licencee);
+      const { moneyInScale, moneyOutScale } = computeReviewerScales(
         userPayload as {
           moneyInMultiplier?: number | null;
-          roles?: string[];
-          reviewerMultiplierStartTime?: Date | string | null;
-        },
-        gdr.rangeEnd
-      );
-      const moneyOutScale = getMoneyOutAndJackpotScale(
-        userPayload as {
           moneyOutAndJackpotMultiplier?: number | null;
           roles?: string[];
           reviewerMultiplierStartTime?: Date | string | null;
@@ -381,91 +222,17 @@ export async function GET(request: NextRequest) {
         gdr.rangeEnd
       );
 
+      // ============================================================================
+      // STEP 4: Build Machine Filter and Fetch Machines
+      // ============================================================================
       const includeArchived = searchParams.get('includeArchived') === 'true';
-      const mMatch: Record<string, unknown> = {
-        $and: [{ gamingLocation: locationId }] as unknown[],
-      };
-
-      if (!includeArchived) {
-        // Active: null OR < 2025
-        (mMatch.$and as unknown[]).push({
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        });
-      } else {
-        // Archived View: Show ALL machines
-        // (If there's a third state to hide, we'd add another filter here)
-        (mMatch.$and as unknown[]).push({
-          $or: [{ deletedAt: null }, { deletedAt: { $exists: true } }],
-        });
-      }
-
-      // Apply connectivity filtering if a specific status is requested
-      if (onlineStatus !== 'all') {
-        const threeMin = new Date(Date.now() - 3 * 60 * 1000);
-        if (locationCheck.aceEnabled) {
-          if (onlineStatus === 'online') {
-            // all active machines are online in ACE locations
-          } else if (
-            onlineStatus === 'offline' ||
-            onlineStatus === 'never-online'
-          ) {
-            (mMatch.$and as unknown[]).push({ _id: null });
-          }
-        } else {
-          if (onlineStatus === 'online')
-            mMatch.lastActivity = { $gte: threeMin };
-          else if (onlineStatus === 'offline')
-            (mMatch.$and as unknown[]).push({
-              $or: [
-                { lastActivity: { $lt: threeMin } },
-                { lastActivity: { $exists: false } },
-                { lastActivity: null },
-              ],
-            });
-          else if (onlineStatus === 'never-online')
-            (mMatch.$and as unknown[]).push({
-              $or: [
-                { lastActivity: { $exists: false } },
-                { lastActivity: null },
-              ],
-            });
-        }
-      }
-
-      if (smibStatus !== 'all') {
-        if (smibStatus === 'smib') {
-          (mMatch.$and as unknown[]).push({
-            $or: [
-              { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
-              { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } },
-            ],
-          });
-        } else if (smibStatus === 'no-smib') {
-          (mMatch.$and as unknown[]).push({
-            $and: [
-              {
-                $or: [
-                  { relayId: '' },
-                  { relayId: null },
-                  { relayId: { $exists: false } },
-                  { relayId: /^\s*$/ },
-                ],
-              },
-              {
-                $or: [
-                  { smibBoard: '' },
-                  { smibBoard: null },
-                  { smibBoard: { $exists: false } },
-                  { smibBoard: /^\s*$/ },
-                ],
-              },
-            ],
-          });
-        }
-      }
+      const mMatch = buildMachinesFilter({
+        locationId,
+        includeArchived,
+        onlineStatus,
+        smibStatus,
+        aceEnabled: !!locationCheck.aceEnabled,
+      });
 
       const machines = await Machine.find(mMatch, {
         _id: 1,
@@ -484,17 +251,9 @@ export async function GET(request: NextRequest) {
         assetStatus: 1,
         deletedAt: 1,
       }).lean<GamingMachine[]>();
-      if (!machines.length) {
-        const duration = Date.now() - startTime;
-        logRouteFetch(
-          functionName,
-          'GET',
-          '/api/locations/[locationId]',
-          0,
-          user,
-          duration
-        );
 
+      if (!machines.length) {
+        logRouteFetch(functionName, 'GET', '/api/locations/[locationId]', 0, user, Date.now() - startTime);
         return NextResponse.json({
           success: true,
           data: [],
@@ -509,208 +268,53 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      let filteredMachines = machines;
-      if (searchTerm) {
-        const lowerSearchTerm = searchTerm.toLowerCase();
-        filteredMachines = machines.filter(
-          machine =>
-            machine.serialNumber?.toLowerCase().includes(lowerSearchTerm) ||
-            machine.relayId?.toLowerCase().includes(lowerSearchTerm) ||
-            machine.smibBoard?.toLowerCase().includes(lowerSearchTerm) ||
-            (machine.custom as unknown as { name?: string })?.name
-              ?.toLowerCase()
-              .includes(lowerSearchTerm) ||
-            String(machine._id).toLowerCase().includes(lowerSearchTerm)
-        );
-      }
+      // ============================================================================
+      // STEP 5: Search Filter, Aggregate Metrics, Map to Cabinet Items
+      // ============================================================================
+      const filteredMachines = searchTerm
+        ? filterMachinesBySearch(machines, searchTerm)
+        : machines;
 
-      const filteredMachineIds = filteredMachines.map(machine =>
-        String(machine._id)
+      const filteredMachineIds = filteredMachines.map(m => String(m._id));
+      const metricsRecords = await fetchMachineMetrics(
+        locationId,
+        filteredMachineIds,
+        gdr.rangeStart,
+        gdr.rangeEnd
       );
-      const rawMachineMetrics: Array<{
-        _id: string;
-        moneyIn: number;
-        moneyOut: number;
-        jackpot: number;
-        gamesPlayed: number;
-        gamesWon: number;
-        gross: number;
-      }> = [];
-      const metricsCursor = Meters.aggregate([
-        {
-          $match: {
-            $and: [
-              { location: locationId },
-              { machine: { $in: filteredMachineIds } },
-              { readAt: { $gte: gdr.rangeStart, $lte: gdr.rangeEnd } },
-            ],
-          },
-        },
-        {
-          $group: {
-            _id: '$machine',
-            moneyIn: { $sum: '$movement.drop' },
-            moneyOut: { $sum: '$movement.totalCancelledCredits' },
-            jackpot: { $sum: '$movement.jackpot' },
-            gamesPlayed: { $sum: '$movement.gamesPlayed' },
-            gamesWon: { $sum: '$movement.gamesWon' },
-          },
-        },
-        { $addFields: { gross: { $subtract: ['$moneyIn', '$moneyOut'] } } },
-      ]).cursor({ batchSize: 1000 });
-      for await (const doc of metricsCursor) rawMachineMetrics.push(doc);
+      const metricsMap = buildMetricsMap(metricsRecords);
 
-      const machineMetricsMap = new Map(
-        rawMachineMetrics.map(metric => [String(metric._id), metric])
+      const mappingContext: CabinetMappingContext = {
+        locationId,
+        locationName: locationCheck.name || 'Location',
+        aceEnabled: !!locationCheck.aceEnabled,
+        moneyInScale,
+        moneyOutScale,
+        includeJackpotSetting,
+      };
+      const cabinetItems: CabinetItemData[] = mapMachinesToCabinetData(
+        filteredMachines,
+        metricsMap,
+        mappingContext
       );
-      const machinesWithMeters = filteredMachines.map(machine => {
-        const currentMachineId = String(machine._id);
-        const machineMeters = machineMetricsMap.get(currentMachineId) || {
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0,
-          jackpot: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-        };
-        const serialNumber = (machine.serialNumber as string)?.trim() || '';
-        const customName =
-          (
-            (machine.custom as unknown as { name?: string })?.name as string
-          )?.trim() || '';
-        const assetNumber = serialNumber || customName || '';
-        const lastActivityDate = machine.lastActivity as Date | null;
-        const isOnline =
-          locationCheck.aceEnabled ||
-          (lastActivityDate &&
-            new Date(lastActivityDate) > new Date(Date.now() - 3 * 60 * 1000));
-        const rawMoneyIn = (Number(machineMeters.moneyIn) || 0) * moneyInScale;
-        const rawMoneyOut =
-          (Number(machineMeters.moneyOut) || 0) * moneyOutScale;
-        const rawJackpot = (Number(machineMeters.jackpot) || 0) * moneyOutScale;
-        const adjustedMoneyOut =
-          rawMoneyOut + (includeJackpotSetting ? rawJackpot : 0);
-        const grossProfit = rawMoneyIn - adjustedMoneyOut;
-
-        return {
-          _id: currentMachineId,
-          locationId,
-          locationName: locationCheck.name || 'Location',
-          assetNumber: assetNumber,
-          serialNumber: assetNumber,
-          custom: machine.custom || {},
-          relayId: (machine.relayId as string) || '',
-          smibBoard: (machine.smibBoard as string) || '',
-          smbId:
-            (machine.smibBoard as string) || (machine.relayId as string) || '',
-          lastActivity: lastActivityDate,
-          lastOnline: lastActivityDate,
-          game: (machine.game as string) || '',
-          installedGame: (machine.game as string) || '',
-          manufacturer:
-            (machine.manufacturer as string) ||
-            (machine.manuf as string) ||
-            'Unknown',
-          cabinetType: (machine.cabinetType as string) || '',
-          status: (machine.assetStatus as string) || '',
-          gameType: (machine.gameType as string) || '',
-          isCronosMachine: !!machine.isCronosMachine,
-          moneyIn: rawMoneyIn,
-          moneyOut: adjustedMoneyOut,
-          gross: grossProfit,
-          jackpot: rawJackpot,
-          gamesPlayed: Number(machineMeters.gamesPlayed) || 0,
-          gamesWon: Number(machineMeters.gamesWon) || 0,
-          cancelledCredits: adjustedMoneyOut,
-          sasMeters: machine.sasMeters || null,
-          online: !!isOnline,
-          includeJackpot: includeJackpotSetting,
-          deletedAt: (machine as { deletedAt?: Date }).deletedAt || null,
-        };
-      });
 
       // ============================================================================
-      // STEP 3: Final Sorting
-      // Priority: Search Relevance -> Online Status -> Gross Descending
+      // STEP 6: Sort, Paginate, Transform, Respond
       // ============================================================================
-      machinesWithMeters.sort((a, b) => {
-        // 1. Search Relevance (if searching)
-        if (searchTerm) {
-          const lowerSearch = searchTerm.toLowerCase();
-          const aStarts = a.serialNumber.toLowerCase().startsWith(lowerSearch);
-          const bStarts = b.serialNumber.toLowerCase().startsWith(lowerSearch);
+      sortCabinetData(cabinetItems, searchTerm || undefined);
+      const result = paginateAndTransformCabinets(cabinetItems, page, limit, skip);
 
-          if (aStarts && !bStarts) return -1;
-          if (!aStarts && bStarts) return 1;
-        }
-
-        // 2. Connectivity (Online first)
-        if (a.online && !b.online) return -1;
-        if (!a.online && b.online) return 1;
-
-        // 3. Gross (Descending)
-        const bGross = Number(b.gross) || 0;
-        const aGross = Number(a.gross) || 0;
-        if (bGross !== aGross) return bGross - aGross;
-
-        // 4. Fallback: Serial Number
-        return a.serialNumber.localeCompare(b.serialNumber);
-      });
-
-      const total = machinesWithMeters.length;
-      const paginated = limit
-        ? machinesWithMeters.slice(skip, skip + limit)
-        : machinesWithMeters;
-
-      const transformed: TransformedCabinet[] = paginated.map(
-        transformedMachine => {
-          const currentGross = Number(transformedMachine.gross) || 0;
-          const currentJackpot = Number(transformedMachine.jackpot) || 0;
-          const base: TransformedCabinet = {
-            ...transformedMachine,
-            netGross: transformedMachine.includeJackpot
-              ? currentGross - currentJackpot
-              : undefined,
-            metersData: null,
-          } as unknown as TransformedCabinet;
-
-          return base;
-        }
-      );
-
-      const totalPages = limit ? Math.ceil(total / limit) : 1;
-      const duration = Date.now() - startTime;
-      logRouteFetch(
-        functionName,
-        'GET',
-        '/api/locations/[locationId]',
-        transformed.length,
-        user,
-        duration
-      );
+      logRouteFetch(functionName, 'GET', '/api/locations/[locationId]', result.data.length, user, Date.now() - startTime);
 
       return NextResponse.json({
         success: true,
-        data: transformed,
-        pagination: {
-          page,
-          limit: limit || total,
-          total,
-          totalPages,
-          hasNextPage: limit ? page < totalPages : false,
-          hasPrevPage: page > 1,
-        },
+        data: result.data,
+        pagination: result.pagination,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/locations/[locationId]',
-        message,
-        user
-      );
-      console.error(`[Location Detail API] Error:`, error);
+      logRouteError(functionName, 'GET', '/api/locations/[locationId]', message, user);
+      console.error('[Location Detail API] Error:', error);
       return NextResponse.json({ error: message }, { status: 500 });
     }
   });

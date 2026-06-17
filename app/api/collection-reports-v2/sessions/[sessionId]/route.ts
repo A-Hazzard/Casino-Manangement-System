@@ -1,28 +1,115 @@
 /**
  * Collection Report V2 — Session Detail API
  *
- * GET /api/collection-reports-v2/sessions/[sessionId]
- * Returns all reported machines for a single session, ordered by sequenceOrder.
+ * GET    /api/collection-reports-v2/sessions/[sessionId]  — Session detail with machines
+ * DELETE /api/collection-reports-v2/sessions/[sessionId]  — Permanently delete session
+ * PATCH  /api/collection-reports-v2/sessions/[sessionId]  — Update session-level fields
+ *
+ * @module app/api/collection-reports-v2/sessions/[sessionId]/route
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
-import { Machine } from '@/app/api/lib/models/machines';
-import UserModel from '@/app/api/lib/models/user';
 import { Meters } from '@/app/api/lib/models/meters';
-import { determineAllowedLocationIds } from '@/app/api/lib/helpers/collectionReport/queries';
-import { deleteDriveFile, deleteDriveFolder } from '@/lib/utils/drive';
+import { CollectionSessionV2 } from '@/app/api/lib/models/collectionSessionV2';
+import type { CollectionSessionV2Document } from '@/app/api/lib/models/collectionSessionV2';
 import {
   extractUserFromRequest,
   logRouteFetch,
+  logRouteDelete,
+  logRouteUpdate,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
-import {
-  logRouteDelete,
-  logRouteUpdate,
-} from '@/app/api/lib/utils/routeLogger';
+import type { ReportedMachineDocument } from '@/app/api/lib/models/reportedMachines';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  extractUserPayload,
+  verifySessionLocationAccess,
+  buildSessionDetailResponse,
+  deleteSessionDriveAssets,
+  fixSupplementalMetersBeforeDelete,
+} from '@/app/api/lib/helpers/collectionReportV2/sessionOperations';
+import { revertMachineMetersAfterSessionDelete } from '@/app/api/lib/helpers/collectionReportV2/deleteOperations';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
+import type { SessionMachineResponse } from '@/app/api/lib/helpers/collectionReportV2/sessionOperations';
+
+// ============================================================================
+// Financial field names for PATCH parsing
+// ============================================================================
+
+const FINANCIAL_FIELDS = [
+  'amountToCollect',
+  'amountCollected',
+  'amountUncollected',
+  'previousBalance',
+  'currentBalance',
+  'partnerProfit',
+  'taxes',
+  'advance',
+  'balanceCorrection',
+  'balanceCorrectionReas',
+  'variance',
+  'varianceReason',
+  'reasonShortagePayment',
+  'locationProfitPerc',
+  'includeJackpot',
+] as const;
+
+// ============================================================================
+// Reviewer scale helpers
+// ============================================================================
+
+function applyScaleToMachine(
+  machine: SessionMachineResponse,
+  moneyInScale: number,
+  moneyOutScale: number
+): SessionMachineResponse {
+  if (moneyInScale === 1 && moneyOutScale === 1) return machine;
+  const round = (val: number | null): number | null =>
+    val === null ? null : Math.round(val * 100) / 100;
+  return {
+    ...machine,
+    sasMetersIn: round(machine.sasMetersIn !== null ? machine.sasMetersIn * moneyInScale : null),
+    sasMetersOut: round(machine.sasMetersOut !== null ? machine.sasMetersOut * moneyOutScale : null),
+    sasGross: round(machine.sasGross !== null ? machine.sasGross * moneyInScale : null),
+    machineGross: Math.round(machine.machineGross * moneyInScale * 100) / 100,
+    variation: round(machine.variation !== null ? machine.variation * moneyInScale : null),
+  };
+}
+
+function applyScaleToFinancials(
+  financials: CollectionSessionV2Document | null,
+  moneyInScale: number,
+  moneyOutScale: number
+): CollectionSessionV2Document | null {
+  if (!financials || (moneyInScale === 1 && moneyOutScale === 1)) return financials;
+  const scaleIn = (val: number) => Math.round(val * moneyInScale * 100) / 100;
+  const scaleOut = (val: number) => Math.round(val * moneyOutScale * 100) / 100;
+  return {
+    ...financials,
+    amountToCollect: scaleIn(financials.amountToCollect ?? 0),
+    amountCollected: scaleIn(financials.amountCollected ?? 0),
+    amountUncollected: scaleIn(financials.amountUncollected ?? 0),
+    partnerProfit: scaleIn(financials.partnerProfit ?? 0),
+    variance: typeof financials.variance === 'number'
+      ? scaleIn(financials.variance)
+      : financials.variance,
+    taxes: scaleOut(financials.taxes ?? 0),
+    advance: scaleOut(financials.advance ?? 0),
+    previousBalance: scaleOut(financials.previousBalance ?? 0),
+    currentBalance: scaleOut(financials.currentBalance ?? 0),
+    balanceCorrection: scaleOut(financials.balanceCorrection ?? 0),
+  };
+}
+
+// ============================================================================
+// GET — Fetch session detail with machines
+// ============================================================================
 
 export async function GET(
   req: NextRequest,
@@ -31,18 +118,13 @@ export async function GET(
   const startTime = Date.now();
   const functionName = 'GET /api/collection-reports-v2/sessions/[sessionId]';
   const user = extractUserFromRequest(req);
-
   let sessionId = '';
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP 1: Connect and authenticate
     // ============================================================================
     await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -52,7 +134,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 3: Parse session ID and query params
+    // STEP 2: Parse session ID
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -62,43 +144,15 @@ export async function GET(
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const includeDeleted = searchParams.get('includeDeleted') === 'true';
-
     // ============================================================================
-    // STEP 4: Extract user role / location info
-    // ============================================================================
-    const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
-    const userRoles = (userPayloadRecord.roles as string[]) || [];
-
-    // Guard: only privileged roles may view archived session detail
-    const canViewArchived =
-      userRoles.includes('developer') ||
-      userRoles.includes('owner') ||
-      userRoles.includes('admin') ||
-      userRoles.includes('location admin');
-
-    if (includeDeleted && !canViewArchived) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Insufficient permissions to view archived session',
-        },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 5: Fetch all machines for this session
+    // STEP 3: Fetch session machines
     // ============================================================================
     const sessionMatch: Record<string, unknown> = { sessionId };
-    if (!includeDeleted) {
-      sessionMatch.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
-    }
+    sessionMatch.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
 
     const machines = await ReportedMachine.find(sessionMatch)
       .sort({ sequenceOrder: 1 })
-      .lean();
+      .lean<ReportedMachineDocument[]>();
 
     if (machines.length === 0) {
       return NextResponse.json(
@@ -108,29 +162,22 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 6: Verify user can access this session's location
+    // STEP 4: Verify location access
     // ============================================================================
     const sessionLocationId = machines[0].locationId;
-    const userLicencees =
-      (userPayloadRecord.assignedLicencees as string[]) || [];
-    const userLocations =
-      (userPayloadRecord.assignedLocations as string[]) || [];
-    const allowedLocationIds = await determineAllowedLocationIds(
-      userRoles,
-      userLicencees,
-      userLocations
+    const { roles, assignedLicencees, assignedLocations } = extractUserPayload(
+      userPayload as unknown as Record<string, unknown>
     );
-    if (
-      allowedLocationIds !== 'all' &&
-      !allowedLocationIds.includes(sessionLocationId)
-    ) {
-      logRouteError(
-        functionName,
-        'GET',
-        `/api/collection-reports-v2/sessions/${sessionId}`,
-        'Location access denied',
-        user
-      );
+
+    const hasAccess = await verifySessionLocationAccess(
+      sessionLocationId,
+      roles,
+      assignedLicencees,
+      assignedLocations
+    );
+
+    if (!hasAccess) {
+      logRouteError(functionName, 'GET', `/api/collection-reports-v2/sessions/${sessionId}`, 'Location access denied', user);
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }
@@ -138,255 +185,47 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 7: Look up last collection time per machine
+    // STEP 5: Build session detail response + fetch financials
     // ============================================================================
-    // Uses only V2 ReportedMachine records: the sasEndTime of the most recent
-    // submitted report for that machine (excluding the current session).
-    // This sasEndTime represents the end of the previous SAS collection period
-    // and is used as the sasStartTime for the next collection.
-    const machineIds = [...new Set(machines.map(m => m.machineId))];
-    const currentMachineIds = machines.map(m =>
-      (m as { _id: string })._id.toString()
-    );
-
-    const previousSubmissionsMatch: Record<string, unknown> = {
-      machineId: { $in: machineIds },
-      sessionStatus: 'submitted',
-      _id: { $nin: currentMachineIds },
-    };
-    if (!includeDeleted) {
-      previousSubmissionsMatch.$or = [
-        { deletedAt: null },
-        { deletedAt: { $exists: false } },
-      ];
-    }
-
-    const previousSubmissions = await ReportedMachine.aggregate([
-      {
-        $match: previousSubmissionsMatch,
-      },
-      { $sort: { sasEndTime: -1 } },
-      { $group: { _id: '$machineId', sasEndTime: { $first: '$sasEndTime' } } },
+    const [sessionData, rawFinancials] = await Promise.all([
+      buildSessionDetailResponse(sessionId, machines),
+      CollectionSessionV2.findOne({ sessionId }).lean<CollectionSessionV2Document>(),
     ]);
 
-    const lastCollectionMap = new Map(
-      previousSubmissions.map(s => [s._id as string, s.sasEndTime as Date])
+    // ============================================================================
+    // STEP 6: Apply reviewer scale (no-op for non-reviewer users)
+    // ============================================================================
+    const referenceDate = sessionData.sessionEndTime ?? new Date();
+    const moneyInScale = getMoneyInScale(
+      userPayload as Parameters<typeof getMoneyInScale>[0],
+      referenceDate
+    );
+    const moneyOutScale = getMoneyOutAndJackpotScale(
+      userPayload as Parameters<typeof getMoneyOutAndJackpotScale>[0],
+      referenceDate
     );
 
-    // Fetch Machine collectionTimes + live sasMeters for fallback when
-    // legacy ReportedMachine docs don't have sasMetersIn/Out stored.
-    // Also fetch relayId so we can expose hasRelay per machine (partial-SMIB support).
-    const machineDocs = await Machine.find({
-      _id: { $in: machineIds },
-    })
-      .select('collectionTime sasMeters relayId')
-      .lean<
-        {
-          _id: string;
-          collectionTime?: Date;
-          sasMeters?: { drop?: number; totalCancelledCredits?: number };
-          relayId?: string | null;
-        }[]
-      >();
-
-    const machineCollectionTimeMap = new Map(
-      machineDocs.map(m => [
-        String(m._id),
-        m.collectionTime as Date | undefined,
-      ])
+    const scaledMachines = sessionData.machines.map(m =>
+      applyScaleToMachine(m, moneyInScale, moneyOutScale)
     );
-
-    // Maps machineId → live sasMeters so we can fall back for legacy sessions
-    const liveSasMetersMap = new Map(
-      machineDocs.map(m => [
-        String(m._id),
-        {
-          drop: m.sasMeters?.drop,
-          totalCancelledCredits: m.sasMeters?.totalCancelledCredits,
-        },
-      ])
-    );
-
-    // Maps machineId → hasRelay (per-machine SMIB detection)
-    const hasRelayMap = new Map(
-      machineDocs.map(m => [String(m._id), !!m.relayId])
-    );
-
-    const getLastCollectionTime = (machineId: string): Date | null =>
-      lastCollectionMap.get(machineId) ??
-      machineCollectionTimeMap.get(machineId) ??
-      null;
-
-    // ============================================================================
-    // STEP 8: Look up collector details
-    // ============================================================================
-    const collectorId = machines[0].collector;
-    let collectorFirstName: string | undefined;
-    let collectorLastName: string | undefined;
-    let collectorEmail: string | undefined;
-    if (collectorId) {
-      const collectorUser = await UserModel.findOne({ _id: collectorId })
-        .select('profile.firstName profile.lastName emailAddress')
-        .lean<{
-          profile?: { firstName?: string; lastName?: string };
-          emailAddress?: string;
-        }>();
-      if (collectorUser) {
-        collectorFirstName = collectorUser.profile?.firstName;
-        collectorLastName = collectorUser.profile?.lastName;
-        collectorEmail = collectorUser.emailAddress;
-      }
-    }
-
-    // ============================================================================
-    // STEP 9: Build session summary and return
-    // ============================================================================
-    const sessionData = {
-      sessionId,
-      sessionStatus: machines[0].sessionStatus,
-      locationId: sessionLocationId,
-      locationName: machines[0].locationName,
-      licencee: machines[0].licencee,
-      collector: collectorId,
-      collectorName: machines[0].collectorName,
-      collectorFirstName,
-      collectorLastName,
-      collectorEmail,
-      sessionStartTime: machines[0].sessionStartTime,
-      sessionEndTime: machines[0].sessionEndTime,
-      machinesTotal: machines.length,
-      machinesCaptured: machines.filter(m =>
-        ['captured', 'confirmed'].includes(m.status)
-      ).length,
-      // For non-relay (manual) machines every captured/confirmed machine is
-      // implicitly matched since there are no SAS meters to compare against.
-      // For relay (SMIB) machines the user must explicitly confirm after meter
-      // comparison, so only 'confirmed' counts.
-      machinesConfirmed: machines.filter(m => {
-        const machineHasRelay = hasRelayMap.get(m.machineId) ?? false;
-        if (!machineHasRelay) {
-          return ['captured', 'confirmed'].includes(m.status);
-        }
-        return m.status === 'confirmed';
-      }).length,
-      machinesSkipped: machines.filter(m => m.status === 'skipped').length,
-      createdAt: machines[0].createdAt,
-      machines: machines.map(m => {
-        // Fall back to live machine sasMeters when the stored value is null/undefined
-        // (legacy sessions created before sasMetersIn/Out were persisted on ReportedMachine).
-        // For non-relay machines, fall back to manualMetersIn/Out since live SAS is null.
-        const machineHasRelay = hasRelayMap.get(m.machineId) ?? false;
-        const liveSas = liveSasMetersMap.get(m.machineId);
-        const resolvedSasMetersIn =
-          m.sasMetersIn != null
-            ? m.sasMetersIn
-            : !machineHasRelay
-              ? (m.manualMetersIn ?? null)
-              : (liveSas?.drop ?? null);
-        const resolvedSasMetersOut =
-          m.sasMetersOut != null
-            ? m.sasMetersOut
-            : !machineHasRelay
-              ? (m.manualMetersOut ?? null)
-              : (liveSas?.totalCancelledCredits ?? null);
-
-        // Effective manual meters (machine perspective)
-        const effectiveManualIn =
-          m.metersMatch === true
-            ? (resolvedSasMetersIn ?? 0)
-            : (m.manualMetersIn ?? resolvedSasMetersIn ?? 0);
-        const effectiveManualOut =
-          m.metersMatch === true
-            ? (resolvedSasMetersOut ?? 0)
-            : (m.manualMetersOut ?? resolvedSasMetersOut ?? 0);
-
-        // sasGross: use persisted value; fall back to arithmetic only when
-        // both SAS meter values are non-null (i.e. a real SMIB reading exists).
-        // For noSMIB sessions both are null, so sasGross stays null.
-        const sasGross =
-          m.sasGross !== undefined && m.sasGross !== null
-            ? m.sasGross
-            : resolvedSasMetersIn !== null && resolvedSasMetersOut !== null
-              ? resolvedSasMetersIn - resolvedSasMetersOut
-              : null;
-        // machineGross: prefer movement.machineGross, fallback to manual delta
-        const machineGross =
-          m.movement?.machineGross ?? effectiveManualIn - effectiveManualOut;
-
-        return {
-          reportedMachineId: m._id,
-          machineId: m.machineId,
-          machineName: m.machineName,
-          machineCustomName: m.machineCustomName,
-          serialNumber: m.serialNumber,
-          manufacturer: m.manufacturer,
-          game: m.game,
-          status: m.status,
-          sequenceOrder: m.sequenceOrder,
-          sasMetersIn: resolvedSasMetersIn,
-          sasMetersOut: resolvedSasMetersOut,
-          sasGross,
-          manualMetersIn: m.manualMetersIn,
-          manualMetersOut: m.manualMetersOut,
-          prevSasMetersIn: m.prevSasMetersIn,
-          prevSasMetersOut: m.prevSasMetersOut,
-          movement: m.movement,
-          machineGross,
-          // grossDifference is null when sasGross is null (noSMIB sessions
-          // have no SAS relay to compare against).
-          grossDifference: sasGross !== null ? machineGross - sasGross : null,
-          sasStartTime: m.sasStartTime,
-          sasEndTime: m.sasEndTime,
-          sessionStartTime: m.sessionStartTime,
-          sessionEndTime: m.sessionEndTime,
-          imageData: m.driveFileId
-            ? `/api/collection-reports-v2/drive-files/${m.driveFileId}`
-            : m.tempImageData || undefined,
-          // Non-relay machines have no SAS relay to compare against,
-          // so metersMatch is implicitly true for them.
-          metersMatch: !machineHasRelay ? true : m.metersMatch,
-          hasRelay: machineHasRelay,
-          ramClear: m.ramClear === true,
-          ramClearMetersIn: m.ramClearMetersIn,
-          ramClearMetersOut: m.ramClearMetersOut,
-          isSupplemental: m.isSupplemental === true,
-          lastCollectionTime: getLastCollectionTime(m.machineId),
-          createdAt: m.createdAt,
-          updatedAt: m.updatedAt,
-        };
-      }),
-    };
+    const scaledFinancials = applyScaleToFinancials(rawFinancials, moneyInScale, moneyOutScale);
 
     const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      machines.length,
-      user,
-      duration
-    );
+    logRouteFetch(functionName, 'GET', `/api/collection-reports-v2/sessions/${sessionId}`, machines.length, user, duration);
 
-    return NextResponse.json({ success: true, data: sessionData });
+    return NextResponse.json({
+      success: true,
+      data: { ...sessionData, machines: scaledMachines, financials: scaledFinancials },
+    });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'GET', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
 
 // ============================================================================
-// DELETE — Permanently delete or archive a session (dev/admin only)
+// DELETE — Permanently delete a session (admin roles only)
 // ============================================================================
 
 export async function DELETE(
@@ -396,18 +235,13 @@ export async function DELETE(
   const startTime = Date.now();
   const functionName = 'DELETE /api/collection-reports-v2/sessions/[sessionId]';
   const user = extractUserFromRequest(req);
-
   let sessionId = '';
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP 1: Connect, authenticate, and check permissions
     // ============================================================================
     await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user and check permissions
-    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -416,33 +250,16 @@ export async function DELETE(
       );
     }
 
-    // Only authorized roles can delete sessions
-    const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
-    const userRoles = (userPayloadRecord.roles as string[]) || [];
+    const { roles } = extractUserPayload(
+      userPayload as unknown as Record<string, unknown>
+    );
+    const canDelete =
+      roles.includes('developer') ||
+      roles.includes('owner') ||
+      roles.includes('admin') ||
+      roles.includes('location admin');
 
-    // Parse action from query param (default: permanent)
-    const { searchParams } = new URL(req.url);
-    const action = searchParams.get('action') || 'permanent';
-
-    const canArchive =
-      userRoles.includes('developer') ||
-      userRoles.includes('owner') ||
-      userRoles.includes('admin') ||
-      userRoles.includes('manager') ||
-      userRoles.includes('location admin');
-    const canPermanentlyDeleteDb =
-      userRoles.includes('developer') ||
-      userRoles.includes('owner') ||
-      userRoles.includes('admin') ||
-      userRoles.includes('location admin');
-
-    if (action === 'archive' && !canArchive) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions to archive session' },
-        { status: 403 }
-      );
-    }
-    if (action !== 'archive' && !canPermanentlyDeleteDb) {
+    if (!canDelete) {
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions to delete session' },
         { status: 403 }
@@ -450,7 +267,7 @@ export async function DELETE(
     }
 
     // ============================================================================
-    // STEP 3: Parse request params
+    // STEP 2: Parse session ID and validate existence
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -460,13 +277,9 @@ export async function DELETE(
       );
     }
 
-    // ============================================================================
-    // STEP 4: Check if session exists
-    // ============================================================================
     const existing = await ReportedMachine.findOne({ sessionId })
       .select('sessionStatus')
-      .lean();
-
+      .lean<ReportedMachineDocument>();
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Session not found' },
@@ -475,99 +288,60 @@ export async function DELETE(
     }
 
     // ============================================================================
-    // STEP 5: Clean up Google Drive assets
+    // STEP 3: Fetch machines before deletion for revert + logging
     // ============================================================================
-    // Clean up Google Drive assets for this session before deleting/archiving.
-    // Prefer folder-level deletion (deletes folder + all contents in one call).
-    // Fall back to individual file deletion for older records without driveFolderId.
-    const sessionMachines = await ReportedMachine.find(
-      { sessionId },
-      'driveFileId driveFolderId'
-    ).lean();
+    const sessionMachines = await ReportedMachine.find({ sessionId })
+      .lean<import('@/app/api/lib/models/reportedMachines').ReportedMachineDocument[]>();
+    const locationName = sessionMachines[0]?.locationName ?? sessionId;
 
-    const deletionTasks = sessionMachines.map(async machine => {
-      const folderId = machine.driveFolderId as string | undefined;
-      const fileId = machine.driveFileId as string | undefined;
+    // ============================================================================
+    // STEP 4: Clean up Drive assets, fix supplemental meters, revert machine state
+    // ============================================================================
+    await deleteSessionDriveAssets(sessionId);
+    await fixSupplementalMetersBeforeDelete(sessionId);
+    await revertMachineMetersAfterSessionDelete(sessionId, sessionMachines);
 
-      if (folderId) {
-        // Delete the entire date folder — removes all photos in that folder
-        await deleteDriveFolder(folderId).catch(err =>
-          console.error(
-            `[DELETE session] Failed to delete Drive folder ${folderId}:`,
-            err
-          )
-        );
-      } else if (fileId) {
-        // Legacy: delete individual file
-        await deleteDriveFile(fileId).catch(err =>
-          console.error(
-            `[DELETE session] Failed to delete Drive file ${fileId}:`,
-            err
-          )
-        );
-      }
+    // ============================================================================
+    // STEP 5: Execute permanent delete
+    // ============================================================================
+    const deleteResult = await ReportedMachine.deleteMany({ sessionId });
+    const count = deleteResult.deletedCount;
+    await Meters.deleteMany({ locationSession: sessionId });
+
+    // ============================================================================
+    // STEP 6: Log activity
+    // ============================================================================
+    await logActivity({
+      action: 'DELETE',
+      details: `Deleted V2 collection session for ${locationName} (${count} machines)`,
+      userId: String(userPayload._id),
+      username: String(userPayload.emailAddress ?? userPayload._id),
+      metadata: {
+        userId: String(userPayload._id),
+        userEmail: String(userPayload.emailAddress ?? ''),
+        resource: 'collection-report-v2',
+        resourceId: sessionId,
+        resourceName: locationName,
+        changes: [{ field: 'sessionId', oldValue: sessionId, newValue: null }],
+      },
+    }).catch(logError => {
+      console.error('[DELETE session] Failed to log activity:', logError instanceof Error ? logError.message : 'Unknown error');
     });
 
-    await Promise.allSettled(deletionTasks);
-
-    let count = 0;
-
-    // ============================================================================
-    // STEP 6: Execute delete or archive action
-    // ============================================================================
-    if (action === 'archive') {
-      // Soft delete — set deletedAt timestamp
-      const updateResult = await ReportedMachine.updateMany(
-        { sessionId },
-        { $set: { deletedAt: new Date() } }
-      );
-      count = updateResult.modifiedCount;
-
-      // Soft delete manual meters associated with this V2 session
-      await Meters.updateMany(
-        { locationSession: sessionId },
-        { $set: { deletedAt: new Date() } }
-      );
-    } else {
-      // Permanent delete — remove from database
-      const deleteResult = await ReportedMachine.deleteMany({ sessionId });
-      count = deleteResult.deletedCount;
-
-      // Permanent delete manual meters associated with this V2 session
-      await Meters.deleteMany({ locationSession: sessionId });
-    }
-
     const duration = Date.now() - startTime;
-    logRouteDelete(
-      functionName,
-      'DELETE',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      count,
-      user,
-      duration
-    );
+    logRouteDelete(functionName, 'DELETE', `/api/collection-reports-v2/sessions/${sessionId}`, count, user, duration);
 
     // ============================================================================
-    // STEP 7: Return success response
+    // STEP 5: Return response
     // ============================================================================
     return NextResponse.json({
       success: true,
-      data: { sessionId, action, count },
+      data: { sessionId, count },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'DELETE',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'DELETE', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
 
@@ -582,18 +356,13 @@ export async function PATCH(
   const startTime = Date.now();
   const functionName = 'PATCH /api/collection-reports-v2/sessions/[sessionId]';
   const user = extractUserFromRequest(req);
-
   let sessionId = '';
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP 1: Connect and authenticate
     // ============================================================================
     await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json(
@@ -603,7 +372,7 @@ export async function PATCH(
     }
 
     // ============================================================================
-    // STEP 3: Parse request params and body
+    // STEP 2: Parse request params and body
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -613,120 +382,95 @@ export async function PATCH(
       );
     }
 
-    const body = await req.json();
-    const { sessionStartTime, sessionEndTime, action } = body as {
+    const body = await req.json() as Record<string, unknown>;
+    const { sessionStartTime, sessionEndTime } = body as {
       sessionStartTime?: string;
       sessionEndTime?: string;
-      action?: string;
     };
 
     // ============================================================================
-    // STEP 4: Restore path — unset deletedAt on ReportedMachine and Meters
+    // STEP 3: Update session time fields on ReportedMachine docs
     // ============================================================================
-    if (action === 'restore') {
-      const userPayloadRecord = userPayload as unknown as Record<string, unknown>;
-      const userRoles = (userPayloadRecord.roles as string[]) || [];
-      const canRestore =
-        userRoles.includes('developer') ||
-        userRoles.includes('owner') ||
-        userRoles.includes('admin') ||
-        userRoles.includes('manager') ||
-        userRoles.includes('location admin');
-      if (!canRestore) {
+    const timeUpdateFields: Record<string, unknown> = {};
+    if (sessionStartTime) timeUpdateFields.sessionStartTime = new Date(sessionStartTime);
+    if (sessionEndTime) timeUpdateFields.sessionEndTime = new Date(sessionEndTime);
+
+    let machinesUpdated = 0;
+    if (Object.keys(timeUpdateFields).length > 0) {
+      const result = await ReportedMachine.updateMany(
+        { sessionId },
+        { $set: timeUpdateFields }
+      );
+      if (result.matchedCount === 0) {
         return NextResponse.json(
-          { success: false, error: 'Insufficient permissions to restore session' },
-          { status: 403 }
+          { success: false, error: 'Session not found' },
+          { status: 404 }
         );
       }
+      machinesUpdated = result.modifiedCount;
+    } else {
+      const existingCount = await ReportedMachine.countDocuments({ sessionId });
+      if (existingCount === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Session not found' },
+          { status: 404 }
+        );
+      }
+    }
 
-      const restoreMachinesResult = await ReportedMachine.updateMany(
+    // ============================================================================
+    // STEP 4: Upsert financial fields into CollectionSessionV2
+    // ============================================================================
+    const financialUpdate: Record<string, unknown> = {};
+    for (const field of FINANCIAL_FIELDS) {
+      if (field in body) financialUpdate[field] = body[field];
+    }
+
+    if (Object.keys(financialUpdate).length > 0) {
+      const firstMachine = await ReportedMachine.findOne({ sessionId })
+        .select('locationId licencee')
+        .lean<{ locationId?: string; licencee?: string }>();
+
+      await CollectionSessionV2.findOneAndUpdate(
         { sessionId },
-        { $unset: { deletedAt: 1 } }
+        {
+          $set: {
+            ...financialUpdate,
+            sessionId,
+            locationId: firstMachine?.locationId ?? '',
+            licencee: firstMachine?.licencee ?? '',
+          },
+        },
+        { upsert: true }
       );
-
-      await Meters.updateMany(
-        { locationSession: sessionId },
-        { $unset: { deletedAt: 1 } }
-      );
-
-      const duration = Date.now() - startTime;
-      logRouteUpdate(
-        functionName,
-        'PATCH',
-        `/api/collection-reports-v2/sessions/${sessionId}`,
-        restoreMachinesResult.modifiedCount,
-        user,
-        duration
-      );
-
-      return NextResponse.json({
-        success: true,
-        data: { sessionId, action: 'restore' },
-      });
     }
 
-    // ============================================================================
-    // STEP 5: Update session time fields
-    // ============================================================================
-    const updateFields: Record<string, unknown> = {};
-    if (sessionStartTime) {
-      updateFields.sessionStartTime = new Date(sessionStartTime);
-    }
-    if (sessionEndTime) {
-      updateFields.sessionEndTime = new Date(sessionEndTime);
-    }
-
-    if (Object.keys(updateFields).length === 0) {
+    if (
+      Object.keys(timeUpdateFields).length === 0 &&
+      Object.keys(financialUpdate).length === 0
+    ) {
       return NextResponse.json(
         { success: false, error: 'No valid fields to update' },
         { status: 400 }
       );
     }
 
-    const result = await ReportedMachine.updateMany(
-      { sessionId },
-      { $set: updateFields }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Session not found' },
-        { status: 404 }
-      );
-    }
-
     const duration = Date.now() - startTime;
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      result.modifiedCount,
-      user,
-      duration
-    );
+    logRouteUpdate(functionName, 'PATCH', `/api/collection-reports-v2/sessions/${sessionId}`, machinesUpdated, user, duration);
 
     return NextResponse.json({
       success: true,
       data: {
         sessionId,
-        machinesUpdated: result.modifiedCount,
+        machinesUpdated,
         sessionStartTime: sessionStartTime || undefined,
         sessionEndTime: sessionEndTime || undefined,
+        financialsUpdated: Object.keys(financialUpdate).length > 0,
       },
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'PATCH',
-      `/api/collection-reports-v2/sessions/${sessionId}`,
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'PATCH', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

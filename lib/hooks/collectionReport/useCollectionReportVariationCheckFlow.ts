@@ -26,7 +26,7 @@ type VariationFlowState =
   | 'error'
   | 'minimized';
 
-interface UseVariationCheckFlowOptions {
+type UseVariationCheckFlowOptions = {
   autoCheckOnEdit?: boolean;
   debounceMs?: number;
 }

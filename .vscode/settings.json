@@ -36,11 +36,14 @@
     "Geolocation",
     "GMID",
     "GSAP",
+    "Handpay",
     "ltab",
     "refetches",
     "requeries",
     "sashourly",
+    "smib",
     "smibs",
+    "uaccount",
     "uuidv"
   ],
   "[typescript]": {

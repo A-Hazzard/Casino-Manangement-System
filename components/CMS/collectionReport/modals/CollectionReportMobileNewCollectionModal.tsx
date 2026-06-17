@@ -41,6 +41,7 @@ import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import {
+  ArrowLeft,
   Calculator,
   ClipboardList,
   Info,
@@ -122,6 +123,7 @@ export default function CollectionReportMobileNewCollectionModal({
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
   } = useMobileCollectionModal({
     show,
     locations: propLocations,
@@ -130,7 +132,7 @@ export default function CollectionReportMobileNewCollectionModal({
   });
 
   // Online/offline status for available machines
-  const mobileMachineIds = availableMachines.map(m => String(m._id));
+  const mobileMachineIds = availableMachines.map(machine => String(machine._id));
   const machineStatusMap = useMachineOnlineStatus(mobileMachineIds);
 
   // Variation checking state
@@ -139,6 +141,9 @@ export default function CollectionReportMobileNewCollectionModal({
     hasVariations,
     variationsData,
     error: variationError,
+    isPreCreating,
+    currentMeterMachineName,
+    meterCreationError,
     isMinimized,
     checkVariations,
     toggleMinimize,
@@ -163,6 +168,8 @@ export default function CollectionReportMobileNewCollectionModal({
 
   // Defensive: clear any stale shared collection-modal store state when the create
   // modal opens (e.g. machines/financials left over from a prior edit modal session).
+  // The cleanup also resets on unmount/close so the next open starts from a clean
+  // store on its first render — preventing a stale machine grid / skeleton flash.
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
   );
@@ -170,6 +177,9 @@ export default function CollectionReportMobileNewCollectionModal({
     if (show) {
       resetCollectionModalStore();
     }
+    return () => {
+      resetCollectionModalStore();
+    };
   }, [show, resetCollectionModalStore]);
 
   // Auto-fill notes for offline SMIB machines when selected
@@ -190,6 +200,15 @@ export default function CollectionReportMobileNewCollectionModal({
       if (collectedMachines.length === 0 || modalState.isProcessing) return;
 
       const locationIdToUse = lockedLocationId || selectedLocation || '';
+
+      // Guard: never run the variations check without a resolved location —
+      // it produces a confusing "Invalid location" error from the API.
+      if (!locationIdToUse) {
+        toast.error(
+          'No location is selected for this collection. Please reopen the report and try again.'
+        );
+        return;
+      }
 
       // Query gaminglocations directly to check noSMIBLocation flag.
       // If true, skip the /api/collection-reports/check-variations request entirely.
@@ -255,6 +274,9 @@ export default function CollectionReportMobileNewCollectionModal({
       <Dialog
         open={show}
         onOpenChange={isOpen => {
+          // Prevent closing during processing
+          if (!isOpen && modalState.isProcessing) return;
+
           // Prevent closing if confirmation dialogs are open
           if (
             !isOpen &&
@@ -299,15 +321,17 @@ export default function CollectionReportMobileNewCollectionModal({
                 <h2 className="text-xl font-bold tracking-tight text-gray-900">
                   New Collection Report
                 </h2>
-                <DialogClose asChild>
-                  <button
-                    onClick={onClose}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    aria-label="Close"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </DialogClose>
+                {!modalState.isProcessing && (
+                  <DialogClose asChild>
+                    <button
+                      onClick={onClose}
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                      aria-label="Close"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </DialogClose>
+                )}
               </div>
             </div>
           )}
@@ -447,6 +471,23 @@ export default function CollectionReportMobileNewCollectionModal({
                       </button>
                     )}
 
+                    {/* Return to Form Button - only show when a machine is selected */}
+                    {selectedMachine && (
+                      <button
+                        onClick={() => {
+                          pushNavigation('form');
+                          setModalState(prev => ({
+                            ...prev,
+                            isFormVisible: true,
+                          }));
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-3 font-medium text-white shadow-md transition-all hover:bg-amber-700 active:scale-95"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                        Return to Form
+                      </button>
+                    )}
+
                     {/* View Collected Machines Button - only show when >=1 machine */}
                     {collectedMachines.length >= 1 && (
                       <button
@@ -525,15 +566,11 @@ export default function CollectionReportMobileNewCollectionModal({
                               if (!modalState.searchTerm.trim()) return true;
                               const searchTerm =
                                 modalState.searchTerm.toLowerCase();
-                              const machineName = (
-                                machine.name || ''
-                              ).toLowerCase();
-                              const serialNumber = (
-                                machine.serialNumber || ''
-                              ).toLowerCase();
                               return (
-                                machineName.includes(searchTerm) ||
-                                serialNumber.includes(searchTerm)
+                                (machine.name || '').toLowerCase().includes(searchTerm) ||
+                                (machine.serialNumber || '').toLowerCase().includes(searchTerm) ||
+                                (machine.custom?.name || '').toLowerCase().includes(searchTerm) ||
+                                (machine.game || '').toLowerCase().includes(searchTerm)
                               );
                             }
                           );
@@ -566,18 +603,21 @@ export default function CollectionReportMobileNewCollectionModal({
                                 </p>
 
                                 {/* Previous Meters Display */}
-                                <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                  <p className="flex flex-col sm:flex-row sm:gap-2">
-                                    <span>
-                                      Prev In:{' '}
-                                      {machine.collectionMeters?.metersIn || 0}
-                                    </span>
-                                    <span className="hidden sm:inline">|</span>
-                                    <span>
-                                      Prev Out:{' '}
-                                      {machine.collectionMeters?.metersOut || 0}
-                                    </span>
-                                  </p>
+                                <div className="mt-1.5 text-xs text-gray-600">
+                                  {machine.collectionMeters != null &&
+                                    (machine.collectionMeters.metersIn != null || machine.collectionMeters.metersOut != null) ? (
+                                    <p>
+                                      Prev In: {machine.collectionMeters.metersIn?.toLocaleString() ?? 'N/A'}
+                                      {' | '}
+                                      Prev Out: {machine.collectionMeters.metersOut?.toLocaleString() ?? 'N/A'}
+                                    </p>
+                                  ) : machine.sasMeters?.drop != null || machine.sasMeters?.totalCancelledCredits != null ? (
+                                    <p className="text-gray-400">
+                                      Prev In: {machine.sasMeters.drop?.toLocaleString() ?? 'N/A'}
+                                      {' | '}
+                                      Prev Out: {machine.sasMeters.totalCancelledCredits?.toLocaleString() ?? 'N/A'}
+                                    </p>
+                                  ) : null}
                                 </div>
 
                                 {/* Status Indicators */}
@@ -630,11 +670,12 @@ export default function CollectionReportMobileNewCollectionModal({
                                             const lastTime =
                                               res.data?.data?.collectionTime;
                                             if (lastTime) {
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  lastTime
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(lastTime);
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             } else {
                                               const loc = locations.find(
                                                 l =>
@@ -661,21 +702,25 @@ export default function CollectionReportMobileNewCollectionModal({
                                                 0,
                                                 0
                                               );
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  currentGamingDayStart.getTime() -
-                                                    24 * 60 * 60 * 1000
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(
+                                                currentGamingDayStart.getTime() -
+                                                  24 * 60 * 60 * 1000
+                                              );
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             }
                                           })
                                           .catch(() => {
                                             if (machine.collectionTime) {
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  machine.collectionTime
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(machine.collectionTime);
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             } else {
                                               const loc = locations.find(
                                                 l =>
@@ -702,17 +747,48 @@ export default function CollectionReportMobileNewCollectionModal({
                                                 0,
                                                 0
                                               );
-                                              setStoreFormData({
-                                                sasStartTime: new Date(
-                                                  currentGamingDayStart.getTime() -
-                                                    24 * 60 * 60 * 1000
-                                                ),
-                                              });
+                                              const sasStartTime = new Date(
+                                                currentGamingDayStart.getTime() -
+                                                  24 * 60 * 60 * 1000
+                                              );
+                                              setStoreFormData({ sasStartTime });
+                                              setModalState(prev => ({
+                                                ...prev,
+                                                formData: { ...prev.formData, sasStartTime },
+                                              }));
                                             }
                                           })
                                           .finally(() => {
                                             setIsLoadingTime(false);
                                           });
+                                        const newPrevIn = (() => {
+                                          const sasDrop =
+                                            machine.sasMeters?.drop ?? null;
+                                          const collectionIn =
+                                            machine.collectionMeters?.metersIn;
+                                          return collectionIn !== null &&
+                                            collectionIn !== undefined &&
+                                            collectionIn > 0
+                                            ? collectionIn.toString()
+                                            : sasDrop !== null && sasDrop > 0
+                                              ? sasDrop.toString()
+                                              : '';
+                                        })();
+                                        const newPrevOut = (() => {
+                                          const sasCancelled =
+                                            machine.sasMeters
+                                              ?.totalCancelledCredits ?? null;
+                                          const collectionOut =
+                                            machine.collectionMeters?.metersOut;
+                                          return collectionOut !== null &&
+                                            collectionOut !== undefined &&
+                                            collectionOut > 0
+                                            ? collectionOut.toString()
+                                            : sasCancelled !== null &&
+                                                sasCancelled > 0
+                                              ? sasCancelled.toString()
+                                              : '';
+                                        })();
                                         setStoreFormData({
                                           metersIn: '',
                                           metersOut: '',
@@ -724,41 +800,28 @@ export default function CollectionReportMobileNewCollectionModal({
                                           sasStartTime: null,
                                           sasEndTime: null,
                                           collectionTime: new Date(),
-                                          prevIn: (() => {
-                                            const sasDrop =
-                                              machine.sasMeters?.drop ?? null;
-                                            const collectionIn =
-                                              machine.collectionMeters
-                                                ?.metersIn;
-                                            return collectionIn !== null &&
-                                              collectionIn !== undefined &&
-                                              collectionIn > 0
-                                              ? collectionIn.toString()
-                                              : sasDrop !== null && sasDrop > 0
-                                                ? sasDrop.toString()
-                                                : '';
-                                          })(),
-                                          prevOut: (() => {
-                                            const sasCancelled =
-                                              machine.sasMeters
-                                                ?.totalCancelledCredits ?? null;
-                                            const collectionOut =
-                                              machine.collectionMeters
-                                                ?.metersOut;
-                                            return collectionOut !== null &&
-                                              collectionOut !== undefined &&
-                                              collectionOut > 0
-                                              ? collectionOut.toString()
-                                              : sasCancelled !== null &&
-                                                  sasCancelled > 0
-                                                ? sasCancelled.toString()
-                                                : '';
-                                          })(),
+                                          prevIn: newPrevIn,
+                                          prevOut: newPrevOut,
                                         });
                                         pushNavigation('form');
                                         setModalState(prev => ({
                                           ...prev,
                                           isFormVisible: true,
+                                          formData: {
+                                            ...prev.formData,
+                                            metersIn: '',
+                                            metersOut: '',
+                                            notes: '',
+                                            ramClear: false,
+                                            ramClearMetersIn: '',
+                                            ramClearMetersOut: '',
+                                            showAdvancedSas: false,
+                                            sasStartTime: null,
+                                            sasEndTime: null,
+                                            collectionTime: new Date(),
+                                            prevIn: newPrevIn,
+                                            prevOut: newPrevOut,
+                                          },
                                         }));
                                       }
                                     }}
@@ -789,20 +852,20 @@ export default function CollectionReportMobileNewCollectionModal({
 
                 {/* Home Screen Submit Button - Allow submission from machine list */}
                 {collectedMachines.length > 0 && (
-                  <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm">
+                  <div className="sticky bottom-0 mt-4 border-t bg-white p-3">
                     <button
                       onClick={handleStartSubmit}
                       disabled={
                         !isCreateReportsEnabled || modalState.isProcessing
                       }
-                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-bold shadow-md transition-colors active:scale-95 ${
                         isCreateReportsEnabled && !modalState.isProcessing
-                          ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
-                          : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'cursor-not-allowed bg-gray-300 text-gray-500'
                       }`}
                     >
                       <SendHorizontal className="h-3.5 w-3.5" />
-                      SUBMIT FINAL REPORT ({collectedMachines.length} machines)
+                      Create Collection Report ({collectedMachines.length} machines)
                     </button>
                   </div>
                 )}
@@ -822,7 +885,6 @@ export default function CollectionReportMobileNewCollectionModal({
                 setModalState(prev => ({ ...prev, searchTerm: val }))
               }
               onMachineSelect={() => {
-                // handle select
                 pushNavigation('form');
               }}
               onBack={popNavigation}
@@ -836,6 +898,7 @@ export default function CollectionReportMobileNewCollectionModal({
               onBack={() => {
                 popNavigation();
               }}
+              onClose={onClose}
               onViewCollectedList={handleViewCollectedMachines}
               selectedMachineData={selectedMachineData ?? null}
               editingEntryId={modalState.editingEntryId}
@@ -913,6 +976,7 @@ export default function CollectionReportMobileNewCollectionModal({
               onBack={() => {
                 popNavigation();
               }}
+              onClose={onClose}
               collectedMachines={collectedMachines}
               searchTerm={modalState.collectedMachinesSearchTerm}
               onSearchChange={term => {
@@ -936,9 +1000,10 @@ export default function CollectionReportMobileNewCollectionModal({
               updateAllSasEndDate={updateAllSasEndDate}
               onUpdateAllSasEndDate={setUpdateAllSasEndDate}
               onApplyAllDates={handleApplyAllDates}
+              sasUpdateProgress={sasUpdateProgress}
               variationMachineIds={variationsData?.machines
-                .filter(m => typeof m.variation === 'number')
-                .map(m => m.machineId)}
+                .filter(machine => machine.variation !== null)
+                .map(machine => machine.machineId)}
               formatMachineDisplay={machine => {
                 const doc = machine as unknown as CollectionDocument;
                 return formatMachineDisplayNameWithBold({
@@ -975,18 +1040,21 @@ export default function CollectionReportMobileNewCollectionModal({
 
           {/* Variation Check Popover */}
           <VariationCheckPopover
-            isOpen={showVariationCheckPopover && !isMinimized}
+            isOpen={showVariationCheckPopover && (!isMinimized || isPreCreating || !!meterCreationError)}
             isChecking={isChecking}
             hasVariations={hasVariations}
             error={variationError}
             variationsData={variationsData}
+            isPreCreating={isPreCreating}
+            currentMeterMachineName={currentMeterMachineName}
+            meterCreationError={meterCreationError}
             onMinimize={toggleMinimize}
             onSubmit={() => {
               setShowVariationCheckPopover(false);
               // Filter out machines with "No SMIB" (no relayId)
               const machinesWithSmib =
                 variationsData?.machines.filter(
-                  m => typeof m.variation === 'number'
+                  machine => machine.variation !== null
                 ) || [];
 
               // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
@@ -1008,10 +1076,11 @@ export default function CollectionReportMobileNewCollectionModal({
                     entry.machineId,
                   metersIn: entry.metersIn || 0,
                   metersOut: entry.metersOut || 0,
-                  sasStartTime: entry.sasStartTime || undefined,
-                  sasEndTime: entry.sasEndTime || undefined,
+                  sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+                  sasEndTime: entry.sasMeters?.sasEndTime || undefined,
                   prevMetersIn: entry.prevIn || 0,
                   prevMetersOut: entry.prevOut || 0,
+                  movementGross: entry.movement?.gross,
                 }));
               const locationIdToUse =
                 lockedLocationId || selectedLocation || '';
@@ -1080,16 +1149,16 @@ export default function CollectionReportMobileNewCollectionModal({
                   </div>
 
                   <div className="space-y-4">
-                    {variationsData.machines.map((m, idx) => (
+                    {variationsData.machines.map((machine, index) => (
                       <div
-                        key={idx}
-                        className={`rounded-xl border p-4 ${typeof m.variation === 'number' ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
+                        key={index}
+                        className={`rounded-xl border p-4 ${machine.variation !== null ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
                       >
                         <p className="mb-1 text-xs font-bold uppercase text-gray-400">
-                          {m.machineId}
+                          {machine.machineId}
                         </p>
                         <h4 className="mb-3 truncate font-bold text-gray-900">
-                          {m.machineName}
+                          {machine.machineName}
                         </h4>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -1098,7 +1167,7 @@ export default function CollectionReportMobileNewCollectionModal({
                               Sas Movement
                             </p>
                             <p className="text-sm font-black text-blue-600">
-                              ${Number(m.sasGross).toFixed(2)}
+                              ${Number(machine.sasGross).toFixed(2)}
                             </p>
                           </div>
                           <div className="space-y-1">
@@ -1106,21 +1175,21 @@ export default function CollectionReportMobileNewCollectionModal({
                               Manual Movement
                             </p>
                             <p className="text-sm font-black text-gray-900">
-                              ${Number(m.meterGross).toFixed(2)}
+                              ${Number(machine.meterGross).toFixed(2)}
                             </p>
                           </div>
                         </div>
 
-                        {typeof m.variation === 'number' && (
+                        {machine.variation !== null && (
                           <div className="mt-3 flex items-center justify-between border-t border-amber-200 pt-3">
                             <p className="text-[10px] font-bold uppercase text-amber-800">
                               Variation
                             </p>
                             <p
-                              className={`text-sm font-black ${m.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
+                              className={`text-sm font-black ${machine.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
                             >
-                              {m.variation < 0 ? '-' : '+'}$
-                              {Math.abs(m.variation).toFixed(2)}
+                              {machine.variation < 0 ? '-' : '+'}$
+                              {Math.abs(machine.variation).toFixed(2)}
                             </p>
                           </div>
                         )}
@@ -1150,7 +1219,7 @@ export default function CollectionReportMobileNewCollectionModal({
             isOpen={showVariationsConfirmation}
             machineCount={
               variationsData?.machines.filter(
-                m => typeof m.variation === 'number'
+                m => m.variation !== null
               ).length || 0
             }
             totalVariation={variationsData?.totalVariation || 0}

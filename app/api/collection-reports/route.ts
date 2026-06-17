@@ -10,25 +10,28 @@
  * @module app/api/collection-reports/route
  */
 
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
   calculateDateRangeForTimePeriod,
   determineAllowedLocationIds,
-  fetchLocationsWithMachines,
-  getLocationNamesFromIds,
   getMonthlyCollectionReportByLocation,
   getMonthlyCollectionReportSummary,
 } from '@/app/api/lib/helpers/collectionReport/queries';
 import {
   createCollectionReport,
+  propagateMetersToNextReport,
   sanitizeCollectionReportPayload,
   validateCollectionReportPayload,
 } from '@/app/api/lib/helpers/collectionReport/reportCreation';
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
+import {
+  filterMachinesByChronologicalOrder,
+  filterReportsByAllowedLocationNames,
+  handleLocationsWithMachinesRequest,
+} from '@/app/api/lib/helpers/collectionReport/reportListOperations';
+import { logCRCreateActivity } from '@/app/api/lib/helpers/collectionReport/crActivityLogger';
+import { extractUserPermissions } from '@/app/api/lib/helpers/collectionReport/reports';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Machine } from '@/app/api/lib/models/machines';
 import type { TimePeriod } from '@/app/api/lib/types';
-import type { GamingMachine } from '@/shared/types';
 import {
   logRouteFetch,
   logRouteCreate,
@@ -88,59 +91,14 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Handle locationsWithMachines query
     // ============================================================================
-    if (searchParams.get('locationsWithMachines')) {
-      try {
-        const rawLicenceeParam = searchParams.get('licencee') || undefined;
-        const includeMachines = searchParams.get('includeMachines') === 'true';
-
-        const result = await fetchLocationsWithMachines(
-          rawLicenceeParam,
-          includeMachines
-        );
-        if (
-          !result ||
-          (result.locations &&
-            Array.isArray(result.locations) &&
-            result.locations.length === 0)
-        ) {
-          console.warn(
-            '[Collection Reports GET] No locations found or fetch failed'
-          );
-        }
-        return NextResponse.json(result);
-      } catch (error: unknown) {
-        const duration = Date.now() - startTime;
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
-        if (errorMessage === 'Unauthorized') {
-          logRouteError(
-            functionName,
-            'GET',
-            '/api/collection-reports',
-            'Unauthorized',
-            user
-          );
-          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-        logRouteError(
-          functionName,
-          'GET',
-          '/api/collection-reports',
-          errorMessage,
-          user
-        );
-        console.error(
-          `[Collection Reports GET API] Error fetching locations with machines after ${duration}ms:`,
-          errorMessage
-        );
-        return NextResponse.json(
-          {
-            error: 'Failed to fetch locations with machines',
-            details: errorMessage,
-          },
-          { status: 500 }
-        );
-      }
+    const lwmResult = await handleLocationsWithMachinesRequest(
+      searchParams,
+      user,
+      startTime,
+      functionName
+    );
+    if (lwmResult) {
+      return lwmResult.response;
     }
 
     // ============================================================================
@@ -222,32 +180,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRoles = (userPayload?.roles as string[]) || [];
-    // Use only new field
-    let userLicencees: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLicencees?: string[] })?.assignedLicencees
-      )
-    ) {
-      userLicencees = (userPayload as { assignedLicencees: string[] })
-        .assignedLicencees;
-    }
-    // Use only new field
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
-    }
+    const userPerms = extractUserPermissions(
+      userPayload as {
+        roles?: unknown;
+        assignedLocations?: string[];
+        assignedLicencees?: string[];
+      }
+    );
 
     const allowedLocationIds = await determineAllowedLocationIds(
-      userRoles,
-      userLicencees,
-      userLocationPermissions
+      userPerms.roles,
+      userPerms.licencees,
+      userPerms.locationPermissions
     );
 
     if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
@@ -267,8 +211,6 @@ export async function GET(req: NextRequest) {
     const { searchParams: apiSearchParams } = new URL(req.url);
     const search = apiSearchParams.get('search') || undefined;
     const searchType = apiSearchParams.get('searchType') || undefined;
-    const includeArchived =
-      apiSearchParams.get('includeArchived') === 'true';
 
     const { reports, total } = await getAllCollectionReportsWithMachineCounts(
       licencee,
@@ -284,8 +226,7 @@ export async function GET(req: NextRequest) {
       },
       locationIds || (locationId ? [locationId] : undefined),
       search,
-      searchType,
-      includeArchived
+      searchType
     );
 
     if (!reports || !Array.isArray(reports)) {
@@ -300,21 +241,19 @@ export async function GET(req: NextRequest) {
     // Note: Collection reports store location NAME in the location field, not ID
     let paginatedReports = reports;
     if (allowedLocationIds !== 'all') {
-      const allowedLocationNames =
-        await getLocationNamesFromIds(allowedLocationIds);
-      if (!Array.isArray(allowedLocationNames)) {
-        console.error(
-          '[Collection Reports GET] Failed to fetch location names'
+      const { filteredReports, error } =
+        await filterReportsByAllowedLocationNames(
+          reports,
+          allowedLocationIds
         );
+      if (error) {
+        console.error('[Collection Reports GET] Failed to fetch location names');
         return NextResponse.json(
           { error: 'Failed to fetch location names' },
           { status: 500 }
         );
       }
-      paginatedReports = reports.filter(report => {
-        const reportLocationName = String(report.location);
-        return allowedLocationNames.includes(reportLocationName);
-      });
+      paginatedReports = filteredReports;
     }
 
     const totalPages = Math.ceil(total / limit);
@@ -427,42 +366,11 @@ export async function POST(req: NextRequest) {
       sanitizedBody.timestamp &&
       sanitizedBody.machines
     ) {
-      const targetTime = new Date(sanitizedBody.timestamp);
-      const { Collections } = await import('@/app/api/lib/models/collections');
-
-      const validMachines = [];
-      let firstReportInsertedCount = 0;
-
-      for (const machine of sanitizedBody.machines) {
-        if (!machine.machineId) continue;
-
-        const nextReport = await Collections.findOne({
-          machineId: machine.machineId,
-          timestamp: { $gt: targetTime },
-          deletedAt: { $exists: false },
-        }).lean();
-
-        const prevReport = await Collections.findOne({
-          machineId: machine.machineId,
-          timestamp: { $lt: targetTime },
-          deletedAt: { $exists: false },
-        }).lean();
-
-        if (nextReport && prevReport) {
-          console.warn(
-            `[Collection Reports POST API] Chronological check failed for machine ${machine.machineId}: cannot insert a middle-date collection.`
-          );
-          // Skip this machine (filter it out)
-          continue;
-        }
-
-        // If it passes, keep it
-        validMachines.push(machine);
-
-        if (nextReport && !prevReport) {
-          firstReportInsertedCount++;
-        }
-      }
+      const { validMachines, isInsertingFirstReport: isFirst } =
+        await filterMachinesByChronologicalOrder(
+          sanitizedBody.machines,
+          new Date(sanitizedBody.timestamp)
+        );
 
       if (validMachines.length === 0) {
         return NextResponse.json(
@@ -476,10 +384,7 @@ export async function POST(req: NextRequest) {
       }
 
       sanitizedBody.machines = validMachines;
-
-      if (firstReportInsertedCount > 0) {
-        isInsertingFirstReport = true;
-      }
+      isInsertingFirstReport = isFirst;
     }
 
     // ============================================================================
@@ -513,8 +418,6 @@ export async function POST(req: NextRequest) {
       console.log(
         `[Collection Reports POST API] Inserted a first report. Propagating meters to the next report...`
       );
-      const { propagateMetersToNextReport } =
-        await import('@/app/api/lib/helpers/collectionReport/reportCreation');
       for (const machine of sanitizedBody.machines) {
         await propagateMetersToNextReport(
           machine.machineId,
@@ -531,139 +434,21 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
-      try {
-        // Fetch machine names for readable log entries
-        const machineIds = (body.machines || [])
-          .map(m => String(m.machineId))
-          .filter(Boolean);
-        const machineDocuments =
-          machineIds.length > 0
-            ? await Machine.find({ _id: { $in: machineIds } }).lean<
-                GamingMachine[]
-              >()
-            : [];
-        const machineNameMap = new Map<string, GamingMachine>(
-          machineDocuments.map(m => [String(m._id), m])
-        );
-
-        const buildMachineName = (m: GamingMachine): string => {
-          const parts: string[] = [];
-          if (m.custom?.name) parts.push(m.custom.name);
-          const manufacturer = m.manuf || m.manufacturer;
-          if (manufacturer) parts.push(manufacturer);
-          return parts.length > 0
-            ? `${m.serialNumber} (${parts.join(', ')})`
-            : m.serialNumber;
-        };
-
-        const collectorDisplay =
-          body.collectorName || body.collector || 'Unknown';
-
-        const createChanges = [
-          {
-            field: 'locationName',
-            oldValue: null,
-            newValue: body.locationName,
-          },
-          {
-            field: 'collector',
-            oldValue: null,
-            newValue: collectorDisplay,
-          },
-          {
-            field: 'amountCollected',
-            oldValue: null,
-            newValue: body.amountCollected,
-          },
-          {
-            field: 'amountToCollect',
-            oldValue: null,
-            newValue: body.amountToCollect,
-          },
-          { field: 'variance', oldValue: null, newValue: body.variance },
-          {
-            field: 'partnerProfit',
-            oldValue: null,
-            newValue: body.partnerProfit,
-          },
-          { field: 'taxes', oldValue: null, newValue: body.taxes },
-          {
-            field: 'machines',
-            oldValue: null,
-            newValue: body.machines?.length || 0,
-          },
-        ];
-
-        if (body.machines && Array.isArray(body.machines)) {
-          body.machines.forEach((machineItem, index) => {
-            const machineDoc = machineNameMap.get(
-              String(machineItem.machineId)
-            );
-            const machineName = machineDoc
-              ? buildMachineName(machineDoc)
-              : `Machine ${index + 1}`;
-            createChanges.push({
-              field: `machine_${index}_details`,
-              oldValue: null,
-              newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevMetersIn !== undefined ? ` (Prev: ${machineItem.prevMetersIn} In, ${machineItem.prevMetersOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}`,
-            });
-          });
-        }
-
-        // Enrich machines with resolved name fields for dialog display
-        const enrichedMachines = (body.machines || []).map(machineItem => {
-          const machineDoc = machineNameMap.get(String(machineItem.machineId));
-          return {
-            ...machineItem,
-            serialNumber: machineDoc?.serialNumber,
-            customName: machineDoc?.custom?.name,
-            manuf: machineDoc?.manuf || machineDoc?.manufacturer,
-            displayName: machineDoc ? buildMachineName(machineDoc) : undefined,
-          };
-        });
-
-        const userId = (currentUser._id ||
-          currentUser.id ||
-          currentUser.sub) as string | undefined;
-        const username =
-          (currentUser.emailAddress as string | undefined) ||
-          (currentUser.username as string | undefined);
-
-        await logActivity({
-          action: 'CREATE',
-          details: `Created collection report for ${body.locationName} by ${collectorDisplay} (${body.machines?.length || 0} machines, $${body.amountCollected} collected)`,
-          ipAddress: getClientIP(req) || undefined,
-          userAgent: req.headers.get('user-agent') || undefined,
-          userId,
-          username,
-          metadata: {
-            userId: (currentUser._id ||
-              currentUser.id ||
-              currentUser.sub) as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'collection-report',
-            resourceId: result.report
-              ? String((result.report as { _id: unknown })._id)
-              : sanitizedBody.locationReportId,
-            resourceName: `${body.locationName} - ${collectorDisplay}`,
-            changes: createChanges,
-            previousData: null,
-            newData: {
-              ...(result.report &&
-              (result.report as { toObject?: () => Record<string, unknown> })
-                .toObject
-                ? (
-                    result.report as { toObject: () => Record<string, unknown> }
-                  ).toObject()
-                : result.report || {}),
-              machines: enrichedMachines,
-            },
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
+      await logCRCreateActivity({
+        body,
+        result,
+        sanitizedBody,
+        ipAddress: getClientIP(req) || undefined,
+        userAgent: req.headers.get('user-agent') || null,
+        currentUser: currentUser as {
+          _id?: unknown;
+          id?: unknown;
+          sub?: unknown;
+          emailAddress?: unknown;
+          username?: unknown;
+          roles?: unknown;
+        },
+      });
     }
 
     // ============================================================================

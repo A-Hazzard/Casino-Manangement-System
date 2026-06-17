@@ -49,6 +49,7 @@ export default function CabinetsDetailsPageContent() {
     isOnline,
     activeTab,
     refreshing,
+    refreshTrigger,
     editingSection,
     chartData,
     loadingChart,
@@ -112,7 +113,7 @@ export default function CabinetsDetailsPageContent() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
       >
-        <div className="flex w-full min-w-0 max-w-full flex-col gap-6">
+        <div className="flex w-full min-w-0 flex-col gap-6 overflow-hidden">
           {/* Header & Summary */}
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
@@ -132,6 +133,7 @@ export default function CabinetsDetailsPageContent() {
           <CabinetsDetailsSMIBManagementSection
             cabinet={cabinet}
             canAccessSmibConfig={canAccessSmibConfig}
+            onRefresh={handleRefresh}
             smibConfigExpanded={smibHook.smibConfigExpanded}
             mqttConfigData={smibHook.mqttConfigData}
             isConnectedToMqtt={smibHook.isConnectedToMqtt}
@@ -247,6 +249,7 @@ export default function CabinetsDetailsPageContent() {
             cabinet={cabinet}
             activeTab={activeTab}
             loading={refreshing}
+            refreshTrigger={refreshTrigger}
             onTabChange={handleTabChange}
             onRefresh={handleRefresh}
           />

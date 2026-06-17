@@ -155,7 +155,7 @@ export default function MembersListTab({
             setAllMembers(newMembers);
           } else {
             setAllMembers(prev => {
-              const existingIds = new Set(prev.map(m => m._id));
+              const existingIds = new Set(prev.map(member => member._id));
               const uniqueNewMembers = newMembers.filter(
                 (m: Member) => !existingIds.has(m._id)
               );

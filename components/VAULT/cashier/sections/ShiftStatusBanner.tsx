@@ -127,21 +127,21 @@ export default function ShiftStatusBanner({
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {denominationsToShow
-                            .filter((d: Denomination) => d.quantity > 0)
+                            .filter((denomination: Denomination) => denomination.quantity > 0)
                             .sort(
                               (a: Denomination, b: Denomination) =>
                                 b.denomination - a.denomination
                             )
-                            .map((d: Denomination, i: number) => (
+                            .map((denomination: Denomination, index: number) => (
                               <div
-                                key={i}
+                                key={index}
                                 className="flex min-w-[3rem] flex-col items-center justify-center rounded border border-green-100 bg-green-50 px-2 py-1"
                               >
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                                  ${d.denomination}
+                                  ${denomination.denomination}
                                 </span>
                                 <span className="text-sm font-black text-green-900">
-                                  {d.quantity}
+                                  {denomination.quantity}
                                 </span>
                               </div>
                             ))}
@@ -248,15 +248,15 @@ export default function ShiftStatusBanner({
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   {shift.cashierEnteredDenominations
-                    .filter(d => d.quantity > 0)
+                    .filter(denom => denom.quantity > 0)
                     .sort((a, b) => b.denomination - a.denomination)
-                    .map((d, i) => (
-                      <div key={i} className="flex gap-2">
+                    .map((denomination, index) => (
+                      <div key={index} className="flex gap-2">
                         <span className="text-gray-500">
-                          ${d.denomination}:
+                          ${denomination.denomination}:
                         </span>
                         <span className="font-bold text-gray-900">
-                          {d.quantity}
+                          {denomination.quantity}
                         </span>
                       </div>
                     ))}
@@ -296,14 +296,14 @@ export default function ShiftStatusBanner({
                   </p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {shift.openingDenominations
-                      .filter(d => d.quantity > 0)
-                      .map((d, i) => (
-                        <div key={i} className="flex gap-2">
+                      .filter(denom => denom.quantity > 0)
+                      .map((denomination, index) => (
+                        <div key={index} className="flex gap-2">
                           <span className="text-gray-500">
-                            ${d.denomination}:
+                            ${denomination.denomination}:
                           </span>
                           <span className="font-medium text-gray-900">
-                            {d.quantity}
+                            {denomination.quantity}
                           </span>
                         </div>
                       ))}

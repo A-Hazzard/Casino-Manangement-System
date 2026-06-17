@@ -163,11 +163,13 @@ type UseSmibConfigurationReturn = {
   fetchSmibConfiguration: (relayId: string) => Promise<void>;
 };
 
-export function useSmibConfiguration(): UseSmibConfigurationReturn {
+export function useSmibConfiguration(
+  initialExpanded = false
+): UseSmibConfigurationReturn {
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const [smibConfigExpanded, setSmibConfigExpanded] = useState(false);
+  const [smibConfigExpanded, setSmibConfigExpanded] = useState(initialExpanded);
   const [communicationMode, setCommunicationMode] =
     useState<string>('No Value Provided');
   const [firmwareVersion, setFirmwareVersion] =

@@ -14,13 +14,11 @@
 
 import { getCollectionReportById } from '@/app/api/lib/helpers/accountingDetails';
 import {
-  logActivity,
-  mapDeletedFieldsToChanges,
-} from '@/app/api/lib/helpers/activityLogger';
-import {
   deleteManualMetersPerCollection,
   updateCollectionReport,
 } from '@/app/api/lib/helpers/collectionReport/operations';
+import { propagateCRDeletionForward } from '@/app/api/lib/helpers/collectionReport/deletionPropagation';
+import { logCRPatchActivity, logCRDeletionActivity } from '@/app/api/lib/helpers/collectionReport/crActivityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
@@ -34,7 +32,6 @@ import {
 } from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { Meters } from '@/app/api/lib/models/meters';
 import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -92,12 +89,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 3: Find report by locationReportId or MongoDB _id
     // ============================================================================
-    // Try finding by locationReportId first, then by MongoDB _id (maintenance fallback)
     let report = await CollectionReport.findOne({
       locationReportId: reportId,
     }).lean<CollectionReportDocument | null>();
 
-    if (!report && /^[0-9a-fA-F]{24}$/.test(reportId)) {
+    if (!report) {
       report = await CollectionReport.findOne({
         _id: reportId,
       }).lean<CollectionReportDocument | null>();
@@ -120,7 +116,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 4: Verify user has access to the location
     // ============================================================================
-    // Access control check based on location
     if (report.location) {
       const hasAccess = await checkUserLocationAccess(report.location);
       if (!hasAccess) {
@@ -159,7 +154,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 6: Fetch enriched report data using helper
     // ============================================================================
-    // Fetch full enriched report data using helper (handles either ID type)
     const reportData = await getCollectionReportById(
       (report.locationReportId as string) || reportId,
       currentUser as Parameters<typeof getCollectionReportById>[1]
@@ -175,7 +169,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 7: Handle missing collectionDate fallback
     // ============================================================================
-    // Fallback for missing collectionDate
     if (!reportData.collectionDate && report.timestamp) {
       reportData.collectionDate = new Date(report.timestamp).toISOString();
     }
@@ -257,78 +250,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     }
 
     const body =
-      (await request.json()) as Partial<CreateCollectionReportPayload> & {
-        action?: string;
-      };
-
-    // ============================================================================
-    // STEP 2.5: Handle restore action
-    // ============================================================================
-    if (body.action === 'restore') {
-      const cu = await getUserFromServer();
-      const cuRoles = ((cu as Record<string, unknown>)?.roles || []) as string[];
-      const canRestore =
-        cuRoles.includes('developer') ||
-        cuRoles.includes('owner') ||
-        cuRoles.includes('admin') ||
-        cuRoles.includes('manager') ||
-        cuRoles.includes('location admin');
-      if (!canRestore) {
-        return NextResponse.json(
-          { success: false, error: 'Insufficient permissions to restore report' },
-          { status: 403 }
-        );
-      }
-
-      const restoredReport = await CollectionReport.findOneAndUpdate(
-        { locationReportId: reportId },
-        { $unset: { deletedAt: 1 } },
-        { new: true }
-      );
-      if (!restoredReport) {
-        return NextResponse.json(
-          { message: 'Failed to restore collection report' },
-          { status: 500 }
-        );
-      }
-
-      const resolvedReportId = restoredReport.locationReportId || reportId;
-
-      await Collections.updateMany(
-        { locationReportId: resolvedReportId },
-        { $unset: { deletedAt: 1 } }
-      );
-
-      // Collections are now restored — query them to collect meterId / ramClearMeterId,
-      // then unset deletedAt on the linked Meters documents.
-      const restoredCollections = await Collections.find({
-        locationReportId: resolvedReportId,
-      }).lean<CollectionDocument[]>();
-
-      const meterIds = restoredCollections
-        .flatMap(col => [col.meterId, col.ramClearMeterId])
-        .filter((id): id is string => !!id);
-
-      if (meterIds.length > 0) {
-        await Meters.updateMany(
-          { _id: { $in: meterIds } },
-          { $unset: { deletedAt: 1 } }
-        );
-      }
-
-      logRouteUpdate(
-        functionName,
-        'PATCH',
-        `/api/collection-reports/${reportId}`,
-        1,
-        user,
-        Date.now() - startTime
-      );
-      return NextResponse.json({
-        success: true,
-        message: 'Report restored successfully',
-      });
-    }
+      (await request.json()) as Partial<CreateCollectionReportPayload>;
 
     // CRITICAL: Do not update the collector field during edit
     delete body.collector;
@@ -337,11 +259,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 3: Find existing report (handle either ID type)
     // ============================================================================
-    // Find the report to handle either ID type
     let existingReport = await CollectionReport.findOne({
       locationReportId: reportId,
     });
-    if (!existingReport && /^[0-9a-fA-F]{24}$/.test(reportId)) {
+    if (!existingReport) {
       existingReport = await CollectionReport.findOne({ _id: reportId });
     }
 
@@ -357,7 +278,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 4: Fetch associated collections to track machine list changes
     // ============================================================================
-    // Fetch associated collections to track machine list changes
     const existingCollections = await Collections.find({
       locationReportId: resolvedReportId,
     }).lean<CollectionDocument[]>();
@@ -365,7 +285,6 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 5: Update using specialized helper
     // ============================================================================
-    // Update using specialized helper
     const updateResult = await updateCollectionReport(resolvedReportId, body);
 
     if (!updateResult.success) {
@@ -378,138 +297,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 6: Log activity
     // ============================================================================
-    // Logging Logic
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
-      try {
-        const updateChanges: {
-          field: string;
-          oldValue: unknown;
-          newValue: unknown;
-        }[] = [];
-        const isDifferent = (oldVal: unknown, newVal: unknown): boolean => {
-          if (oldVal === newVal) return false;
-          if (oldVal == null || newVal == null) {
-            return (oldVal == null) !== (newVal == null);
-          }
-          if (typeof oldVal === 'number' || typeof newVal === 'number') {
-            return Number(oldVal) !== Number(newVal);
-          }
-          if (typeof oldVal === 'boolean' || typeof newVal === 'boolean') {
-            return Boolean(oldVal) !== Boolean(newVal);
-          }
-          if (oldVal instanceof Date || newVal instanceof Date) {
-            try {
-              const t1 = new Date(oldVal as Date).getTime();
-              const t2 = new Date(newVal as Date).getTime();
-              if (!isNaN(t1) && !isNaN(t2)) return t1 !== t2;
-            } catch {
-              // Fallback
-            }
-          }
-          if (typeof oldVal === 'string' && typeof newVal === 'string') {
-            const t1 = Date.parse(oldVal);
-            const t2 = Date.parse(newVal);
-            if (!isNaN(t1) && !isNaN(t2)) {
-              return t1 !== t2;
-            }
-            return oldVal.trim() !== newVal.trim();
-          }
-          return String(oldVal).trim() !== String(newVal).trim();
-        };
-
-        const existingReportObj = existingReport.toObject();
-        const fieldsToTrack = [
-          'locationName',
-          'amountCollected',
-          'amountToCollect',
-          'variance',
-          'partnerProfit',
-          'taxes',
-        ];
-        fieldsToTrack.forEach(field => {
-          const newVal = (body as Record<string, unknown>)[field];
-          const oldVal = (existingReportObj as Record<string, unknown>)[field];
-          if (newVal !== undefined && isDifferent(oldVal, newVal)) {
-            updateChanges.push({
-              field,
-              oldValue: oldVal,
-              newValue: newVal,
-            });
-          }
-        });
-
-        if (body.machines && Array.isArray(body.machines)) {
-          const oldMachineIds =
-            existingCollections.map(
-              collection => collection.machineId as string
-            ) || [];
-          const newMachineIds = (body.machines as { machineId: string }[]).map(
-            machine => machine.machineId
-          );
-          const added = (
-            body.machines as {
-              machineId: string;
-              machineName?: string;
-              machineCustomName?: string;
-            }[]
-          ).filter(machine => !oldMachineIds.includes(machine.machineId));
-          const removed = (
-            existingCollections as {
-              machineId: string;
-              machineName?: string;
-              machineCustomName?: string;
-            }[]
-          ).filter(collection => !newMachineIds.includes(collection.machineId));
-
-          if (added.length > 0) {
-            updateChanges.push({
-              field: 'machines_added',
-              oldValue: null,
-              newValue: added
-                .map(
-                  machine =>
-                    machine.machineCustomName ||
-                    machine.machineName ||
-                    machine.machineId
-                )
-                .join(', '),
-            });
-          }
-          if (removed.length > 0) {
-            updateChanges.push({
-              field: 'machines_removed',
-              oldValue: removed
-                .map(
-                  collection =>
-                    collection.machineCustomName ||
-                    collection.machineName ||
-                    collection.machineId
-                )
-                .join(', '),
-              newValue: null,
-            });
-          }
-        }
-
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated collection report for ${existingReport.locationName} (${updateChanges.length} changes)`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            userId: currentUser._id as string,
-            resource: 'collection-report',
-            resourceId: resolvedReportId,
-            resourceName: `${existingReport.locationName}`,
-            changes: updateChanges,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
+      await logCRPatchActivity({
+        existingReport,
+        existingCollections,
+        body,
+        resolvedReportId,
+        ipAddress: getClientIP(request) || undefined,
+        userAgent: request.headers.get('user-agent'),
+        currentUser: { _id: currentUser._id, emailAddress: currentUser.emailAddress },
+      });
     }
 
     // ============================================================================
@@ -572,12 +370,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Parse reportId from URL and action param
+    // STEP 2: Parse reportId from URL
     // ============================================================================
     const reportId = request.nextUrl.pathname.split('/').pop();
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action') || 'permanent';
-    const archive = action === 'archive';
 
     if (!reportId) {
       logRouteError(
@@ -594,29 +389,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // ============================================================================
-    // STEP 2.5: Role check — same pattern as locations
+    // STEP 2.5: Role check
     // ============================================================================
     const currentUser = await getUserFromServer();
-    const userRoles = ((currentUser as Record<string, unknown>)?.roles ||
-      []) as string[];
-    const canArchive =
-      userRoles.includes('developer') ||
-      userRoles.includes('owner') ||
-      userRoles.includes('admin') ||
-      userRoles.includes('manager') ||
-      userRoles.includes('location admin');
-    const canPermanentlyDelete =
-      userRoles.includes('developer') ||
-      userRoles.includes('owner') ||
-      userRoles.includes('admin') ||
-      userRoles.includes('location admin');
-    if (archive && !canArchive) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions to archive report' },
-        { status: 403 }
-      );
-    }
-    if (!archive && !canPermanentlyDelete) {
+    const userRoles = ((currentUser as Record<string, unknown>)?.roles || []) as string[];
+    const deleteRoles = ['developer', 'owner', 'admin', 'location admin'];
+    if (!deleteRoles.some(role => userRoles.includes(role))) {
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions to delete report' },
         { status: 403 }
@@ -629,7 +407,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     let existingReport = await CollectionReport.findOne({
       locationReportId: reportId,
     }).lean<CollectionReportDocument | null>();
-    if (!existingReport && /^[0-9a-fA-F]{24}$/.test(reportId)) {
+    if (!existingReport) {
       existingReport = await CollectionReport.findOne({ _id: reportId });
     }
 
@@ -660,70 +438,39 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     );
 
     // ============================================================================
-    // STEP 7: Delete/Archive manual meters per collection
+    // STEP 7: Delete manual meters per collection
     // ============================================================================
     const deleteMetersResult = await deleteManualMetersPerCollection(
-      resolvedReportId,
-      archive
+      resolvedReportId
     );
     if (!deleteMetersResult.success) {
       return NextResponse.json(
         {
           message:
-            deleteMetersResult.error ||
-            `Failed to ${archive ? 'archive' : 'delete'} manual meters`,
+            deleteMetersResult.error || 'Failed to delete manual meters',
         },
         { status: 500 }
       );
     }
 
     // ============================================================================
-    // STEP 8: Delete/Archive associated collections
+    // STEP 8: Delete associated collections
     // ============================================================================
-    let deleteCollectionsResult;
-    if (archive) {
-      deleteCollectionsResult = await Collections.updateMany(
-        { locationReportId: resolvedReportId },
-        { $set: { deletedAt: new Date() } }
-      );
-    } else {
-      deleteCollectionsResult = await Collections.deleteMany({
-        locationReportId: resolvedReportId,
-      });
-    }
-    let affectedCount = 0;
-    if (archive) {
-      affectedCount = (deleteCollectionsResult as { modifiedCount: number })
-        .modifiedCount;
-    } else {
-      affectedCount = (deleteCollectionsResult as { deletedCount: number })
-        .deletedCount;
-    }
-    if (affectedCount === 0) {
-      console.warn(
-        `[DELETE] No collections ${archive ? 'archived' : 'deleted'} for report ${resolvedReportId}`
-      );
+    const result = await Collections.deleteMany({ locationReportId: resolvedReportId });
+    if (result.deletedCount === 0) {
+      console.warn(`[DELETE] No collections deleted for report ${resolvedReportId}`);
     }
 
     // ============================================================================
-    // STEP 9: Delete/Archive collection report
+    // STEP 9: Delete collection report
     // ============================================================================
-    let deletedReport;
-    if (archive) {
-      deletedReport = await CollectionReport.findOneAndUpdate(
-        { _id: existingReport._id },
-        { $set: { deletedAt: new Date() } },
-        { new: true }
-      );
-    } else {
-      deletedReport = await CollectionReport.findOneAndDelete({
-        _id: existingReport._id,
-      });
-    }
+    const deletedReport = await CollectionReport.findOneAndDelete({
+      _id: existingReport._id,
+    });
     if (!deletedReport) {
       return NextResponse.json(
         {
-          message: `Failed to ${archive ? 'archive' : 'delete'} collection report`,
+          message: 'Failed to delete collection report',
         },
         { status: 500 }
       );
@@ -732,158 +479,20 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 9.5: Propagate deletion forward and recalculate machines
     // ============================================================================
-    const { updateRegularAndRamClearMeters } =
-      await import('@/app/api/lib/helpers/collectionReport/reportCreation');
-    const { recalculateMachineCollections } =
-      await import('@/app/api/lib/helpers/collectionReport/recalculation');
-
-    for (const col of associatedCollections) {
-      if (!col.machineId) continue;
-
-      try {
-        // Find the next active collection (not deleted/archived)
-        const nextReport = await Collections.findOne({
-          machineId: col.machineId,
-          timestamp: { $gt: col.timestamp || col.collectionTime || new Date() },
-          deletedAt: { $exists: false },
-        })
-          .sort({ timestamp: 1 })
-          .lean<CollectionDocument>();
-
-        if (nextReport) {
-          console.log(
-            `[DELETE /api/collection-reports/[reportId]] Propagating deletion for machine ${col.machineId}: setting successor ${nextReport._id} prevMeters to deleted report's prevMetersIn=${col.prevIn}, prevMetersOut=${col.prevOut}`
-          );
-
-          const newPrevIn = col.prevIn || 0;
-          const newPrevOut = col.prevOut || 0;
-          const currentMetersIn = nextReport.metersIn ?? 0;
-          const currentMetersOut = nextReport.metersOut ?? 0;
-          const ramClear = !!nextReport.ramClear;
-          const ramClearMetersIn = nextReport.ramClearMetersIn;
-          const ramClearMetersOut = nextReport.ramClearMetersOut;
-
-          let movementIn = 0;
-          let movementOut = 0;
-
-          if (ramClear) {
-            if (
-              ramClearMetersIn !== undefined &&
-              ramClearMetersOut !== undefined
-            ) {
-              movementIn = ramClearMetersIn - newPrevIn + currentMetersIn;
-              movementOut = ramClearMetersOut - newPrevOut + currentMetersOut;
-            } else {
-              movementIn = currentMetersIn;
-              movementOut = currentMetersOut;
-            }
-          } else {
-            movementIn = currentMetersIn - newPrevIn;
-            movementOut = currentMetersOut - newPrevOut;
-          }
-
-          const movement = {
-            metersIn: Number(movementIn.toFixed(2)),
-            metersOut: Number(movementOut.toFixed(2)),
-            gross: Number((movementIn - movementOut).toFixed(2)),
-          };
-
-          const collectionUpdate: Record<string, unknown> = {
-            prevIn: newPrevIn,
-            prevOut: newPrevOut,
-            movement,
-            softMetersIn:
-              ramClear && ramClearMetersIn ? ramClearMetersIn : currentMetersIn,
-            softMetersOut:
-              ramClear && ramClearMetersOut
-                ? ramClearMetersOut
-                : currentMetersOut,
-          };
-
-          if (nextReport.sasMeters) {
-            const sasMetersData = {
-              ...nextReport.sasMeters,
-              drop: movement.metersIn,
-              totalCancelledCredits: movement.metersOut,
-              gross: movement.gross,
-            };
-            collectionUpdate.sasMeters = sasMetersData;
-          }
-
-          await Collections.updateOne(
-            { _id: nextReport._id },
-            { $set: collectionUpdate }
-          );
-
-          const updatedNextReport = {
-            ...nextReport,
-            ...collectionUpdate,
-          };
-
-          await updateRegularAndRamClearMeters(
-            updatedNextReport as CollectionDocument
-          );
-        }
-
-        // Re-sync machine's current meters and history from database
-        await recalculateMachineCollections(String(col.machineId), true);
-      } catch (machineError) {
-        console.error(
-          `Failed to propagate deletion/recalculate machine ${col.machineId}:`,
-          machineError
-        );
-      }
-    }
+    await propagateCRDeletionForward(associatedCollections);
 
     // ============================================================================
     // STEP 10: Log activity
     // ============================================================================
     if (currentUser) {
-      const changes = mapDeletedFieldsToChanges(existingReport || {});
-      await logActivity({
-        action: archive ? 'ARCHIVE' : 'DELETE',
-        details: `${archive ? 'Archived' : 'Deleted'} collection report for ${existingReport.locationName}`,
+      await logCRDeletionActivity({
+        existingReport: existingReport as CollectionReportDocument,
+        associatedCollections,
+        resolvedReportId,
         ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-        userId: currentUser._id as string,
-        username: currentUser.emailAddress as string,
-        metadata: {
-          resource: 'collection-report',
-          resourceId: resolvedReportId,
-          resourceName: existingReport.locationName,
-          changes,
-          previousData: {
-            ...existingReport,
-            collections: associatedCollections,
-          },
-          newData: null,
-        },
+        userAgent: request.headers.get('user-agent'),
+        currentUser: { _id: currentUser._id, emailAddress: currentUser.emailAddress },
       });
-
-      // Log each associated collection being deleted
-      for (const collection of associatedCollections) {
-        const collectionChanges = mapDeletedFieldsToChanges(collection || {});
-        await logActivity({
-          action: 'DELETE',
-          details: `Deleted collection for machine "${collection.machineCustomName || collection.machineName || collection.machineId || 'Machine'}" as part of collection report deletion`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            resource: 'collection',
-            resourceId: String(collection._id),
-            resourceName:
-              collection.machineCustomName ||
-              collection.machineName ||
-              collection.machineId ||
-              'Machine',
-            changes: collectionChanges,
-            previousData: collection,
-            newData: null,
-          },
-        });
-      }
     }
 
     // ============================================================================

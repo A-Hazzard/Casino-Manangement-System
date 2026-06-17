@@ -78,7 +78,7 @@ export type ReportData = {
     dateGenerated: string;
     keyMetrics: Array<{ label: string; value: number }>;
   };
-  tableData: Record<string, unknown>[];
+  tableData: unknown[];
   chartData: Array<{ label: string; value: number }>;
   metadata: {
     generatedBy: string;
@@ -138,7 +138,11 @@ export type ScheduledReport = {
       end: Date;
     };
     timeGranularity: 'daily' | 'weekly' | 'monthly';
-    filters: Record<string, unknown>;
+    filters: {
+      locationIds?: string[];
+      manufacturers?: string[];
+      [key: string]: unknown;
+    };
     fields: string[];
     chartType: 'table' | 'bar' | 'line';
     exportFormat: 'pdf' | 'excel' | 'csv';
@@ -334,8 +338,8 @@ export type ReportsMachinesOverviewProps = {
   overviewMachines: MachineData[];
   allMachines?: MachineData[];
   machineStats: MachineStats | null;
-  manufacturerData?: Array<Record<string, unknown>>;
-  gamesData?: Array<Record<string, unknown>>;
+  manufacturerData?: ManufacturerPerformanceData[];
+  gamesData?: GamesPerformanceData[];
   locations: Array<{ id: string; name: string; sasEnabled: boolean }>;
   searchTerm: string;
   selectedLocation: string;
@@ -545,7 +549,11 @@ export type CollectionData = {
   ramClearCoinOut?: number;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
-  movement?: Record<string, number>;
+  movement?: {
+    metersIn?: number;
+    metersOut?: number;
+    gross?: number;
+  };
   sasMeters?: {
     machine?: string;
     sasStartTime?: string;

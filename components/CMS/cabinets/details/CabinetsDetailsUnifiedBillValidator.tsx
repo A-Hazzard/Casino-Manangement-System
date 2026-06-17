@@ -52,6 +52,7 @@ type CabinetsDetailsUnifiedBillValidatorProps = {
   timePeriod: TimePeriod;
   onTimePeriodChange: (period: TimePeriod) => void;
   gameDayOffset?: number;
+  refreshTrigger?: number;
 };
 
 const CabinetsDetailsUnifiedBillValidator = ({
@@ -59,6 +60,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
   timePeriod,
   onTimePeriodChange,
   gameDayOffset = 0,
+  refreshTrigger,
 }: CabinetsDetailsUnifiedBillValidatorProps) => {
   // ============================================================================
   // State & Hooks
@@ -160,7 +162,7 @@ const CabinetsDetailsUnifiedBillValidator = ({
     }, 'bill-validator');
 
     if (result !== null) setLoading(false);
-  }, [machineId, timePeriod, makeBillValidatorRequest]);
+  }, [machineId, timePeriod, makeBillValidatorRequest, refreshTrigger]);
 
   useEffect(() => {
     fetchBillValidatorData();

@@ -43,7 +43,7 @@ type SessionMachine = {
   metersMatch?: boolean;
   machineGross?: number;
   sasGross?: number;
-  grossDifference?: number;
+  variation?: number;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -71,7 +71,6 @@ type Props = {
   sessionId: string;
   onClose: () => void;
   onEdit?: (sessionId: string) => void;
-  includeDeleted?: boolean;
 };
 
 // ============================================================================
@@ -83,7 +82,6 @@ export default function CollectionReportV2EditSessionModal({
   sessionId,
   onClose,
   onEdit,
-  includeDeleted = false,
 }: Props) {
   // ============================================================================
   // State & Hooks
@@ -106,7 +104,7 @@ export default function CollectionReportV2EditSessionModal({
     setError(null);
     setLoading(true);
 
-    const params = includeDeleted ? '?includeDeleted=true' : '';
+    const params = '';
     axios
       .get<{ success: boolean; data: SessionDetail }>(
         `/api/collection-reports-v2/sessions/${sessionId}${params}`

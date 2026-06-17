@@ -11,6 +11,14 @@ import { Input } from '@/components/shared/ui/input';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { MachineDocument } from '@/shared/types/entities';
 
+function getMachineFieldValue(
+  machine: MachineDocument | null,
+  field: string | undefined
+): unknown {
+  if (!machine || !field) return undefined;
+  return (machine as MachineDocument)[field as keyof MachineDocument];
+}
+
 type ConfigurationCardProps = {
   title: string;
   bgColor: string;
@@ -37,19 +45,19 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
   const [inputValue, setInputValue] = useState<string>(
     displayValue || field
       ? String(
-          field ? ((machine as Record<string, unknown>)?.[field] ?? '') : ''
+          field ? (getMachineFieldValue(machine, field) ?? '') : ''
         )
       : ''
   );
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
     from: field
       ? new Date(
-          String((machine as Record<string, unknown>)?.[field] || Date.now())
+          String(getMachineFieldValue(machine, field) || Date.now())
         )
       : undefined,
     to: field
       ? new Date(
-          String((machine as Record<string, unknown>)?.[field] || Date.now())
+          String(getMachineFieldValue(machine, field) || Date.now())
         )
       : undefined,
   });
@@ -61,7 +69,7 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
   useEffect(() => {
     if (!isEditing) {
       if (inputType === 'date' && field) {
-        const fieldValue = (machine as Record<string, unknown>)?.[field];
+        const fieldValue = getMachineFieldValue(machine, field);
         if (fieldValue) {
           const date = new Date(String(fieldValue));
           setDateRange({ from: date, to: date });
@@ -71,7 +79,7 @@ export const ConfigurationCard: FC<ConfigurationCardProps> = ({
         setInputValue(displayValue.replace(/[^0-9.]/g, ''));
       } else if (field) {
         setInputValue(
-          String((machine as Record<string, unknown>)?.[field] ?? '')
+          String(getMachineFieldValue(machine, field) ?? '')
         );
       }
     }

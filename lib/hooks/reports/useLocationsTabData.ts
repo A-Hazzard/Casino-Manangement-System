@@ -24,6 +24,7 @@ import { useReportsStore } from '@/lib/store/reportsStore';
 import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
 import { AggregatedLocation } from '@/lib/types/location';
+import type { MapPreviewLocation } from '@/lib/types/components';
 import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { isAbortError } from '@/lib/utils/errors';
 import { LocationMetrics, TopLocation } from '@/shared/types';
@@ -67,11 +68,11 @@ export function useLocationsTabData({
   // State
   // ============================================================================
   const [gamingLocations, setGamingLocations] = useState<
-    Record<string, unknown>[]
+    MapPreviewLocation[]
   >([]);
   const [gamingLocationsLoading, setGamingLocationsLoading] = useState(true);
   const [locationAggregates, setLocationAggregates] = useState<
-    Record<string, unknown>[]
+    AggregatedLocation[]
   >([]);
   const [locationAggregatesLoading, setLocationAggregatesLoading] =
     useState(false);

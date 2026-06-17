@@ -6,6 +6,10 @@
 
 'use client';
 
+import { useState } from 'react';
+import CabinetsDetailsUnifiedBillValidator from '@/components/CMS/cabinets/details/CabinetsDetailsUnifiedBillValidator';
+import { TimePeriod } from '@/shared/types/common';
+
 type SessionDetail = {
   sessionId: string;
   sessionStatus: 'in-progress' | 'submitted';
@@ -47,7 +51,8 @@ type SessionMachine = {
   metersMatch?: boolean;
   machineGross?: number;
   sasGross?: number;
-  grossDifference?: number;
+  variation?: number;
+  hasRelay?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -62,7 +67,7 @@ export default function CollectionReportV2SessionReportSummaryTab({
   // ============================================================================
   // Computed
   // ============================================================================
-  const withPhotos = session.machines.filter(m => m.imageData).length;
+  const withPhotos = session.machines.filter(machine => machine.imageData).length;
   const withoutPhotos = session.machinesTotal - withPhotos;
 
   // Compute machine breakdown from individual machine statuses
@@ -78,13 +83,13 @@ export default function CollectionReportV2SessionReportSummaryTab({
 
   // Compute the SAS collection period from individual machine times
   const sasStartTimes = session.machines
-    .map(m => m.sasStartTime)
-    .filter((t): t is string => !!t)
-    .map(t => new Date(t).getTime());
+    .map(machine => machine.sasStartTime)
+    .filter((timeString): timeString is string => !!timeString)
+    .map(timeString => new Date(timeString).getTime());
   const sasEndTimes = session.machines
-    .map(m => m.sasEndTime)
-    .filter((t): t is string => !!t)
-    .map(t => new Date(t).getTime());
+    .map(machine => machine.sasEndTime)
+    .filter((timeString): timeString is string => !!timeString)
+    .map(timeString => new Date(timeString).getTime());
 
   const earliestSasStart =
     sasStartTimes.length > 0
@@ -199,11 +204,61 @@ export default function CollectionReportV2SessionReportSummaryTab({
       </div>
 
       {/* Gross Summary */}
-      {(session.machines.some(m => m.machineGross !== undefined) ||
+      {(session.machines.some(machine => machine.machineGross !== undefined) ||
         (!session.noSMIBLocation &&
-          session.machines.some(m => m.sasGross !== undefined))) && (
+          session.machines.some(machine => machine.sasGross !== undefined))) && (
         <GrossSummary session={session} />
       )}
+
+      {/* Bill Validator */}
+      {!session.noSMIBLocation &&
+        session.machines.some(m => m.hasRelay) && (
+          <BillValidatorSection machines={session.machines} />
+        )}
+    </div>
+  );
+}
+
+function BillValidatorSection({ machines }: { machines: SessionMachine[] }) {
+  // ============================================================================
+  // State
+  // ============================================================================
+  const smibMachines = machines.filter(m => m.hasRelay);
+  const [selectedMachineId, setSelectedMachineId] = useState<string>(
+    smibMachines[0]?.machineId ?? ''
+  );
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('All Time');
+
+  if (smibMachines.length === 0 || !selectedMachineId) return null;
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  return (
+    <div className="rounded-lg bg-white p-5 shadow">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        Bill Validator
+      </h3>
+      {smibMachines.length > 1 && (
+        <div className="mb-4">
+          <select
+            value={selectedMachineId}
+            onChange={e => setSelectedMachineId(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            {smibMachines.map(m => (
+              <option key={m.machineId} value={m.machineId}>
+                {m.machineCustomName || m.machineName}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      <CabinetsDetailsUnifiedBillValidator
+        machineId={selectedMachineId}
+        timePeriod={timePeriod}
+        onTimePeriodChange={setTimePeriod}
+      />
     </div>
   );
 }

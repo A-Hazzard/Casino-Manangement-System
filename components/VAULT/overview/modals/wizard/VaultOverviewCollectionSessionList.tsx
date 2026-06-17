@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { ListChecks, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-interface VaultCollectionEntry {
+type VaultCollectionEntry = {
   machineId: string;
   machineName: string;
   totalAmount: number;
@@ -31,7 +31,7 @@ interface VaultCollectionEntry {
   notes?: string;
 }
 
-interface VaultOverviewCollectionSessionListProps {
+type VaultOverviewCollectionSessionListProps = {
   entries: VaultCollectionEntry[];
   onRemove: (machineId: string) => void;
   onEdit?: (machineId: string) => void;

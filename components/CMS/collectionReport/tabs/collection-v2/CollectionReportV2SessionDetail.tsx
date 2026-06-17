@@ -55,6 +55,8 @@ type SessionMachine = {
   sasMetersOut: number | null;
   manualMetersIn?: number;
   manualMetersOut?: number;
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
   prevsasMetersIn?: number;
   prevsasMetersOut?: number;
   prevManualMetersIn?: number;
@@ -74,7 +76,7 @@ type SessionMachine = {
   // These are movement-based (movement.machineGross / movement.sasGross)
   machineGross?: number;
   sasGross?: number;
-  grossDifference?: number;
+  variation?: number;
   lastCollectionTime?: string | null;
   isSupplemental?: boolean;
   createdAt?: string;
@@ -217,6 +219,45 @@ function SubmitProgressOverlay({
 // Component
 // ============================================================================
 
+function ReviewThumbnail({
+  imageData,
+  name,
+}: {
+  imageData: string;
+  name: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gray-50 text-gray-400">
+        <svg
+          className="h-8 w-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageData}
+      alt={name}
+      className="h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 type SessionDetailProps = {
   /** When provided (modal mode), overrides the URL param. */
   sessionId?: string;
@@ -304,6 +345,7 @@ export default function CollectionReportV2SessionDetail({
     ramClearMetersIn: '',
     ramClearMetersOut: '',
   });
+  const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
 
   // ============================================================================
   // Effects
@@ -324,7 +366,8 @@ export default function CollectionReportV2SessionDetail({
           if (!background)
             setError(res.data?.error || 'Failed to load session');
         }
-      } catch (_id) {
+      } catch (e) {
+        console.error('[fetchSession] Error:', e instanceof Error ? e.message : 'Unknown error');
         if (!background) setError('Failed to load session details');
       } finally {
         if (!background) setLoading(false);
@@ -400,6 +443,7 @@ export default function CollectionReportV2SessionDetail({
           currentMachine.hasRelay === false
         )
       );
+      setPhotoPreviewFailed(false);
     }
   }, [
     currentIndex,
@@ -407,6 +451,15 @@ export default function CollectionReportV2SessionDetail({
     session,
     getInitialCaptureStateForMachine,
   ]);
+
+  // Reset preview failure flag whenever the image data changes (e.g. user replaces HEIC with JPG)
+  const prevImageDataRef = useRef(captureState.imageData);
+  useEffect(() => {
+    if (captureState.imageData !== prevImageDataRef.current) {
+      prevImageDataRef.current = captureState.imageData;
+      setPhotoPreviewFailed(false);
+    }
+  }, [captureState.imageData]);
 
   // Check last collection time when machine changes
   useEffect(() => {
@@ -479,6 +532,27 @@ export default function CollectionReportV2SessionDetail({
       });
   }, [currentIndex, currentMachine?.machineId, sessionId]);
 
+  // Warn when entered meters are less than previous values (possible meter rollover)
+  useEffect(() => {
+    const enteredIn = captureState.manualMetersIn !== '' ? Number(captureState.manualMetersIn) : null;
+    const enteredOut = captureState.manualMetersOut !== '' ? Number(captureState.manualMetersOut) : null;
+    const prevIn = currentMachine?.prevSasMetersIn ?? currentMachine?.prevsasMetersIn;
+    const prevOut = currentMachine?.prevSasMetersOut ?? currentMachine?.prevsasMetersOut;
+
+    if (enteredIn !== null && prevIn !== undefined && prevIn > 0 && enteredIn < prevIn) {
+      toast.warning(
+        `Meters In (${enteredIn.toLocaleString()}) is less than the previous value (${prevIn.toLocaleString()}). Check for meter rollover.`,
+        { id: 'rollover-in', duration: 5000 }
+      );
+    }
+    if (enteredOut !== null && prevOut !== undefined && prevOut > 0 && enteredOut < prevOut) {
+      toast.warning(
+        `Meters Out (${enteredOut.toLocaleString()}) is less than the previous value (${prevOut.toLocaleString()}). Check for meter rollover.`,
+        { id: 'rollover-out', duration: 5000 }
+      );
+    }
+  }, [captureState.manualMetersIn, captureState.manualMetersOut, currentMachine?.prevSasMetersIn, currentMachine?.prevSasMetersOut, currentMachine?.prevsasMetersIn, currentMachine?.prevsasMetersOut]);
+
   const targetTime = useCustomPeriod
     ? customSasEnd
       ? new Date(customSasEnd)
@@ -522,7 +596,7 @@ export default function CollectionReportV2SessionDetail({
       toast.error('Please select both start and end date/time');
       return;
     }
-    if (new Date(customSasStart) >= new Date(customSasEnd)) {
+    if (new Date(customSasStart) > new Date(customSasEnd)) {
       toast.error('Start time must be before end time', {
         description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
         duration: 6000,
@@ -604,6 +678,7 @@ export default function CollectionReportV2SessionDetail({
 
   const handleCameraCapture = (imageData: string) => {
     setCaptureState(prev => ({ ...prev, imageData }));
+    setPhotoPreviewFailed(false);
     setShowCamera(false);
   };
 
@@ -611,15 +686,16 @@ export default function CollectionReportV2SessionDetail({
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
+    for (let index = 0; index < items.length; index++) {
+      if (items[index].type.indexOf('image') !== -1) {
+        const file = items[index].getAsFile();
         if (!file) continue;
 
         const reader = new FileReader();
         reader.onload = event => {
           const base64 = event.target?.result as string;
           setCaptureState(prev => ({ ...prev, imageData: base64 }));
+          setPhotoPreviewFailed(false);
           toast.success('Image pasted successfully');
         };
         reader.readAsDataURL(file);
@@ -781,7 +857,7 @@ export default function CollectionReportV2SessionDetail({
 
       // Validate custom period start/end ordering before saving
       if (useCustomPeriod && customSasStart && customSasEnd) {
-        if (new Date(customSasStart) >= new Date(customSasEnd)) {
+        if (new Date(customSasStart) > new Date(customSasEnd)) {
           toast.error('Start time must be before end time', {
             description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
             duration: 6000,
@@ -1045,9 +1121,10 @@ export default function CollectionReportV2SessionDetail({
               setSubmitPhase('error');
               return;
             }
-          } catch (err) {
+      } catch (e) {
+        console.error('[fetchCollectorList] Error:', e instanceof Error ? e.message : 'Unknown error');
             setSubmitMeterError(
-              err instanceof Error ? err.message : 'Failed to create meter'
+              e instanceof Error ? e.message : 'Failed to create meter'
             );
             setSubmitPhase('error');
             return;
@@ -1266,7 +1343,8 @@ export default function CollectionReportV2SessionDetail({
             <button
               type="button"
               onClick={() => handleBackToReports()}
-              className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+              disabled={saving || submitting}
+              className="flex items-center text-sm text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed"
             >
               <svg
                 className="mr-1 h-4 w-4"
@@ -1554,10 +1632,10 @@ export default function CollectionReportV2SessionDetail({
                       </Popover>
                     </div>
                   </div>
-                  {/* Inline error when start >= end */}
+                  {/* Inline error when start > end */}
                   {customSasStart &&
                     customSasEnd &&
-                    new Date(customSasStart) >= new Date(customSasEnd) && (
+                    new Date(customSasStart) > new Date(customSasEnd) && (
                       <p className="mt-2 text-xs font-semibold text-red-600">
                         ⚠️ Start time must be before end time
                       </p>
@@ -1575,7 +1653,7 @@ export default function CollectionReportV2SessionDetail({
                           !customSasEnd ||
                           (!!customSasStart &&
                             !!customSasEnd &&
-                            new Date(customSasStart) >= new Date(customSasEnd))
+                            new Date(customSasStart) > new Date(customSasEnd))
                         }
                         className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -1754,6 +1832,34 @@ export default function CollectionReportV2SessionDetail({
             </div>
           )}
 
+          {/* Previous Values — shows the baseline from the last collection */}
+          {(currentMachine?.prevSasMetersIn != null ||
+            currentMachine?.prevManualMetersIn != null) && (
+            <div className="mb-6">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                Previous Values
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Prev Meters In</div>
+                  <div className="text-lg font-semibold text-gray-700 sm:text-xl">
+                    {isCurrentMachineNoSMIB
+                      ? (currentMachine.prevManualMetersIn ?? currentMachine.prevSasMetersIn)?.toLocaleString() ?? 'N/A'
+                      : (currentMachine.prevSasMetersIn ?? currentMachine.prevManualMetersIn)?.toLocaleString() ?? 'N/A'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
+                  <div className="text-xs text-gray-500">Prev Meters Out</div>
+                  <div className="text-lg font-semibold text-gray-700 sm:text-xl">
+                    {isCurrentMachineNoSMIB
+                      ? (currentMachine.prevManualMetersOut ?? currentMachine.prevSasMetersOut)?.toLocaleString() ?? 'N/A'
+                      : (currentMachine.prevSasMetersOut ?? currentMachine.prevManualMetersOut)?.toLocaleString() ?? 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Supplemental Meters Warning — shown when the machine is flagged as supplemental
                (backend detected offline SMIB ≥ 3 days on save/load). */}
           {!isCurrentMachineNoSMIB &&
@@ -1783,6 +1889,22 @@ export default function CollectionReportV2SessionDetail({
               </div>
             )}
 
+          {/* First Collection Indicator */}
+          {!isCurrentMachineNoSMIB &&
+            !currentMachine?.lastCollectionTime &&
+            (currentMachine?.prevSasMetersIn == null ||
+              currentMachine?.prevSasMetersIn === 0) && (
+              <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-800">
+                  First Collection
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  No previous meters recorded for this machine. Starting from
+                  zero.
+                </p>
+              </div>
+            )}
+
           {/* Photo Capture */}
 
           <div className="mb-6">
@@ -1791,16 +1913,42 @@ export default function CollectionReportV2SessionDetail({
             </label>
             {captureState.imageData ? (
               <div className="relative">
-                <img
-                  src={captureState.imageData}
-                  alt="Meter"
-                  className="max-h-64 w-full rounded-lg border border-gray-200 object-contain"
-                />
+                {photoPreviewFailed ? (
+                  <div className="flex max-h-64 min-h-[12rem] w-full flex-col items-center justify-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <svg
+                      className="h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-center text-sm font-medium text-gray-700">
+                      Preview not available
+                    </p>
+                    <p className="max-w-xs text-center text-xs text-gray-500">
+                      This file type can&apos;t be previewed in the browser, but your image is safe and will be stored. Previews are supported for JPG, PNG, GIF and WebP.
+                    </p>
+                  </div>
+                ) : (
+                  <img
+                    src={captureState.imageData}
+                    alt="Meter"
+                    className="max-h-64 w-full rounded-lg border border-gray-200 object-contain"
+                    onError={() => setPhotoPreviewFailed(true)}
+                  />
+                )}
                 <button
                   type="button"
-                  onClick={() =>
-                    setCaptureState(prev => ({ ...prev, imageData: null }))
-                  }
+                  onClick={() => {
+                    setCaptureState(prev => ({ ...prev, imageData: null }));
+                    setPhotoPreviewFailed(false);
+                  }}
                   className="absolute right-2 top-2 rounded-full bg-red-500 p-1.5 text-white hover:bg-red-600"
                 >
                   <svg
@@ -2093,7 +2241,8 @@ export default function CollectionReportV2SessionDetail({
                 <button
                   type="button"
                   onClick={() => handleBackToReports()}
-                  className="text-center text-sm text-gray-400 hover:text-gray-600 sm:text-left"
+                  disabled={saving || submitting}
+                  className="text-center text-sm text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed sm:text-left"
                 >
                   Cancel
                 </button>
@@ -2111,7 +2260,7 @@ export default function CollectionReportV2SessionDetail({
                         (useCustomPeriod &&
                           !!customSasStart &&
                           !!customSasEnd &&
-                          new Date(customSasStart) >= new Date(customSasEnd))
+                          new Date(customSasStart) > new Date(customSasEnd))
                       }
                       className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                     >
@@ -2128,7 +2277,7 @@ export default function CollectionReportV2SessionDetail({
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
-                          new Date(customSasStart) >= new Date(customSasEnd)
+                          new Date(customSasStart) > new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }
@@ -2150,7 +2299,7 @@ export default function CollectionReportV2SessionDetail({
                     (useCustomPeriod &&
                       !!customSasStart &&
                       !!customSasEnd &&
-                      new Date(customSasStart) >= new Date(customSasEnd))
+                      new Date(customSasStart) > new Date(customSasEnd))
                   }
                   className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                 >
@@ -2188,7 +2337,7 @@ export default function CollectionReportV2SessionDetail({
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
-                          new Date(customSasStart) >= new Date(customSasEnd)
+                          new Date(customSasStart) > new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }
@@ -2274,7 +2423,7 @@ function ReviewView({
   onEditMachine?: (index: number) => void;
   router: ReturnType<typeof useRouter>;
 }) {
-  const allSkipped = session.machines.every(m => m.status === 'skipped');
+  const allSkipped = session.machines.every(machine => machine.status === 'skipped');
   const anyCaptured = session.machines.some(
     m => m.status === 'confirmed' || m.status === 'captured'
   );
@@ -2289,7 +2438,8 @@ function ReviewView({
               ? onBackToReports()
               : router.push('/collection-report?section=collection-v2')
           }
-          className="mb-4 flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className={`mb-4 flex items-center text-sm ${submitting ? 'cursor-not-allowed text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
+          disabled={submitting}
         >
           <svg
             className="mr-1 h-4 w-4"
@@ -2358,10 +2508,9 @@ function ReviewView({
                     {/* Thumbnail — imageData comes from server (Drive URL or tempImageData) */}
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 sm:h-20 sm:w-20">
                       {machine.imageData ? (
-                        <img
-                          src={machine.imageData}
-                          alt={machine.machineName}
-                          className="h-full w-full object-cover"
+                        <ReviewThumbnail
+                          imageData={machine.imageData}
+                          name={machine.machineName}
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-center text-[10px] text-gray-400">
@@ -2495,6 +2644,24 @@ function ReviewView({
                           {machine.sasMetersOut?.toLocaleString() ?? 'N/A'}
                         </span>
                       </div>
+                      {machine.prevSasMetersIn != null &&
+                        machine.prevSasMetersIn !== 0 && (
+                          <div className="flex items-baseline justify-between sm:block">
+                            <span className="text-gray-400">Prev In</span>
+                            <span className="font-medium text-gray-700 sm:ml-1">
+                              {machine.prevSasMetersIn.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      {machine.prevSasMetersOut != null &&
+                        machine.prevSasMetersOut !== 0 && (
+                          <div className="flex items-baseline justify-between sm:block">
+                            <span className="text-gray-400">Prev Out</span>
+                            <span className="font-medium text-gray-700 sm:ml-1">
+                              {machine.prevSasMetersOut.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
                       {machine.machineGross !== undefined && (
                         <div className="flex items-baseline justify-between sm:block">
                           <span className="text-gray-400">Machine Gross</span>
@@ -2512,12 +2679,12 @@ function ReviewView({
                         </div>
                       )}
                       {!isMachineNoSMIB &&
-                        machine.grossDifference !== undefined &&
-                        machine.grossDifference !== 0 && (
+                        machine.metersMatch === false &&
+                        machine.variation !== undefined && (
                           <div className="flex items-baseline justify-between sm:col-span-2 sm:block">
-                            <span className="text-gray-400">Difference</span>
+                            <span className="text-gray-400">Variation</span>
                             <span className="font-medium text-red-600 sm:ml-1">
-                              {machine.grossDifference?.toLocaleString() ??
+                              {machine.variation?.toLocaleString() ??
                                 'N/A'}
                             </span>
                           </div>

@@ -43,6 +43,7 @@ export default function DateFilters({
   mode = 'auto',
   hideIndicator = false,
   showIndicatorOnly = false,
+  calendarFooterContent,
 }: DateFiltersProps & {
   hideIndicator?: boolean;
   showIndicatorOnly?: boolean;
@@ -259,6 +260,7 @@ export default function DateFilters({
                 gameDayOffset={gameDayOffset}
                 buttonLabel={customRangeGoLabel}
                 showTime={enableTimeInputs}
+                footerContent={calendarFooterContent}
                 onSelect={range => {
                   if (range) {
                     setCustomDateRange({
@@ -329,6 +331,7 @@ export default function DateFilters({
                   gameDayOffset={gameDayOffset}
                   buttonLabel={customRangeGoLabel}
                   showTime={enableTimeInputs}
+                  footerContent={calendarFooterContent}
                   onSelect={range => {
                     if (range) {
                       setCustomDateRange({

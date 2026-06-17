@@ -6,22 +6,16 @@ import { formatDate } from '@/lib/utils/date/formatting';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { getGrossColorClass } from '@/lib/utils/financial';
 import CollectionReportV2SessionsSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionsSkeleton';
-import { RotateCcw, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 
 type V2MobileProps = {
   sessions: V2Session[];
   loading: boolean;
   isRefreshing?: boolean;
   canManage?: boolean;
-  canPermanentlyDelete?: boolean;
-  showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
-  onRestoreSession?: (sessionId: string) => void;
-  onPermanentDeleteSession?: (sessionId: string) => void;
 };
 
 function CollectorHover({ session }: { session: V2Session }) {
@@ -61,25 +55,17 @@ function CollectorHover({ session }: { session: V2Session }) {
 function SessionCard({
   session,
   canManage,
-  canPermanentlyDelete,
-  showArchived,
   onViewSession,
   onEditSession,
   onSubmitSession,
   onDeleteSession,
-  onRestoreSession,
-  onPermanentDeleteSession,
 }: {
   session: V2Session;
   canManage?: boolean;
-  canPermanentlyDelete?: boolean;
-  showArchived?: boolean;
   onViewSession?: (sessionId: string) => void;
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
-  onRestoreSession?: (sessionId: string) => void;
-  onPermanentDeleteSession?: (sessionId: string) => void;
 }) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -88,18 +74,10 @@ function SessionCard({
     return formatAmount(value);
   };
 
-  const archivedDate = session.deletedAt
-    ? formatDistanceToNow(new Date(session.deletedAt), { addSuffix: true })
-    : '';
-
   return (
-    <div
-      className={`transform overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-md${showArchived ? 'border border-amber-200' : ''}`}
-    >
+    <div className="transform overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-md">
       {/* Header Section */}
-      <div
-        className={`px-4 py-3 text-white${showArchived ? 'bg-amber-600' : 'bg-lighterBlueHighlight'}`}
-      >
+      <div className="bg-lighterBlueHighlight px-4 py-3 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-semibold">Session:</span>
@@ -110,11 +88,6 @@ function SessionCard({
               {session.locationName}
             </Link>
           </div>
-          {showArchived && (
-            <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-              ARCHIVED
-            </span>
-          )}
         </div>
         <div className="mt-1 text-xs text-blue-100">
           <span>Collector: </span>
@@ -200,77 +173,43 @@ function SessionCard({
           </span>
         </div>
 
-        {showArchived && archivedDate && (
-          <div className="flex justify-between border-t border-amber-100 pt-3">
-            <span className="text-sm font-medium text-gray-700">Archived</span>
-            <span className="text-sm font-semibold text-amber-700">
-              {archivedDate}
-            </span>
-          </div>
-        )}
-
         {/* Action Buttons */}
         <div className="mt-3 flex flex-col gap-2">
-          {showArchived ? (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onViewSession?.(session.sessionId)}
+              className="flex-1 rounded border border-button bg-white px-3 py-2 text-xs font-medium text-button transition-colors hover:bg-button hover:text-white"
+            >
+              View Details
+            </button>
+            {session.sessionStatus === 'in-progress' && (
+              <button
+                type="button"
+                onClick={() => onSubmitSession?.(session.sessionId)}
+                className="flex-1 rounded border border-green-600 bg-white px-3 py-2 text-xs font-medium text-green-600 transition-colors hover:bg-green-600 hover:text-white"
+              >
+                Submit
+              </button>
+            )}
+          </div>
+          {canManage && (
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => onRestoreSession?.(session.sessionId)}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded border border-amber-500 bg-white px-3 py-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500 hover:text-white"
+                onClick={() => onEditSession?.(session.sessionId)}
+                className="flex-1 rounded border border-blue-600 bg-white px-3 py-2 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Restore
+                Edit
               </button>
-              {canPermanentlyDelete && (
-                <button
-                  type="button"
-                  onClick={() => onPermanentDeleteSession?.(session.sessionId)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded border border-red-600 bg-white px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => onDeleteSession?.(session.sessionId)}
+                className="flex-1 rounded border border-red-600 bg-white px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+              >
+                Delete
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => onViewSession?.(session.sessionId)}
-                  className="flex-1 rounded border border-button bg-white px-3 py-2 text-xs font-medium text-button transition-colors hover:bg-button hover:text-white"
-                >
-                  View Details
-                </button>
-                {session.sessionStatus === 'in-progress' && (
-                  <button
-                    type="button"
-                    onClick={() => onSubmitSession?.(session.sessionId)}
-                    className="flex-1 rounded border border-green-600 bg-white px-3 py-2 text-xs font-medium text-green-600 transition-colors hover:bg-green-600 hover:text-white"
-                  >
-                    Submit
-                  </button>
-                )}
-              </div>
-              {canManage && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onEditSession?.(session.sessionId)}
-                    className="flex-1 rounded border border-blue-600 bg-white px-3 py-2 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-600 hover:text-white"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDeleteSession?.(session.sessionId)}
-                    className="flex-1 rounded border border-red-600 bg-white px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>
@@ -282,14 +221,10 @@ export default function CollectionReportV2Mobile({
   sessions,
   loading,
   canManage,
-  canPermanentlyDelete,
-  showArchived,
   onViewSession,
   onEditSession,
   onSubmitSession,
   onDeleteSession,
-  onRestoreSession,
-  onPermanentDeleteSession,
   isRefreshing,
 }: V2MobileProps) {
   // ============================================================================
@@ -319,14 +254,10 @@ export default function CollectionReportV2Mobile({
           key={session.sessionId}
           session={session}
           canManage={canManage}
-          canPermanentlyDelete={canPermanentlyDelete}
-          showArchived={showArchived}
           onViewSession={onViewSession}
           onEditSession={onEditSession}
           onSubmitSession={onSubmitSession}
           onDeleteSession={onDeleteSession}
-          onRestoreSession={onRestoreSession}
-          onPermanentDeleteSession={onPermanentDeleteSession}
         />
       ))}
     </div>

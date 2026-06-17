@@ -245,7 +245,7 @@ export default function CollectionReportNewCollectionFormFields({
         {inputsEnabled &&
           sasStartTime &&
           sasEndTime &&
-          sasStartTime >= sasEndTime && (
+          sasStartTime > sasEndTime && (
             <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2">
               <p className="text-xs text-red-600">
                 ⚠️ Start time cannot be after end time. Start:{' '}
@@ -534,7 +534,7 @@ export default function CollectionReportNewCollectionFormFields({
                 (inputsEnabled &&
                   !!sasStartTime &&
                   !!sasEndTime &&
-                  sasStartTime >= sasEndTime)
+                  sasStartTime > sasEndTime)
               }
             >
               {isProcessing ? 'Processing...' : 'Update Entry in List'}
@@ -558,7 +558,7 @@ export default function CollectionReportNewCollectionFormFields({
                     (inputsEnabled &&
                       !!sasStartTime &&
                       !!sasEndTime &&
-                      sasStartTime >= sasEndTime)
+                      sasStartTime > sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

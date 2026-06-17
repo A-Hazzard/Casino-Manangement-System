@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { decodeJwt } from 'jose';
 
-interface LogContext {
+type LogContext = {
   functionName: string;
   method: string;
   path: string;
@@ -15,7 +15,7 @@ interface LogContext {
   itemCount?: number;
   duration?: number;
   error?: Error | string;
-}
+};
 
 const getLogTimestamp = (): string => {
   return new Date().toISOString();

@@ -114,8 +114,8 @@ export default function VaultOverviewAddCashModal({
   useEffect(() => {
     if (open) {
       setDenominations(
-        denomsList.map(d => ({
-          denomination: Number(d) as Denomination['denomination'],
+        denomsList.map(value => ({
+          denomination: Number(value) as Denomination['denomination'],
           quantity: 0,
         }))
       );
@@ -138,9 +138,9 @@ export default function VaultOverviewAddCashModal({
           });
           const fetchedMachines = response.data.data || [];
           setMachines(
-            fetchedMachines.map((m: GamingMachine) => ({
-              id: m.machineId || m._id || m.serialNumber,
-              label: m.game ? `${m.serialNumber} (${m.game})` : m.serialNumber,
+            fetchedMachines.map((machine: GamingMachine) => ({
+              id: machine.machineId || machine._id || machine.serialNumber,
+              label: machine.game ? `${machine.serialNumber} (${machine.game})` : machine.serialNumber,
             }))
           );
         } catch (error) {
@@ -173,7 +173,7 @@ export default function VaultOverviewAddCashModal({
    * Requires source selection and total amount > 0
    */
   const isAllTouched = useMemo(
-    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    () => denomsList.every(value => touchedDenominations.has(Number(value))),
     [denomsList, touchedDenominations]
   );
   const isValid = source !== '' && (totalAmount > 0 || isAllTouched);
@@ -192,9 +192,9 @@ export default function VaultOverviewAddCashModal({
     const numValue = parseInt(value, 10) || 0;
     if (numValue < 0) return;
 
-    setDenominations(prev =>
-      prev.map(d =>
-        d.denomination === denomination ? { ...d, quantity: numValue } : d
+      setDenominations(prev =>
+        prev.map(denom =>
+          denom.denomination === denomination ? { ...denom, quantity: numValue } : denom
       )
     );
     setTouchedDenominations(prev => {
@@ -248,8 +248,8 @@ export default function VaultOverviewAddCashModal({
       // Reset form on success
       setSource('');
       setDenominations(
-        denomsList.map(d => ({
-          denomination: d as Denomination['denomination'],
+        denomsList.map(value => ({
+          denomination: value as Denomination['denomination'],
           quantity: 0,
         }))
       );
@@ -275,8 +275,8 @@ export default function VaultOverviewAddCashModal({
     if (loading) return;
     setSource('');
     setDenominations(
-      denomsList.map(d => ({
-        denomination: d as Denomination['denomination'],
+      denomsList.map(value => ({
+        denomination: value as Denomination['denomination'],
         quantity: 0,
       }))
     );

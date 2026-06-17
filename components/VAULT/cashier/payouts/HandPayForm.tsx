@@ -114,11 +114,11 @@ export default function HandPayForm({
                   <span className="text-[11px] font-bold text-blue-700">
                     {formatAmount(
                       (() => {
-                        const m = machines.find(m => m._id === selectedMachine);
+                        const matchedMachine = machines.find(machine => machine._id === selectedMachine);
                         // Use collection meter or SAS coinIn
                         return (
-                          m?.collectionMeters?.metersIn ||
-                          m?.sasMeters?.coinIn ||
+                          matchedMachine?.collectionMeters?.metersIn ||
+                          matchedMachine?.sasMeters?.coinIn ||
                           0
                         );
                       })()

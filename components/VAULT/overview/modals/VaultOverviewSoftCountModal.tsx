@@ -48,7 +48,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultAuthenticatorModal from '../../shared/VaultAuthenticatorModal';
 
-interface VaultOverviewSoftCountModalProps {
+type VaultOverviewSoftCountModalProps = {
   open: boolean;
   onClose: () => void;
   machines: GamingMachine[];
@@ -100,7 +100,7 @@ export default function VaultOverviewSoftCountModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const selectedMachine = machines.find(m => m._id === selectedMachineId);
+  const selectedMachine = machines.find(machine => machine._id === selectedMachineId);
   const completedMachineIds = entries.map(e => e.machineId);
 
   // ============================================================================

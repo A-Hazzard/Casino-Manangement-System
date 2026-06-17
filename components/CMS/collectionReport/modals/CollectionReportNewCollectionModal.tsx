@@ -59,7 +59,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import { formatDate } from '@/lib/utils/formatting';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -94,11 +94,14 @@ export default function CollectionReportNewCollectionModal({
     isPreCreating,
     currentMeterMachineName,
     meterCreationError,
-    checkVariations,
     preCreateThenCheck,
     toggleMinimize,
     reset: resetVariationCheck,
   } = useCollectionReportVariationCheck();
+
+  const lastPreCreatePayloadsRef = useRef<PreCreateMeterPayload[]>([]);
+  const lastOnlineMachinesForCheckRef = useRef<CheckVariationsMachine[]>([]);
+
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [showVariationCheckPopover, setShowVariationCheckPopover] =
@@ -227,6 +230,7 @@ export default function CollectionReportNewCollectionModal({
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
   } = useNewCollectionModal({
     show,
     locations: propLocations,
@@ -251,8 +255,8 @@ export default function CollectionReportNewCollectionModal({
   }, [collectedMachineEntries, currentCollectionTime]);
 
   // Online/offline status for machines in the selected location
-  const availableMachineIds = machinesOfSelectedLocation.map(m =>
-    String(m._id)
+  const availableMachineIds = machinesOfSelectedLocation.map(machine =>
+    String(machine._id)
   );
   const machineStatusMap = useMachineOnlineStatus(availableMachineIds);
 
@@ -305,6 +309,7 @@ export default function CollectionReportNewCollectionModal({
       >
         <DialogContent
           className="flex h-auto max-h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-auto md:w-full md:max-w-6xl lg:max-w-7xl"
+          showCloseButton={!isProcessing}
           onPointerDownOutside={e => e.preventDefault()}
           onEscapeKeyDown={e => e.preventDefault()}
         >
@@ -560,11 +565,12 @@ export default function CollectionReportNewCollectionModal({
                 updateAllSasEndDate={updateAllSasEndDate}
                 setUpdateAllSasEndDate={setUpdateAllSasEndDate}
                 onApplyAllDates={handleApplyAllDates}
+                sasUpdateProgress={sasUpdateProgress}
                 variationMachineIds={variationsData?.machines
                   .filter(
-                    m => typeof m.variation === 'number' && m.variation !== 0
+                    machine => machine.variation !== null && machine.variation !== 0
                   )
-                  .map(m => m.machineId)}
+                  .map(machine => machine.machineId)}
               />
             </div>
           </div>
@@ -676,6 +682,9 @@ export default function CollectionReportNewCollectionModal({
                   machine => !offlineMachineIds.has(machine.machineId)
                 );
 
+                lastPreCreatePayloadsRef.current = preCreatePayloads;
+                lastOnlineMachinesForCheckRef.current = onlineMachinesForCheck;
+
                 // Open popover immediately and kick off pre-create → variation check
                 setShowVariationCheckPopover(true);
                 preCreateThenCheck(
@@ -774,7 +783,7 @@ export default function CollectionReportNewCollectionModal({
           // Filter out machines with "No SMIB" (no relayId)
           const machinesWithSmib =
             variationsData?.machines.filter(
-              m => typeof m.variation === 'number'
+              m => m.variation !== null
             ) || [];
 
           // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
@@ -786,25 +795,16 @@ export default function CollectionReportNewCollectionModal({
           }
         }}
         onRetry={() => {
-          const machinesForCheck: CheckVariationsMachine[] =
-            collectedMachineEntries.map(entry => ({
-              machineId: entry.machineId,
-              machineName:
-                `${entry.serialNumber || ''} ${entry.machineCustomName || ''} (${entry.game || ''})`.trim() ||
-                entry.machineId,
-              metersIn: entry.metersIn || 0,
-              metersOut: entry.metersOut || 0,
-              sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-              sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-              prevMetersIn: entry.prevIn || 0,
-              prevMetersOut: entry.prevOut || 0,
-            }));
           const locationIdToUse =
             selectedLocationId ||
             lockedLocationId ||
             collectedMachineEntries[0]?.location ||
             '';
-          checkVariations(locationIdToUse, machinesForCheck);
+          preCreateThenCheck(
+            locationIdToUse,
+            lastOnlineMachinesForCheckRef.current,
+            lastPreCreatePayloadsRef.current
+          );
         }}
         onClose={() => {
           setShowVariationCheckPopover(false);
@@ -867,7 +867,7 @@ export default function CollectionReportNewCollectionModal({
                     Finalize with{' '}
                     {
                       variationsData.machines.filter(
-                        m => typeof m.variation === 'number'
+                        m => m.variation !== null
                       ).length
                     }{' '}
                     variations
@@ -884,7 +884,7 @@ export default function CollectionReportNewCollectionModal({
         isOpen={showVariationsConfirmation}
         machineCount={
           variationsData?.machines.filter(
-            m => typeof m.variation === 'number' && m.variation !== 0
+            m => m.variation !== null && m.variation !== 0
           ).length || 0
         }
         totalVariation={variationsData?.totalVariation || 0}

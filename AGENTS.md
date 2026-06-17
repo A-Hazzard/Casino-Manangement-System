@@ -210,3 +210,93 @@ CRITICAL: Load these files on-demand when the task is relevant. Do NOT preemptiv
 - V2 feature plan: `@.claude/collection-report-v2-plan.md`
 - Vault FRD: `@.instructions/vault-FRD.md`
 - Application context: `@.instructions/rules/application-context.md`
+
+---
+
+## Refactoring Tracker
+
+### Backend (API Routes — Complete ✅)
+
+All 22 oversized API routes (>500 lines) refactored to helpers. All under 500 lines.
+
+| Route | Before | After | Helper |
+|---|---|---|---|
+| `cabinets/aggregation/route.ts` | 1746 | 715 | `cabinetAggregation.ts` |
+| `collection-reports/collections/route.ts` | 1745 | 370 | `collectionOperations.ts` |
+| `collection-reports/collections/[id]/route.ts` | 1095 | 273 | `collectionByIdOperations.ts` |
+| `feedback/route.ts` | 1082 | 445 | `feedbackHandlers.ts`, `feedbackOperations.ts` |
+| `collection-reports-v2/sessions/[sessionId]/submit/route.ts` | 914 | 254 | `submitOperations.ts` |
+| `locations/route.ts` | 924 | 304 | `locationQueryHandlers.ts` |
+| `locations/search-all/route.ts` | 882 | 226 | `searchOperations.ts` |
+| `cabinets/status/route.ts` | 823 | 240 | `statusOperations.ts` |
+| `reports/locations/route.ts` | 759 | 254 | `locationReportOperations.ts` |
+| `collection-reports-v2/machines/route.ts` | 738 | 323 | `machineOperations.ts` |
+| `cabinets/[cabinetId]/route.ts` | 730 | 433 | `cabinetDetailOperations.ts` |
+| `cabinets/[cabinetId]/chart/route.ts` | 659 | 219 | `chartOperations.ts` |
+| `collection-reports/route.ts` | 655 | 492 | `reportListOperations.ts` |
+| `locations/[locationId]/route.ts` | 669 | 321 | `locationByIdOperations.ts` |
+| `cabinets/route.ts` | 621 | 360 | `cabinetListOperations.ts` |
+| `collection-reports-v2/sessions/[sessionId]/route.ts` | 592 | 306 | `sessionOperations.ts` |
+| `bill-validator/[machineId]/route.ts` | 587 | 265 | `validatorOperations.ts` |
+| `collection-reports-v2/sessions/route.ts` | 592 | 273 | `sessionOperations.ts` |
+| `profile/route.ts` | 570 | 311 | `profileOperations.ts` |
+| `members/[id]/route.ts` | 575 | 344 | `memberByIdOperations.ts` |
+| `vault/float-request/route.ts` | 532 | 368 | `floatRequestOperations.ts` |
+| `vault/expense/route.ts` | 523 | 337 | `expenseOperations.ts` |
+
+**Type fixes:** 13 `interface`→`type`, 14 untyped `.lean()`→`.lean<T>()`, ~20 `Record<string,unknown>`→proper types.
+
+### Frontend (Phase 1 Complete ✅ — Phase 2 Remaining)
+
+**Phase 1 completed (June 2026):**
+
+| Category | Files | Fix |
+|---|---|---|
+| `interface`→`type` in components | 25 files | VAULT/overview, CMS/collectionReport/variations, shared/ui — all 25 converted |
+| `interface`→`type` in lib/hooks | 1 file | `useCollectionReportVariationCheck.ts` converted (6 interfaces) |
+| `interface`→`type` in components (remaining) | 2 files | `VaultEndOfDayReportsPageContent.tsx`, `VaultOverviewRecordExpenseModal.tsx` (inline) |
+| Comments removed from shared types | 3 files | No-comment rule enforced across `shared/types/` |
+| Stale JSDoc removed | 2 files | Cleaned from shared type files |
+| File-level JSDoc added | 6 app/ pages | All pages missing JSDoc now documented |
+| Single-letter variable renames | 8 component files | ~16 instances renamed (`r`→`role`, `l`→`loc`, `m`→`machine`, etc.) |
+| `Record<string,unknown>`→proper types in components | 3 files | 4 replacements |
+| `Record<string,unknown>`→proper types in lib/ | 2 files | 7 replacements |
+| `Record<string,unknown>`→proper types in shared/types | 3 files | ~14 replacements |
+| Oversized page.tsx split | 2 files | `app/install/page.tsx` (320→wrapper+content), `app/auth/recovery/2fa/page.tsx` (263→wrapper+content) |
+| Duplicate import fix | 1 file | `lib/types/components/props.ts` — duplicate `Location` import removed |
+
+**Remaining issues:**
+
+#### Components (`components/`)
+- **15 files >1000 lines** — critical extraction candidates (worst: `AdministrationUserModal.tsx` 3086, `CollectionReportV2SessionDetail.tsx` 2489, `AdministrationAddUserModal.tsx` 1938)
+- **~60 `Record<string, unknown>`** uses remaining (worst: `ReportsLocationsRevenueTable.tsx`, `ConfigurationCard.tsx`)
+- **~20 single-letter variables** remaining in loops/maps
+- **~70 files missing file-level JSDoc**
+- **~104 files over 400 lines** need splitting
+- **2 `Record<string,unknown>` type errors** (`ReportsLocationsTab.tsx:646,648`) — actual type errors, not just style
+
+#### Pages (`app/`)
+- **All pages now have file-level JSDoc** ✅
+- **All oversized pages split** ✅
+- **All other patterns:** ✅ clean
+
+#### Hooks/Stores/Helpers (`lib/`)
+- **5 files >1000 lines** — critical (`useEditCollectionModal.ts` 2522, `vaultHelpers.ts` 1880, `useNewCollectionModal.ts` 1811, `useMobileEditCollectionModal.ts` 1648, `useMobileCollectionModal.ts` 1412)
+- **0 interfaces** remaining in lib/ ✅
+- **~110+ `Record<string, unknown>`** uses
+- **~200+ exported functions** missing JSDoc
+- **~23 files** missing section separators
+- **4 Date→string cast errors** in `vaultHelpers.ts` — actual type errors
+- **React/any:** ✅ clean
+
+#### Shared Types (`shared/`)
+- 4 files over 400 lines (`models.ts` 1332, `entities.ts` 677, `reports.ts` 593, `vault.ts` 513)
+- **0 comments in type files** ✅ (rule enforced)
+- **~7 `Record<string, unknown>`** uses remaining
+- **interfaces/any/React:** ✅ clean
+
+#### Pre-existing type-check errors (not yet fixed)
+- `DashboardDesktopLayout.tsx:221` — Location type mismatch
+- `DashboardMobileLayout.tsx:197` — Location type mismatch
+- `ReportsLocationsTab.tsx:646,648` — `Record<string,unknown>[]` not assignable
+- `vaultHelpers.ts:564,617,808,1046` — Date→string cast

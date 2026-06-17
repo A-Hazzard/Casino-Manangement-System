@@ -37,6 +37,10 @@ export type PageName =
   | 'vault-cashier'
   | 'vault-role-selection';
 
+// ============================================================================
+// Page & Tab Access Checks
+// ============================================================================
+
 /**
  * Check if user has access to a specific page
  * @param userRoles - Array of user's roles
@@ -206,6 +210,10 @@ export const hasTabAccess = (
   return requiredRoles.some(role => userRoles.includes(role));
 };
 
+// ============================================================================
+// Role Level Checks
+// ============================================================================
+
 /**
  * Check if user has admin-level access (Developer or Admin)
  * @param userRoles - Array of user's roles
@@ -235,6 +243,10 @@ export const hasManagerAccess = (userRoles: UserRole[]): boolean => {
   }
   return HIGH_PRIORITY_ROLES.some((role: UserRole) => userRoles.includes(role));
 };
+
+// ============================================================================
+// Navigation Link Visibility
+// ============================================================================
 
 /**
  * Check if user should see navigation link for a page
@@ -303,6 +315,10 @@ export const shouldShowNavigationLink = (
 
   return hasPageAccess(userRoles, page);
 };
+
+// ============================================================================
+// Role Display & Identification
+// ============================================================================
 
 /**
  * Get user's role display name
@@ -402,6 +418,10 @@ export function hasVaultManagerRole(
   return userRoles.includes('vault-manager');
 }
 
+// ============================================================================
+// Sidebar Visibility
+// ============================================================================
+
 /**
  * Determine if CMS sidebar should be shown
  * @param userRoles - Array of user's roles
@@ -466,6 +486,10 @@ export function shouldShowCashierSidebar(
 
   return false;
 }
+
+// ============================================================================
+// Machine & Location Permissions
+// ============================================================================
 
 /**
  * Check if user can edit machines/cabinets

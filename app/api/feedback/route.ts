@@ -56,54 +56,45 @@
  * @module app/api/feedback/route
  */
 
-import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
+import {
+  authenticateAdminUser,
+  buildFeedbackQuery,
+  createFeedbackEntry,
+  feedbackSchema,
+  logFeedbackCreateActivity,
+  deleteFeedbackSchema,
+  updateFeedbackSchema,
+} from '@/app/api/lib/helpers/feedbackOperations';
+import {
+  handleFeedbackPatch,
+  handleFeedbackPut,
+  handleFeedbackDelete,
+} from '@/app/api/lib/helpers/feedbackHandlers';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
-import { GamingLocations as GamingLocationsModel } from '@/app/api/lib/models/gaminglocations';
-import { Licencee as LicenceeModel } from '@/app/api/lib/models/licencee';
 import {
   logRouteFetch,
   logRouteCreate,
-  logRouteUpdate,
-  logRouteDelete,
   logRouteError,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
-import { generateMongoId } from '@/lib/utils/id';
-import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
-import type {
-  FeedbackDocument,
-  GamingLocationDocument,
-  LicenceeDocument,
-} from '@shared/types';
+import type { FeedbackDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
-const feedbackSchema = z.object({
-  email: z.string().email('Please provide a valid email address').optional(),
-  username: z.string().optional(),
-  userId: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  locationId: z.string().optional(),
-  licenceeId: z.string().optional(),
-  category: z.enum([
-    'bug',
-    'suggestion',
-    'general-review',
-    'feature-request',
-    'performance',
-    'ui-ux',
-    'other',
-  ]),
-  description: z
-    .string()
-    .min(10, 'Feedback description must be at least 10 characters')
-    .max(5000, 'Feedback description cannot exceed 5000 characters'),
-});
 
+/**
+ * POST /api/feedback — Submit a new feedback entry
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse and validate request body
+ * 3. Validate email or username requirement
+ * 4. Get logged-in user info if available
+ * 5. Create feedback entry (generates ID, resolves names, persists)
+ * 6. Log activity for feedback creation
+ * 7. Return success response
+ */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'POST /api/feedback';
@@ -122,13 +113,7 @@ export async function POST(request: NextRequest) {
     const validationResult = feedbackSchema.safeParse(body);
 
     if (!validationResult.success) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/feedback',
-        'Validation failed',
-        logUser
-      );
+      logRouteError(functionName, 'POST', '/api/feedback', 'Validation failed', logUser);
       return NextResponse.json(
         {
           success: false,
@@ -163,10 +148,7 @@ export async function POST(request: NextRequest) {
         logUser
       );
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Either email or username must be provided',
-        },
+        { success: false, error: 'Either email or username must be provided' },
         { status: 400 }
       );
     }
@@ -178,139 +160,59 @@ export async function POST(request: NextRequest) {
     if (userId) {
       try {
         loggedInUser = await getUserFromServer();
-        // Verify the userId matches the logged-in user
         if (loggedInUser && String(loggedInUser._id) !== userId) {
-          loggedInUser = null; // Don't use if mismatch
+          loggedInUser = null;
         }
       } catch {
         // User not logged in or error, continue without logged-in user info
       }
     }
 
-    // Use logged-in user info if available, otherwise use provided values
-    const finalEmail = (loggedInUser?.emailAddress || email || '').toString();
-    const finalUsername = loggedInUser?.username || username || null;
-    const finalUserId = loggedInUser?._id
-      ? String(loggedInUser._id)
-      : userId || null;
+    const loggedInUserRecord = loggedInUser as Record<string, unknown> | null;
+    const finalEmail = String(loggedInUserRecord?.emailAddress || email || '');
+    const finalUsername =
+      typeof loggedInUserRecord?.username === 'string'
+        ? loggedInUserRecord.username
+        : (username || null);
+    const finalUserId =
+      loggedInUserRecord?._id
+        ? String(loggedInUserRecord._id)
+        : (userId || null);
 
     // ============================================================================
-    // STEP 5: Generate feedback ID
+    // STEP 5: Create feedback entry (generates ID, resolves names, persists)
     // ============================================================================
-    const feedbackId =
-      new Date().getTime().toString() +
-      Math.random().toString(36).substring(2, 9);
-
-    // ============================================================================
-    // STEP 6: Resolve location and licencee names
-    // ============================================================================
-    let resolvedLocationName: string | null = null;
-    let resolvedLicenceeName: string | null = null;
-
-    if (locationId) {
-      try {
-        const loc = await GamingLocationsModel.findOne({ _id: locationId })
-          .select('name')
-          .lean<GamingLocationDocument>();
-        resolvedLocationName = loc?.name || null;
-      } catch {
-        /* ignore lookup errors */
-      }
-    }
-
-    if (licenceeId) {
-      try {
-        const lic = await LicenceeModel.findOne({ _id: licenceeId })
-          .select('name')
-          .lean<LicenceeDocument>();
-        resolvedLicenceeName = lic?.name || null;
-      } catch {
-        /* ignore lookup errors */
-      }
-    }
-
-    // ============================================================================
-    // STEP 7: Create feedback entry
-    // ============================================================================
-    const feedback = new FeedbackModel({
-      _id: feedbackId,
-      email: finalEmail.toLowerCase().trim(),
-      username: finalUsername,
-      userId: finalUserId,
-      firstName: firstName?.trim() || null,
-      lastName: lastName?.trim() || null,
-      locationId: locationId || null,
-      locationName: resolvedLocationName,
-      licenceeId: licenceeId || null,
-      licenceeName: resolvedLicenceeName,
+    const feedback = await createFeedbackEntry({
+      finalEmail,
+      finalUsername,
+      finalUserId,
+      firstName,
+      lastName,
+      locationId,
+      licenceeId,
       category,
-      description: description.trim(),
-      submittedAt: new Date(),
-      status: 'pending',
-      archived: false,
+      description,
     });
 
-    await feedback.save();
+    // ============================================================================
+    // STEP 6: Log activity for feedback creation
+    // ============================================================================
+    await logFeedbackCreateActivity({
+      request,
+      feedback,
+      email,
+      finalEmail,
+      finalUsername,
+      finalUserId,
+      loggedInUser,
+      category,
+      description,
+      functionName,
+      logUser,
+    });
 
     // ============================================================================
-    // STEP 8: Log activity for feedback creation
-    // ============================================================================
-    try {
-      const ipInfo = getIPInfo(request);
-      const formattedIP = formatIPForDisplay(ipInfo);
-      const activityLogId = await generateMongoId();
-
-      const newData = {
-        _id: feedback._id,
-        email,
-        category,
-        status: 'pending',
-        submittedAt: feedback.submittedAt,
-      };
-
-      const activityLog = new ActivityLog({
-        _id: activityLogId,
-        timestamp: new Date(),
-        userId: finalUserId || `feedback-${finalEmail}`,
-        username: finalUsername || finalEmail,
-        action: 'create',
-        resource: 'feedback',
-        resourceId: feedback._id,
-        resourceName: `Feedback from ${finalUsername || finalEmail}`,
-        details: `User submitted feedback: ${category} - ${description.substring(0, 100)}${description.length > 100 ? '...' : ''}`,
-        actor: {
-          id: finalUserId || `feedback-${finalEmail}`,
-          email: finalEmail,
-          role:
-            loggedInUser &&
-            Array.isArray(loggedInUser.roles) &&
-            loggedInUser.roles.length > 0
-              ? (loggedInUser.roles[0] as string)
-              : 'feedback-submitter',
-        },
-        ipAddress: formattedIP,
-        userAgent: ipInfo.userAgent,
-        previousData: null,
-        newData: newData,
-        changes: [],
-      });
-
-      await activityLog.save();
-    } catch (logError) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/feedback',
-        logError instanceof Error
-          ? logError
-          : 'Error logging feedback creation activity',
-        logUser
-      );
-      // Don't fail the request if logging fails
-    }
-
-    // ============================================================================
-    // STEP 9: Return success response
+    // STEP 7: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteCreate(functionName, 'POST', '/api/feedback', 1, logUser, duration);
@@ -330,15 +232,22 @@ export async function POST(request: NextRequest) {
         : 'Failed to submit feedback. Please try again later.';
     logRouteError(functionName, 'POST', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
 }
 
+/**
+ * GET /api/feedback — Retrieve paginated feedback list
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user and check admin role
+ * 3. Parse query parameters and build query
+ * 4. Fetch feedback with pagination
+ * 5. Return paginated feedback list
+ */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'GET /api/feedback';
@@ -351,48 +260,13 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Authenticate user
+    // STEP 2: Authenticate user and check admin role
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (!currentUser) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/feedback',
-        'Unauthorized',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const authResult = await authenticateAdminUser('GET', functionName, logUser);
+    if (authResult instanceof NextResponse) return authResult;
 
     // ============================================================================
-    // STEP 3: Check admin/developer role
-    // ============================================================================
-    const userRoles = (currentUser.roles as string[]) || [];
-    const isAdmin =
-      userRoles.includes('admin') ||
-      userRoles.includes('developer') ||
-      userRoles.includes('owner');
-
-    if (!isAdmin) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/feedback',
-        'Forbidden: Admin access required',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Parse query parameters
+    // STEP 3: Parse query parameters and build query
     // ============================================================================
     const { searchParams } = new URL(request.url);
     const emailFilter = searchParams.get('email') || '';
@@ -402,44 +276,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const skip = (page - 1) * limit;
 
-    // Build query
-    const query: Record<string, unknown> = {};
-
-    if (emailFilter) {
-      // Check if it looks like an _id (MongoDB ObjectId format or string ID)
-      const isObjectIdFormat = /^[0-9a-fA-F]{24}$/.test(emailFilter.trim());
-      if (isObjectIdFormat) {
-        // Try to match _id
-        query.$or = [
-          { _id: emailFilter.trim() },
-          { email: { $regex: emailFilter, $options: 'i' } },
-        ];
-      } else {
-        query.email = { $regex: emailFilter, $options: 'i' };
-      }
-    }
-
-    if (categoryFilter) {
-      query.category = categoryFilter;
-    }
-
-    if (statusFilter && statusFilter !== 'archived') {
-      query.status = statusFilter;
-    }
-
-    // Handle archived filter
-    if (statusFilter === 'archived') {
-      // If filtering by archived, show only archived items
-      query.archived = true;
-      // Remove status filter when showing archived items
-      delete query.status;
-    } else {
-      // By default, exclude archived items unless explicitly filtered
-      query.archived = { $ne: true };
-    }
+    const query = buildFeedbackQuery({ emailFilter, categoryFilter, statusFilter });
 
     // ============================================================================
-    // STEP 5: Fetch feedback with pagination
+    // STEP 4: Fetch feedback with pagination
     // ============================================================================
     const totalCount = await FeedbackModel.countDocuments(query);
     const feedback = await FeedbackModel.find(query)
@@ -450,21 +290,14 @@ export async function GET(request: NextRequest) {
       .exec();
 
     // ============================================================================
-    // STEP 6: Return paginated feedback list
+    // STEP 5: Return paginated feedback list
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Feedback API] GET completed in ${duration}ms`);
     }
 
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/feedback',
-      feedback.length,
-      logUser,
-      duration
-    );
+    logRouteFetch(functionName, 'GET', '/api/feedback', feedback.length, logUser, duration);
     return NextResponse.json(
       {
         success: true,
@@ -484,25 +317,24 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching feedback:', error);
     logRouteError(functionName, 'GET', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch feedback. Please try again later.',
-      },
+      { success: false, error: 'Failed to fetch feedback. Please try again later.' },
       { status: 500 }
     );
   }
 }
 
-const updateFeedbackSchema = z.object({
-  _id: z.string(),
-  status: z.enum(['pending', 'reviewed', 'resolved']).optional(),
-  archived: z.boolean().optional(),
-  notes: z.string().optional().nullable(),
-  reviewedBy: z.string().optional().nullable(),
-  reviewedAt: z.union([z.string(), z.date()]).optional().nullable(),
-});
-
-// PATCH endpoint for specific field updates (like archiving) to avoid schema/middleware issues
+/**
+ * PATCH /api/feedback — Partial update (archive, status, notes)
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user and check admin role
+ * 3. Parse request body and build update data
+ * 4. Pre-fetch existing feedback for before-state
+ * 5. Execute update
+ * 6. Log activity
+ * 7. Return success response
+ */
 export async function PATCH(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'PATCH /api/feedback';
@@ -515,210 +347,41 @@ export async function PATCH(request: NextRequest) {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Authenticate user
+    // STEP 2: Authenticate user and check admin role
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (!currentUser) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/feedback',
-        'Unauthorized',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const authResult = await authenticateAdminUser('PATCH', functionName, logUser);
+    if (authResult instanceof NextResponse) return authResult;
+    const { currentUser, userRoles } = authResult;
 
     // ============================================================================
-    // STEP 3: Check admin/developer role
-    // ============================================================================
-    const userRoles = (currentUser.roles as string[]) || [];
-    const isAdmin =
-      userRoles.includes('admin') ||
-      userRoles.includes('developer') ||
-      userRoles.includes('owner');
-
-    if (!isAdmin) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/feedback',
-        'Forbidden: Admin access required',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Parse request body
+    // STEP 3: Parse body and delegate execution
     // ============================================================================
     const body = await request.json();
-    const { _id, archived, status, notes } = body;
 
-    if (!_id) {
-      return NextResponse.json(
-        { success: false, error: 'Feedback ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const updateData: Record<string, unknown> = {};
-
-    if (archived !== undefined) {
-      updateData.archived = Boolean(archived);
-    }
-    if (status !== undefined) {
-      updateData.status = status;
-      if (status === 'reviewed' || status === 'resolved') {
-        const reviewerName =
-          currentUser.username ||
-          currentUser.emailAddress ||
-          currentUser._id?.toString() ||
-          'unknown';
-        updateData.reviewedBy = reviewerName;
-        updateData.reviewedAt = new Date();
-      }
-    }
-    if (notes !== undefined) {
-      updateData.notes = notes;
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/feedback',
-        'No fields to update',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'No fields to update' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 5: Pre-fetch for before-state
-    // ============================================================================
-    const existingFeedbackDoc = await FeedbackModel.findOne({
-      _id,
-    }).lean<FeedbackDocument>();
-    if (!existingFeedbackDoc) {
-      logRouteError(
-        functionName,
-        'PATCH',
-        '/api/feedback',
-        'Feedback not found',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Feedback not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Update feedback
-    // ============================================================================
-    // Use updateOne for a direct MongoDB update, bypassing Mongoose document middleware if any
-    const result = await FeedbackModel.collection.updateOne(
-      { _id },
-      { $set: updateData }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Feedback not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Log activity
-    // ============================================================================
-    try {
-      const ipInfo = getIPInfo(request);
-      const formattedIP = formatIPForDisplay(ipInfo);
-      const activityLogId = await generateMongoId();
-      const userId = currentUser._id?.toString() || 'unknown';
-      const username =
-        currentUser.username || currentUser.emailAddress || 'unknown';
-      const profile = currentUser.profile as
-        | { firstName?: string; lastName?: string }
-        | undefined;
-      const userDisplayName =
-        profile?.firstName && profile?.lastName
-          ? `${profile.firstName} ${profile.lastName}`
-          : username;
-
-      const patchChanges = calculateChanges(
-        existingFeedbackDoc as Record<string, unknown>,
-        updateData
-      );
-
-      const activityLog = new ActivityLog({
-        _id: activityLogId,
-        timestamp: new Date(),
-        userId: userId,
-        username: userDisplayName,
-        action: 'update',
-        resource: 'feedback',
-        resourceId: _id,
-        resourceName: `Feedback update`,
-        details: `Admin updated feedback (PATCH): ${JSON.stringify(updateData)}`,
-        actor: {
-          id: userId,
-          email: username,
-          role: userRoles[0] || 'admin',
-        },
-        ipAddress: formattedIP,
-        userAgent: ipInfo.userAgent,
-        previousData: existingFeedbackDoc,
-        newData: updateData,
-        changes: patchChanges,
-      });
-
-      await activityLog.save();
-    } catch (logError) {
-      console.error('Error logging feedback update activity:', logError);
-      // Don't fail the request if logging fails
-    }
-
-    // ============================================================================
-    // STEP 8: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteUpdate(functionName, 'PUT', '/api/feedback', 1, logUser, duration);
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Feedback updated successfully',
-        feedback: { ...existingFeedbackDoc, ...updateData },
-      },
-      { status: 200 }
-    );
+    return await handleFeedbackPatch(body, currentUser, userRoles, request, functionName, logUser, startTime);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to update feedback';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update feedback';
     console.error('Error updating feedback:', error);
-    logRouteError(functionName, 'PUT', '/api/feedback', errorMessage, logUser);
+    logRouteError(functionName, 'PATCH', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to update feedback. Please try again later.',
-      },
+      { success: false, error: 'Failed to update feedback. Please try again later.' },
       { status: 500 }
     );
   }
 }
 
+/**
+ * PUT /api/feedback — Full update with Zod validation
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user and check admin role
+ * 3. Parse and validate request body
+ * 4. Pre-fetch existing feedback for before-state
+ * 5. Build update data and execute update
+ * 6. Log activity
+ * 7. Return success response
+ */
 export async function PUT(request: NextRequest) {
   const functionName = 'PUT /api/feedback';
   const logUser = extractUserFromRequest(request);
@@ -730,244 +393,50 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Authenticate user
+    // STEP 2: Authenticate user and check admin role
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (!currentUser) {
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/feedback',
-        'Unauthorized',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const authResult = await authenticateAdminUser('PUT', functionName, logUser);
+    if (authResult instanceof NextResponse) return authResult;
+    const { currentUser, userRoles } = authResult;
 
     // ============================================================================
-    // STEP 3: Check admin/developer role
-    // ============================================================================
-    const userRoles = (currentUser.roles as string[]) || [];
-    const isAdmin =
-      userRoles.includes('admin') ||
-      userRoles.includes('developer') ||
-      userRoles.includes('owner');
-
-    if (!isAdmin) {
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/feedback',
-        'Forbidden: Admin access required',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Parse and validate request body
+    // STEP 3: Parse and validate request body
     // ============================================================================
     const body = await request.json();
     const validationResult = updateFeedbackSchema.safeParse(body);
 
     if (!validationResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: validationResult.error.errors,
-        },
+        { success: false, error: 'Validation failed', details: validationResult.error.errors },
         { status: 400 }
       );
     }
 
-    const { _id, status, archived, notes, reviewedBy, reviewedAt } =
-      validationResult.data;
-
     // ============================================================================
-    // STEP 5: Pre-fetch for before-state
+    // STEP 4: Delegate to handler
     // ============================================================================
-    const existingFeedback = await FeedbackModel.findOne({
-      _id,
-    }).lean<FeedbackDocument>();
-    if (!existingFeedback) {
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/feedback',
-        'Feedback not found',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Feedback not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Build update object and execute
-    // ============================================================================
-    const updateData: Record<string, unknown> = {};
-    if (status !== undefined) {
-      updateData.status = status;
-      // If status is being changed to reviewed or resolved, automatically set reviewedBy and reviewedAt
-      // Always update reviewedBy when changing to reviewed/resolved (use username/email, not ID)
-      if (status === 'reviewed' || status === 'resolved') {
-        // Use username or emailAddress for reviewedBy instead of ID
-        const reviewerName =
-          currentUser.username ||
-          currentUser.emailAddress ||
-          currentUser._id?.toString() ||
-          'unknown';
-        updateData.reviewedBy = reviewerName;
-        updateData.reviewedAt = new Date();
-      }
-    }
-    // Handle archived field - explicitly check for both true and false
-    if (archived !== undefined && archived !== null) {
-      updateData.archived = Boolean(archived);
-    }
-    if (notes !== undefined) updateData.notes = notes;
-    if (reviewedBy !== undefined) updateData.reviewedBy = reviewedBy || null;
-    if (reviewedAt !== undefined) {
-      updateData.reviewedAt = reviewedAt
-        ? typeof reviewedAt === 'string'
-          ? new Date(reviewedAt)
-          : reviewedAt
-        : null;
-    }
-
-    // Update feedback - use findOneAndUpdate with explicit $set
-    const updatedFeedback = await FeedbackModel.findOneAndUpdate(
-      { _id },
-      { $set: updateData },
-      { new: true, lean: true, runValidators: false } // Disable validators temporarily to test if it's a schema validation issue
-    );
-
-    if (!updatedFeedback) {
-      console.error(
-        '❌ Failed to update feedback - findOneAndUpdate returned null'
-      );
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/feedback',
-        'Failed to update feedback - document not found or update failed',
-        logUser
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Failed to update feedback - document not found or update failed',
-        },
-        { status: 500 }
-      );
-    }
-
-    // Force re-read to verify persistence
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const verifiedDoc = await FeedbackModel.findOne({
-      _id,
-    }).lean<FeedbackDocument>();
-    const verifiedData = verifiedDoc as { archived?: boolean };
-
-    const responseFeedback = {
-      ...updatedFeedback,
-      archived: verifiedData.archived ?? false, // Use verified DB value
-    };
-
-    // ============================================================================
-    // STEP 7: Log activity
-    // ============================================================================
-    try {
-      const ipInfo = getIPInfo(request);
-      const formattedIP = formatIPForDisplay(ipInfo);
-      const activityLogId = await generateMongoId();
-
-      const userId = currentUser._id?.toString() || 'unknown';
-      const username =
-        currentUser.username || currentUser.emailAddress || 'unknown';
-      const profile = currentUser.profile as
-        | { firstName?: string; lastName?: string }
-        | undefined;
-      const userDisplayName =
-        profile?.firstName && profile?.lastName
-          ? `${profile.firstName} ${profile.lastName}`
-          : username;
-
-      const changes = calculateChanges(
-        existingFeedback as Record<string, unknown>,
-        updateData as Record<string, unknown>
-      );
-      const changesSummary = changes
-        .map(
-          c =>
-            `${c.field}: ${JSON.stringify(c.oldValue)} → ${JSON.stringify(c.newValue)}`
-        )
-        .join(', ');
-
-      const activityLog = new ActivityLog({
-        _id: activityLogId,
-        timestamp: new Date(),
-        userId: userId,
-        username: userDisplayName,
-        action: 'update',
-        resource: 'feedback',
-        resourceId: _id,
-        resourceName: `Feedback from ${(existingFeedback as { email?: string }).email || 'unknown'}`,
-        details: `Admin updated feedback: ${changesSummary || 'No changes detected'}`,
-        actor: {
-          id: userId,
-          email: username,
-          role: userRoles[0] || 'admin',
-        },
-        ipAddress: formattedIP,
-        userAgent: ipInfo.userAgent,
-        previousData: existingFeedback,
-        newData: updatedFeedback,
-        changes: changes,
-      });
-
-      await activityLog.save();
-    } catch (logError) {
-      console.error('Error logging feedback update activity:', logError);
-      // Don't fail the request if logging fails
-    }
-
-    // ============================================================================
-    // STEP 8: Return success response
-    // ============================================================================
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Feedback updated successfully',
-        feedback: responseFeedback, // Use responseFeedback with explicit archived field
-      },
-      { status: 200 }
-    );
+    return await handleFeedbackPut(validationResult.data, currentUser, userRoles, request, functionName, logUser);
   } catch (error) {
     console.error('Error updating feedback:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to update feedback. Please try again later.',
-      },
+      { success: false, error: 'Failed to update feedback. Please try again later.' },
       { status: 500 }
     );
   }
 }
 
-const deleteFeedbackSchema = z.object({
-  _id: z.string(),
-});
-
+/**
+ * DELETE /api/feedback — Permanently delete a feedback record
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Authenticate user and check admin/developer role
+ * 3. Parse and validate request body
+ * 4. Pre-fetch existing feedback for before-state
+ * 5. Delete feedback document
+ * 6. Log activity
+ * 7. Return success response
+ */
 export async function DELETE(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'DELETE /api/feedback';
@@ -980,196 +449,35 @@ export async function DELETE(request: NextRequest) {
     await connectDB();
 
     // ============================================================================
-    // STEP 2: Authenticate user
+    // STEP 2: Authenticate user and check admin/developer role
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (!currentUser) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/feedback',
-        'Unauthorized',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const authResult = await authenticateAdminUser('DELETE', functionName, logUser, false);
+    if (authResult instanceof NextResponse) return authResult;
+    const { currentUser, userRoles } = authResult;
 
     // ============================================================================
-    // STEP 3: Check admin/developer role
-    // ============================================================================
-    const userRoles = (currentUser.roles as string[]) || [];
-    const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
-
-    if (!isAdmin) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/feedback',
-        'Forbidden: Admin access required',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Parse request body
+    // STEP 3: Parse and validate request body
     // ============================================================================
     const body = await request.json();
     const validationResult = deleteFeedbackSchema.safeParse(body);
 
     if (!validationResult.success) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Validation failed',
-          details: validationResult.error.errors,
-        },
+        { success: false, error: 'Validation failed', details: validationResult.error.errors },
         { status: 400 }
       );
     }
 
-    const { _id } = validationResult.data;
-
     // ============================================================================
-    // STEP 5: Pre-fetch for before-state
+    // STEP 4: Delegate to handler
     // ============================================================================
-    const existingFeedback = await FeedbackModel.findOne({
-      _id,
-    }).lean<FeedbackDocument>();
-    if (!existingFeedback) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/feedback',
-        'Feedback not found',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Feedback not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Delete feedback
-    // ============================================================================
-    const deletedFeedback = await FeedbackModel.findOneAndDelete({ _id });
-    if (!deletedFeedback) {
-      logRouteError(
-        functionName,
-        'DELETE',
-        '/api/feedback',
-        'Failed to delete feedback',
-        logUser
-      );
-      return NextResponse.json(
-        { success: false, error: 'Failed to delete feedback' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Log activity
-    // ============================================================================
-    try {
-      const ipInfo = getIPInfo(request);
-      const formattedIP = formatIPForDisplay(ipInfo);
-      const activityLogId = await generateMongoId();
-
-      const userId = currentUser._id?.toString() || 'unknown';
-      const username =
-        currentUser.username || currentUser.emailAddress || 'unknown';
-      const profile = currentUser.profile as
-        | { firstName?: string; lastName?: string }
-        | undefined;
-      const userDisplayName =
-        profile?.firstName && profile?.lastName
-          ? `${profile.firstName} ${profile.lastName}`
-          : username;
-
-      const feedbackData = existingFeedback as {
-        email?: string;
-        category?: string;
-        description?: string;
-      };
-      const feedbackEmail = feedbackData.email || 'unknown';
-      const feedbackCategory = feedbackData.category || 'unknown';
-      const feedbackDescription = feedbackData.description || '';
-      const descriptionPreview =
-        feedbackDescription.substring(0, 100) +
-        (feedbackDescription.length > 100 ? '...' : '');
-
-      const activityLog = new ActivityLog({
-        _id: activityLogId,
-        timestamp: new Date(),
-        userId: userId,
-        username: userDisplayName,
-        action: 'delete',
-        resource: 'feedback',
-        resourceId: _id,
-        resourceName: `Feedback from ${feedbackEmail}`,
-        details: `Admin deleted feedback: ${feedbackCategory} - ${descriptionPreview}`,
-        actor: {
-          id: userId,
-          email: username,
-          role: userRoles[0] || 'admin',
-        },
-        ipAddress: formattedIP,
-        userAgent: ipInfo.userAgent,
-        previousData: existingFeedback,
-        newData: null,
-        changes: [],
-      });
-
-      await activityLog.save();
-    } catch (logError) {
-      console.error('Error logging feedback deletion activity:', logError);
-      // Don't fail the request if logging fails
-    }
-
-    // ============================================================================
-    // STEP 8: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteDelete(
-      functionName,
-      'DELETE',
-      '/api/feedback',
-      1,
-      logUser,
-      duration
-    );
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Feedback deleted successfully',
-      },
-      { status: 200 }
-    );
+    return await handleFeedbackDelete(validationResult.data, currentUser, userRoles, request, functionName, logUser, startTime);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to delete feedback';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete feedback';
     console.error('Error deleting feedback:', error);
-    logRouteError(
-      functionName,
-      'DELETE',
-      '/api/feedback',
-      errorMessage,
-      logUser
-    );
+    logRouteError(functionName, 'DELETE', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete feedback. Please try again later.',
-      },
+      { success: false, error: 'Failed to delete feedback. Please try again later.' },
       { status: 500 }
     );
   }

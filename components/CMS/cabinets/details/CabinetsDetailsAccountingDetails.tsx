@@ -67,12 +67,13 @@ const CabinetsDetailsAccountingDetails = ({
   setActiveMetricsTabContent,
   onRefresh,
   isDeveloper = false,
+  refreshTrigger,
 }: AccountingDetailsProps) => {
   // ============================================================================
   // State & Hooks
   // ============================================================================
   const { formatAmount } = useCurrencyFormat();
-  const hook = useCabinetAccountingData({ cabinet, activeMetricsTabContent });
+  const hook = useCabinetAccountingData({ cabinet, activeMetricsTabContent, refreshTrigger });
 
   const {
     collectionHistory,
@@ -83,6 +84,7 @@ const CabinetsDetailsAccountingDetails = ({
     activityLogLoading,
     collectionHistoryError,
     activityLogError,
+    activityLogTimePeriod,
     activityLogPagination,
     activityLogFilters,
     activityLogFilterOptions,
@@ -177,7 +179,7 @@ const CabinetsDetailsAccountingDetails = ({
           ))}
         </motion.aside>
 
-        <div className="w-full flex-grow">
+        <div className="w-full min-w-0 flex-grow">
           <AnimatePresence mode="wait">
             <motion.div
               key="accounting-content"
@@ -538,6 +540,7 @@ const CabinetsDetailsAccountingDetails = ({
                       timePeriod={billValidatorTimePeriod}
                       onTimePeriodChange={setBillValidatorTimePeriod}
                       gameDayOffset={cabinet.gameDayOffset}
+                      refreshTrigger={refreshTrigger}
                     />
                   </motion.div>
                 ) : activeMetricsTabContent === 'Activity Log' ? (
@@ -554,6 +557,7 @@ const CabinetsDetailsAccountingDetails = ({
                       <ActivityLogDateFilter
                         onDateRangeChange={setActivityLogDateRange}
                         onTimePeriodChange={setActivityLogTimePeriod}
+                        timePeriod={activityLogTimePeriod}
                         disabled={activityLogLoading}
                       />
                     </div>
@@ -772,7 +776,7 @@ const CabinetsDetailsAccountingDetails = ({
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <CabinetsDetailsDeveloperTools cabinetId={cabinet._id} />
+                    <CabinetsDetailsDeveloperTools cabinetId={cabinet._id} refreshTrigger={refreshTrigger} />
                   </motion.div>
                 ) : (
                   <motion.div

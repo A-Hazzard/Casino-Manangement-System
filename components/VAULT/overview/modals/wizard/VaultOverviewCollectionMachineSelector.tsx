@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 
-interface VaultOverviewCollectionMachineSelectorProps {
+type VaultOverviewCollectionMachineSelectorProps = {
   machines: GamingMachine[];
   selectedMachineId: string | null;
   collectedMachineIds: string[];

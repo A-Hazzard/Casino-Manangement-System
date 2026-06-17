@@ -61,7 +61,7 @@ const TRANSACTION_TYPES = [
   'expense',
 ];
 
-interface AuditTrailEntry {
+type AuditTrailEntry = {
   id: string;
   timestamp: string;
   type: string;

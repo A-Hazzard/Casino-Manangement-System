@@ -29,7 +29,7 @@ import { AlertCircle, Landmark, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-interface VaultOverviewForceEndShiftModalProps {
+type VaultOverviewForceEndShiftModalProps = {
   open: boolean;
   onClose: () => void;
   cashier: {

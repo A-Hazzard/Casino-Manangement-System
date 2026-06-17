@@ -157,7 +157,7 @@ export default function VaultOverviewRecordExpenseModal({
             },
           });
           const fetchedMachines = response.data.data || [];
-          interface APIMachine {
+          type APIMachine = {
             machineId?: string;
             _id?: string;
             serialNumber?: string;
@@ -167,18 +167,18 @@ export default function VaultOverviewRecordExpenseModal({
             game?: string;
           }
           setMachines(
-            fetchedMachines.map((m: APIMachine) => ({
-              id: m.machineId || m._id || m.serialNumber || '',
-              label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
+            fetchedMachines.map((machine: APIMachine) => ({
+              id: machine.machineId || machine._id || machine.serialNumber || '',
+              label: machine.serialNumber || machine.customName || machine.custom?.name || 'N/A', // fallback text label for dropdown search filter
               displayNode: formatMachineDisplayNameWithBold({
-                ...m,
+                ...machine,
                 game:
-                  m.gameTitle === '(game name not provided)'
+                  machine.gameTitle === '(game name not provided)'
                     ? ''
-                    : m.gameTitle || m.game,
+                    : machine.gameTitle || machine.game,
                 custom:
-                  m.custom ||
-                  (m.customName ? { name: m.customName } : undefined),
+                  machine.custom ||
+                  (machine.customName ? { name: machine.customName } : undefined),
               }),
             }))
           );
@@ -208,7 +208,7 @@ export default function VaultOverviewRecordExpenseModal({
    * Check if form is valid for submission
    */
   const isAllTouched = useMemo(
-    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    () => denomsList.every(value => touchedDenominations.has(Number(value))),
     [denomsList, touchedDenominations]
   );
   const isValid = category !== '' && (amountNum > 0 || isAllTouched);

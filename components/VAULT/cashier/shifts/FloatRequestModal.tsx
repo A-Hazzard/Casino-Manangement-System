@@ -120,7 +120,7 @@ export default function FloatRequestModal({
       await onSubmit({
         type,
         amount: totalAmount,
-        denominations: denominations.filter(d => d.quantity > 0),
+        denominations: denominations.filter(denom => denom.quantity > 0),
       });
       // Reset form
       setStep('input');
@@ -214,7 +214,7 @@ export default function FloatRequestModal({
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {denominations
-                          .filter(d => d.quantity > 0)
+                          .filter(denom => denom.quantity > 0)
                           .map(d => (
                             <div
                               key={d.denomination}

@@ -19,7 +19,7 @@ export type RelatedEntityType =
   | 'vault_shift'
   | 'expense';
 
-export interface IVaultNotification {
+export type IVaultNotification = {
   _id: string;
   locationId: string;
   type: NotificationType;
@@ -55,7 +55,7 @@ export interface IVaultNotification {
 
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
 const VaultNotificationSchema = new Schema<IVaultNotification>(
   {

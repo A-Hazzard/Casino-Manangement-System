@@ -102,11 +102,13 @@ export type SyncButtonProps = {
 
 export type PaginationControlsProps = {
   currentPage: number;
-  totalPages: number;
+  totalPages: number | null;
   setCurrentPage: (page: number) => void;
-  totalCount?: number;
+  totalCount?: number | null;
   showTotalCount?: boolean;
   className?: string;
+  isLoadingPage?: boolean;
+  hasMore?: boolean;
 };
 
 export type LocationsCabinetGridProps = {

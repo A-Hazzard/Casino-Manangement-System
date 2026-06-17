@@ -28,6 +28,7 @@ import {
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import type { CollectionDocument } from '@/lib/types/collection';
+import type { ICollectionReport } from '@/lib/types/api';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -97,14 +98,14 @@ export async function DELETE(request: NextRequest) {
       // ============================================================================
       const { deleteManualMetersPerCollection } =
         await import('@/app/api/lib/helpers/collectionReport/operations');
-      await deleteManualMetersPerCollection(locationReportId, false);
+      await deleteManualMetersPerCollection(locationReportId);
 
       // ============================================================================
       // STEP 6.5: Fetch collection report before deleting
       // ============================================================================
       const existingReport = await CollectionReport.findOne({
         locationReportId,
-      }).lean();
+      }).lean<ICollectionReport>();
 
       // ============================================================================
       // STEP 7: Delete all collections

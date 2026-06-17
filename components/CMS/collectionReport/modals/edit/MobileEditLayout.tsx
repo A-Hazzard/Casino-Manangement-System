@@ -25,6 +25,7 @@ type MobileEditLayoutProps = {
   lockedLocationId: string | undefined;
   selectedLocationId: string | undefined;
   selectedLocationName: string;
+  onClose: () => void;
   pushNavigation: (view: string) => void;
   popNavigation: (toView?: string) => void;
   handleViewCollectedMachines: () => void;
@@ -41,6 +42,7 @@ type MobileEditLayoutProps = {
   updateAllSasEndDate: Date | undefined;
   setUpdateAllSasEndDate: (d: Date | undefined) => void;
   handleApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
   variationsData: VariationsCheckResponse | null;
   transitions: {
     selectMachine: (machine: CollectionReportMachineSummary) => void;
@@ -67,6 +69,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     collectedMachines,
     availableMachines,
     selectedLocationName,
+    onClose,
     pushNavigation,
     popNavigation,
     handleViewCollectedMachines,
@@ -81,6 +84,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
     handleApplyAllDates,
+    sasUpdateProgress,
     onFormDataChange,
     onCollectedAmountChange,
     baseBalanceCorrection,
@@ -196,7 +200,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               {availableMachines.map(
                 (machine: CollectionReportMachineSummary) => {
                   const isCollected = collectedMachines.some(
-                    m => String(m.machineId) === String(machine._id)
+                    col => String(col.machineId) === String(machine._id)
                   );
 
                   return (
@@ -216,11 +220,16 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
                             serialNumber: getSerialNumberIdentifier(machine),
                           })}
                         </p>
-                        {machine.relayId && (
-                          <MachineOnlineStatusDot
-                            isOnline={machineStatusMap[String(machine._id)]}
-                          />
-                        )}
+                        <span className="flex items-center gap-2">
+                          {machine.relayId && (
+                            <MachineOnlineStatusDot
+                              isOnline={machineStatusMap[String(machine._id)]}
+                            />
+                          )}
+                          <span className="text-xs text-gray-500">
+                            Prev In: {machine.collectionMeters?.metersIn ?? 0} | Prev Out: {machine.collectionMeters?.metersOut ?? 0}
+                          </span>
+                        </span>
                         <p className="text-[11px] font-medium uppercase tracking-tight text-gray-400">
                           {machine.game || 'Machine'}
                         </p>
@@ -255,6 +264,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               isFormVisible: false,
             }));
           }}
+          onClose={onClose}
           onViewCollectedList={handleViewCollectedMachines}
           selectedMachineData={modalState.selectedMachineData}
           editingEntryId={modalState.editingEntryId}
@@ -322,6 +332,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
               isCollectedListVisible: false,
             }));
           }}
+          onClose={onClose}
           collectedMachines={collectedMachines}
           searchTerm={modalState.collectedMachinesSearchTerm}
           onSearchChange={term =>
@@ -344,12 +355,13 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           updateAllSasEndDate={updateAllSasEndDate}
           onUpdateAllSasEndDate={setUpdateAllSasEndDate}
           onApplyAllDates={handleApplyAllDates}
+          sasUpdateProgress={sasUpdateProgress}
           variationMachineIds={variationsData?.machines
             .filter(
-              (m: MachineVariationData) =>
-                typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+              (variation: MachineVariationData) =>
+                variation.variation !== null && variation.variation !== 0
             )
-            .map((m: MachineVariationData) => m.machineId)}
+            .map((variation: MachineVariationData) => variation.machineId)}
           formatMachineDisplay={machine => {
             const doc = machine as unknown as CollectionDocument;
             return (

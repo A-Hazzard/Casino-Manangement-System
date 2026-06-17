@@ -175,6 +175,10 @@ export function useMobileEditCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
@@ -525,12 +529,16 @@ export function useMobileEditCollectionModal({
   }, [modalState.collectedMachines]);
 
   /**
-   * Find location ID for a given machine using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
   const getLocationIdFromMachine = useCallback(
-    (locationName: string) => {
+    (locationIdentifier: string) => {
       const matchingLoc = locations.find(
-        location => location.name === locationName
+        location =>
+          String(location._id) === locationIdentifier ||
+          location.name === locationIdentifier
       );
       return matchingLoc ? String(matchingLoc._id) : null;
     },
@@ -666,7 +674,7 @@ export function useMobileEditCollectionModal({
           isEditing && existingEntry
             ? existingEntry.game || ''
             : modalState.selectedMachineData.game || '',
-        location: selectedLocationName,
+        location: selectedLocationId || '',
         collector: user?._id || '',
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),
@@ -1351,7 +1359,7 @@ export function useMobileEditCollectionModal({
 
   // Load existing report data for edit mode
   useEffect(() => {
-    if (show && reportId && locations && locations.length > 0) {
+    if (show && reportId) {
       const loadReportData = async () => {
         try {
           setModalState(prev => ({
@@ -1370,7 +1378,7 @@ export function useMobileEditCollectionModal({
           );
           const collections = collectionsResponse.data;
 
-          const matchingLocation = locations.find(
+          const matchingLocation = locationsRef.current.find(
             loc => loc.name === reportData.locationName
           );
 
@@ -1447,6 +1455,44 @@ export function useMobileEditCollectionModal({
               isLoadingCollections: false,
               isLoadingMachines: false,
             }));
+          } else if (reportData.locationId) {
+            // Fallback: set locked location from report data so machines load via API
+            setStoreLockedLocation(String(reportData.locationId));
+            setStoreCollectedMachines(collections);
+
+            setModalState(prev => ({
+              ...prev,
+              selectedLocation: String(reportData.locationId),
+              selectedLocationName: reportData.locationName || '',
+              lockedLocationId: String(reportData.locationId),
+              collectedMachines: collections,
+              originalCollections: JSON.parse(JSON.stringify(collections)),
+              isLoadingCollections: false,
+              isLoadingMachines: false,
+              financials: {
+                variance: String(reportData.locationMetrics?.variance || 0),
+                previousBalance: String(
+                  reportData.locationMetrics?.previousBalanceOwed || 0
+                ),
+                amountToCollect: String(
+                  reportData.locationMetrics?.amountToCollect || 0
+                ),
+                collectedAmount: String(
+                  reportData.locationMetrics?.collectedAmount || 0
+                ),
+                taxes: String(reportData.locationMetrics?.taxes || 0),
+                advance: String(reportData.locationMetrics?.advance || 0),
+                varianceReason:
+                  reportData.locationMetrics?.varianceReason || '',
+                reasonForShortagePayment:
+                  reportData.locationMetrics?.reasonForShortage || '',
+                balanceCorrection: String(
+                  reportData.locationMetrics?.balanceCorrection || 0
+                ),
+                balanceCorrectionReason:
+                  reportData.locationMetrics?.correctionReason || '',
+              },
+            }));
           } else {
             setModalState(prev => ({
               ...prev,
@@ -1470,10 +1516,10 @@ export function useMobileEditCollectionModal({
   }, [
     show,
     reportId,
-    locations,
     setStoreSelectedLocation,
     setStoreAvailableMachines,
     setStoreCollectedMachines,
+    setStoreLockedLocation,
   ]);
 
   // Fetch machines when location changes (important since they are no longer pre-fetched)
@@ -1596,6 +1642,29 @@ export function useMobileEditCollectionModal({
       .map(m => m._id)
       .filter(Boolean);
   }, [collectedMachines, modalState.originalCollections]);
+
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (collectedMachines.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [collectedMachines]);
 
   return {
     // State
@@ -1731,13 +1800,24 @@ export function useMobileEditCollectionModal({
         if (startTimeISO) patchData.sasStartTime = startTimeISO;
         if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
+        const total = modalState.collectedMachines.length;
+        setSasUpdateProgress({ completed: 0, total });
         const results = await Promise.allSettled(
           modalState.collectedMachines.map(async entry => {
-            if (!entry._id) return;
-            return await axios.patch(
-              `/api/collection-reports/collections?id=${entry._id}`,
+            if (!entry._id) {
+              setSasUpdateProgress(prev =>
+                prev ? { ...prev, completed: prev.completed + 1 } : null
+              );
+              return;
+            }
+            const result = await axios.patch(
+              `/api/collection-reports/collections/${entry._id}`,
               patchData
             );
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return result;
           })
         );
         const failed = results.filter(
@@ -1755,12 +1835,14 @@ export function useMobileEditCollectionModal({
           ...entry,
           sasMeters: {
             ...entry.sasMeters,
-            sasStartTime:
-              typeof entry.sasMeters?.sasStartTime === 'string'
+            sasStartTime: startTimeISO
+              ? new Date(startTimeISO)
+              : typeof entry.sasMeters?.sasStartTime === 'string'
                 ? new Date(entry.sasMeters.sasStartTime)
                 : entry.sasMeters?.sasStartTime,
-            sasEndTime:
-              typeof entry.sasMeters?.sasEndTime === 'string'
+            sasEndTime: endTimeISO
+              ? new Date(endTimeISO)
+              : typeof entry.sasMeters?.sasEndTime === 'string'
                 ? new Date(entry.sasMeters.sasEndTime)
                 : entry.sasMeters?.sasEndTime,
           },
@@ -1779,8 +1861,10 @@ export function useMobileEditCollectionModal({
         toast.error('Failed to update SAS times');
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
+        setSasUpdateProgress(null);
       }
     },
+    sasUpdateProgress,
 
     // Store actions
     setStoreSelectedLocation,

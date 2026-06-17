@@ -474,5 +474,109 @@ For sessions already in `submitted` state, `cascadeMachineEdit` propagates the n
 
 ---
 
-_Document Version: 1.1_
-_Last Updated: June 5, 2026_
+## 8. Offline SMIB — Supplemental Meter & Variation Invariants
+
+### 8.1 What is a Supplemental Meter?
+
+When a machine is **offline** at collection time (has `relayId` but `lastActivity` is stale > 3 minutes), the collector enters readings manually. The system creates a supplemental `Meters` document with:
+
+```typescript
+{
+  meterSource: 'COLLECTION_REPORT',
+  isSupplemental: true,
+  machine: machineId,
+  drop: metersIn,                      // absolute collector-entered value
+  totalCancelledCredits: metersOut,    // absolute collector-entered value
+  movement: {
+    drop: metersIn - prevMetersIn,     // delta
+    totalCancelledCredits: metersOut - prevMetersOut,
+  }
+}
+```
+
+The Collection document stores `meterId` pointing to this supplemental meter.
+
+### 8.2 The Supplemental Meter is Never in the Live SAS Query
+
+`check-variations` always filters its live Meters query:
+```typescript
+meterSource: { $ne: 'COLLECTION_REPORT' }
+```
+
+This means supplemental meters are **permanently excluded** from the SAS gross live query. For any machine with a supplemental meter, you MUST pass `storedSasGross` to bypass the live query.
+
+### 8.3 `computeTotalVariation` — Supplemental Meter Rule
+
+```typescript
+// If col.meterId is set → supplemental meter exists → collector values are truth
+const hasSupplementalMeter = !!col.meterId;
+const effectiveSasGross =
+  hasSupplementalMeter || isLegacyZeroSas
+    ? meterGross   // variation = 0
+    : storedSasGross;
+```
+
+**Rule:** If `col.meterId` is set, the effective SAS gross equals the meter gross — variation is always $0 for offline SMIB machines. The `sasMeters.gross` stored in the collection document may be stale; `meterId` presence is the authoritative signal.
+
+### 8.4 Edit Modal — storedSasGross Rule
+
+When building the `machinesForCheck` payload in the edit modal submit handlers:
+
+```typescript
+const hasSupplementalMeter = !!entry.meterId;
+const useStoredSasGross = hasSupplementalMeter || currentlyOffline;
+
+// Compute from CURRENT inputs, not entry.movement.gross (which may be stale)
+const freshMovementGross = hasSupplementalMeter
+  ? (entry.metersIn || 0) - (entry.prevIn || 0)
+    - ((entry.metersOut || 0) - (entry.prevOut || 0))
+  : movementGross;
+
+storedSasGross: useStoredSasGross ? (freshMovementGross ?? 0) : undefined,
+```
+
+### 8.5 Machine State Matrix
+
+| Machine state | `meterId` on collection | `check-variations` | `computeTotalVariation` | Expected variation |
+|---|---|---|---|---|
+| Online (relay live, no prev offline) | not set | Live Meters query | `sasMeters.gross` from DB | Actual SAS vs meter delta |
+| Offline (relay stale) | set | `storedSasGross` passed | `movement.gross` (from meterId rule) | $0 |
+| Was offline, now online | set | `storedSasGross` passed | `movement.gross` (from meterId rule) | $0 |
+| No-SMIB (no relayId) | not set | skipped | skipped | $0 |
+| Legacy pre-fix offline | not set | `storedSasGross` passed | gross=0 & drop=0 heuristic | $0 |
+
+### 8.6 PATCH Handler Rule
+
+When a collection is PATCHed (individual machine edit saved), STEP 5.1 overrides `sasMeters.gross` with the movement delta:
+
+```typescript
+// Fires when: currently offline OR collection has supplemental meter
+const isOfflinePatch =
+  (hasRelay && lastActivityMs >= OFFLINE_THRESHOLD_MS) ||
+  !!originalCollection.meterId;  // supplemental meter marker
+
+if (isOfflinePatch) {
+  sm.gross = Number((newDrop - newCancelled).toFixed(2)); // collector truth
+}
+```
+
+This keeps `sasMeters.gross` in sync with movement even after the machine comes back online.
+
+### 8.6 Machine State Matrix
+
+| Machine state | `meterId` on collection | `check-variations` path | `computeTotalVariation` path | Expected variation |
+|---|---|---|---|---|
+| Online (relay live, no prev offline) | not set | Live Meters query | `sasMeters.gross` from DB | Actual SAS vs meter delta |
+| Offline (relay stale at collection) | set | `storedSasGross` passed | `movement.gross` (meterId rule) | $0 |
+| Was offline, now online | set | `storedSasGross` passed | `movement.gross` (meterId rule) | $0 |
+| No-SMIB (no relayId) | not set | skipped | skipped (no SMIB) | $0 |
+| Legacy pre-fix offline (gross=0 & drop=0) | not set | `storedSasGross` passed | `movement.gross` (heuristic) | $0 |
+
+### 8.7 Bug That Exposed These Rules (June 2026)
+
+The `-$91 phantom variation` bug: machine was offline at collection time (`meterId` set, supplemental meter created), came back online before the edit modal was opened. User clicked Submit without saving individual machine edits. No individual PATCH fired, so `sasMeters.gross` stayed stale ($136). `computeTotalVariation` read $136 (didn't check `meterId`), compared to `movement.gross` $45 → stored `-$91`. The modal showed $0 because `freshMovementGross` was computed correctly from form inputs. Fixed by the three rules above.
+
+---
+
+_Document Version: 1.2_
+_Last Updated: June 16, 2026_

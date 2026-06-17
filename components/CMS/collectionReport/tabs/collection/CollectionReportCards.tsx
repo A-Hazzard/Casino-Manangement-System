@@ -32,7 +32,7 @@ import {
   hasManagerAccess,
   UserRole,
 } from '@/lib/utils/permissions';
-import { AlertTriangle, Edit3, RotateCcw, Trash2 } from 'lucide-react';
+import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,10 +50,6 @@ export default function CollectionReportCards({
   reportIssues,
   onEdit,
   onDelete,
-  onRestore,
-  onPermanentDelete,
-  canManage,
-  canPermanentlyDelete,
   editableReportIds,
   selectedLicencee,
 }: CollectionReportCardsProps) {
@@ -123,7 +119,7 @@ export default function CollectionReportCards({
   // ============================================================================
   // Show skeleton while loading (initial load or subsequent loads)
   if (loading && (!data || data.length === 0)) {
-    return <CollectionReportCardSkeleton gridLayout={gridLayout} count={4} />;
+    return <CollectionReportCardSkeleton gridLayout={gridLayout} count={20} />;
   }
 
   // Only show "No Data Available" when NOT loading and data is empty
@@ -372,85 +368,54 @@ export default function CollectionReportCards({
                   </span>
                 </div>
                 <div className="mt-3 flex flex-col justify-center gap-2 md:flex-row">
-                  {row.deletedAt ? (
-                    <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-                      {onRestore && canManage && (
-                        <Button
-                          variant="outline"
-                          className="flex w-full items-center justify-center gap-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white md:w-auto"
-                          onClick={() =>
-                            onRestore(row?.locationReportId || row?._id || '')
-                          }
-                          aria-label="Restore Report"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {onPermanentDelete && canPermanentlyDelete && (
-                        <Button
-                          variant="outline"
-                          className="flex w-full items-center justify-center gap-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white md:w-auto"
-                          onClick={() =>
-                            onPermanentDelete(row?.locationReportId || row?._id || '')
-                          }
-                          aria-label="Permanently Delete Report"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        className="group flex w-full items-center justify-center gap-2 border-button text-button hover:bg-button hover:text-white md:w-auto"
-                        onClick={() =>
-                          router.push(
-                            `/collection-report/report/${
-                              row?.locationReportId || row?._id || ''
-                            }`
-                          )
-                        }
-                        aria-label="View Details"
-                      >
-                        <Image
-                          src={detailsIcon}
-                          alt="Details"
-                          className="h-4 w-4 group-hover:brightness-0 group-hover:invert"
-                          width={16}
-                          height={16}
-                        />
-                      </Button>
-                      {canEditDelete &&
-                        (!editableReportIds ||
-                          editableReportIds.has(row?.locationReportId || '')) && (
-                          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-                            {onEdit && (
-                              <Button
-                                variant="outline"
-                                className="flex w-full items-center justify-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white md:w-auto"
-                                onClick={() => onEdit(row?._id || '')}
-                                aria-label="Edit Report"
-                              >
-                                <Edit3 className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {onDelete && (
-                              <Button
-                                variant="outline"
-                                className="flex w-full items-center justify-center gap-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white md:w-auto"
-                                onClick={() =>
-                                  onDelete(row?.locationReportId || '')
-                                }
-                                aria-label="Delete Report"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                  <Button
+                    variant="outline"
+                    className="group flex w-full items-center justify-center gap-2 border-button text-button hover:bg-button hover:text-white md:w-auto"
+                    onClick={() =>
+                      router.push(
+                        `/collection-report/report/${
+                          row?.locationReportId || row?._id || ''
+                        }`
+                      )
+                    }
+                    aria-label="View Details"
+                  >
+                    <Image
+                      src={detailsIcon}
+                      alt="Details"
+                      className="h-4 w-4 group-hover:brightness-0 group-hover:invert"
+                      width={16}
+                      height={16}
+                    />
+                  </Button>
+                  {canEditDelete &&
+                    (!editableReportIds ||
+                      editableReportIds.has(row?.locationReportId || '')) && (
+                      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
+                        {onEdit && (
+                          <Button
+                            variant="outline"
+                            className="flex w-full items-center justify-center gap-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white md:w-auto"
+                            onClick={() => onEdit(row?._id || '')}
+                            aria-label="Edit Report"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
                         )}
-                    </>
-                  )}
+                        {onDelete && (
+                          <Button
+                            variant="outline"
+                            className="flex w-full items-center justify-center gap-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white md:w-auto"
+                            onClick={() =>
+                              onDelete(row?.locationReportId || '')
+                            }
+                            aria-label="Delete Report"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
             </div>

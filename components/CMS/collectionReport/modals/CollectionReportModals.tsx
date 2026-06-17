@@ -15,16 +15,11 @@
  * @param showEditMobile - Visibility state for mobile editing flow
  * @param showEditDesktop - Visibility state for desktop editing flow
  * @param showDeleteDialog - Visibility state for report deletion confirmation
- * @param showDeleteScheduleDialog - Visibility state for schedule deletion confirmation
- * @param showEditScheduleModal - Visibility state for schedule edit form
  * @param reportToDelete - Metadata of the report targeted for deletion
- * @param scheduleToDelete - Metadata of the schedule targeted for deletion
- * @param scheduleToEdit - Metadata of the schedule being modified
- * @param locations - Shared location/machine data for creation/editing
- * @param isProcessing - Global loading state for modal actions
+ * @param allReports - Shared location/machine data for creation/editing
+ * @param locationsWithMachines - Location data with machines
  * @param onCloseModals - Master callback to close all active modals
- * @param onDeleteReport - Final execution callback for report deletion
- * @param onDeleteSchedule - Final execution callback for schedule deletion
+ * @param onConfirmDelete - Final execution callback for report deletion
  * @param onRefresh - Data refresh callback after operations
  * @param onRefreshLocations - Location-specific refresh callback
  */
@@ -47,14 +42,13 @@ type CollectionReportModalsProps = {
   editingReportId: string | null;
   showDeleteConfirm: boolean;
   reportToDelete: string | null;
-  isArchived?: boolean;
   allReports: CollectionReportRow[];
   locationsWithMachines: CollectionReportLocationWithMachines[];
   onCloseNewMobile: () => void;
   onCloseNewDesktop: () => void;
   onCloseEdit: () => void;
   onCloseDelete: () => void;
-  onConfirmDelete: (archive?: boolean) => Promise<void>;
+  onConfirmDelete: () => Promise<void>;
   onRefresh: () => void;
   onRefreshLocations: () => void;
 };
@@ -67,7 +61,6 @@ export default function CollectionReportModals({
   editingReportId,
   showDeleteConfirm,
   reportToDelete,
-  isArchived = false,
   allReports,
   locationsWithMachines,
   onCloseNewMobile,
@@ -133,14 +126,8 @@ export default function CollectionReportModals({
         isOpen={showDeleteConfirm}
         reportId={reportToDelete || ''}
         locationName={locationName}
-        isArchived={isArchived}
         onClose={onCloseDelete}
-        onArchive={async () => {
-          await onConfirmDelete(true);
-        }}
-        onDelete={async () => {
-          await onConfirmDelete(false);
-        }}
+        onDelete={onConfirmDelete}
       />
     </>
   );

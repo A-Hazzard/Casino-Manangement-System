@@ -477,7 +477,7 @@ export default function LocationsEditLocationModal({
       });
 
       // Convert gameDayOffset to time format (e.g., 11 -> "11:00")
-      const gameDayOffset = locationDetails.gameDayOffset || 8; // Default to 8 AM
+      const gameDayOffset = locationDetails.gameDayOffset ?? 8; // Default to 8 AM
       const dayStartTime = `${gameDayOffset.toString().padStart(2, '0')}:00`;
 
       // Extract country ID - handle both string and ObjectId formats
@@ -744,7 +744,7 @@ export default function LocationsEditLocationModal({
         country: originalFormData.country,
         profitShare: parseInt(originalFormData.profitShare) || 0,
         gameDayOffset:
-          parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
+          parseInt(originalFormData.dayStartTime.split(':')[0]) ?? 8,
         rel: {
           licencee: originalFormData.licencee,
         },
@@ -841,9 +841,8 @@ export default function LocationsEditLocationModal({
             parent === 'billValidatorOptions' ||
             parent === 'locationMembershipSettings'
           ) {
-            updatePayload[parent] = (formData as Record<string, unknown>)[
-              parent
-            ];
+            updatePayload[parent] =
+              formData[parent as keyof typeof formData];
           } else {
             // For other nested fields (like address.street), build nested object
             if (!updatePayload[parent]) {

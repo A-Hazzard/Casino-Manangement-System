@@ -32,7 +32,7 @@ function CurrencyFilter({
   // State & Hooks
   // ============================================================================
   const { displayCurrency, setDisplayCurrency } = useCurrency();
-  const { setDisplayCurrency: setDashboardCurrency } = useDashBoardStore();
+  const setDashboardCurrency = useDashBoardStore(state => state.setDisplayCurrency);
 
   // ============================================================================
   // Handlers

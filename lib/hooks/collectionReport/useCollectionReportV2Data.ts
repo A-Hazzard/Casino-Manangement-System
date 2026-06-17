@@ -64,7 +64,6 @@ export function useCollectionReportV2Data(
   >('collector');
   const [sortField, setSortField] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [showArchived, setShowArchived] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -111,7 +110,6 @@ export function useCollectionReportV2Data(
       params.set('limit', String(ITEMS_PER_PAGE));
       if (sortField) params.set('sortField', sortField);
       if (sortDirection) params.set('sortDirection', sortDirection);
-      if (showArchived) params.set('includeDeleted', 'true');
 
       const res = await axios.get(
         `/api/collection-reports-v2/sessions?${params.toString()}`,
@@ -143,18 +141,7 @@ export function useCollectionReportV2Data(
     searchType,
     sortField,
     sortDirection,
-    showArchived,
   ]);
-
-  const handleShowArchivedChange = useCallback((value: boolean) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    setSessions([]);
-    setTotalSessions(0);
-    setCurrentPage(0);
-    setShowArchived(value);
-  }, []);
 
   const handleSort = useCallback(
     (field: string) => {
@@ -226,8 +213,5 @@ export function useCollectionReportV2Data(
     sortField,
     sortDirection,
     handleSort,
-    showArchived,
-    setShowArchived,
-    handleShowArchivedChange,
   };
 }

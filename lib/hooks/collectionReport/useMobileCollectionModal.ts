@@ -177,6 +177,10 @@ export function useMobileCollectionModal({
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
     Date | undefined
   >(undefined);
+  const [sasUpdateProgress, setSasUpdateProgress] = useState<{
+    completed: number;
+    total: number;
+  } | null>(null);
 
   // ==========================================================================
   // Fetch rich metadata when modal opens
@@ -215,11 +219,15 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   /**
-   * Find which location a machine belongs to using the location name from the collection
+   * Resolve a location id from a collection's `location` field. That field stores
+   * the location _id (current records) but may hold the location name on legacy
+   * records, so match against either.
    */
-  const getLocationIdFromMachine = useCallback((locationName: string) => {
+  const getLocationIdFromMachine = useCallback((locationIdentifier: string) => {
     const matchingLoc = locationsRef.current.find(
-      location => location.name === locationName
+      location =>
+        String(location._id) === locationIdentifier ||
+        location.name === locationIdentifier
     );
     return matchingLoc ? String(matchingLoc._id) : null;
   }, []);
@@ -402,9 +410,14 @@ export function useMobileCollectionModal({
     ]
   );
 
-  // Fetch machines when location changes
+  // Fetch machines when location changes.
+  // The `cancelled` guard prevents a superseded request (e.g. the brief
+  // reopen reset-race where the location is cleared then re-locked) from
+  // writing stale machines or leaving the loading skeleton stuck on.
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocation;
+    let cancelled = false;
+
     if (locationIdToUse) {
       setModalState(prev => ({ ...prev, isLoadingMachines: true }));
       const fetchMachinesForLocation = async () => {
@@ -412,16 +425,20 @@ export function useMobileCollectionModal({
           const response = await axios.get(
             `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
           );
+          if (cancelled) return;
           if (response.data?.success && response.data?.data) {
             setStoreAvailableMachines(response.data.data);
           } else {
             setStoreAvailableMachines([]);
           }
         } catch (error) {
+          if (cancelled) return;
           console.error('Error fetching machines for location:', error);
           setStoreAvailableMachines([]);
         } finally {
-          setModalState(prev => ({ ...prev, isLoadingMachines: false }));
+          if (!cancelled) {
+            setModalState(prev => ({ ...prev, isLoadingMachines: false }));
+          }
         }
       };
       fetchMachinesForLocation();
@@ -429,34 +446,30 @@ export function useMobileCollectionModal({
       setStoreAvailableMachines([]);
       setModalState(prev => ({ ...prev, isLoadingMachines: false }));
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLocation, lockedLocationId, setStoreAvailableMachines]);
 
-  // Auto-populate prevIn/prevOut when a machine is selected
+  // Auto-populate prevIn/prevOut when a machine is selected.
+  // Only use the last completed collection meters — never sasMeters.drop/tcc.
+  // For online SMIB machines sasMeters.drop reflects the current absolute reading,
+  // so using it as prevIn would set prevIn = currentIn (zero movement).
   useEffect(() => {
     if (selectedMachineData) {
       const prevInValue = (() => {
-        const sasDrop = selectedMachineData.sasMeters?.drop ?? null;
         const collectionIn = selectedMachineData.collectionMeters?.metersIn;
-        return collectionIn !== null &&
-          collectionIn !== undefined &&
-          collectionIn > 0
+        return collectionIn !== null && collectionIn !== undefined && collectionIn > 0
           ? collectionIn.toString()
-          : sasDrop !== null && sasDrop > 0
-            ? sasDrop.toString()
-            : '';
+          : '';
       })();
 
       const prevOutValue = (() => {
-        const sasCancelled =
-          selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
         const collectionOut = selectedMachineData.collectionMeters?.metersOut;
-        return collectionOut !== null &&
-          collectionOut !== undefined &&
-          collectionOut > 0
+        return collectionOut !== null && collectionOut !== undefined && collectionOut > 0
           ? collectionOut.toString()
-          : sasCancelled !== null && sasCancelled > 0
-            ? sasCancelled.toString()
-            : '';
+          : '';
       })();
 
       setStoreFormData({
@@ -682,22 +695,11 @@ export function useMobileCollectionModal({
     const validationPrevIn =
       modalState.formData.prevIn !== ''
         ? Number(modalState.formData.prevIn)
-        : (() => {
-            const sasDrop = selectedMachineData.sasMeters?.drop ?? null;
-            return sasDrop !== null && sasDrop > 0
-              ? sasDrop
-              : (selectedMachineData.collectionMeters?.metersIn ?? 0);
-          })();
+        : (selectedMachineData.collectionMeters?.metersIn ?? 0);
     const validationPrevOut =
       modalState.formData.prevOut !== ''
         ? Number(modalState.formData.prevOut)
-        : (() => {
-            const sasCancelled =
-              selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
-            return sasCancelled !== null && sasCancelled > 0
-              ? sasCancelled
-              : (selectedMachineData.collectionMeters?.metersOut ?? 0);
-          })();
+        : (selectedMachineData.collectionMeters?.metersOut ?? 0);
     const validation = validateMachineEntry(
       String(selectedMachineData._id),
       selectedMachineData,
@@ -734,7 +736,7 @@ export function useMobileCollectionModal({
       // Prepare collection payload
       const collectionPayload = {
         machineId: String(selectedMachineData._id),
-        location: selectedLocationName,
+        location: selectedLocation || '',
         collector: user?._id || '',
         notes: modalState.formData.notes,
         ramClear: modalState.formData.ramClear,
@@ -1371,6 +1373,29 @@ export function useMobileCollectionModal({
     setStoreLockedLocation,
   ]);
 
+  // Auto-populate "Update All SAS Times" pickers from the current entries:
+  // start = earliest sasStartTime, end = latest sasEndTime.
+  useEffect(() => {
+    if (modalState.collectedMachines.length === 0) return;
+    const toDate = (val: Date | string | undefined | null): Date | null => {
+      if (!val) return null;
+      const d = val instanceof Date ? val : new Date(val as string);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    const starts = modalState.collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasStartTime))
+      .filter((t): t is Date => t !== null);
+    const ends = modalState.collectedMachines
+      .map(entry => toDate(entry.sasMeters?.sasEndTime))
+      .filter((t): t is Date => t !== null);
+    if (starts.length > 0) {
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+    }
+    if (ends.length > 0) {
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+    }
+  }, [modalState.collectedMachines]);
+
   // ============================================================================
   // Return Values
   // ============================================================================
@@ -1476,24 +1501,33 @@ export function useMobileCollectionModal({
         return;
       try {
         setModalState(prev => ({ ...prev, isProcessing: true }));
+        const total = modalState.collectedMachines.length;
+        setSasUpdateProgress({ completed: 0, total });
         const results = await Promise.allSettled(
           modalState.collectedMachines.map(async entry => {
-            if (!entry._id) return;
+            if (!entry._id) {
+              setSasUpdateProgress(prev =>
+                prev ? { ...prev, completed: prev.completed + 1 } : null
+              );
+              return;
+            }
 
-            const updateData: Record<string, unknown> = {};
+            const updateData: Record<string, string> = {};
             if (updateAllSasStartDate) {
-              updateData['sasMeters.sasStartTime'] =
-                updateAllSasStartDate.toISOString();
+              updateData.sasStartTime = updateAllSasStartDate.toISOString();
             }
             if (updateAllSasEndDate) {
-              updateData['sasMeters.sasEndTime'] =
-                updateAllSasEndDate.toISOString();
+              updateData.sasEndTime = updateAllSasEndDate.toISOString();
             }
 
-            return await axios.patch(
-              `/api/collection-reports/collections?id=${entry._id}`,
+            const result = await axios.patch(
+              `/api/collection-reports/collections/${entry._id}`,
               updateData
             );
+            setSasUpdateProgress(prev =>
+              prev ? { ...prev, completed: prev.completed + 1 } : null
+            );
+            return result;
           })
         );
         const failed = results.filter(
@@ -1545,7 +1579,10 @@ export function useMobileCollectionModal({
         console.error('Error applying all dates:', error);
         toast.error('Failed to update dates');
         setModalState(prev => ({ ...prev, isProcessing: false }));
+      } finally {
+        setSasUpdateProgress(null);
       }
     },
+    sasUpdateProgress,
   };
 }

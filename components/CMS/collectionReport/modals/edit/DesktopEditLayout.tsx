@@ -90,6 +90,7 @@ type DesktopEditLayoutProps = {
   isUpdateReportEnabled: boolean;
 
   handleApplyAllDates: () => void;
+  sasUpdateProgress?: { completed: number; total: number } | null;
   locations: CollectionReportLocationWithMachines[];
   gameDayOffset?: number;
 };
@@ -157,6 +158,7 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     onRefresh,
 
     handleApplyAllDates,
+    sasUpdateProgress,
     locations,
   } = props;
 
@@ -165,7 +167,7 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
   // ============================================================================
   // Computed
   // ============================================================================
-  const desktopMachineIds = machinesOfSelectedLocation.map(m => String(m._id));
+  const desktopMachineIds = machinesOfSelectedLocation.map(machine => String(machine._id));
   const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
 
   // Auto-fill notes for offline SMIB machines when selected
@@ -332,12 +334,13 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           setUpdateAllSasEndDate={setUpdateAllSasEndDate}
           onRefresh={onRefresh}
           onApplyAllDates={handleApplyAllDates}
+          sasUpdateProgress={sasUpdateProgress}
           variationMachineIds={variationsData?.machines
             .filter(
-              (m: MachineVariationData) =>
-                typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+              (variation: MachineVariationData) =>
+                variation.variation !== null && variation.variation !== 0
             )
-            .map((m: MachineVariationData) => m.machineId)}
+            .map((variation: MachineVariationData) => variation.machineId)}
         />
       </div>
     </div>

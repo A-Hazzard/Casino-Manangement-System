@@ -60,8 +60,8 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let y = currentYear; y >= 2020; y--) {
-      years.push({ value: y.toString(), label: y.toString() });
+    for (let year = currentYear; year >= 2020; year--) {
+      years.push({ value: year.toString(), label: year.toString() });
     }
     return years;
   }, []);

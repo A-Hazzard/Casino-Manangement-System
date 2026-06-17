@@ -45,7 +45,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 
-interface VaultAdvancedDashboardData {
+type VaultAdvancedDashboardData = {
   metrics: VaultMetrics;
   balanceTrend: Array<{
     time: string;

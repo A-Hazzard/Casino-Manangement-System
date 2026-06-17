@@ -76,7 +76,11 @@
       "Read(//mnt/c/Users/ahazzard.DYNAMIC1/OneDrive/Documents/Github/**)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000 --max-time 3)",
       "Bash(dir C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms -Recurse -Directory)",
-      "PowerShell($r = try { Invoke-WebRequest -Uri \"http://localhost:3000/administration\" -TimeoutSec 8 -UseBasicParsing; \"UP $\\($r.StatusCode\\)\" } catch { \"DOWN: $_\" }; Write-Output $r)"
+      "PowerShell($r = try { Invoke-WebRequest -Uri \"http://localhost:3000/administration\" -TimeoutSec 8 -UseBasicParsing; \"UP $\\($r.StatusCode\\)\" } catch { \"DOWN: $_\" }; Write-Output $r)",
+      "Bash(MONGODB_URI=\"mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-prod?authSource=admin\" bun run scratch/investigate-variation.ts 7c05b508-3a2f-44d4-b6c8-7d95abbdc730)",
+      "Bash(awk *)",
+      "Bash(cd \"C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\" && rm -f scratch/test-meters-agg.ts && echo \"deleted\")",
+      "Bash(cd \"C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\" && sed -i \"s/storedSasGross: entry.sasMeters?.gross,/storedSasGross: entry.sasMeters?.gross ?? undefined,/g\" components/CMS/collectionReport/modals/CollectionReportEditCollectionModal.tsx)"
     ]
   }
 }
