@@ -11,7 +11,7 @@
  */
 
 import { getLogisticsData } from '@/app/api/lib/helpers/logistics';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   logRouteFetch,
@@ -39,66 +39,60 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/analytics/logistics';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const searchTerm = searchParams.get('searchTerm');
-    const statusFilter = searchParams.get('statusFilter');
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(request.url);
+      const searchTerm = searchParams.get('searchTerm');
+      const statusFilter = searchParams.get('statusFilter');
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
+      // ============================================================================
+      // STEP 2: Fetch logistics data
+      // ============================================================================
+      const responseData = await getLogisticsData(searchTerm, statusFilter);
 
-    // ============================================================================
-    // STEP 3: Fetch logistics data
-    // ============================================================================
-    const responseData = await getLogisticsData(searchTerm, statusFilter);
+      // ============================================================================
+      // STEP 3: Return logistics data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/logistics',
+        Array.isArray(responseData) ? responseData.length : 1,
+        user,
+        duration
+      );
 
-    // ============================================================================
-    // STEP 4: Return logistics data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/logistics',
-      Array.isArray(responseData) ? responseData.length : 1,
-      user,
-      duration
-    );
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
 
-    if (duration > 1000) {
-      console.warn(`[Analytics Logistics GET API] Completed in ${duration}ms`);
+      return NextResponse.json({
+        success: true,
+        data: responseData,
+        message: 'Logistics data fetched successfully',
+      });
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/logistics',
+        errorMessage,
+        user
+      );
+      console.error(`[${functionName}] Error:`, errorMessage);
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Failed to fetch logistics data',
+          error: errorMessage,
+        },
+        { status: 500 }
+      );
     }
-    return NextResponse.json({
-      success: true,
-      data: responseData,
-      message: 'Logistics data fetched successfully',
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/logistics',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Logistics Analytics GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to fetch logistics data',
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

@@ -1,3 +1,11 @@
+/**
+ * Cashier Activity Page Content Component
+ *
+ * Displays the cashier's historical activity log with summary stats
+ * for total activities, net volume, and last activity time.
+ *
+ * @module components/VAULT/cashier/activity/CashierActivityPageContent
+ */
 'use client';
 
 // ============================================================================
@@ -50,7 +58,8 @@ export default function CashierActivityPageContent() {
         if (data.success && data.activities.length > 0) {
           const activities = data.activities;
           const net = activities.reduce(
-            (sum: number, a: { amount?: number }) => sum + (a.amount || 0),
+            (sum: number, activity: { amount?: number }) =>
+              sum + (activity.amount || 0),
             0
           );
           setStats({
@@ -64,7 +73,7 @@ export default function CashierActivityPageContent() {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('[fetchStats] Error:', e instanceof Error ? e.message : 'Unknown error');
     }
   }, [locationId, user?._id]);
 

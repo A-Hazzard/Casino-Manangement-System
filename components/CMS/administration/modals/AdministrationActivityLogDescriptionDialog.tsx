@@ -10,8 +10,10 @@ import {
 import { safeFormatDate } from '@/lib/utils/formatting';
 import { isIdValue, resolveIdToName } from '@/lib/utils/id';
 import { formatValue } from '@/lib/utils/date';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { Check, Copy } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 type ResolvedChange = {
   field: string;
@@ -248,13 +250,7 @@ function MetaRow({
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="border-t px-5 py-4">
       <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
@@ -266,6 +262,8 @@ function Section({
 }
 
 function CollectionReportView({ log }: { log: ActivityLog }) {
+  const { displayCurrency } = useCurrencyFormat();
+
   // Extract data from newData if available
   const data = (log.newData || log.metadata?.newData || {}) as Record<
     string,
@@ -324,48 +322,54 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
   }> = [];
 
   if (hasNewData && Array.isArray(data.machines)) {
-    machinesList = (data.machines as Array<Record<string, unknown>>).map(machine => {
-      const customName = String(machine.customName || machine.machineCustomName || '');
-      const manuf = String(machine.manuf || '');
-      const serialNumber = String(machine.serialNumber || '');
-      let resolvedName = String(machine.displayName || '');
-      if (!resolvedName && serialNumber) {
-        const parts = [customName, manuf].filter(Boolean);
-        resolvedName =
-          parts.length > 0
-            ? `${serialNumber} (${parts.join(', ')})`
-            : serialNumber;
+    machinesList = (data.machines as Array<Record<string, unknown>>).map(
+      machine => {
+        const customName = String(
+          machine.customName || machine.machineCustomName || ''
+        );
+        const manuf = String(machine.manuf || '');
+        const serialNumber = String(machine.serialNumber || '');
+        let resolvedName = String(machine.displayName || '');
+        if (!resolvedName && serialNumber) {
+          const parts = [customName, manuf].filter(Boolean);
+          resolvedName =
+            parts.length > 0
+              ? `${serialNumber} (${parts.join(', ')})`
+              : serialNumber;
+        }
+        if (!resolvedName)
+          resolvedName = String(
+            machine.machineName || machine.machineId || 'Machine'
+          );
+        return {
+          name: resolvedName,
+          metersIn: Number(machine.metersIn || 0),
+          metersOut: Number(machine.metersOut || 0),
+          prevIn:
+            machine.prevMetersIn !== undefined
+              ? Number(machine.prevMetersIn)
+              : machine.prevIn !== undefined
+                ? Number(machine.prevIn)
+                : undefined,
+          prevOut:
+            machine.prevMetersOut !== undefined
+              ? Number(machine.prevMetersOut)
+              : machine.prevOut !== undefined
+                ? Number(machine.prevOut)
+                : undefined,
+          ramClear: Boolean(machine.ramClear || false),
+          ramClearMetersIn:
+            machine.ramClearMetersIn !== undefined
+              ? Number(machine.ramClearMetersIn)
+              : undefined,
+          ramClearMetersOut:
+            machine.ramClearMetersOut !== undefined
+              ? Number(machine.ramClearMetersOut)
+              : undefined,
+          notes: machine.notes ? String(machine.notes) : null,
+        };
       }
-      if (!resolvedName)
-        resolvedName = String(machine.machineName || machine.machineId || 'Machine');
-      return {
-        name: resolvedName,
-        metersIn: Number(machine.metersIn || 0),
-        metersOut: Number(machine.metersOut || 0),
-        prevIn:
-          machine.prevMetersIn !== undefined
-            ? Number(machine.prevMetersIn)
-            : machine.prevIn !== undefined
-              ? Number(machine.prevIn)
-              : undefined,
-        prevOut:
-          machine.prevMetersOut !== undefined
-            ? Number(machine.prevMetersOut)
-            : machine.prevOut !== undefined
-              ? Number(machine.prevOut)
-              : undefined,
-        ramClear: Boolean(machine.ramClear || false),
-        ramClearMetersIn:
-          machine.ramClearMetersIn !== undefined
-            ? Number(machine.ramClearMetersIn)
-            : undefined,
-        ramClearMetersOut:
-          machine.ramClearMetersOut !== undefined
-            ? Number(machine.ramClearMetersOut)
-            : undefined,
-        notes: machine.notes ? String(machine.notes) : null,
-      };
-    });
+    );
   } else {
     // Parse from changes machine_X_details
     const machineChanges = changes.filter(c =>
@@ -396,10 +400,7 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
 
   // Format currency helper
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(val);
+    return formatCurrencyWithCodeString(val, displayCurrency);
   };
 
   return (
@@ -620,10 +621,12 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
                       </p>
                       <div className="grid grid-cols-2 gap-2 font-mono">
                         <div>
-                          In: {machine.ramClearMetersIn?.toLocaleString() || '—'}
+                          In:{' '}
+                          {machine.ramClearMetersIn?.toLocaleString() || '—'}
                         </div>
                         <div>
-                          Out: {machine.ramClearMetersOut?.toLocaleString() || '—'}
+                          Out:{' '}
+                          {machine.ramClearMetersOut?.toLocaleString() || '—'}
                         </div>
                       </div>
                     </div>

@@ -12,7 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import type { Denomination } from '@/shared/types/vault';
 import { Coins, Receipt } from 'lucide-react';
 
@@ -29,6 +31,14 @@ export default function ViewDenominationsModal({
   denominations,
   totalAmount,
 }: ViewDenominationsModalProps) {
+  // ============================================================================
+  // State & Hooks
+  // ============================================================================
+  const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
+  // Render
+  // ============================================================================
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md overflow-hidden p-0">
@@ -82,10 +92,10 @@ export default function ViewDenominationsModal({
                   Verified Total Balance
                 </p>
                 <span className="text-3xl font-black tracking-tight">
-                  $
-                  {(totalAmount || 0).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                  {formatCurrencyWithCodeString(
+                    totalAmount || 0,
+                    displayCurrency
+                  )}
                 </span>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 backdrop-blur-sm">

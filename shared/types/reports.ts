@@ -1,3 +1,4 @@
+import type { FC } from 'react';
 import { type MachineData, type MachineStats } from './machines';
 import type { AggregatedLocation } from '@/shared/types/entities';
 export type { MachineData, MachineStats, AggregatedLocation };
@@ -24,7 +25,7 @@ export type TopPerformingTab = 'locations' | 'Cabinets';
 export type ReportTab = {
   id: ReportView;
   label: string;
-  icon?: string;
+  icon: FC<{ className?: string }>;
   description?: string;
   available?: boolean;
 };

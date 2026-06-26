@@ -134,7 +134,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
 
     // Build base aggregation pipeline with location join
-    const aggregationPipeline = createBasePipeline();
+    const isArchivedRequest = onlineStatus === 'archived';
+    const aggregationPipeline = createBasePipeline(isArchivedRequest);
 
     // Apply search filter
     addSearchFilter(aggregationPipeline, search || null);
@@ -182,7 +183,8 @@ export async function GET(req: NextRequest) {
       effectiveLicencee,
       locationId,
       allowedLocationIds,
-      machineTypeFilter
+      machineTypeFilter,
+      isArchivedRequest
     );
     const totalLocations = await GamingLocations.countDocuments({
       $and: locationCountFilter,

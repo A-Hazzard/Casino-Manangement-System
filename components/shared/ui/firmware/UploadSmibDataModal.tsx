@@ -2,9 +2,7 @@
  * UploadSmibDataModal Component
  * Modal for uploading a CSV file containing SMIB device data.
  */
-import { useState, useRef } from 'react';
-
-import { ChangeEvent, FC } from 'react';
+import { useState, useRef, type ChangeEvent, type FC } from 'react';
 import axios from 'axios';
 import {
   Dialog,

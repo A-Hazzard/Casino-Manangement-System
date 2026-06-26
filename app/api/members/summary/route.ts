@@ -13,7 +13,7 @@
  * @module app/api/members/summary/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Member } from '@/app/api/lib/models/members';
 import {
@@ -47,18 +47,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * 9. Return paginated results with summary
  */
 export async function GET(request: NextRequest) {
+  return withApiAuth(request, async () => {
   const startTime = Date.now();
   const functionName = 'GET /api/members/summary';
   const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse query parameters
+    // STEP 1: Parse query parameters
     // ============================================================================
 
     // Example: GET /api/members/summary?licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234
@@ -488,4 +484,5 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+  });
 }

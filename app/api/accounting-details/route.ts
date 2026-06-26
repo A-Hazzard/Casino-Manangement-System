@@ -10,7 +10,7 @@
  * @module app/api/accounting-details/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { getAccountingDetails } from '@/app/api/lib/helpers/accountingDetails';
 import type { BillValidatorTimePeriod } from '@/shared/types/billValidator';
 import {
@@ -34,25 +34,20 @@ import { NextRequest, NextResponse } from 'next/server';
  *                                             by BillValidatorTimePeriod.
  *
  * Flow:
- * 1. Connect to database
- * 2. Parse query parameters (machineId, timePeriod)
- * 3. Validate machine ID
- * 4. Fetch accounting details including accepted bills
- * 5. Return accounting details
+ * 1. Parse query parameters (machineId, timePeriod)
+ * 2. Validate machine ID
+ * 3. Fetch accounting details including accepted bills
+ * 4. Return accounting details
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
   const functionName = 'GET /api/accounting-details';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(req, async () => {
+    const startTime = Date.now();
 
     // ============================================================================
-    // STEP 2: Parse query parameters
+    // STEP 1: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const machineId = searchParams.get('machineId');
@@ -60,7 +55,7 @@ export async function GET(req: NextRequest) {
       (searchParams.get('timePeriod') as BillValidatorTimePeriod) || 'today';
 
     // ============================================================================
-    // STEP 3: Validate machine ID
+    // STEP 2: Validate machine ID
     // ============================================================================
     if (!machineId) {
       logRouteError(
@@ -77,44 +72,48 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Fetch accounting details including accepted bills
+    // STEP 3: Fetch accounting details including accepted bills
     // ============================================================================
-    const accountingDetails = await getAccountingDetails(machineId, timePeriod);
+    try {
+      const accountingDetails = await getAccountingDetails(machineId, timePeriod);
 
-    // ============================================================================
-    // STEP 5: Return accounting details
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/accounting-details',
-      1,
-      user,
-      duration
-    );
+      // ============================================================================
+      // STEP 4: Return accounting details
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[${functionName}] slow: ${duration}ms`);
+      }
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/accounting-details',
+        1,
+        user,
+        duration
+      );
 
-    return NextResponse.json({
-      success: true,
-      data: accountingDetails,
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/accounting-details',
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch accounting details',
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json({
+        success: true,
+        data: accountingDetails,
+      });
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/accounting-details',
+        errorMessage,
+        user
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch accounting details',
+          details: errorMessage,
+        },
+        { status: 500 }
+      );
+    }
+  });
 }

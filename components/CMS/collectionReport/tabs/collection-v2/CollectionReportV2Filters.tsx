@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
-import UnifiedSearchBar from '../collection/UnifiedSearchBar';
+import UnifiedSearchBar from '@/components/shared/ui/common/UnifiedSearchBar';
 import type { LocationSelectItem } from '@/lib/types/location';
 
 type V2FiltersProps = {

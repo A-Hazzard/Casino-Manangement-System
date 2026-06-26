@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/shared/ui/button';
 import { Cross1Icon } from '@radix-ui/react-icons';
@@ -27,16 +27,6 @@ export const DeleteFirmwareModal = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
-
-  // ============================================================================
-  // Effects
-  // ============================================================================
-
-  useEffect(() => {
-    if (isDeleteModalOpen) {
-      // Only use Tailwind classes for responsive rendering. Remove all JS device detection logic.
-    }
-  }, [isDeleteModalOpen]);
 
   // ============================================================================
   // Handlers

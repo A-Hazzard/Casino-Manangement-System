@@ -12,7 +12,7 @@
  */
 
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   logRouteFetch,
   logRouteError,
@@ -46,29 +46,25 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/members/[id]/sessions/[machineId]/events';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { pathname, searchParams } = request.nextUrl;
-    const parts = pathname.split('/');
-    const machineId = parts[parts.length - 2];
-    // id is not used in this route, so we don't need to extract it
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse route parameters
+      // ============================================================================
+      const { pathname, searchParams } = request.nextUrl;
+      const parts = pathname.split('/');
+      const machineId = parts[parts.length - 2];
+      // id is not used in this route, so we don't need to extract it
 
-    const eventType = searchParams.get('eventType');
-    const event = searchParams.get('event');
-    const game = searchParams.get('game');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+      const eventType = searchParams.get('eventType');
+      const event = searchParams.get('event');
+      const game = searchParams.get('game');
+      const page = parseInt(searchParams.get('page') || '1');
+      const limit = parseInt(searchParams.get('limit') || '10');
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 3: Build query with filters
-    // ============================================================================
+      // ============================================================================
+      // STEP 2: Build query with filters
+      // ============================================================================
     const query: Record<string, unknown> = { machine: machineId };
 
     if (eventType) {
@@ -84,7 +80,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Fetch events with pagination
+    // STEP 3: Fetch events with pagination
     // ============================================================================
     const skip = (page - 1) * limit;
 
@@ -106,12 +102,12 @@ export async function GET(request: NextRequest) {
       .lean<MachineEventDocument[]>();
 
     // ============================================================================
-    // STEP 5: Get total count for pagination
+    // STEP 4: Get total count for pagination
     // ============================================================================
     const totalEvents = await MachineEvent.countDocuments(query);
 
     // ============================================================================
-    // STEP 6: Get unique filter values using aggregation
+    // STEP 5: Get unique filter values using aggregation
     // ============================================================================
     const filterPipeline = [
       { $match: { machine: machineId } },
@@ -145,7 +141,7 @@ export async function GET(request: NextRequest) {
     const uniqueGames = filterResults[0]?.games || [];
 
     // ============================================================================
-    // STEP 7: Return paginated events with filter options
+    // STEP 6: Return paginated events with filter options
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
@@ -197,5 +193,6 @@ export async function GET(request: NextRequest) {
       { success: false, error: errorMessage },
       { status: 500 }
     );
-  }
+    }
+  });
 }

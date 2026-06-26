@@ -18,8 +18,10 @@
 // External Dependencies
 // ============================================================================
 
-import { createCollectionReport } from '@/lib/helpers/collectionReport';
-import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetching';
+import {
+  getLocationsWithMachines,
+  createCollectionReportStreaming,
+} from '@/lib/helpers/collectionReport/fetching';
 import {
   addMachineCollection,
   deleteMachineCollection,
@@ -39,9 +41,11 @@ import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { validateCollectionReportPayload } from '@/lib/utils/validation';
 import axios from 'axios';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import type { ProcessingPhase, SubStepProgress } from '@/components/shared/ui/ProcessingPhaseBar';
 
 // ============================================================================
 // Type Definitions
@@ -69,6 +73,17 @@ type UseNewCollectionModalProps = {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+function buildCreatePhases(machineCount: number): ProcessingPhase[] {
+  return [
+    { key: 'validating',    label: 'Validating report data',     estimatedMs: 500 },
+    { key: 'saving',        label: 'Saving report',              estimatedMs: 600 },
+    { key: 'recalculating', label: 'Updating machine records',   estimatedMs: Math.max(600, machineCount * 30), detail: `${machineCount} machine${machineCount !== 1 ? 's' : ''}` },
+    { key: 'variation',     label: 'Calculating variation',      estimatedMs: 1200 },
+    { key: 'meters',        label: 'Creating meter records',     estimatedMs: Math.max(500, machineCount * 20), detail: `${machineCount} machine${machineCount !== 1 ? 's' : ''}` },
+    { key: 'activity',      label: 'Recording activity',         estimatedMs: 500 },
+  ];
+}
 
 /**
  * Sorts machines alphabetically with numeric awareness
@@ -162,6 +177,13 @@ export function useNewCollectionModal({
 
   // Processing State
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentCreatePhase, setCurrentCreatePhase] = useState<string | undefined>();
+  const [createReportProgress, setCreateReportProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [currentSubStep, setCurrentSubStep] = useState<SubStepProgress | null>(null);
+  const createProgressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Editing State
@@ -248,6 +270,7 @@ export function useNewCollectionModal({
     (() => void) | null
   >(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [currentJackpot, setCurrentJackpot] = useState<number>(0);
 
   // ==========================================================================
   // Helper Functions (defined early for use in effects)
@@ -816,6 +839,7 @@ export function useNewCollectionModal({
         );
         setPrevIn(existingEntry.prevIn || 0);
         setPrevOut(existingEntry.prevOut || 0);
+        setCurrentJackpot(existingEntry.sasMeters?.jackpot ?? 0);
         setShowAdvancedSas(false);
         setSasStartTime(
           existingEntry.sasMeters?.sasStartTime
@@ -829,16 +853,11 @@ export function useNewCollectionModal({
         );
       } else {
         // New entry - fetch previous collection data
-        setPrevIn(
-          machineForDataEntry.collectionMeters?.metersIn ??
-            machineForDataEntry.sasMeters?.drop ??
-            0
-        );
-        setPrevOut(
-          machineForDataEntry.collectionMeters?.metersOut ??
-            machineForDataEntry.sasMeters?.totalCancelledCredits ??
-            0
-        );
+        // Note: never fall back to sasMeters.drop/tcc — for online SMIB machines those
+        // reflect the current absolute reading, which equals what the collector enters
+        // as currentMetersIn and would make prevIn = currentIn (zero movement).
+        setPrevIn(machineForDataEntry.collectionMeters?.metersIn ?? 0);
+        setPrevOut(machineForDataEntry.collectionMeters?.metersOut ?? 0);
         setCurrentMetersIn('');
         setCurrentMetersOut('');
         setCurrentMachineNotes('');
@@ -850,7 +869,7 @@ export function useNewCollectionModal({
           .get(
             `/api/collection-reports/collections/last-collection-time?machineId=${selectedMachineId}`
           )
-          .then(res => {
+          .then(async res => {
             const data = res.data?.data;
             const lastTime = data?.collectionTime;
             const firstTime = data?.firstCollectionTime;
@@ -858,9 +877,11 @@ export function useNewCollectionModal({
             if (firstTime) setMachineFirstCollectionTime(new Date(firstTime));
             else setMachineFirstCollectionTime(null);
 
+            let resolvedStart: Date;
             if (lastTime) {
               setMachineLastCollectionTime(new Date(lastTime));
-              setSasStartTime(new Date(lastTime));
+              resolvedStart = new Date(lastTime);
+              setSasStartTime(resolvedStart);
             } else {
               setMachineLastCollectionTime(null);
               const loc = locations.find(
@@ -875,13 +896,43 @@ export function useNewCollectionModal({
                 );
               }
               currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
-              setSasStartTime(
-                new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000)
+              resolvedStart = new Date(
+                currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000
               );
+              setSasStartTime(resolvedStart);
             }
             if (data?.hasPreviousCollection) {
               setPrevIn(data.metersIn !== null ? data.metersIn : 0);
               setPrevOut(data.metersOut !== null ? data.metersOut : 0);
+            }
+
+            // WOW machines: meters are synced (WOW_SYNC), not collector-entered.
+            // Pull the current reading (drop / totalCancelledCredits) and resolve
+            // prev from the start time so the first report has no false variation.
+            if (isWowMachine(machineForDataEntry)) {
+              try {
+                const nowIso = new Date().toISOString();
+                const wowRes = await axios.get(
+                  `/api/collection-reports/collections/wow-meters?machineId=${selectedMachineId}&startTime=${resolvedStart.toISOString()}&endTime=${nowIso}`
+                );
+                const wow = wowRes.data?.data;
+                if (wow) {
+                  setCurrentMetersIn(
+                    wow.metersIn != null ? String(wow.metersIn) : ''
+                  );
+                  setCurrentMetersOut(
+                    wow.metersOut != null ? String(wow.metersOut) : ''
+                  );
+                  setPrevIn(wow.prevIn ?? 0);
+                  setPrevOut(wow.prevOut ?? 0);
+                  setCurrentJackpot(wow.jackpot ?? 0);
+                }
+              } catch (wowErr) {
+                console.error(
+                  '[useNewCollectionModal] WOW meters fetch failed:',
+                  wowErr instanceof Error ? wowErr.message : 'Unknown error'
+                );
+              }
             }
           })
           .catch(() => {
@@ -938,6 +989,51 @@ export function useNewCollectionModal({
     lockedLocationId,
     collectedMachineEntries,
   ]);
+
+  /**
+   * WOW machines: re-fetch the synced meters whenever the SAS window (start/end)
+   * changes so the read-only Meter In / Prev In fields reflect the chosen period.
+   * The machine-selection effect above only fetches once on select; without this,
+   * changing the date pickers would leave prevIn/metersIn frozen at the initial
+   * reading. `prevIn` is the WOW_SYNC drop at the start time, `metersIn` the drop
+   * at the end time — so picking an earlier start lowers prevIn (larger movement).
+   */
+  const isWowSelected = isWowMachine(machineForDataEntry);
+  useEffect(() => {
+    if (!show || !selectedMachineId || !isWowSelected) return;
+
+    const startIso = sasStartTime ? new Date(sasStartTime).toISOString() : '';
+    const endIso = (sasEndTime ? new Date(sasEndTime) : new Date()).toISOString();
+    let cancelled = false;
+
+    axios
+      .get(
+        `/api/collection-reports/collections/wow-meters?machineId=${selectedMachineId}` +
+          (startIso ? `&startTime=${startIso}` : '') +
+          `&endTime=${endIso}`
+      )
+      .then(res => {
+        if (cancelled) return;
+        const wow = res.data?.data;
+        if (!wow) return;
+        setStoreFormData({
+          metersIn: wow.metersIn != null ? String(wow.metersIn) : '',
+          metersOut: wow.metersOut != null ? String(wow.metersOut) : '',
+          prevIn: wow.prevIn != null ? String(wow.prevIn) : '',
+          prevOut: wow.prevOut != null ? String(wow.prevOut) : '',
+        });
+      })
+      .catch(wowErr => {
+        console.error(
+          '[useNewCollectionModal] WOW meters re-fetch failed:',
+          wowErr instanceof Error ? wowErr.message : 'Unknown error'
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [show, selectedMachineId, isWowSelected, sasStartTime, sasEndTime]);
 
   // ==========================================================================
   // Handlers
@@ -1049,31 +1145,23 @@ export function useNewCollectionModal({
       );
       console.log('[executeAddEntry] showAdvancedSas:', showAdvancedSas);
 
-      // Calculate prevIn/prevOut using helper (same as edit)
-      // Priority: 1. Previous collection, 2. Machine collectionMeters
-      const prevIn = (() => {
-        const sasDrop = machineForDataEntry.sasMeters?.drop ?? null;
-        const collectionIn = machineForDataEntry.collectionMeters?.metersIn;
-        return collectionIn !== null &&
-          collectionIn !== undefined &&
-          collectionIn > 0
-          ? collectionIn.toString()
-          : sasDrop !== null && sasDrop > 0
-            ? sasDrop.toString()
+      // Use form state prevIn/prevOut if user entered values, otherwise fall back to machine data.
+      // Never fall back to sasMeters.drop/tcc — for online SMIB machines those
+      // reflect the current absolute reading and would make prevIn = currentIn.
+      const { metersIn: collectionMetersIn, metersOut: collectionMetersOut } =
+        machineForDataEntry.collectionMeters ?? {};
+      const prevIn =
+        storePrevIn !== ''
+          ? storePrevIn
+          : collectionMetersIn != null && collectionMetersIn > 0
+            ? collectionMetersIn.toString()
             : '0';
-      })();
-      const prevOut = (() => {
-        const sasCancelled =
-          machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
-        const collectionOut = machineForDataEntry.collectionMeters?.metersOut;
-        return collectionOut !== null &&
-          collectionOut !== undefined &&
-          collectionOut > 0
-          ? collectionOut.toString()
-          : sasCancelled !== null && sasCancelled > 0
-            ? sasCancelled.toString()
+      const prevOut =
+        storePrevOut !== ''
+          ? storePrevOut
+          : collectionMetersOut != null && collectionMetersOut > 0
+            ? collectionMetersOut.toString()
             : '0';
-      })();
 
       // Determine the time to use for timestamp, collectionTime, and sasEndTime
       // In simple mode: use sasEndTime if available, otherwise currentCollectionTime
@@ -1115,7 +1203,7 @@ export function useNewCollectionModal({
       if (entryData.sasStartTime && entryData.sasEndTime) {
         const sasStart = new Date(entryData.sasStartTime as string | Date);
         const sasEnd = new Date(entryData.sasEndTime as string | Date);
-        if (sasStart >= sasEnd) {
+        if (sasStart > sasEnd) {
           toast.error('SAS start time must be before end time', {
             description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
             duration: 7000,
@@ -1585,6 +1673,102 @@ export function useNewCollectionModal({
         return;
       }
 
+      // Start animated per-machine counter. The API processes all machines in
+      // a single call, so we simulate progress at an even rate and snap to
+      // done when the response arrives.
+      const progressTotal = collectedEntries.length;
+      let progressDone = 0;
+      setCreateReportProgress({ done: 0, total: progressTotal });
+      const stepMs = Math.max(80, 3000 / progressTotal);
+      createProgressIntervalRef.current = setInterval(() => {
+        progressDone++;
+        if (progressDone >= progressTotal - 1 && createProgressIntervalRef.current) {
+          clearInterval(createProgressIntervalRef.current);
+          createProgressIntervalRef.current = null;
+        }
+        setCreateReportProgress({ done: progressDone, total: progressTotal });
+      }, stepMs);
+
+      // ============================================================================
+      // PHASE 0: Verbose per-machine validation
+      // ============================================================================
+      // Pause the animated counter so validation is the single source of truth
+      // for the progress text, then validate each machine individually so the UI
+      // can show the current machine and what is being checked.
+      if (createProgressIntervalRef.current) {
+        clearInterval(createProgressIntervalRef.current);
+        createProgressIntervalRef.current = null;
+      }
+
+      setCurrentSubStep({
+        phaseKey: 'validating',
+        done: 0,
+        total: progressTotal,
+        detail: 'Starting validation...',
+      });
+
+      for (let index = 0; index < collectedEntries.length; index++) {
+        const entry = collectedEntries[index];
+        const machineName =
+          entry.machineName ||
+          entry.serialNumber ||
+          entry.machineId ||
+          `Machine ${index + 1}`;
+        const detail = entry.ramClear
+          ? 'RAM clear & meters'
+          : 'meters, movement & SAS window';
+
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: index + 1,
+          total: progressTotal,
+          machineName,
+          detail,
+        });
+        setCreateReportProgress({ done: index + 1, total: progressTotal });
+
+        if (!entry.machineId) {
+          throw new Error(`${machineName} is missing a machine ID.`);
+        }
+        if (
+          typeof entry.metersIn !== 'number' ||
+          isNaN(entry.metersIn) ||
+          typeof entry.metersOut !== 'number' ||
+          isNaN(entry.metersOut)
+        ) {
+          throw new Error(`${machineName} has invalid meter values.`);
+        }
+
+        const movement = calculateCabinetMovement(
+          entry.metersIn || 0,
+          entry.metersOut || 0,
+          entry.prevIn || 0,
+          entry.prevOut || 0,
+          entry.ramClear || false,
+          undefined,
+          undefined,
+          entry.ramClearMetersIn,
+          entry.ramClearMetersOut
+        );
+        if (
+          !Number.isFinite(movement.metersIn) ||
+          !Number.isFinite(movement.metersOut) ||
+          !Number.isFinite(movement.gross)
+        ) {
+          throw new Error(`${machineName} produced an invalid movement calculation.`);
+        }
+
+        // Yield to React so the UI updates for each machine
+        await new Promise<void>(resolve => setTimeout(resolve, 5));
+      }
+
+      setCurrentSubStep({
+        phaseKey: 'validating',
+        done: progressTotal,
+        total: progressTotal,
+        detail: 'Validation complete',
+      });
+
       const totalMovementData = collectedEntries.map(entry => {
         const movement = calculateCabinetMovement(
           entry.metersIn || 0,
@@ -1704,15 +1888,31 @@ export function useNewCollectionModal({
 
       console.log('📤 [NewCollection] Sending payload to API...', payload);
 
-      const result = await createCollectionReport(payload);
+      const result = await createCollectionReportStreaming(
+        payload,
+        setCurrentCreatePhase,
+        (phase, done, total, machineName) =>
+          setCurrentSubStep({ phaseKey: phase, done, total, machineName })
+      );
+
+      // Snap counter to complete before the dialog closes
+      if (createProgressIntervalRef.current) {
+        clearInterval(createProgressIntervalRef.current);
+        createProgressIntervalRef.current = null;
+      }
+      setCreateReportProgress({ done: progressTotal, total: progressTotal });
+      setCurrentCreatePhase(undefined);
+      setCurrentSubStep(null);
+
+      const reportData = result.report as Record<string, unknown>;
       await logActivityCallback(
         'create',
         'collection-report',
-        String(result.report._id),
+        String(reportData._id),
         `Collection Report for ${storeState.selectedLocationName}`,
         `Created collection report for ${collectedEntries.length} machines at ${storeState.selectedLocationName}`,
         null,
-        result.report as unknown as Record<string, unknown>
+        reportData
       );
 
       toast.success('Collection report created successfully', {
@@ -1727,11 +1927,21 @@ export function useNewCollectionModal({
       if (onRefresh) onRefresh();
       handleClose();
     } catch (error) {
+      if (createProgressIntervalRef.current) {
+        clearInterval(createProgressIntervalRef.current);
+        createProgressIntervalRef.current = null;
+      }
+      setCreateReportProgress(null);
+      setCurrentSubStep(null);
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to create report: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
+      setTimeout(() => {
+        setCreateReportProgress(null);
+        setCurrentSubStep(null);
+      }, 600);
     }
   };
 
@@ -1887,7 +2097,17 @@ export function useNewCollectionModal({
     setSasStartTime(showAdvancedSas ? sasStartTime : null);
     setSasEndTime(showAdvancedSas ? sasEndTime : null);
     setShowAdvancedSas(showAdvancedSas);
+    setCurrentJackpot(0);
   };
+
+  // ==========================================================================
+  // Computed Values
+  // ==========================================================================
+
+  const createPhases = useMemo(
+    () => buildCreatePhases(collectedMachineEntries.length),
+    [collectedMachineEntries.length]
+  );
 
   // ==========================================================================
   // Return
@@ -1938,11 +2158,17 @@ export function useNewCollectionModal({
     setPrevIn,
     prevOut: storePrevOut,
     setPrevOut,
+    jackpot: currentJackpot,
+    includeJackpot: selectedLocation?.includeJackpot ?? false,
 
     // State
     isFirstCollection,
     setIsFirstCollection,
     collectedMachineEntries,
+    setCollectedMachineEntries,
+    setLockedLocation,
+    setHasChanges,
+    userId,
     isProcessing,
     editingEntryId,
     previousCollectionTime,
@@ -1991,6 +2217,7 @@ export function useNewCollectionModal({
     handleEditCollectedEntry,
     handleDeleteCollectedEntry,
     handleAddEntry,
+    executeAddEntry,
     confirmUpdateEntry,
     confirmDeleteEntry,
 
@@ -2005,5 +2232,9 @@ export function useNewCollectionModal({
     // Event Handlers - Bulk
     handleApplyAllDates,
     sasUpdateProgress,
+    createReportProgress,
+    createPhases,
+    currentCreatePhase,
+    currentSubStep,
   };
 }

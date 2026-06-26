@@ -133,7 +133,7 @@ export default function GlobalCashierShiftsView({
                 </p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatAmount(
-                    cashDesks.reduce((sum, d) => sum + (d.balance || 0), 0)
+                    cashDesks.reduce((sum, desk) => sum + (desk.balance || 0), 0)
                   )}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export default function GlobalCashierShiftsView({
                   {formatAmount(
                     cashDesks.length > 0
                       ? cashDesks.reduce(
-                          (sum, d) => sum + (d.balance || 0),
+                          (sum, desk) => sum + (desk.balance || 0),
                           0
                         ) / cashDesks.length
                       : 0

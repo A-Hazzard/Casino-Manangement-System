@@ -97,6 +97,18 @@ export const logRouteDelete = (
   );
 };
 
+export const logRoutePhase = (
+  functionName: string,
+  phase: string,
+  elapsedMs: number,
+  extra?: string
+) => {
+  const extraStr = extra ? ` | ${extra}` : '';
+  console.log(
+    `[${functionName}] ${getLogTimestamp()} | PHASE: ${phase} | +${elapsedMs}ms${extraStr}`
+  );
+};
+
 export const logRouteError = (
   functionName: string,
   method: string,

@@ -30,7 +30,6 @@ import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { LocationFilter } from '@/lib/types/location';
 import type { LicenceeDocument } from '@shared/types';
-import type { LeanUserDocument } from 'shared/types/auth';
 import type { CurrencyCode } from '@/shared/types/currency';
 import {
   logRouteFetch,
@@ -60,7 +59,6 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {string} onlineStatus - Filter by location connectivity
  * @param {string} startDate - ISO date for custom range start
  * @param {string} endDate - ISO date for custom range end
- * @param {string} testUserId - Specific user ID to simulate permissions for (Dev only)
  *
  * Flow:
  * 1. Parse and validate request parameters
@@ -95,8 +93,8 @@ export async function GET(req: NextRequest) {
     const basicList = searchParams.get('basicList') === 'true';
     const selectedLocations = searchParams.get('selectedLocations');
     const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : 1000000;
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(Math.max(requestedLimit, 1), 1000);
     const search = searchParams.get('search') || null;
     const onlineStatus =
       searchParams.get('onlineStatus')?.toLowerCase() || 'all';
@@ -207,61 +205,21 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Get user's accessible locations (for permission filtering)
+    // STEP 5: Authenticate user and resolve accessible locations
     // ============================================================================
-    // DEV MODE: Allow bypassing auth for testing
-    const isDevMode = process.env.NODE_ENV === 'development';
-    const testUserId = searchParams.get('testUserId');
+    const userPayload = await getUserFromServer();
+    if (!userPayload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    let userPayload;
-    let userRoles: string[] = [];
+    const userRoles = (userPayload.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    let userAccessibleLicencees: string[] | 'all' = [];
-
-    if (isDevMode && testUserId) {
-      // Dev mode: Get user directly from DB for testing
-      const UserModel = (await import('../lib/models/user')).default;
-      const testUserResult = await UserModel.findOne({
-        _id: testUserId,
-      }).lean<LeanUserDocument>();
-      if (testUserResult && !Array.isArray(testUserResult)) {
-        const testUser = testUserResult;
-        userRoles = (testUser.roles || []) as string[];
-        userLocationPermissions = Array.isArray(testUser.assignedLocations)
-          ? testUser.assignedLocations.map((id: string) => String(id))
-          : [];
-        userAccessibleLicencees = Array.isArray(testUser.assignedLicencees)
-          ? testUser.assignedLicencees.map((id: string) => String(id))
-          : [];
-      } else {
-        return NextResponse.json(
-          { error: 'Test user not found' },
-          { status: 404 }
-        );
-      }
-    } else {
-      // Normal mode: Get user from JWT
-      userPayload = await getUserFromServer();
-      if (!userPayload && !isDevMode) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      if (userPayload) {
-        userRoles = (userPayload.roles as string[]) || [];
-        // Extract assignedLocations from new field only
-        const assignedLocations = (
-          userPayload as { assignedLocations?: string[] }
-        )?.assignedLocations;
-        if (Array.isArray(assignedLocations) && assignedLocations.length > 0) {
-          userLocationPermissions = assignedLocations;
-        }
-      }
-      userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
+    const assignedLocations = (userPayload as { assignedLocations?: string[] })
+      ?.assignedLocations;
+    if (Array.isArray(assignedLocations) && assignedLocations.length > 0) {
+      userLocationPermissions = assignedLocations;
     }
-
-    // In normal mode (not dev mode or no testUserId), get licencees from token
-    if (!isDevMode || !testUserId) {
-      userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    }
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
 
     // ============================================================================
     // STEP 4.5: Determine display currency (if not provided) - AFTER DB connection
@@ -370,12 +328,12 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 10: Apply currency conversion if needed
     // ============================================================================
-    const currentUser = await getUserFromServer();
-    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    // Reuse the user payload resolved in STEP 5 (avoids a second auth round-trip)
+    const currentUser = userPayload;
     const isAdminOrDev =
-      currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer') ||
-      currentUserRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     let convertedRows = sortedRows;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {

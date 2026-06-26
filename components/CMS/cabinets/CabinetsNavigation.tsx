@@ -13,6 +13,7 @@
 
 'use client';
 
+import type { FC } from 'react';
 import { motion } from 'framer-motion';
 
 type CabinetSection = 'cabinets' | 'smib' | 'movement' | 'firmware';
@@ -20,7 +21,7 @@ type CabinetSection = 'cabinets' | 'smib' | 'movement' | 'firmware';
 type CabinetTab = {
   id: CabinetSection;
   label: string;
-  icon: string;
+  icon: FC<{ className?: string }>;
   available?: boolean;
 };
 
@@ -61,7 +62,7 @@ export default function CabinetsNavigation({
             whileTap={{ scale: 0.98 }}
             type="button"
           >
-            <span className="text-sm">{tab.icon}</span>
+            <tab.icon className="h-4 w-4" />
             <span>{tab.label}</span>
           </motion.button>
         ))}

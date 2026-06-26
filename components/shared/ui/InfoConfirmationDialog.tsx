@@ -28,6 +28,8 @@ import { gsap } from 'gsap';
 import { Button } from '@/components/shared/ui/button';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { InfoCircledIcon } from '@radix-ui/react-icons';
+import { ProcessingPhaseBar } from '@/components/shared/ui/ProcessingPhaseBar';
+import type { ProcessingPhase, SubStepProgress } from '@/components/shared/ui/ProcessingPhaseBar';
 
 // ============================================================================
 // Types
@@ -42,6 +44,10 @@ type InfoConfirmationDialogProps = {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  progress?: { done: number; total: number };
+  processingPhases?: ProcessingPhase[];
+  currentServerPhase?: string;
+  subStep?: SubStepProgress | null;
 };
 
 export const InfoConfirmationDialog = ({
@@ -53,6 +59,10 @@ export const InfoConfirmationDialog = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   isLoading = false,
+  progress,
+  processingPhases,
+  currentServerPhase,
+  subStep,
 }: InfoConfirmationDialogProps) => {
   // ============================================================================
   // State & Hooks
@@ -160,6 +170,38 @@ export const InfoConfirmationDialog = ({
               </p>
             </div>
           </div>
+
+          {isLoading && processingPhases && processingPhases.length > 0 && (
+            <div className="px-6 pb-4">
+              <ProcessingPhaseBar
+                phases={processingPhases}
+                isActive={isLoading}
+                color="blue"
+                serverPhase={currentServerPhase}
+                progress={progress}
+                subStep={subStep}
+              />
+            </div>
+          )}
+
+          {isLoading && progress && (!processingPhases || processingPhases.length === 0) && (
+            <div className="px-6 pb-4 space-y-1.5">
+              <div className="flex justify-between text-xs font-medium text-grayHighlight">
+                <span>Processing…</span>
+                <span className="tabular-nums">
+                  {progress.done} / {progress.total} machines
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-button transition-all duration-200"
+                  style={{
+                    width: `${Math.round((progress.done / progress.total) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-border p-4">
             <div className="flex justify-center gap-4">

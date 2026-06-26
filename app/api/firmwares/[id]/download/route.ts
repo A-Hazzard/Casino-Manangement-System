@@ -14,6 +14,7 @@ import {
   downloadFirmwareFromGridFS,
   findFirmwareById,
 } from '@/app/api/lib/helpers/firmware';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   logRouteFetch,
   logRouteError,
@@ -32,66 +33,71 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param id {string} Required (path). The MongoDB ID of the Firmware document to download.
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'GET /api/firmwares/[id]/download';
-  const user = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/download
+  return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/firmwares/[id]/download';
+    const user = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/download
 
-  if (!id) {
-    return NextResponse.json(
-      { error: 'Firmware ID is required' },
-      { status: 400 }
-    );
-  }
-
-  try {
-    // ============================================================================
-    // STEP 2: Find firmware document by ID
-    // ============================================================================
-    const firmware = await findFirmwareById(id);
-    if (!firmware) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'Firmware not found' },
-        { status: 404 }
+        { error: 'Firmware ID is required' },
+        { status: 400 }
       );
     }
 
-    // ============================================================================
-    // STEP 3: Download firmware file from GridFS
-    // ============================================================================
-    const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
+    try {
+      // ============================================================================
+      // STEP 1: Find firmware document by ID
+      // ============================================================================
+      const firmware = await findFirmwareById(id);
+      if (!firmware) {
+        return NextResponse.json(
+          { error: 'Firmware not found' },
+          { status: 404 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 4: Return file with appropriate headers
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      `/api/firmwares/${id}/download`,
-      1,
-      user,
-      duration
-    );
-    return new NextResponse(buffer as unknown as BodyInit, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${firmware.fileName}"`,
-        'Content-Length': buffer.length.toString(),
-      },
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to download firmware';
-    logRouteError(
-      functionName,
-      'GET',
-      `/api/firmwares/${id}/download`,
-      errorMessage,
-      user
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+      // ============================================================================
+      // STEP 2: Download firmware file from GridFS
+      // ============================================================================
+      const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
+
+      // ============================================================================
+      // STEP 3: Return file with appropriate headers
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        `/api/firmwares/${id}/download`,
+        1,
+        user,
+        duration
+      );
+      if (Date.now() - startTime > 1000)
+        console.warn(`[${functionName}] slow: ${Date.now() - startTime}ms`);
+
+      return new NextResponse(buffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${firmware.fileName}"`,
+          'Content-Length': buffer.length.toString(),
+        },
+      });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to download firmware';
+      logRouteError(
+        functionName,
+        'GET',
+        `/api/firmwares/${id}/download`,
+        errorMessage,
+        user
+      );
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
+    }
+  });
 }

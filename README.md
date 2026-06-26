@@ -10,38 +10,38 @@
 
 ## 🚀 Features
 
-- 📊 **Dashboard with Real-Time Analytics** ([docs](Documentation/pages/dashboard-page.md))
+- 📊 **Dashboard with Real-Time Analytics** ([docs](Documentation/frontend/pages/dashboard-page.md))
   - Gaming day offset support for accurate financial reporting
   - Custom date ranges with time inputs
   - Multi-currency support with real-time conversion
-- 🎮 **Slot Machine & Gaming Floor Management** ([docs](Documentation/pages/cabinets-page.md))
+- 🎮 **Slot Machine & Gaming Floor Management** ([docs](Documentation/frontend/pages/cabinets-page.md))
   - Real-time status monitoring and performance tracking
   - Remote SMIB configuration and firmware management
-- 💰 **Financial Tracking & Collection Reporting** ([docs](Documentation/pages/collection-report-page.md))
+- 💰 **Financial Tracking & Collection Reporting** ([docs](Documentation/collection-reports/frontend/collection-report-page.md))
   - 3-Step collection wizard with machine meter entry and cash reconciliation
   - SAS meter comparison and time defaults auto-populated from previous collections
   - Edit/Delete reports with full meter reversion
   - Variation checking with threshold alerts and confirmation dialogs
   - Mobile-first responsive interface with portal dropdown for large location lists
   - Movement Delta Method for accurate financial calculations
-- 📍 **Location Management** ([docs](Documentation/pages/locations-page.md))
+- 📍 **Location Management** ([docs](Documentation/frontend/pages/locations-page.md))
   - Grid/map toggle view with geospatial coordinates
   - Per-location gaming day offset configuration
   - Reviewer multiplier applied server-side to all financial metrics
-- 👥 **Member Management** ([docs](Documentation/pages/members-page.md))
-- 🎯 **Session Management** ([docs](Documentation/pages/sessions-page.md))
-- 👥 **User & Licencee Administration** ([docs](Documentation/pages/administration-page.md))
-- 🔐 **Secure Authentication** ([docs](Documentation/api/auth-api.md))
+- 👥 **Member Management** ([docs](Documentation/frontend/pages/members-page.md))
+- 🎯 **Session Management** ([docs](Documentation/frontend/pages/sessions-page.md))
+- 👥 **User & Licencee Administration** ([docs](Documentation/frontend/pages/administration-page.md))
+- 🔐 **Secure Authentication** ([docs](Documentation/backend/api/auth-api.md))
   - Role-based access control (RBAC) — 9 roles from developer → reviewer
   - JWT token-based authentication with HttpOnly cookies
   - Multi-device session support
   - Session invalidation on permission changes (not on login)
   - TOTP 2FA with recovery flows
   - Mandatory post-login profile validation
-- 📊 **Comprehensive Reports Module** ([docs](Documentation/api/reports-api.md))
+- 📊 **Comprehensive Reports Module** ([docs](Documentation/backend/api/reports-api.md))
   - Dashboard, Locations, Machines, and Meters tabs
   - Gaming day offset integration for accurate reporting
-- 🔐 **Vault Management System (VMS)** ([docs](Documentation/pages/vault-page.md))
+- 🔐 **Vault Management System (VMS)** ([docs](Documentation/frontend/pages/vault-page.md))
   - Multi-tenant accounting ledger with double-entry style methodology
   - Real-time cashier shift tracking and denomination validation
   - Speed-optimized payouts for high-volume operations
@@ -282,10 +282,12 @@ Evolution1 CMS/
 ├── shared/
 │   └── types/                 # Types shared by frontend and backend
 ├── Documentation/             # Comprehensive documentation
-│   ├── pages/                 # Per-page frontend documentation
-│   ├── api/                   # Per-endpoint backend documentation
-│   ├── pillars/               # High-level architectural guides
-│   └── backend/               # Database model documentation
+│   ├── frontend/              # Frontend documentation
+│   │   └── pages/             # Per-page frontend documentation
+│   ├── backend/               # Backend documentation
+│   │   └── api/               # Per-endpoint backend documentation
+│   ├── collection-reports/    # Collection reports documentation
+│   └── pillars/               # High-level architectural guides
 ├── e2e/                       # Playwright end-to-end test suite
 └── proxy.ts                   # Next.js Edge middleware (auth guard)
 ```
@@ -301,34 +303,34 @@ Evolution1 CMS/
 
 ## 📊 Documentation Index
 
-### Page Documentation (`Documentation/pages/`)
+### Page Documentation (`Documentation/frontend/pages/`)
 
-- [Dashboard](Documentation/pages/dashboard-page.md)
-- [Locations](Documentation/pages/locations-page.md)
-- [Cabinets / Fleet](Documentation/pages/cabinets-page.md)
-- [Collection Report](Documentation/pages/collection-report-page.md)
-- [Members](Documentation/pages/members-page.md)
-- [Sessions](Documentation/pages/sessions-page.md)
-- [Administration](Documentation/pages/administration-page.md)
-- [Vault](Documentation/pages/vault-page.md)
-- [Login](Documentation/pages/login-page.md)
-- [Frontend Standards](Documentation/pages/frontend-standards.md)
+- [Dashboard](Documentation/frontend/pages/dashboard-page.md)
+- [Locations](Documentation/frontend/pages/locations-page.md)
+- [Cabinets / Fleet](Documentation/frontend/pages/cabinets-page.md)
+- [Collection Report](Documentation/collection-reports/frontend/collection-report-page.md)
+- [Members](Documentation/frontend/pages/members-page.md)
+- [Sessions](Documentation/frontend/pages/sessions-page.md)
+- [Administration](Documentation/frontend/pages/administration-page.md)
+- [Vault](Documentation/frontend/pages/vault-page.md)
+- [Login](Documentation/frontend/pages/login-page.md)
+- [Frontend Standards](Documentation/frontend/pages/frontend-standards.md)
 
-### API Documentation (`Documentation/api/`)
+### API Documentation (`Documentation/backend/api/`)
 
-- [Auth & IAM](Documentation/api/auth-api.md)
-- [Calculation Engine](Documentation/api/calculation-engine.md)
-- [Collections API](Documentation/api/collections-api.md)
-- [Dashboard API](Documentation/api/dashboard-api.md)
-- [Locations API](Documentation/api/locations-api.md)
-- [Machines API](Documentation/api/machines-api.md)
-- [Members API](Documentation/api/members-api.md)
-- [Reports API](Documentation/api/reports-api.md)
-- [Sessions API](Documentation/api/sessions-api.md)
-- [Vault & Ledger API](Documentation/api/vault-api.md)
-- [MQTT System](Documentation/api/mqtt-system.md)
-- [Sync Meters API](Documentation/api/sync-meters-api.md)
-- [System Config API](Documentation/api/system-config-api.md)
+- [Auth & IAM](Documentation/backend/api/auth-api.md)
+- [Calculation Engine](Documentation/backend/api/calculation-engine.md)
+- [Collections API](Documentation/collection-reports/api/collections-api.md)
+- [Dashboard API](Documentation/backend/api/dashboard-api.md)
+- [Locations API](Documentation/backend/api/locations-api.md)
+- [Machines API](Documentation/backend/api/machines-api.md)
+- [Members API](Documentation/backend/api/members-api.md)
+- [Reports API](Documentation/backend/api/reports-api.md)
+- [Sessions API](Documentation/backend/api/sessions-api.md)
+- [Vault & Ledger API](Documentation/backend/api/vault-api.md)
+- [MQTT System](Documentation/backend/api/mqtt-system.md)
+- [Sync Meters API](Documentation/backend/api/sync-meters-api.md)
+- [System Config API](Documentation/backend/api/system-config-api.md)
 
 ### Master Hub
 

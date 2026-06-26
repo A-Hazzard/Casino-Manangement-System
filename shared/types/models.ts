@@ -207,6 +207,8 @@ export type CollectionDocument = {
     metersIn?: number;
     metersOut?: number;
     gross?: number;
+    drop?: number;
+    totalCancelledCredits?: number;
   };
   machineId?: string;
   machineName?: string;
@@ -1004,7 +1006,7 @@ export type MeterDocument = {
   gamesWon?: number;
   currentCredits?: number;
   totalWonCredits?: number;
-  meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'OTHER';
+  meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'WOW_SYNC' | 'OTHER';
   isSupplemental?: boolean;
   isRamClear?: boolean;
   readAt: Date;

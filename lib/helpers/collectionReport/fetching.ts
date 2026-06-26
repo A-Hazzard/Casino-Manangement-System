@@ -5,7 +5,8 @@
  */
 
 import { CollectionReportLocationWithMachines } from '@/lib/types/api';
-import axios from 'axios';
+import { readSseStream } from '@/lib/utils/sseReader';
+import axios, { type AxiosRequestConfig } from 'axios';
 
 /**
  * Fetches collection reports with filtering and pagination
@@ -63,10 +64,18 @@ export async function getLocationsWithMachines(
 }
 
 /**
- * Fetches a single collection report by ID
+ * Fetches a single collection report by ID.
+ * Accepts an optional axios config so callers can pass an AbortSignal/timeout
+ * (used by the retry hook to cancel a hung request and retry).
  */
-export async function fetchCollectionReportById(reportId: string) {
-  const response = await axios.get(`/api/collection-reports/${reportId}`);
+export async function fetchCollectionReportById(
+  reportId: string,
+  config?: AxiosRequestConfig
+) {
+  const response = await axios.get(
+    `/api/collection-reports/${reportId}`,
+    config
+  );
   return response.data || null;
 }
 
@@ -106,6 +115,70 @@ export async function updateCollectionReport(reportId: string, data: unknown) {
 export async function createCollectionReport(payload: unknown) {
   const response = await axios.post('/api/collection-reports', payload);
   return response.data;
+}
+
+/**
+ * Creates a new collection report with SSE phase streaming.
+ * Calls `onPhase` each time the server advances to a new phase.
+ * Calls `onProgress` with per-machine progress updates.
+ */
+export async function createCollectionReportStreaming(
+  data: unknown,
+  onPhase: (phase: string) => void,
+  onProgress?: (
+    phase: string,
+    done: number,
+    total: number,
+    machineName?: string
+  ) => void
+): Promise<{ success: boolean; report: unknown }> {
+  const response = await fetch('/api/collection-reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return readSseStream<{ success: boolean; report: unknown }>(
+    response,
+    onPhase,
+    onProgress
+  );
+}
+
+/**
+ * Updates a collection report's financial data with SSE phase streaming.
+ * Calls `onPhase` each time the server advances to a new phase.
+ * Calls `onProgress` with per-machine progress updates.
+ */
+export async function updateCollectionReportStreaming(
+  reportId: string,
+  data: unknown,
+  onPhase: (phase: string) => void,
+  onProgress?: (
+    phase: string,
+    done: number,
+    total: number,
+    machineName?: string
+  ) => void
+): Promise<{ success: boolean; data: unknown }> {
+  const response = await fetch(`/api/collection-reports/${reportId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return readSseStream<{ success: boolean; data: unknown }>(response, onPhase, onProgress);
+}
+
+/**
+ * Deletes a collection report with SSE phase streaming.
+ */
+export async function deleteCollectionReportStreaming(
+  reportId: string,
+  onPhase: (phase: string) => void
+): Promise<{ success: boolean }> {
+  const response = await fetch(`/api/collection-reports/${reportId}`, {
+    method: 'DELETE',
+  });
+  return readSseStream<{ success: boolean }>(response, onPhase);
 }
 
 /**

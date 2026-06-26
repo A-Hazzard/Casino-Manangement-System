@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { VaultTransaction } from '@/shared/types/vault';
 import { format } from 'date-fns';
@@ -28,7 +29,7 @@ type VaultOverviewMetricBreakdownModalProps = {
   locationId: string;
   type: VaultOverviewMetricType;
   title: string;
-}
+};
 
 export function VaultOverviewMetricBreakdownModal({
   open,
@@ -42,6 +43,7 @@ export function VaultOverviewMetricBreakdownModal({
   // ============================================================================
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<VaultTransaction[]>([]);
+  const { formatAmount } = useCurrencyFormat();
 
   // ============================================================================
   // Effects
@@ -178,10 +180,8 @@ export function VaultOverviewMetricBreakdownModal({
                             getTxColor(tx)
                           )}
                         >
-                          {tx.to.type === 'vault' ? '+' : '-'}$
-                          {(tx.amount || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                          })}
+                          {tx.to.type === 'vault' ? '+' : '-'}
+                          {formatAmount(tx.amount || 0)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -214,10 +214,8 @@ export function VaultOverviewMetricBreakdownModal({
                           getTxColor(tx)
                         )}
                       >
-                        {tx.to.type === 'vault' ? '+' : '-'}$
-                        {(tx.amount || 0).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                        })}
+                        {tx.to.type === 'vault' ? '+' : '-'}
+                        {formatAmount(tx.amount || 0)}
                       </div>
                     </div>
 
@@ -250,10 +248,8 @@ export function VaultOverviewMetricBreakdownModal({
               type === 'in' ? 'text-violet-600' : 'text-red-500'
             )}
           >
-            {type === 'in' ? '+' : '-'}$
-            {data
-              .reduce((sum, tx) => sum + (tx.amount || 0), 0)
-              .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {type === 'in' ? '+' : '-'}
+            {formatAmount(data.reduce((sum, tx) => sum + (tx.amount || 0), 0))}
           </span>
         </div>
       </DialogContent>

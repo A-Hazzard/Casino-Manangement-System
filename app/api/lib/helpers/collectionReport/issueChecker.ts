@@ -129,8 +129,8 @@ function validateSasTimes(
       return [];
     }
 
-    // Check for inverted SAS times
-    if (sasStartTime >= sasEndTime) {
+    // Check for inverted SAS times (equal start/end is valid — no meters exist but that's fine)
+    if (sasStartTime > sasEndTime) {
       issues.push({
         collectionId: collection._id.toString(),
         machineName:
@@ -146,7 +146,7 @@ function validateSasTimes(
             sasEndTime: expectedSasEndTime.toISOString(),
           },
           explanation:
-            'SAS start time is after or equal to SAS end time, creating an invalid time range',
+            'SAS start time is after SAS end time, creating an invalid time range',
         },
       });
     }
@@ -727,10 +727,10 @@ export async function investigateMostRecentReport(): Promise<{
       const sasStart = collection.sasMeters.sasStartTime ?? new Date(0);
       const sasEnd = collection.sasMeters.sasEndTime ?? new Date(0);
 
-      if (sasStart >= sasEnd) {
+      if (sasStart > sasEnd) {
         collectionIssues.push({
           type: 'SAS_TIMES_INVERTED',
-          description: 'SAS start time is after or equal to end time',
+          description: 'SAS start time is after end time',
           details: {
             sasStartTime: collection.sasMeters.sasStartTime,
             sasEndTime: collection.sasMeters.sasEndTime,

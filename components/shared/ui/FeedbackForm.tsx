@@ -36,14 +36,16 @@ import { cn } from '@/lib/utils';
 // Constants
 // ============================================================================
 
+import { Bug, FileText, Lightbulb, Palette, Sparkles, Star, Zap } from 'lucide-react';
+
 const FEEDBACK_CATEGORIES = [
-  { value: 'bug', label: 'Bug Report', emoji: '🐛' },
-  { value: 'suggestion', label: 'Suggestion', emoji: '💡' },
-  { value: 'general-review', label: 'General Review', emoji: '⭐' },
-  { value: 'feature-request', label: 'Feature Request', emoji: '✨' },
-  { value: 'performance', label: 'Performance', emoji: '⚡' },
-  { value: 'ui-ux', label: 'UI / UX', emoji: '🎨' },
-  { value: 'other', label: 'Other', emoji: '📝' },
+  { value: 'bug', label: 'Bug Report', icon: Bug },
+  { value: 'suggestion', label: 'Suggestion', icon: Lightbulb },
+  { value: 'general-review', label: 'General Review', icon: Star },
+  { value: 'feature-request', label: 'Feature Request', icon: Sparkles },
+  { value: 'performance', label: 'Performance', icon: Zap },
+  { value: 'ui-ux', label: 'UI / UX', icon: Palette },
+  { value: 'other', label: 'Other', icon: FileText },
 ] as const;
 
 type FeedbackFormProps = {
@@ -373,7 +375,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
                             : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
                         )}
                       >
-                        <span>{cat.emoji}</span>
+                        <cat.icon className="h-4 w-4" />
                         {cat.label}
                       </button>
                     ))}

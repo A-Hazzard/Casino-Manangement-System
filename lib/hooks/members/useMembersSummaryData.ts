@@ -156,10 +156,6 @@ export function useMembersSummaryData({
           hasError = true;
           errors.push('demographics');
         }
-        console.warn(
-          'Demographics endpoint not available:',
-          demographicsRes.reason
-        );
       }
 
       // Handle trends response (optional - don't show error for 404)
@@ -172,7 +168,6 @@ export function useMembersSummaryData({
           hasError = true;
           errors.push('trends');
         }
-        console.warn('Trends endpoint not available:', trendsRes.reason);
       }
 
       // Show single consolidated error toast only if critical requests failed (not 404s)

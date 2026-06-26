@@ -11,7 +11,7 @@
  * - Deletes collections and reverts machine collection meters by report ID.
  */
 
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import type { CollectionDocument } from '@/lib/types/collection';
 
 // ============================================================================
@@ -21,13 +21,16 @@ import type { CollectionDocument } from '@/lib/types/collection';
 /**
  * Fetches collections by locationReportId.
  * @param locationReportId - The location report ID to filter collections.
+ * @param config - Optional axios config (AbortSignal/timeout) for cancelable retries.
  * @returns Promise resolving to an array of CollectionDocument.
  */
 export async function fetchCollectionsByLocationReportId(
-  locationReportId: string
+  locationReportId: string,
+  config?: AxiosRequestConfig
 ): Promise<CollectionDocument[]> {
   const { data } = await axios.get(
-    `/api/collection-reports/collections?locationReportId=${locationReportId}`
+    `/api/collection-reports/collections?locationReportId=${locationReportId}`,
+    config
   );
   return data as CollectionDocument[];
 }

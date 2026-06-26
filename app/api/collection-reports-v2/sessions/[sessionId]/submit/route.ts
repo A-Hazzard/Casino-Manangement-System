@@ -26,6 +26,7 @@ import {
   backfillSessionReportVersion,
   logSubmitActivity,
 } from '@/app/api/lib/helpers/collectionReportV2/submitOperations';
+import { createSseResponse } from '@/app/api/lib/utils/sseStream';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -113,148 +114,104 @@ export async function PATCH(
     }
 
     // ============================================================================
-    // STEP 5: Mark session as submitted
+    // STEP 5–9: Stream SSE phases while submitting
+    // Auth, DB, and chronological check are done above.
     // ============================================================================
-    console.log(
-      `[${functionName}] Submitting session:`,
-      JSON.stringify(
-        {
-          sessionId,
-          sessionStartTime: sessionStartTime.toISOString(),
-          sessionEndTime: sessionEndTime.toISOString(),
-          frontendImagesCount: frontendImages.length,
-        },
-        null,
-        2
-      )
-    );
+    const userInfo = {
+      _id: userPayload._id as string,
+      emailAddress: userPayload.emailAddress as string,
+      roles: userPayload.roles as string[],
+    };
 
-    const result = await ReportedMachine.updateMany(
-      { sessionId },
-      {
-        $set: {
-          sessionStatus: 'submitted',
-          sessionStartTime,
-          sessionEndTime,
-        },
+    return createSseResponse(async send => {
+      // Mark session as submitted
+      send({ type: 'phase', phase: 'submitting' });
+
+      const result = await ReportedMachine.updateMany(
+        { sessionId },
+        {
+          $set: {
+            sessionStatus: 'submitted',
+            sessionStartTime,
+            sessionEndTime,
+          },
+        }
+      );
+
+      if (result.matchedCount === 0) {
+        send({ type: 'error', message: 'Session not found' });
+        return;
       }
-    );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Session not found' },
-        { status: 404 }
-      );
-    }
+      // Upload images to Google Drive
+      send({ type: 'phase', phase: 'uploading' });
+      const allUploadedImages = await uploadSessionImages(sessionId, frontendImages);
 
-    console.log(
-      `[${functionName}] Session marked as submitted:`,
-      JSON.stringify(
+      const freshlyUploadedIds = new Set(allUploadedImages.map(img => img.reportedMachineId));
+      await relocateDrivePhotos(sessionId, freshlyUploadedIds);
+
+      // Persist machine meters
+      send({ type: 'phase', phase: 'persisting' });
+      const submittedMachines = await ReportedMachine.find(
         {
           sessionId,
-          matchedCount: result.matchedCount,
-          modifiedCount: result.modifiedCount,
+          status: { $in: ['captured', 'confirmed'] },
         },
-        null,
-        2
-      )
-    );
+        'machineId sasMetersIn sasMetersOut sasEndTime locationName locationId prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut ramClear ramClearMetersIn ramClearMetersOut isSupplemental'
+      ).lean<
+        Array<{
+          machineId: string;
+          sasMetersIn: number | null;
+          sasMetersOut: number | null;
+          sasEndTime?: Date;
+          locationName: string;
+          locationId?: string;
+          prevSasMetersIn?: number;
+          prevSasMetersOut?: number;
+          manualMetersIn?: number;
+          manualMetersOut?: number;
+          ramClear?: boolean;
+          ramClearMetersIn?: number;
+          ramClearMetersOut?: number;
+          isSupplemental?: boolean;
+        }>
+      >();
 
-    // ============================================================================
-    // STEP 6: Upload images to Google Drive
-    // ============================================================================
-    const allUploadedImages = await uploadSessionImages(
-      sessionId,
-      frontendImages
-    );
+      if (submittedMachines.length > 0) {
+        await persistMachineMetersOnSubmit(sessionId, submittedMachines, sessionEndTime);
+      }
 
-    // ============================================================================
-    // STEP 7: Relocate existing Drive photos when sasEndTime changed date
-    // ============================================================================
-    const freshlyUploadedIds = new Set(
-      allUploadedImages.map(img => img.reportedMachineId)
-    );
-    await relocateDrivePhotos(sessionId, freshlyUploadedIds);
+      // Backfill reportVersion
+      send({ type: 'phase', phase: 'backfilling' });
+      try {
+        await backfillSessionReportVersion(sessionId, req, userInfo);
+      } catch (backfillErr) {
+        console.error(
+          `[submit] Backfill reportVersion FAILED for session ${sessionId}:`,
+          backfillErr instanceof Error ? backfillErr.message : 'Unknown error'
+        );
+      }
 
-    // ============================================================================
-    // STEP 8: Update Machine.collectionMeters and collectionTime
-    // ============================================================================
-    const submittedMachines = await ReportedMachine.find(
-      {
-        sessionId,
-        status: { $in: ['captured', 'confirmed'] },
-      },
-      'machineId sasMetersIn sasMetersOut sasEndTime locationName locationId prevSasMetersIn prevSasMetersOut manualMetersIn manualMetersOut ramClear ramClearMetersIn ramClearMetersOut isSupplemental'
-    ).lean<
-      Array<{
-        machineId: string;
-        sasMetersIn: number | null;
-        sasMetersOut: number | null;
-        sasEndTime?: Date;
-        locationName: string;
-        locationId?: string;
-        prevSasMetersIn?: number;
-        prevSasMetersOut?: number;
-        manualMetersIn?: number;
-        manualMetersOut?: number;
-        ramClear?: boolean;
-        ramClearMetersIn?: number;
-        ramClearMetersOut?: number;
-        isSupplemental?: boolean;
-      }>
-    >();
+      // Log activity
+      send({ type: 'phase', phase: 'activity' });
+      try {
+        await logSubmitActivity(sessionId, req, userInfo);
+      } catch (logError) {
+        console.error('Failed to log collection report V2 submit activity:', logError);
+      }
 
-    if (submittedMachines.length > 0) {
-      await persistMachineMetersOnSubmit(
-        sessionId,
-        submittedMachines,
-        sessionEndTime
-      );
-    }
-
-    // ============================================================================
-    // STEP 8B: Backfill reportVersion on this session's history entries
-    // Runs for EVERY session — even when no machine was captured/confirmed
-    // (e.g. skip-to-review without editing), where persistMachineMetersOnSubmit
-    // is skipped. Bumps machine.updatedAt and writes an audit-log entry.
-    // ============================================================================
-    try {
-      await backfillSessionReportVersion(sessionId, req, {
-        _id: userPayload._id as string,
-        emailAddress: userPayload.emailAddress as string,
-        roles: userPayload.roles as string[],
+      send({
+        type: 'done',
+        data: {
+          success: true,
+          data: {
+            sessionId,
+            machinesUpdated: result.modifiedCount,
+            sessionStartTime: sessionStartTime?.toISOString(),
+            sessionEndTime: sessionEndTime.toISOString(),
+          },
+        },
       });
-    } catch (backfillErr) {
-      console.error(
-        `[submit] Backfill reportVersion FAILED for session ${sessionId}:`,
-        backfillErr instanceof Error ? backfillErr.message : 'Unknown error'
-      );
-    }
-
-    // ============================================================================
-    // STEP 9: Log Activity
-    // ============================================================================
-    try {
-      await logSubmitActivity(sessionId, req, {
-        _id: userPayload._id as string,
-        emailAddress: userPayload.emailAddress as string,
-        roles: userPayload.roles as string[],
-      });
-    } catch (logError) {
-      console.error(
-        'Failed to log collection report V2 submit activity:',
-        logError
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        sessionId,
-        machinesUpdated: result.modifiedCount,
-        sessionStartTime: sessionStartTime?.toISOString(),
-        sessionEndTime: sessionEndTime.toISOString(),
-      },
     });
   } catch (error) {
     const errorMessage =

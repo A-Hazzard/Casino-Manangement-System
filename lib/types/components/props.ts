@@ -82,6 +82,9 @@ export type CollectionReportRow = {
   balance: number | string;
   locationRevenue: number | string;
   time: string;
+  createdAt?: string;
+  timeframeStart?: string;
+  timeframeEnd?: string;
   noSMIBLocation?: boolean;
   isLocalServer?: boolean;
   deletedAt?: string | null;

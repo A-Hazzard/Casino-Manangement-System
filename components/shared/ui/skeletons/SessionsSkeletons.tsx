@@ -1,6 +1,100 @@
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 /**
+ * Skeleton for the sessions list page table (desktop + mobile cards).
+ * Matches SessionsDesktopTable (8 cols) and SessionsMobileCards layout.
+ */
+export const SessionsListSkeleton = () => (
+  <>
+    {/* Desktop Table Skeleton */}
+    <div className="hidden rounded-md border border-gray-200 bg-white lg:block">
+      <table className="w-full">
+        <thead>
+          <tr className="bg-button">
+            {['Player', 'Machine', 'Start Time', 'Duration', 'Handle', 'Jackpot', 'Points', 'Actions'].map(
+              col => (
+                <th key={col} className="h-12 px-3 align-middle">
+                  <Skeleton className="h-4 w-16 bg-white/20" />
+                </th>
+              )
+            )}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {Array.from({ length: 8 }).map((_, rowIndex) => (
+            <tr key={rowIndex} className="border-b">
+              {/* Player */}
+              <td className="p-3">
+                <Skeleton className="mb-1 h-4 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </td>
+              {/* Machine */}
+              <td className="p-3">
+                <Skeleton className="mb-1 h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </td>
+              {/* Start Time */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-28" />
+              </td>
+              {/* Duration */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-16" />
+              </td>
+              {/* Handle */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-20" />
+              </td>
+              {/* Jackpot */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-20" />
+              </td>
+              {/* Points */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-4 w-12" />
+              </td>
+              {/* Actions */}
+              <td className="p-3 text-center">
+                <Skeleton className="mx-auto h-8 w-20 rounded-md" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Mobile Cards Skeleton */}
+    <div className="block p-4 lg:hidden">
+      <div className="grid grid-cols-1 gap-4">
+        {Array.from({ length: 5 }).map((_, cardIndex) => (
+          <div key={cardIndex} className="overflow-hidden rounded-lg border bg-white">
+            <div className="border-b bg-gradient-to-r from-gray-50 to-white p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <Skeleton className="mb-1 h-4 w-36" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-8 w-24 rounded-md" />
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {Array.from({ length: 5 }).map((_, fieldIndex) => (
+                  <div key={fieldIndex} className={fieldIndex === 4 ? 'col-span-2 border-t pt-2' : ''}>
+                    <Skeleton className="mb-1 h-3 w-14" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </>
+);
+
+/**
  * Specific skeleton component for Session Events Page
  * Only shows skeletons for membership settings and events sections
  * Used when data is being refetched (e.g., date filter changes)

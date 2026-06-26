@@ -91,6 +91,7 @@ export type locations = Array<{
   moneyIn?: number;
   moneyOut?: number;
   gross?: number;
+  includeJackpot?: boolean;
 }>;
 
 export type ActiveTab = ReportView;

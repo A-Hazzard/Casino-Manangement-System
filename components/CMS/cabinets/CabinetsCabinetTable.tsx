@@ -35,6 +35,7 @@ import {
 } from '@/lib/utils/financial';
 import type { DataTableProps } from '@/shared/types/components';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ExternalLink, Eye, RotateCcw, Trash2 } from 'lucide-react';
@@ -245,12 +246,15 @@ export default function CabinetsCabinetTable({
         </TableHeader>
         <TableBody>
           {cabinets.map(cab => {
+            // WOW machines have no SMIB/relay but are always treated as online.
+            const isWow = isWowMachine(cab);
             const isOnline =
-              cab.online !== undefined
+              isWow ||
+              (cab.online !== undefined
                 ? cab.online
                 : cab.lastOnline &&
                   new Date(cab.lastOnline) >
-                    new Date(Date.now() - 3 * 60 * 1000);
+                    new Date(Date.now() - 3 * 60 * 1000));
             const lastOnlineText =
               cab.offlineTimeLabel ||
               (cab.lastOnline
@@ -321,25 +325,27 @@ export default function CabinetsCabinetTable({
 
                     {/* Row 2: SMIB and Status */}
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (smbId) {
-                            copyToClipboard(smbId, 'SMIB');
-                          }
-                        }}
-                        className={`whitespace-normal break-words text-xs ${smbId ? 'cursor-pointer text-gray-500 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}
-                        title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
-                        disabled={!smbId}
-                      >
-                        SMIB:{' '}
-                        {smbId || (
-                          <span className="font-bold text-red-600">
-                            NO SMIB
-                          </span>
-                        )}
-                      </button>
-                      {!isArchived && smbId && (
+                      {(!isWow || smbId) && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            if (smbId) {
+                              copyToClipboard(smbId, 'SMIB');
+                            }
+                          }}
+                          className={`whitespace-normal break-words text-left text-xs ${smbId ? 'cursor-pointer text-gray-500 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}
+                          title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
+                          disabled={!smbId}
+                        >
+                          SMIB:{' '}
+                          {smbId || (
+                            <span className="font-bold text-red-600">
+                              NO SMIB
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      {!isArchived && (smbId || isWow) && (
                         <Badge
                           variant={isOnline ? 'default' : 'destructive'}
                           className={`ml-auto inline-block w-fit flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${

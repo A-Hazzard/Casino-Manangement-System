@@ -4,10 +4,7 @@
  */
 'use client';
 
-import { useState, useRef } from 'react';
-
-import { ChangeEvent } from 'react';
-import { DragEvent } from 'react';
+import { useState, useRef, type ChangeEvent, type DragEvent } from 'react';
 import axios from 'axios';
 import {
   Dialog,

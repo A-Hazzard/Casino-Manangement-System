@@ -19,6 +19,7 @@ import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { CabinetCardProps } from '@/lib/types/components';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatCurrency } from '@/lib/utils';
 import {
   getGrossColorClass,
@@ -108,11 +109,14 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
     Boolean(props.deletedAt) &&
     new Date(props.deletedAt!) >= new Date('2025-01-01');
 
+  // WOW machines have no SMIB/relay but are always treated as online.
+  const isWow = isWowMachine(props);
   // Determine if cabinet is online (you may need to adjust this based on your data structure)
   const isOnline =
-    props.online !== undefined
+    isWow ||
+    (props.online !== undefined
       ? props.online
-      : props.status === 'functional' || props.online === true;
+      : props.status === 'functional' || props.online === true);
   const lastOnlineText =
     props.offlineTimeLabel ||
     (props.lastOnline
@@ -148,7 +152,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
               ARCHIVED
             </div>
           )}
-          {!isArchived && smbId && (
+          {!isArchived && (smbId || isWow) && (
             <motion.span
               className={`h-2 w-2 rounded-full ${
                 isOnline ? 'bg-green-500' : 'bg-red-500'
@@ -193,7 +197,12 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
           disabled={!smbId}
         >
-          {smbId || <span className="font-bold text-red-600">NO SMIB</span>}
+          {smbId ||
+            (isWow ? (
+              <span className="text-gray-400">—</span>
+            ) : (
+              <span className="font-bold text-red-600">NO SMIB</span>
+            ))}
         </button>
         {/* Network Badge */}
         {props.network && (

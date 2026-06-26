@@ -1,11 +1,18 @@
 /**
+ * @module app/api/sessions/[sessionId]/route
+ *
  * Session Details API Route
  *
  * Fetches detailed information about a specific session, joining member profile
  * and machine data for display on the Session Details view.
+ *
+ * Flow:
+ * 1. Validate sessionId path param
+ * 2. Aggregate session with member, machine, and location lookups
+ * 3. Return session details
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import {
   logRouteFetch,
@@ -25,6 +32,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param sessionId {string} Required (path). The string `_id` of the machine session to retrieve.
  */
 export async function GET(request: NextRequest) {
+  return withApiAuth(request, async () => {
   const startTime = Date.now();
   const functionName = 'GET /api/sessions/[sessionId]';
   const user = extractUserFromRequest(request);
@@ -32,7 +40,6 @@ export async function GET(request: NextRequest) {
   const sessionId = pathname.split('/').pop();
 
   try {
-    await connectDB();
 
     // Validate sessionId
     if (!sessionId || sessionId === 'undefined' || sessionId === 'null') {
@@ -117,6 +124,7 @@ export async function GET(request: NextRequest) {
     const data = sessionDetails[0];
 
     const duration = Date.now() - startTime;
+    if (duration > 1000) console.warn(`[${functionName}] slow: ${duration}ms`);
     logRouteFetch(
       functionName,
       'GET',
@@ -151,4 +159,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }

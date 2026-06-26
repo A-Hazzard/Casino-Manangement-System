@@ -13,7 +13,7 @@ import {
   calculateChanges,
   logActivity,
 } from '@/app/api/lib/helpers/activityLogger';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import Scheduler from '@/app/api/lib/models/scheduler';
 import type { SchedulerDocument } from '@shared/types';
@@ -58,171 +58,165 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const functionName = 'PATCH /api/schedulers/[schedulerId]';
   const logUser = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(request, async ({ userRoles }) => {
+    try {
+      // ============================================================================
+      // STEP 1: Role check
+      // ============================================================================
+      if (!userRoles.some((role: string) => MANAGE_ROLES.includes(role))) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Unauthorized',
+            message: 'Insufficient permissions',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 403 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 2: Authenticate user & role check
-    // ============================================================================
-    const user = await getUserFromServer();
-    const userRoles = (user?.roles as string[]) || [];
-    if (!user || !userRoles.some((r: string) => MANAGE_ROLES.includes(r))) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized',
-          message: 'Insufficient permissions',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 403 }
+      // ============================================================================
+      // STEP 2: Parse request body
+      // ============================================================================
+      const { schedulerId } = await context.params;
+      const body = await request.json();
+      const { startTime, endTime, status } = body as {
+        startTime?: string;
+        endTime?: string;
+        status?: string;
+      };
+
+      // ============================================================================
+      // STEP 3: Build update data
+      // ============================================================================
+      const updateData: Record<string, unknown> = {};
+      if (startTime) updateData.startTime = new Date(startTime);
+      if (endTime) updateData.endTime = new Date(endTime);
+      if (status) updateData.status = status;
+
+      if (Object.keys(updateData).length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'No fields to update',
+            message: 'Provide at least one field to update',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Fetch existing scheduler
+      // ============================================================================
+      const existingScheduler = await Scheduler.findOne({
+        _id: schedulerId,
+        deletedAt: { $exists: false },
+      }).lean<SchedulerDocument>();
+      if (!existingScheduler) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Not found',
+            message: 'Schedule not found',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 404 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 5: Update scheduler
+      // ============================================================================
+      const updated = await Scheduler.findOneAndUpdate(
+        { _id: schedulerId, deletedAt: { $exists: false } },
+        { $set: updateData },
+        { new: true }
       );
-    }
 
-    // ============================================================================
-    // STEP 3: Parse request body
-    // ============================================================================
-    const { schedulerId } = await context.params;
-    const body = await request.json();
-    const { startTime, endTime, status } = body as {
-      startTime?: string;
-      endTime?: string;
-      status?: string;
-    };
+      if (!updated) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Not found',
+            message: 'Schedule not found',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 404 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 4: Build update data
-    // ============================================================================
-    const updateData: Record<string, unknown> = {};
-    if (startTime) updateData.startTime = new Date(startTime);
-    if (endTime) updateData.endTime = new Date(endTime);
-    if (status) updateData.status = status;
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No fields to update',
-          message: 'Provide at least one field to update',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 400 }
-      );
-    }
-
-    console.log(
-      `[Scheduler PATCH] Request — schedulerId: ${schedulerId}, fields: ${Object.keys(updateData).join(', ')}`
-    );
-
-    // ============================================================================
-    // STEP 5: Fetch existing scheduler
-    // ============================================================================
-    const existingScheduler = await Scheduler.findOne({
-      _id: schedulerId,
-      deletedAt: { $exists: false },
-    }).lean<SchedulerDocument>();
-    if (!existingScheduler) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Not found',
-          message: 'Schedule not found',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Update scheduler
-    // ============================================================================
-    const updated = await Scheduler.findOneAndUpdate(
-      { _id: schedulerId, deletedAt: { $exists: false } },
-      { $set: updateData },
-      { new: true }
-    );
-
-    if (!updated) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Not found',
-          message: 'Schedule not found',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Log activity
-    // ============================================================================
-    console.log(`[Scheduler PATCH] Updated scheduler ${schedulerId}`);
-    logActivity({
-      action: 'update',
-      details: `Schedule ${schedulerId} updated`,
-      userId: String(user._id),
-      username: String(
-        (user as Record<string, unknown>).emailAddress ||
-          (user as Record<string, unknown>).username ||
-          user._id
-      ),
-      metadata: {
-        resource: 'scheduler',
-        resourceId: schedulerId,
-        resourceName: `Schedule ${schedulerId}`,
-        changes: calculateChanges(
-          existingScheduler as Record<string, unknown>,
-          updateData
+      // ============================================================================
+      // STEP 6: Log activity
+      // ============================================================================
+      const user = await getUserFromServer();
+      logActivity({
+        action: 'update',
+        details: `Schedule ${schedulerId} updated`,
+        userId: String(user?._id ?? ''),
+        username: String(
+          (user as unknown as Record<string, unknown>)?.emailAddress ||
+            (user as unknown as Record<string, unknown>)?.username ||
+            user?._id
         ),
-        previousData: existingScheduler,
-        newData: updated.toObject(),
-      },
-    }).catch(err =>
-      console.error('[Scheduler PATCH] Activity log failed:', err)
-    );
+        metadata: {
+          resource: 'scheduler',
+          resourceId: schedulerId,
+          resourceName: `Schedule ${schedulerId}`,
+          changes: calculateChanges(
+            existingScheduler as Record<string, unknown>,
+            updateData
+          ),
+          previousData: existingScheduler,
+          newData: updated.toObject(),
+        },
+      }).catch(err =>
+        console.error('[Scheduler PATCH] Activity log failed:', err)
+      );
 
-    // ============================================================================
-    // STEP 8: Return success response
-    // ============================================================================
-    const duration = Date.now() - timerStart;
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      '/api/schedulers/[schedulerId]',
-      1,
-      logUser,
-      duration
-    );
+      // ============================================================================
+      // STEP 7: Return success response
+      // ============================================================================
+      const duration = Date.now() - timerStart;
+      if (duration > 1000) {
+        console.warn(`[Scheduler PATCH] slow: ${duration}ms`);
+      }
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        '/api/schedulers/[schedulerId]',
+        1,
+        logUser,
+        duration
+      );
 
-    return NextResponse.json({
-      success: true,
-      data: updated,
-      message: 'Schedule updated successfully',
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    logRouteError(
-      functionName,
-      'PATCH',
-      '/api/schedulers/[schedulerId]',
-      msg,
-      logUser
-    );
-    console.error('[Scheduler PATCH] Error:', msg);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to update schedule',
-        message: msg,
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        message: 'Schedule updated successfully',
         timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/schedulers/[schedulerId]',
+        msg,
+        logUser
+      );
+      console.error('[Scheduler PATCH] Error:', msg);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to update schedule',
+          message: msg,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    }
+  });
 }
 
 // ============================================================================
@@ -243,117 +237,112 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   const functionName = 'DELETE /api/schedulers/[schedulerId]';
   const logUser = extractUserFromRequest(_request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(_request, async ({ userRoles }) => {
+    try {
+      // ============================================================================
+      // STEP 1: Role check
+      // ============================================================================
+      if (!userRoles.some((role: string) => MANAGE_ROLES.includes(role))) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Unauthorized',
+            message: 'Insufficient permissions',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 403 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 2: Authenticate user & role check
-    // ============================================================================
-    // Auth + role check
-    const user = await getUserFromServer();
-    const userRoles = (user?.roles as string[]) || [];
-    if (!user || !userRoles.some((r: string) => MANAGE_ROLES.includes(r))) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Unauthorized',
-          message: 'Insufficient permissions',
-          timestamp: new Date().toISOString(),
-        },
-        { status: 403 }
+      // ============================================================================
+      // STEP 2: Parse request
+      // ============================================================================
+      const { schedulerId } = await context.params;
+
+      // ============================================================================
+      // STEP 3: Soft delete scheduler
+      // ============================================================================
+      const updated = await Scheduler.findOneAndUpdate(
+        { _id: schedulerId, deletedAt: { $exists: false } },
+        { $set: { deletedAt: new Date() } },
+        { new: true }
       );
-    }
 
-    // ============================================================================
-    // STEP 3: Parse request
-    // ============================================================================
-    const { schedulerId } = await context.params;
+      if (!updated) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Not found',
+            message: 'Schedule not found or already deleted',
+            timestamp: new Date().toISOString(),
+          },
+          { status: 404 }
+        );
+      }
 
-    console.log(`[Scheduler DELETE] Request — schedulerId: ${schedulerId}`);
-
-    // ============================================================================
-    // STEP 4: Soft delete scheduler
-    // ============================================================================
-    const updated = await Scheduler.findOneAndUpdate(
-      { _id: schedulerId, deletedAt: { $exists: false } },
-      { $set: { deletedAt: new Date() } },
-      { new: true }
-    );
-
-    if (!updated) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Not found',
-          message: 'Schedule not found or already deleted',
-          timestamp: new Date().toISOString(),
+      // ============================================================================
+      // STEP 4: Log activity
+      // ============================================================================
+      const user = await getUserFromServer();
+      logActivity({
+        action: 'delete',
+        details: `Schedule ${schedulerId} deleted`,
+        userId: String(user?._id ?? ''),
+        username: String(
+          (user as unknown as Record<string, unknown>)?.emailAddress ||
+            (user as unknown as Record<string, unknown>)?.username ||
+            user?._id
+        ),
+        metadata: {
+          resource: 'scheduler',
+          resourceId: schedulerId,
+          resourceName: `Schedule ${schedulerId}`,
         },
-        { status: 404 }
+      }).catch(err =>
+        console.error('[Scheduler DELETE] Activity log failed:', err)
       );
-    }
 
-    // ============================================================================
-    // STEP 5: Log activity
-    // ============================================================================
-    console.log(`[Scheduler DELETE] Soft-deleted scheduler ${schedulerId}`);
-    logActivity({
-      action: 'delete',
-      details: `Schedule ${schedulerId} deleted`,
-      userId: String(user._id),
-      username: String(
-        (user as Record<string, unknown>).emailAddress ||
-          (user as Record<string, unknown>).username ||
-          user._id
-      ),
-      metadata: {
-        resource: 'scheduler',
-        resourceId: schedulerId,
-        resourceName: `Schedule ${schedulerId}`,
-      },
-    }).catch(err =>
-      console.error('[Scheduler DELETE] Activity log failed:', err)
-    );
+      // ============================================================================
+      // STEP 5: Return success response
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Scheduler DELETE] slow: ${duration}ms`);
+      }
+      logRouteDelete(
+        functionName,
+        'DELETE',
+        '/api/schedulers/[schedulerId]',
+        1,
+        logUser,
+        duration
+      );
 
-    // ============================================================================
-    // STEP 6: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteDelete(
-      functionName,
-      'DELETE',
-      '/api/schedulers/[schedulerId]',
-      1,
-      logUser,
-      duration
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: null,
-      message: 'Schedule deleted successfully',
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error';
-    logRouteError(
-      functionName,
-      'DELETE',
-      '/api/schedulers/[schedulerId]',
-      msg,
-      logUser
-    );
-    console.error('[Scheduler DELETE] Error:', msg);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete schedule',
-        message: msg,
+      return NextResponse.json({
+        success: true,
+        data: null,
+        message: 'Schedule deleted successfully',
         timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/schedulers/[schedulerId]',
+        msg,
+        logUser
+      );
+      console.error('[Scheduler DELETE] Error:', msg);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to delete schedule',
+          message: msg,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
+      );
+    }
+  });
 }

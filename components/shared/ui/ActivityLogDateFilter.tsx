@@ -130,49 +130,45 @@ export default function ActivityLogDateFilter({
       {/* Filter Controls */}
       <div className="flex w-full flex-wrap items-center gap-2">
         {/* Desktop Filter Buttons */}
-        <div className="hidden items-center gap-2 md:flex">
-          {timeFilterButtons.map(button => (
-            button.value === 'Custom' ? (
-              <Popover key={button.value} open={showCustomDesktop} onOpenChange={setShowCustomDesktop}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={activeFilter === 'Custom' ? 'default' : 'outline'}
-                    size="sm"
-                    disabled={disabled}
-                    className={
-                      activeFilter === 'Custom'
-                        ? 'bg-buttonActive text-container'
-                        : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
-                    }
-                  >
-                    {button.label}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start" side="bottom">
-                  <MuiDateCalendar
-                    showTime={false}
-                    buttonLabel="Apply"
-                    onSelect={handleCustomSelect}
-                  />
-                </PopoverContent>
-              </Popover>
-            ) : (
+        <div className="hidden flex-wrap items-center gap-2 md:flex">
+          {timeFilterButtons
+            .filter(b => b.value !== 'Custom')
+            .map(button => (
               <Button
                 key={button.value}
-                variant={activeFilter === button.value ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => handleFilterClick(button.value)}
                 disabled={disabled}
-                className={
+                className={`rounded-md px-3 py-1 text-sm transition-colors ${
                   activeFilter === button.value
-                    ? 'bg-buttonActive text-container'
-                    : 'border-buttonActive bg-container text-grayHighlight hover:bg-buttonActive hover:text-container'
-                }
+                    ? 'bg-buttonActive text-white'
+                    : 'bg-button text-white hover:bg-button/90'
+                }`}
               >
                 {button.label}
               </Button>
-            )
-          ))}
+            ))}
+
+          <Popover open={showCustomDesktop} onOpenChange={setShowCustomDesktop}>
+            <PopoverTrigger asChild>
+              <Button
+                disabled={disabled}
+                className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                  activeFilter === 'Custom'
+                    ? 'bg-buttonActive text-white'
+                    : 'bg-button text-white hover:bg-button/90'
+                }`}
+              >
+                Custom
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start" side="bottom">
+              <MuiDateCalendar
+                showTime={false}
+                buttonLabel="Apply"
+                onSelect={handleCustomSelect}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Mobile Filter Dropdown */}
@@ -182,7 +178,7 @@ export default function ActivityLogDateFilter({
             onValueChange={handleMobileSelectChange}
             disabled={disabled}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white border-2 border-gray-300 text-gray-700 focus:border-blue-500 transition-colors min-h-[44px] text-base">
               <SelectValue placeholder="Select time period" />
             </SelectTrigger>
             <SelectContent>

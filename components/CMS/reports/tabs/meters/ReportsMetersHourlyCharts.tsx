@@ -47,6 +47,53 @@ type ReportsMetersHourlyChartsProps = {
   loading?: boolean;
 };
 
+/**
+ * Chart container with a fixed legend and a horizontally scrollable body.
+ * Defined at module scope so it is not recreated on every parent render
+ * (which would remount the chart subtree and reset scroll position).
+ */
+function ChartContainer({
+  children,
+  legendItem,
+  scrollRef,
+  chartWidth,
+}: {
+  children: ReactNode;
+  legendItem: { label: string; color: string };
+  scrollRef: RefObject<HTMLDivElement | null>;
+  chartWidth: number | string;
+}) {
+  return (
+    <div className="flex flex-col">
+      {/* Fixed Legend outside scroll container */}
+      <div className="mb-4 flex items-center justify-center gap-2 border-b pb-2">
+        <div
+          className="h-0.5 w-4"
+          style={{ backgroundColor: legendItem.color }}
+        />
+        <span className="text-xs font-medium text-gray-700">
+          {legendItem.label}
+        </span>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="touch-pan-x overflow-x-auto overflow-y-hidden"
+      >
+        <div
+          style={{
+            minWidth:
+              typeof chartWidth === 'number' ? `${chartWidth}px` : chartWidth,
+            width: '100%',
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReportsMetersHourlyCharts({
   data,
   loading = false,
@@ -254,47 +301,6 @@ export function ReportsMetersHourlyCharts({
     );
   }
 
-  // Chart container with horizontal scroll
-  const ChartContainer = ({
-    children,
-    legendItem,
-    scrollRef,
-  }: {
-    children: ReactNode;
-    legendItem: { label: string; color: string };
-    scrollRef: RefObject<HTMLDivElement | null>;
-  }) => {
-    return (
-      <div className="flex flex-col">
-        {/* Fixed Legend outside scroll container */}
-        <div className="mb-4 flex items-center justify-center gap-2 border-b pb-2">
-          <div
-            className="h-0.5 w-4"
-            style={{ backgroundColor: legendItem.color }}
-          />
-          <span className="text-xs font-medium text-gray-700">
-            {legendItem.label}
-          </span>
-        </div>
-
-        <div
-          ref={scrollRef}
-          className="touch-pan-x overflow-x-auto overflow-y-hidden"
-        >
-          <div
-            style={{
-              minWidth:
-                typeof chartWidth === 'number' ? `${chartWidth}px` : chartWidth,
-              width: '100%',
-            }}
-          >
-            {children}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-4">
       {/* Games Played Per Hour - Full Width */}
@@ -320,6 +326,7 @@ export function ReportsMetersHourlyCharts({
             <ChartContainer
               legendItem={{ label: 'Games Played', color: '#3b82f6' }}
               scrollRef={gamesScrollRef}
+              chartWidth={chartWidth}
             >
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                 <LineChart
@@ -387,6 +394,7 @@ export function ReportsMetersHourlyCharts({
               <ChartContainer
                 legendItem={{ label: 'Coin In', color: '#10b981' }}
                 scrollRef={coinInScrollRef}
+                chartWidth={chartWidth}
               >
                 <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                   <LineChart
@@ -457,6 +465,7 @@ export function ReportsMetersHourlyCharts({
               <ChartContainer
                 legendItem={{ label: 'Coin Out', color: '#f59e0b' }}
                 scrollRef={coinOutScrollRef}
+                chartWidth={chartWidth}
               >
                 <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                   <LineChart

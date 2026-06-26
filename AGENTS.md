@@ -69,6 +69,10 @@ These are in `.claude/skills/` and load on-demand when relevant:
 
 ## Critical Invariants
 
+### Command Execution & File Search Constraints
+
+- **CRITICAL**: Never scan `.next` or `node_modules` folders when searching for files, using grep/Select-String, or running shell commands. Always exclude these folders explicitly (e.g., `-Exclude *.next*,*node_modules*`) to prevent massive search loops and terminal output flood.
+
 ### Currency & Rounding
 
 - **All currency values rounded to 2 decimals at display point**: `Math.round(value * 100) / 100`
@@ -104,7 +108,7 @@ These are in `.claude/skills/` and load on-demand when relevant:
 
 - **Always use Mongoose models**, never `db.collection()`
 - **`findOne()` not `findById()`**, `findOneAndUpdate()` not `findByIdAndUpdate()`
-- **Soft-delete filter**: `$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2026-01-01') } }]`
+- **Soft-delete filter**: `$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }]`
 - **`type` over `interface` always** — no exceptions
 - **No `any`** — use specific types. No `Record<string, unknown>` either.
 
@@ -210,6 +214,7 @@ CRITICAL: Load these files on-demand when the task is relevant. Do NOT preemptiv
 - V2 feature plan: `@.claude/collection-report-v2-plan.md`
 - Vault FRD: `@.instructions/vault-FRD.md`
 - Application context: `@.instructions/rules/application-context.md`
+- Collection report system (comprehensive AI context): `@.instructions/collection-report-ai-context.md`
 
 ---
 

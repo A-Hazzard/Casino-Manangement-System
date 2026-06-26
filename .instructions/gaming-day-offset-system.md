@@ -1,7 +1,7 @@
 # Gaming Day Offset System
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 22nd, 2025  
+**Last Updated:** June 25, 2026  
 **Version:** 2.1.0
 
 ---

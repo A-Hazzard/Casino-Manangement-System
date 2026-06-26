@@ -200,6 +200,15 @@ function toDateSafe(val: Date | string | undefined): Date {
   return typeof val === 'string' ? new Date(val) : val;
 }
 
+function toSafeDateWithFallback(
+  val: Date | string | undefined,
+  fallback: Date | string | undefined
+): Date {
+  if (val) return typeof val === 'string' ? new Date(val) : val;
+  if (fallback) return typeof fallback === 'string' ? new Date(fallback) : fallback;
+  return new Date();
+}
+
 /**
  * Resolves SAS time range based on 4 priority cases:
  * 1. Both SAS times explicitly provided
@@ -239,15 +248,34 @@ async function resolveSasTimeRange(
     gamesPlayed: existingSasMeters.gamesPlayed || 0,
   };
 
-  let finalSasStartTime = toDateSafe(existingSasMeters?.sasStartTime as Date | undefined);
-  let finalSasEndTime = toDateSafe(existingSasMeters?.sasEndTime as Date | undefined);
+  const fallbackTime = updatedCollection.collectionTime || updatedCollection.timestamp;
+  let finalSasStartTime = toSafeDateWithFallback(
+    existingSasMeters?.sasStartTime as Date | undefined,
+    fallbackTime
+  );
+  let finalSasEndTime = toSafeDateWithFallback(
+    existingSasMeters?.sasEndTime as Date | undefined,
+    fallbackTime
+  );
 
   if (sasFields.hasPayloadSasStartTime && sasFields.hasPayloadSasEndTime) {
     finalSasStartTime = toDateSafe(sasFields.payloadSasStartTime as string | Date);
     finalSasEndTime = toDateSafe(sasFields.payloadSasEndTime as string | Date);
+
+    const { calculateSasMetrics } = await import(
+      '@/app/api/lib/helpers/collectionReport/creation'
+    );
+    const newSasMetrics = await calculateSasMetrics(
+      updatedCollection.machineId,
+      finalSasStartTime,
+      finalSasEndTime
+    );
+    sasMetersData = { ...sasMetersData, ...newSasMetrics };
   } else if (sasFields.hasPayloadSasEndTime) {
     const userProvidedEndTime = toDateSafe(sasFields.payloadSasEndTime as string | Date);
-    const { getSasTimePeriod } = await import('@/app/api/lib/helpers/collectionReport/creation');
+    const { getSasTimePeriod, calculateSasMetrics } = await import(
+      '@/app/api/lib/helpers/collectionReport/creation'
+    );
     const { sasStartTime: calculatedStartTime } = await getSasTimePeriod(
       updatedCollection.machineId,
       undefined,
@@ -255,6 +283,13 @@ async function resolveSasTimeRange(
     );
     finalSasStartTime = toDateSafe(calculatedStartTime);
     finalSasEndTime = userProvidedEndTime;
+
+    const newSasMetrics = await calculateSasMetrics(
+      updatedCollection.machineId,
+      finalSasStartTime,
+      finalSasEndTime
+    );
+    sasMetersData = { ...sasMetersData, ...newSasMetrics };
   } else if (flags.needsSasTimeRecalculation) {
     const newTimestamp = toDateSafe(updateData.timestamp as string | Date);
     const { getSasTimePeriod, calculateSasMetrics } = await import(
@@ -365,9 +400,6 @@ export async function recalculateMovementAndSasForPatch(
     );
 
     if (sasMetersData) {
-      sasMetersData.drop = roundedMovement.metersIn;
-      sasMetersData.totalCancelledCredits = roundedMovement.metersOut;
-      sasMetersData.gross = roundedMovement.gross;
       recalculatedData.sasMeters = sasMetersData;
     }
   }

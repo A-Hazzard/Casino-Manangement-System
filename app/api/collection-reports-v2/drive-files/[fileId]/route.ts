@@ -1,3 +1,12 @@
+/**
+ * Collection Report V2 — Google Drive File Proxy
+ *
+ * GET /api/collection-reports-v2/drive-files/[fileId]
+ * Fetches and proxies a file from Google Drive by file ID.
+ *
+ * @module app/api/collection-reports-v2/drive-files/[fileId]/route
+ */
+
 import { getDriveFileMeta } from '@/lib/utils/drive';
 import { NextRequest, NextResponse } from 'next/server';
 

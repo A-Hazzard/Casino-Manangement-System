@@ -183,6 +183,7 @@ const CollectionReportPageContent: FC = () => {
     setShowEditDesktop,
     setEditingReportId,
     onRefreshLocations,
+    currentDeletePhase,
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
@@ -675,6 +676,7 @@ const CollectionReportPageContent: FC = () => {
         onConfirmDelete={confirmDelete}
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
+        currentDeletePhase={currentDeletePhase}
       />
 
       {showV2StartSession && (

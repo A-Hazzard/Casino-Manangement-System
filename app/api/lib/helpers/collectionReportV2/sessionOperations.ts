@@ -13,6 +13,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { Collections } from '@/app/api/lib/models/collections';
 import UserModel from '@/app/api/lib/models/user';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { determineAllowedLocationIds } from '@/app/api/lib/helpers/collectionReport/queries';
 import { calculateDateRangeForTimePeriod } from '@/app/api/lib/helpers/collectionReport/queries';
 import { fixSmibMeterAfterSupplementalDeletion } from '@/app/api/lib/helpers/collectionReport/smibMeterFix';
@@ -150,6 +151,7 @@ export type SessionMachineResponse = {
   driveFileId: string | undefined;
   metersMatch: boolean | undefined;
   hasRelay: boolean;
+  isWow: boolean;
   ramClear: boolean;
   ramClearMetersIn: number | undefined;
   ramClearMetersOut: number | undefined;
@@ -716,11 +718,13 @@ export function buildSessionMachineResponse(
   liveSasMetersMap: Map<
     string,
     { drop?: number; totalCancelledCredits?: number }
-  >
+  >,
+  isWowMap: Map<string, boolean>
 ): SessionMachineResponse[] {
   return machines.map(machine => {
     const machineId = machine.machineId as string;
     const machineHasRelay = hasRelayMap.get(machineId) ?? false;
+    const machineIsWow = isWowMap.get(machineId) ?? false;
     const liveSas = liveSasMetersMap.get(machineId);
     const sasMetersInVal = machine.sasMetersIn as number | null | undefined;
     const sasMetersOutVal = machine.sasMetersOut as number | null | undefined;
@@ -797,6 +801,7 @@ export function buildSessionMachineResponse(
       driveFileId: (machine.driveFileId as string | undefined) || undefined,
       metersMatch: !machineHasRelay ? true : (machine.metersMatch as boolean | undefined),
       hasRelay: machineHasRelay,
+      isWow: machineIsWow,
       ramClear: (machine.ramClear as boolean) === true,
       ramClearMetersIn: machine.ramClearMetersIn as number | undefined,
       ramClearMetersOut: machine.ramClearMetersOut as number | undefined,
@@ -876,7 +881,9 @@ export async function buildSessionDetailResponse(
   const machineDocs = await Machine.find({
     _id: { $in: machineIds },
   })
-    .select('collectionTime previousCollectionTime sasMeters relayId')
+    .select(
+      'collectionTime previousCollectionTime sasMeters relayId meta.dataSync.source'
+    )
     .lean<
       Array<{
         _id: string;
@@ -884,6 +891,7 @@ export async function buildSessionDetailResponse(
         previousCollectionTime?: Date;
         sasMeters?: { drop?: number; totalCancelledCredits?: number };
         relayId?: string | null;
+        meta?: { dataSync?: { source?: string } };
       }>
     >();
 
@@ -899,6 +907,10 @@ export async function buildSessionDetailResponse(
 
   const hasRelayMap = new Map(
     machineDocs.map(m => [String(m._id), !!m.relayId])
+  );
+
+  const isWowMap = new Map(
+    machineDocs.map(m => [String(m._id), isWowMachine(m)])
   );
 
   // Fallback: previousCollectionTime > collectionTime (for SAS start resolution)
@@ -926,7 +938,8 @@ export async function buildSessionDetailResponse(
     machines,
     lastCollectionMap,
     hasRelayMap,
-    liveSasMetersMap
+    liveSasMetersMap,
+    isWowMap
   );
 
   return {

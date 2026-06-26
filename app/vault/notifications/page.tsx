@@ -2,6 +2,8 @@
  * Vault Notifications Page
  *
  * Dedicated page for Vault Managers to review all system alerts and operation notifications.
+ *
+ * @module app/vault/notifications/page
  */
 import VaultNotificationsPanel from '@/components/VAULT/admin/VaultNotificationsPanel';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';

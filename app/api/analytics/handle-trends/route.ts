@@ -12,7 +12,7 @@
  */
 
 import { getHandleTrends } from '@/app/api/lib/helpers/trends/general';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -42,80 +42,64 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/analytics/handle-trends';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
-    const locationIds = searchParams.get('locationIds');
+  return withApiAuth(req, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(req.url);
+      const timePeriod =
+        (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+      const licencee = searchParams.get('licencee');
+      const locationIds = searchParams.get('locationIds');
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
+      // ============================================================================
+      // STEP 2: Execute the core handle trends fetching logic via helper
+      // ============================================================================
+      const handleTrends = await getHandleTrends(
+        timePeriod,
+        licencee,
+        locationIds
+      );
+
+      // ============================================================================
+      // STEP 3: Return handle trends data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/handle-trends',
+        Array.isArray(handleTrends) ? handleTrends.length : 1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: handleTrends,
+        timePeriod,
+        locationIds: locationIds ? locationIds.split(',') : null,
+      });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
       logRouteError(
         functionName,
         'GET',
         '/api/analytics/handle-trends',
-        'Database connection not established',
+        errorMessage,
         user
       );
+      console.error(`[${functionName}] Error:`, errorMessage);
       return NextResponse.json(
-        { error: 'Database connection not established' },
+        { error: 'Failed to fetch handle trends' },
         { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 3: Execute the core handle trends fetching logic via helper
-    // ============================================================================
-    const handleTrends = await getHandleTrends(
-      timePeriod,
-      licencee,
-      locationIds
-    );
-
-    // ============================================================================
-    // STEP 4: Return handle trends data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/handle-trends',
-      Array.isArray(handleTrends) ? handleTrends.length : 1,
-      user,
-      duration
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: handleTrends,
-      timePeriod,
-      locationIds: locationIds ? locationIds.split(',') : null,
-    });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/handle-trends',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Analytics Handle Trends GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { error: 'Failed to fetch handle trends' },
-      { status: 500 }
-    );
-  }
+  });
 }

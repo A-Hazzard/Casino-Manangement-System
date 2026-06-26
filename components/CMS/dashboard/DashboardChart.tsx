@@ -3,8 +3,10 @@
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Label } from '@/components/shared/ui/label';
 import { DashboardChartSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { dashboardData } from '@/lib/types';
 import { ChartProps } from '@/lib/types/components';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
   formatDate,
   formatDisplayDate,
@@ -34,6 +36,7 @@ export default function Chart({
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(() => {
     return ['Money In', 'Money Out', 'Jackpot', 'Gross'];
   });
+  const { displayCurrency } = useCurrencyFormat();
   // Chart data received for rendering
 
   // Always show skeleton when loading or if we have no data state yet
@@ -159,7 +162,9 @@ export default function Chart({
     const [mostCommonDay] =
       Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0] || [];
     if (mostCommonDay) {
-      dayFilteredChartData = chartData.filter(data => data.day === mostCommonDay);
+      dayFilteredChartData = chartData.filter(
+        data => data.day === mostCommonDay
+      );
     }
   }
 
@@ -388,7 +393,9 @@ export default function Chart({
       const current = trimmedChartData[index];
       const previous = index > 0 ? trimmedChartData[index - 1] : null;
       const next =
-        index < trimmedChartData.length - 1 ? trimmedChartData[index + 1] : null;
+        index < trimmedChartData.length - 1
+          ? trimmedChartData[index + 1]
+          : null;
 
       // Check if current point has any activity for selected metrics
       const hasActivity =
@@ -429,7 +436,8 @@ export default function Chart({
         : true;
 
       // Keep the point if it's first/last, has activity, is a transition, or values changed
-      const isFirstOrLast = index === 0 || index === trimmedChartData.length - 1;
+      const isFirstOrLast =
+        index === 0 || index === trimmedChartData.length - 1;
       const isTransition =
         previousHasActivity !== hasActivity || nextHasActivity !== hasActivity;
 
@@ -660,15 +668,17 @@ export default function Chart({
                     typeof value === 'number'
                       ? value
                       : parseFloat(String(value)) || 0;
-                  if (numValue === 0) return '0';
-                  if (numValue < 1000) return numValue.toFixed(0);
+                  // Compact axis labels prefixed with the active currency code
+                  if (numValue === 0) return `${displayCurrency} 0`;
+                  if (numValue < 1000)
+                    return `${displayCurrency} ${numValue.toFixed(0)}`;
                   if (numValue < 1000000)
-                    return `${(numValue / 1000).toFixed(1)}K`;
+                    return `${displayCurrency} ${(numValue / 1000).toFixed(1)}K`;
                   if (numValue < 1000000000)
-                    return `${(numValue / 1000000).toFixed(1)}M`;
+                    return `${displayCurrency} ${(numValue / 1000000).toFixed(1)}M`;
                   if (numValue < 1000000000000)
-                    return `${(numValue / 1000000000).toFixed(1)}B`;
-                  return `${(numValue / 1000000000000).toFixed(1)}T`;
+                    return `${displayCurrency} ${(numValue / 1000000000).toFixed(1)}B`;
+                  return `${displayCurrency} ${(numValue / 1000000000000).toFixed(1)}T`;
                 }}
               />
               <Tooltip
@@ -678,10 +688,10 @@ export default function Chart({
                     typeof value === 'number'
                       ? value
                       : parseFloat(String(value)) || 0;
-                  const formattedValue = numValue.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  });
+                  const formattedValue = formatCurrencyWithCodeString(
+                    numValue,
+                    displayCurrency
+                  );
                   return [formattedValue, name];
                 }}
                 labelFormatter={(label, payload) => {

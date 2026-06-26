@@ -26,6 +26,7 @@ import {
   computeTotalVariation,
 } from './calculations';
 import { generateMongoId } from '../../../../../lib/utils/id';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { Meters } from '../../models/meters';
 import type {
   MetersData,
@@ -493,23 +494,337 @@ export async function appendMeterIdsToCollections(
   }
 }
 
+type MachineDocShape = {
+  _id: string;
+  relayId?: string | null;
+  lastActivity?: Date | string;
+  gamingLocation?: string;
+  meta?: { dataSync?: { source?: string } };
+  name?: string;
+  serialNumber?: string;
+  custom?: { name?: string };
+};
+
+/**
+ * Builds the manual Meter documents for a single machine.
+ * Returns an empty array for machines that do not need manual meters
+ * (WOW, online SMIB, already pre-created meters).
+ */
+async function buildMetersForMachine(
+  machine: CreateCollectionReportPayload['machines'][number],
+  machineDocMap: Map<string, MachineDocShape>,
+  existingCollectionMap: Map<string, { _id: string; meterId?: string }>,
+  finalReadAt: Date
+): Promise<MetersData[]> {
+  const machineMeters: MetersData[] = [];
+
+  console.log(
+    `🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`
+  );
+
+  // ============================================================================
+  // IDEMPOTENCY: Skip if meters were already pre-created via /pre-create-meters
+  // ============================================================================
+  if (machine.collectionId) {
+    const existingCollection = existingCollectionMap.get(machine.collectionId);
+    if (existingCollection?.meterId) {
+      console.log(
+        `⏭️ [createManualMetersForEachMachine] Skipping machine ${machine.machineId} — meters already pre-created (meterId: ${existingCollection.meterId})`
+      );
+      return machineMeters;
+    }
+  }
+
+  const machineDoc = machineDocMap.get(machine.machineId ?? '') ?? null;
+
+  // WOW machines never get manual meters — their readings are synced (WOW_SYNC).
+  if (isWowMachine(machineDoc)) {
+    console.log(
+      `⏭️ [createManualMetersForEachMachine] Skipping WOW machine ${machine.machineId} (synced via WOW_SYNC)`
+    );
+    return machineMeters;
+  }
+
+  const hasRelay = !!machineDoc?.relayId;
+  // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
+  const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
+  const isOffline =
+    hasRelay &&
+    (!machineDoc?.lastActivity ||
+      new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
+        OFFLINE_THRESHOLD_MS);
+
+  // SMIB machines have a relay that supplies Meter documents automatically;
+  // only create manual meters for non-relay machines OR offline SMIB machines.
+  if (hasRelay && !isOffline) {
+    console.log(
+      `⏭️ [createManualMetersForEachMachine] Skipping SMIB machine ${machine.machineId} (has relayId, online)`
+    );
+    return machineMeters;
+  }
+
+  let prevMeterDoc: MeterDocument | null = null;
+  if (isOffline) {
+    prevMeterDoc = await Meters.findOne({
+      machine: machine.machineId,
+      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+    })
+      .sort({ readAt: -1 })
+      .lean<MeterDocument>();
+  }
+
+  const collectionId = machine.collectionId;
+  const baseReadAt = finalReadAt;
+  const baseCreatedAt = new Date();
+
+  // Shared variables used in BOTH RAM clear and non-RAM clear blocks
+  const currentMetersIn = machine.metersIn;
+  const currentMetersOut = machine.metersOut;
+  const previousMetersIn = machine.prevMetersIn || 0;
+  const previousMetersOut = machine.prevMetersOut || 0;
+
+  // Standard movement values (used only in non-RAM clear path)
+  // When we have a previous meter document (offline SMIB), compute movement
+  // from its absolute values to avoid stale prevIn/prevOut on the collection.
+  let movementIn: number;
+  let movementOut: number;
+  if (isOffline && prevMeterDoc) {
+    movementIn =
+      Math.round((currentMetersIn - (prevMeterDoc.drop || 0)) * 100) / 100;
+    movementOut =
+      Math.round(
+        (currentMetersOut - (prevMeterDoc.totalCancelledCredits || 0)) * 100
+      ) / 100;
+  } else {
+    movementIn = currentMetersIn - previousMetersIn;
+    movementOut = currentMetersOut - previousMetersOut;
+  }
+
+  if (machine.ramClear) {
+    // RAM CLEAR: Create 2 meters
+    // Meter 1 (RAM clear meter): captures movement from previous collection up to the reset point
+    // Meter 2 (current meter): captures movement from 0 (after reset) to current reading
+    const ramClearMetersIn = machine.ramClearMetersIn || 0;
+    const ramClearMetersOut = machine.ramClearMetersOut || 0;
+
+    // RAM clear meter movement = peak before reset minus previous collection baseline
+    const ramClearBaselineIn =
+      isOffline && prevMeterDoc ? prevMeterDoc.drop || 0 : previousMetersIn;
+    const ramClearBaselineOut =
+      isOffline && prevMeterDoc
+        ? prevMeterDoc.totalCancelledCredits || 0
+        : previousMetersOut;
+    const ramClearMovementIn =
+      Math.round((ramClearMetersIn - ramClearBaselineIn) * 100) / 100;
+    const ramClearMovementOut =
+      Math.round((ramClearMetersOut - ramClearBaselineOut) * 100) / 100;
+
+    // RAM Clear Meter (holds RAM clear movement values)
+    const ramClearMeterId = await generateMongoId();
+    console.log(
+      `🔄 [createManualMetersForEachMachine] Generated RAM clear meter ID: ${ramClearMeterId}`
+    );
+
+    const ramClearMeter = {
+      _id: ramClearMeterId,
+      machine: machine.machineId,
+      location: String(machineDoc?.gamingLocation || machine.locationId || ''),
+      movement: {
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: ramClearMovementOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: ramClearMovementIn,
+      },
+      coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
+      coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
+      jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
+      totalHandPaidCancelledCredits:
+        isOffline && prevMeterDoc
+          ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+          : 0,
+      currentCredits:
+        isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
+      totalWonCredits:
+        isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
+      gamesPlayed:
+        isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
+      gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
+      totalCancelledCredits: ramClearMetersOut,
+      drop: ramClearMetersIn,
+      meterSource: 'COLLECTION_REPORT' as const,
+      isRamClear: true,
+      isSupplemental: isOffline,
+      readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
+      createdAt: baseCreatedAt,
+    };
+
+    machineMeters.push(ramClearMeter);
+    console.log(
+      `✅ [createManualMetersForEachMachine] Added RAM clear meter`
+    );
+
+    // Current Meter (uses currentMetersIn/Out for main fields, movement uses calculated values)
+    const currentMeterId = await generateMongoId();
+    console.log(
+      `🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`
+    );
+
+    const currentMeterReadAt = baseReadAt; // exactly at collection time
+    const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
+
+    // After a RAM clear the machine resets to 0, so post-reset movement = currentMeters - 0
+    const postResetMovementIn = currentMetersIn;
+    const postResetMovementOut = currentMetersOut;
+
+    const currentMeter = {
+      _id: currentMeterId,
+      machine: machine.machineId,
+      location: String(machineDoc?.gamingLocation || machine.locationId || ''),
+      movement: {
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: postResetMovementOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: postResetMovementIn,
+      },
+      coinIn: 0,
+      coinOut: 0,
+      jackpot: 0,
+      totalHandPaidCancelledCredits: 0,
+      totalCancelledCredits: currentMetersOut,
+      gamesPlayed: 0,
+      gamesWon: 0,
+      currentCredits: 0,
+      totalWonCredits: 0,
+      drop: currentMetersIn,
+      meterSource: 'COLLECTION_REPORT' as const,
+      isRamClear: false,
+      isSupplemental: isOffline,
+      readAt: currentMeterReadAt,
+      createdAt: currentMeterCreatedAt,
+    };
+
+    machineMeters.push(currentMeter);
+    console.log(
+      `✅ [createManualMetersForEachMachine] Added current meter (RAM clear)`
+    );
+
+    // Append 2 meter IDs (RAM clear + current)
+    const appendResult = await appendMeterIdsToCollections(
+      collectionId,
+      machineMeters
+    );
+    if (!appendResult.success) {
+      console.error(
+        `[createManualMetersForEachMachine] ⚠️ Failed to link meters to collection ${collectionId} — meters may be orphaned`
+      );
+    } else {
+      console.log(
+        `[createManualMetersForEachMachine] Appended 2 meter IDs for collection ${collectionId}`
+      );
+    }
+  } else {
+    // NOT RAM CLEAR: Create 1 meter only
+    const currentMeterId = await generateMongoId();
+    console.log(
+      `🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`
+    );
+
+    const currentMeter = {
+      _id: currentMeterId,
+      machine: machine.machineId,
+      location: String(machineDoc?.gamingLocation || machine.locationId || ''),
+      movement: {
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: movementOut, // movement.totalCancelledCredits
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: movementIn, // movement.drop
+      },
+      coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
+      coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
+      jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
+      totalHandPaidCancelledCredits:
+        isOffline && prevMeterDoc
+          ? prevMeterDoc.totalHandPaidCancelledCredits || 0
+          : 0,
+      currentCredits:
+        isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
+      totalWonCredits:
+        isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
+      gamesPlayed:
+        isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
+      gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
+      totalCancelledCredits: currentMetersOut, // NOT movementOut
+      drop: currentMetersIn, // NOT movementIn
+      meterSource: 'COLLECTION_REPORT' as const,
+      isSupplemental: isOffline,
+      readAt: baseReadAt,
+      createdAt: baseCreatedAt,
+    };
+
+    machineMeters.push(currentMeter);
+    console.log(
+      `✅ [createManualMetersForEachMachine] Added current meter (non-RAM clear)`
+    );
+
+    // Append 1 meter ID
+    const appendResult = await appendMeterIdsToCollections(
+      collectionId,
+      machineMeters
+    );
+    if (!appendResult.success) {
+      console.error(
+        `[createManualMetersForEachMachine] ⚠️ Failed to link meter to collection ${collectionId} — meter may be orphaned`
+      );
+    } else {
+      console.log(
+        `[createManualMetersForEachMachine] Appended 1 meter ID for collection ${collectionId}`
+      );
+    }
+  }
+
+  return machineMeters;
+}
+
 /**
  * Creates manual meter objects for each machine in the meters collection
  *
  * @param {CreateCollectionReportPayload['machines']} machines - The collection report payload
  * @param {Date} [sasEndTime] - Optional SAS end time to use for readAt
+ * @param {(phase: string, done: number, total: number, machineName?: string) => void} [onProgress] - Optional progress callback
  * @returns {Promise<{ success: boolean }>}
  */
 async function createManualMetersForEachMachine(
   machines: CreateCollectionReportPayload['machines'],
-  sasEndTime?: Date
+  sasEndTime?: Date,
+  onProgress?: (
+    phase: string,
+    done: number,
+    total: number,
+    machineName?: string
+  ) => void
 ): Promise<{ success: boolean }> {
   if (!machines || !Array.isArray(machines)) {
     console.warn('[createManualMetersForEachMachine] No machines provided');
     return { success: true };
   }
-
-  const metersToCreate: MetersData[] = [];
 
   console.log(
     `🔄 [createManualMetersForEachMachine] Starting meter creation for ${machines?.length || 0} machines`
@@ -517,261 +832,85 @@ async function createManualMetersForEachMachine(
 
   const finalReadAt = sasEndTime || new Date();
 
-  for (const machine of machines ?? []) {
-    console.log(
-      `🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`
-    );
+  // ============================================================================
+  // BATCH PRE-FETCH: Load all machines and existing collections in two queries
+  // instead of N+1 individual findOne calls inside the loop.
+  // ============================================================================
+  const allMachineIds = (machines ?? [])
+    .map(m => m.machineId)
+    .filter((id): id is string => !!id);
+  const allCollectionIds = (machines ?? [])
+    .map(m => m.collectionId)
+    .filter((id): id is string => !!id);
 
-    // ============================================================================
-    // IDEMPOTENCY: Skip if meters were already pre-created via /pre-create-meters
-    // ============================================================================
-    if (machine.collectionId) {
-      const existingCollection = await Collections.findOne(
-        { _id: machine.collectionId },
-        'meterId'
-      ).lean<{ meterId?: string }>();
-      if (existingCollection?.meterId) {
-        console.log(
-          `⏭️ [createManualMetersForEachMachine] Skipping machine ${machine.machineId} — meters already pre-created (meterId: ${existingCollection.meterId})`
+  const [machineDocs, existingCollectionDocs] = await Promise.all([
+    Machine.find(
+      { _id: { $in: allMachineIds } },
+      'relayId lastActivity gamingLocation meta name serialNumber custom'
+    ).lean<MachineDocShape[]>(),
+    allCollectionIds.length > 0
+      ? Collections.find({ _id: { $in: allCollectionIds } }, 'meterId').lean<
+          { _id: string; meterId?: string }[]
+        >()
+      : Promise.resolve([]),
+  ]);
+
+  const machineDocMap = new Map(
+    machineDocs.map(doc => [String(doc._id), doc])
+  );
+  const existingCollectionMap = new Map(
+    existingCollectionDocs.map(col => [String(col._id), col])
+  );
+  const machineNameMap = new Map(
+    machineDocs.map(doc => [
+      String(doc._id),
+      doc.custom?.name || doc.name || doc.serialNumber || String(doc._id),
+    ])
+  );
+
+  // Build meters for each machine in parallel. Machines are independent:
+  // each gets its own local meter array and links its own collection document.
+  let machinesMetered = 0;
+  const totalMachinesForMeters = (machines ?? []).length;
+  const perMachineResults = await Promise.all(
+    (machines ?? []).map(async machine => {
+      const machineName =
+        machineNameMap.get(machine.machineId ?? '') ||
+        machine.machineId ||
+        'Unknown machine';
+      try {
+        const result = await buildMetersForMachine(
+          machine,
+          machineDocMap,
+          existingCollectionMap,
+          finalReadAt
         );
-        continue;
+        machinesMetered++;
+        onProgress?.(
+          'meters',
+          machinesMetered,
+          totalMachinesForMeters,
+          machineName
+        );
+        return result;
+      } catch (err) {
+        machinesMetered++;
+        onProgress?.(
+          'meters',
+          machinesMetered,
+          totalMachinesForMeters,
+          machineName
+        );
+        console.error(
+          '[createManualMetersForEachMachine] Error building meters for',
+          machineName,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+        return [];
       }
-    }
-
-    const machineDoc = await Machine.findOne({ _id: machine.machineId }).lean<{
-      relayId?: string | null;
-      lastActivity?: Date | string;
-      gamingLocation?: string;
-    }>();
-    const hasRelay = !!machineDoc?.relayId;
-    // TODO: restore 72h after testing: 3 * 24 * 60 * 60 * 1000
-    const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing
-    const isOffline =
-      hasRelay &&
-      (!machineDoc?.lastActivity ||
-        new Date().getTime() - new Date(machineDoc.lastActivity).getTime() >=
-          OFFLINE_THRESHOLD_MS);
-
-    // SMIB machines have a relay that supplies Meter documents automatically;
-    // only create manual meters for non-relay machines OR offline SMIB machines.
-    if (hasRelay && !isOffline) {
-      console.log(
-        `⏭️ [createManualMetersForEachMachine] Skipping SMIB machine ${machine.machineId} (has relayId, online)`
-      );
-      continue;
-    }
-
-    let prevMeterDoc: MeterDocument | null = null;
-    if (isOffline) {
-      prevMeterDoc = await Meters.findOne({
-        machine: machine.machineId,
-        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-      })
-        .sort({ readAt: -1 })
-        .lean<MeterDocument>();
-    }
-
-    const collectionId = machine.collectionId;
-    const baseReadAt = finalReadAt;
-    const baseCreatedAt = new Date();
-
-    // Shared variables used in BOTH RAM clear and non-RAM clear blocks
-    const currentMetersIn = machine.metersIn;
-    const currentMetersOut = machine.metersOut;
-    const previousMetersIn = machine.prevMetersIn || 0;
-    const previousMetersOut = machine.prevMetersOut || 0;
-
-    // Standard movement values (used only in non-RAM clear path)
-    // When we have a previous meter document (offline SMIB), compute movement
-    // from its absolute values to avoid stale prevIn/prevOut on the collection.
-    let movementIn: number;
-    let movementOut: number;
-    if (isOffline && prevMeterDoc) {
-      movementIn = Math.round((currentMetersIn - (prevMeterDoc.drop || 0)) * 100) / 100;
-      movementOut = Math.round((currentMetersOut - (prevMeterDoc.totalCancelledCredits || 0)) * 100) / 100;
-    } else {
-      movementIn = currentMetersIn - previousMetersIn;
-      movementOut = currentMetersOut - previousMetersOut;
-    }
-
-    if (machine.ramClear) {
-      // RAM CLEAR: Create 2 meters
-      // Meter 1 (RAM clear meter): captures movement from previous collection up to the reset point
-      // Meter 2 (current meter): captures movement from 0 (after reset) to current reading
-      const ramClearMetersIn = machine.ramClearMetersIn || 0;
-      const ramClearMetersOut = machine.ramClearMetersOut || 0;
-
-      // RAM clear meter movement = peak before reset minus previous collection baseline
-      const ramClearBaselineIn = isOffline && prevMeterDoc ? (prevMeterDoc.drop || 0) : previousMetersIn;
-      const ramClearBaselineOut = isOffline && prevMeterDoc ? (prevMeterDoc.totalCancelledCredits || 0) : previousMetersOut;
-      const ramClearMovementIn = Math.round((ramClearMetersIn - ramClearBaselineIn) * 100) / 100;
-      const ramClearMovementOut = Math.round((ramClearMetersOut - ramClearBaselineOut) * 100) / 100;
-
-      // RAM Clear Meter (holds RAM clear movement values)
-      const ramClearMeterId = await generateMongoId();
-      console.log(
-        `🔄 [createManualMetersForEachMachine] Generated RAM clear meter ID: ${ramClearMeterId}`
-      );
-
-      const ramClearMeter = {
-        _id: ramClearMeterId,
-        machine: machine.machineId,
-        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: ramClearMovementOut,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: ramClearMovementIn,
-        },
-        coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
-        coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
-        jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
-        totalHandPaidCancelledCredits:
-          isOffline && prevMeterDoc
-            ? prevMeterDoc.totalHandPaidCancelledCredits || 0
-            : 0,
-        currentCredits:
-          isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
-        totalWonCredits:
-          isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
-        gamesPlayed:
-          isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
-        gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
-        totalCancelledCredits: ramClearMetersOut,
-        drop: ramClearMetersIn,
-        meterSource: 'COLLECTION_REPORT' as const,
-        isRamClear: true,
-        isSupplemental: isOffline,
-        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
-        createdAt: baseCreatedAt,
-      };
-
-      metersToCreate.push(ramClearMeter);
-      console.log(
-        `✅ [createManualMetersForEachMachine] Added RAM clear meter`
-      );
-
-      // Current Meter (uses currentMetersIn/Out for main fields, movement uses calculated values)
-      const currentMeterId = await generateMongoId();
-      console.log(
-        `🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`
-      );
-
-      const currentMeterReadAt = baseReadAt; // exactly at collection time
-      const currentMeterCreatedAt = new Date(baseCreatedAt.getTime() + 1000);
-
-      // After a RAM clear the machine resets to 0, so post-reset movement = currentMeters - 0
-      const postResetMovementIn = currentMetersIn;
-      const postResetMovementOut = currentMetersOut;
-
-      const currentMeter = {
-        _id: currentMeterId,
-        machine: machine.machineId,
-        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: postResetMovementOut,
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: postResetMovementIn,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        jackpot: 0,
-        totalHandPaidCancelledCredits: 0,
-        totalCancelledCredits: currentMetersOut,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        currentCredits: 0,
-        totalWonCredits: 0,
-        drop: currentMetersIn,
-        meterSource: 'COLLECTION_REPORT' as const,
-        isRamClear: false,
-        isSupplemental: isOffline,
-        readAt: currentMeterReadAt,
-        createdAt: currentMeterCreatedAt,
-      };
-
-      metersToCreate.push(currentMeter);
-      console.log(
-        `✅ [createManualMetersForEachMachine] Added current meter (RAM clear)`
-      );
-
-      // Append 2 meter IDs (RAM clear + current)
-      const thisMachineMeters = metersToCreate.slice(-2);
-      await appendMeterIdsToCollections(collectionId, thisMachineMeters);
-      console.log(
-        `[createManualMetersForEachMachine] Appended 2 meter IDs for collection ${collectionId}`
-      );
-    } else {
-      // NOT RAM CLEAR: Create 1 meter only
-      const currentMeterId = await generateMongoId();
-      console.log(
-        `🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`
-      );
-
-      const currentMeter = {
-        _id: currentMeterId,
-        machine: machine.machineId,
-        location: String(machineDoc?.gamingLocation || machine.locationId || ''),
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          jackpot: 0,
-          totalHandPaidCancelledCredits: 0,
-          totalCancelledCredits: movementOut, // movement.totalCancelledCredits
-          gamesPlayed: 0,
-          gamesWon: 0,
-          currentCredits: 0,
-          totalWonCredits: 0,
-          drop: movementIn, // movement.drop
-        },
-        coinIn: isOffline && prevMeterDoc ? prevMeterDoc.coinIn || 0 : 0,
-        coinOut: isOffline && prevMeterDoc ? prevMeterDoc.coinOut || 0 : 0,
-        jackpot: isOffline && prevMeterDoc ? prevMeterDoc.jackpot || 0 : 0,
-        totalHandPaidCancelledCredits:
-          isOffline && prevMeterDoc
-            ? prevMeterDoc.totalHandPaidCancelledCredits || 0
-            : 0,
-        currentCredits:
-          isOffline && prevMeterDoc ? prevMeterDoc.currentCredits || 0 : 0,
-        totalWonCredits:
-          isOffline && prevMeterDoc ? prevMeterDoc.totalWonCredits || 0 : 0,
-        gamesPlayed:
-          isOffline && prevMeterDoc ? prevMeterDoc.gamesPlayed || 0 : 0,
-        gamesWon: isOffline && prevMeterDoc ? prevMeterDoc.gamesWon || 0 : 0,
-        totalCancelledCredits: currentMetersOut, // NOT movementOut
-        drop: currentMetersIn, // NOT movementIn
-        meterSource: 'COLLECTION_REPORT' as const,
-        isSupplemental: isOffline,
-        readAt: baseReadAt,
-        createdAt: baseCreatedAt,
-      };
-
-      metersToCreate.push(currentMeter);
-      console.log(
-        `✅ [createManualMetersForEachMachine] Added current meter (non-RAM clear)`
-      );
-
-      // Append 1 meter ID
-      const thisMachineMeters = metersToCreate.slice(-1);
-      await appendMeterIdsToCollections(collectionId, thisMachineMeters);
-      console.log(
-        `[createManualMetersForEachMachine] Appended 1 meter ID for collection ${collectionId}`
-      );
-    }
-  }
+    })
+  );
+  const metersToCreate = perMachineResults.flat();
 
   // ============================================================================
   // INSERT ALL METERS INTO DATABASE
@@ -874,9 +1013,18 @@ export async function updateRegularAndRamClearMeters(
         gamingLocation?: string;
         relayId?: string | null;
         lastActivity?: Date | string;
+        meta?: { dataSync?: { source?: string } };
       }>();
       if (machineDoc?.gamingLocation) {
         locationId = String(machineDoc.gamingLocation);
+      }
+
+      // WOW machines never get manual meters — their readings are synced (WOW_SYNC).
+      if (isWowMachine(machineDoc)) {
+        console.log(
+          `⏭️ [updateRegularAndRamClearMeters] Skipping WOW machine ${collectionDocument.machineId} (synced via WOW_SYNC)`
+        );
+        return { success: true };
       }
 
       const hasRelay = !!machineDoc?.relayId;
@@ -911,8 +1059,45 @@ export async function updateRegularAndRamClearMeters(
       newRamClearMeterIdGenerated = true;
     }
     if (!meterId) {
-      meterId = await generateMongoId();
-      newMeterIdGenerated = true;
+      // Look up existing supplemental meter for this machine to avoid duplicates.
+      // This handles the case where meterId was never set on the collection
+      // (e.g. online SMIB at report time, silent appendMeterIdsToCollections failure).
+      // Try strict match first (machine + location), then fallback to location only.
+      const baseFilter = {
+        meterSource: 'COLLECTION_REPORT' as const,
+        readAt: { $lte: newReadAt },
+        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+      };
+
+      let existingMeter = await Meters.findOne({
+        ...baseFilter,
+        machine: collectionDocument.machineId,
+        location: collectionDocument.location,
+      })
+        .sort({ readAt: -1 })
+        .lean<{ _id: string }>();
+
+      if (!existingMeter && collectionDocument.location) {
+        existingMeter = await Meters.findOne({
+          ...baseFilter,
+          location: collectionDocument.location,
+        })
+          .sort({ readAt: -1 })
+          .lean<{ _id: string }>();
+      }
+
+      if (existingMeter) {
+        meterId = existingMeter._id;
+        console.log(
+          `[updateRegularAndRamClearMeters] Reusing existing meter ${meterId} for machine ${collectionDocument.machineId}`
+        );
+      } else {
+        meterId = await generateMongoId();
+        newMeterIdGenerated = true;
+        console.log(
+          `[updateRegularAndRamClearMeters] No existing meter found, generated new ID ${meterId}`
+        );
+      }
     }
 
     if (isOffline) {
@@ -1146,10 +1331,18 @@ export async function updateRegularAndRamClearMeters(
  * Creates a collection report and updates all related data
  *
  * @param {CreateCollectionReportPayload} body - The collection report payload
+ * @param {(phase: string) => void} [onPhase] - Optional callback invoked at each phase boundary for SSE streaming
  * @returns {Promise<{ success: boolean; report?: unknown; error?: string }>}
  */
 export async function createCollectionReport(
-  body: CreateCollectionReportPayload
+  body: CreateCollectionReportPayload,
+  onPhase?: (phase: string) => void,
+  onProgress?: (
+    phase: string,
+    done: number,
+    total: number,
+    machineName?: string
+  ) => void
 ): Promise<{ success: boolean; report?: unknown; error?: string }> {
   if (!body) {
     console.error('[createCollectionReport] body is required');
@@ -1227,6 +1420,7 @@ export async function createCollectionReport(
         : undefined,
     };
 
+    onPhase?.('saving');
     console.log(
       '🔄 [createCollectionReport] Creating CollectionReport document...'
     );
@@ -1255,30 +1449,76 @@ export async function createCollectionReport(
         machine => machine.machineId
       );
       const collectionIds = body.collectionIds || [];
+      onPhase?.('recalculating');
       console.log(
         `🔄 [createCollectionReport] Updating machine collection data for ${machinesToUpdate.length} machines in parallel...`
       );
+
+      // Batch-fetch machine display names so progress events can include them.
+      const machineDocs = await Machine.find({
+        _id: { $in: machinesToUpdate.map(machine => machine.machineId) },
+      }).lean<
+        Array<{
+          _id: string;
+          name?: string;
+          serialNumber?: string;
+          custom?: { name?: string };
+        }>
+      >();
+      const machineNameMap = new Map(
+        machineDocs.map(machine => [
+          String(machine._id),
+          machine.custom?.name ||
+            machine.name ||
+            machine.serialNumber ||
+            String(machine._id),
+        ])
+      );
+
+      // Track per-machine progress as parallel updates complete
+      let machinesCompleted = 0;
+      const totalMachines = machinesToUpdate.length;
+      const wrapWithProgress = async (
+        machinePromise: Promise<{ success: boolean; machineId: string | undefined; error?: unknown }>,
+        machineName: string
+      ) => {
+        try {
+          const result = await machinePromise;
+          machinesCompleted++;
+          onProgress?.('recalculating', machinesCompleted, totalMachines, machineName);
+          return result;
+        } catch (err) {
+          machinesCompleted++;
+          onProgress?.('recalculating', machinesCompleted, totalMachines, machineName);
+          throw err;
+        }
+      };
+
       const machineUpdatePromises = machinesToUpdate.map(
-        async (machine, index) => {
+        async (machine, machineIndex) => {
           try {
             const normalizedMetersIn = Number(machine.metersIn) || 0;
             const normalizedMetersOut = Number(machine.metersOut) || 0;
             const collectionTimestamp = new Date(body.timestamp);
             // Use collection ID if available to ensure we update the correct document
-            const collectionId = collectionIds[index] || undefined;
+            const collectionId = collectionIds[machineIndex] || undefined;
+            const machineName =
+              machineNameMap.get(machine.machineId!) ||
+              `Machine ${machineIndex + 1}`;
 
-            console.log(
-              `🔄 [createCollectionReport] Updating machine ${index + 1}/${machinesToUpdate.length}: ${machine.machineId}${collectionId ? ` (collectionId: ${collectionId})` : ''}`
-            );
-            await updateMachineCollectionData(
+            const machinePromise = updateMachineCollectionData(
               machine.machineId!,
               normalizedMetersIn,
               normalizedMetersOut,
               collectionTimestamp,
               body.locationReportId,
               collectionId
-            );
-            return { success: true, machineId: machine.machineId };
+            ).then(() => ({
+              success: true as const,
+              machineId: machine.machineId,
+            }));
+
+            return wrapWithProgress(machinePromise, machineName);
           } catch (machineError) {
             console.error(
               '[createCollectionReport] Error:',
@@ -1286,6 +1526,8 @@ export async function createCollectionReport(
                 ? machineError.message
                 : 'Unknown error'
             );
+            machinesCompleted++;
+            onProgress?.('recalculating', machinesCompleted, totalMachines);
             return {
               success: false,
               machineId: machine.machineId,
@@ -1317,30 +1559,34 @@ export async function createCollectionReport(
       }
     }
 
-    // Compute and store total variation from collections
-    try {
-      const totalVariationValue = await computeTotalVariation(
-        body.locationReportId,
-        body.location
-      );
-      await CollectionReport.findOneAndUpdate(
-        { locationReportId: body.locationReportId },
-        { $set: { totalVariation: Number(totalVariationValue.toFixed(2)) } }
-      );
-      console.log(
-        `✅ [createCollectionReport] totalVariation stored: ${totalVariationValue}`
-      );
-    } catch (varErr) {
-      console.error(
-        '[createCollectionReport] totalVariation update failed (non-fatal):',
-        varErr instanceof Error ? varErr.message : 'Unknown error'
-      );
-    }
-
+    onPhase?.('meters');
     // Create manual meters for each non-relay machine in this collection.
     // The function skips machines that have a relayId (SMIB machines) internally,
     // so we can call it unconditionally for all machines.
-    const collectionIds = body.collectionIds || [];
+    let collectionIds = body.collectionIds || [];
+
+    // When collectionIds is empty or incomplete, look up from DB by machine IDs.
+    // This handles cases where the frontend didn't supply collectionIds.
+    if (collectionIds.length === 0 && body.machines && body.machines.length > 0) {
+      const machineIds = body.machines.map(m => m.machineId).filter(Boolean);
+      if (machineIds.length > 0) {
+        const existingCollections = await Collections.find({
+          locationReportId: body.locationReportId,
+          machineId: { $in: machineIds },
+        })
+          .select({ _id: 1, machineId: 1 })
+          .lean<{ _id: string; machineId: string }[]>();
+        const collectionMap = new Map(
+          existingCollections.map(col => [String(col.machineId), col._id])
+        );
+        collectionIds = body.machines.map(
+          machine => collectionMap.get(String(machine.machineId)) || ''
+        );
+        console.log(
+          `[createCollectionReport] Resolved ${collectionIds.filter(Boolean).length}/${machineIds.length} collection IDs from DB`
+        );
+      }
+    }
 
     // Use each machine's timestamp from the payload directly — it is the authoritative
     // collection end time set by the user and already stored on the collection document.
@@ -1356,8 +1602,33 @@ export async function createCollectionReport(
       : new Date();
     await createManualMetersForEachMachine(
       machinesWithCollectionIds,
-      sasEndTime
+      sasEndTime,
+      onProgress
     );
+
+    // Compute and store total variation from collections AFTER all machine/collection
+    // data and manual meters are finalized. This ensures the stored value matches
+    // what the detail page recomputes from the same finalized meter data.
+    onPhase?.('variation');
+    try {
+      const totalVariationValue = await computeTotalVariation(
+        body.locationReportId,
+        body.location,
+        undefined
+      );
+      await CollectionReport.findOneAndUpdate(
+        { locationReportId: body.locationReportId },
+        { $set: { totalVariation: Number(totalVariationValue.toFixed(2)) } }
+      );
+      console.log(
+        `✅ [createCollectionReport] totalVariation stored: ${totalVariationValue}`
+      );
+    } catch (varErr) {
+      console.error(
+        '[createCollectionReport] totalVariation update failed (non-fatal):',
+        varErr instanceof Error ? varErr.message : 'Unknown error'
+      );
+    }
 
     // ============================================================================
     // Update the GamingLocation's previousCollectionTime with the most recent sasEndTime

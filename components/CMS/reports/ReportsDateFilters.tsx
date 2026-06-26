@@ -127,45 +127,67 @@ export default function ReportsDateFilters() {
    * Handle filter button clicks for predefined periods
    */
   const handleFilterClick = (filter: TimePeriod) => {
-    // Update reports store based on filter
-    const now = new Date();
+    // Update reports store based on filter.
+    // Each case derives its dates from a fresh `Date` so we never mutate or
+    // alias a shared value across branches.
     let startDate: Date, endDate: Date;
 
     switch (filter) {
-      case 'Today':
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = startDate;
-        break;
-      case 'Yesterday':
-        startDate = new Date(now.setDate(now.getDate() - 1));
+      case 'Today': {
+        const base = new Date();
+        startDate = new Date(base);
         startDate.setHours(0, 0, 0, 0);
-        endDate = startDate;
+        endDate = new Date(base);
+        endDate.setHours(23, 59, 59, 999);
         break;
+      }
+      case 'Yesterday': {
+        const base = new Date();
+        base.setDate(base.getDate() - 1);
+        startDate = new Date(base);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(base);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      }
       case '7d':
-      case 'last7days':
-        startDate = new Date(now.setDate(now.getDate() - 7));
+      case 'last7days': {
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        startDate = start;
         endDate = new Date();
         break;
+      }
       case '30d':
-      case 'last30days':
-        startDate = new Date(now.setDate(now.getDate() - 30));
+      case 'last30days': {
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        startDate = start;
         endDate = new Date();
         break;
-      case 'Quarterly':
+      }
+      case 'Quarterly': {
         // Quarterly: last 90 days (3 months)
-        startDate = new Date(now.setDate(now.getDate() - 89));
-        startDate.setHours(0, 0, 0, 0);
+        const start = new Date();
+        start.setDate(start.getDate() - 89);
+        start.setHours(0, 0, 0, 0);
+        startDate = start;
         endDate = new Date();
         endDate.setHours(23, 59, 59, 999);
         break;
+      }
       case 'All Time':
         // For "All Time", set a very wide range
         startDate = new Date(0); // Epoch start
         endDate = new Date();
         break;
-      default:
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = new Date(now.setHours(23, 59, 59, 999));
+      default: {
+        const base = new Date();
+        startDate = new Date(base);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(base);
+        endDate.setHours(23, 59, 59, 999);
+      }
     }
 
     if (filter !== 'Custom') {

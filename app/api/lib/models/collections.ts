@@ -53,6 +53,8 @@ const collectionsSchema = new Schema(
     ramClearMetersIn: { type: Number },
     ramClearMetersOut: { type: Number },
     serialNumber: { type: String },
+    wasOnline: { type: Boolean },
+    editedWhileOnline: { type: Boolean },
     deletedAt: { type: Date },
     createdAt: { type: Date },
     updatedAt: { type: Date },

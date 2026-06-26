@@ -13,6 +13,7 @@ import type {
   GamingMachine,
 } from '@shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatDistanceToNow } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
 
@@ -97,6 +98,7 @@ export type CabinetMachineResponse = {
   timePeriod?: string;
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
+  meta?: { dataSync?: { source?: string; wowbettingshopid?: string } };
 };
 
 type LocationWithRange = {
@@ -236,15 +238,22 @@ export function buildMachineMatchQuery(
       .map(loc => String(loc._id));
 
     if (params.onlineStatus === 'online') {
-      andArray.push({ relayId: { $exists: true, $nin: [null, ''] } });
+      andArray.push({
+        $or: [
+          { relayId: { $exists: true, $nin: [null, ''] } },
+          { 'meta.dataSync.source': 'wow' },
+        ],
+      });
       const onlineConds: Array<Record<string, unknown>> = [
         { lastActivity: { $gte: threeMinutesAgo } },
+        { 'meta.dataSync.source': 'wow' },
       ];
       if (aceEnabledLocIds.length > 0) {
         onlineConds.push({ gamingLocation: { $in: aceEnabledLocIds } });
       }
       andArray.push({ $or: onlineConds });
     } else if (params.onlineStatus === 'offline') {
+      andArray.push({ 'meta.dataSync.source': { $ne: 'wow' } });
       andArray.push({ relayId: { $exists: true, $nin: [null, ''] } });
       andArray.push({
         $or: [
@@ -257,6 +266,7 @@ export function buildMachineMatchQuery(
         andArray.push({ gamingLocation: { $nin: aceEnabledLocIds } });
       }
     } else if (params.onlineStatus === 'never-online') {
+      andArray.push({ 'meta.dataSync.source': { $ne: 'wow' } });
       andArray.push({ relayId: { $exists: true, $nin: [null, ''] } });
       andArray.push({
         $or: [
@@ -276,11 +286,13 @@ export function buildMachineMatchQuery(
         $or: [
           { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
           { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } },
+          { 'meta.dataSync.source': 'wow' },
         ],
       });
     } else if (params.smibStatus === 'no-smib') {
       andArray.push({
         $and: [
+          { 'meta.dataSync.source': { $ne: 'wow' } },
           {
             $or: [
               { relayId: '' },
@@ -356,12 +368,15 @@ export function buildMachineResponse(
   const hasRelayId = !!(
     machine.relayId && String(machine.relayId).trim().length > 0
   );
+  // WOW machines have no SMIB/relay but are always treated as online.
+  const isWow = isWowMachine(machine);
   const isOnline =
-    hasRelayId &&
-    (location.aceEnabled === true ||
-      (machine.lastActivity
-        ? new Date(machine.lastActivity as Date) > threeMinutesAgo
-        : false));
+    isWow ||
+    (hasRelayId &&
+      (location.aceEnabled === true ||
+        (machine.lastActivity
+          ? new Date(machine.lastActivity as Date) > threeMinutesAgo
+          : false)));
 
   return {
     _id: machineId,
@@ -411,6 +426,7 @@ export function buildMachineResponse(
     rel: location.rel,
     country: location.country,
     timePeriod,
+    meta: machine.meta,
   };
 }
 
@@ -562,8 +578,11 @@ export function refineOfflineStatus(
       ? new Date(machine.lastActivity)
       : null;
     const aceEnabled = machine.aceEnabled === true;
+    // WOW machines have no SMIB/relay but are always treated as online.
     const isOnline =
-      aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
+      isWowMachine(machine) ||
+      aceEnabled ||
+      (lastActivity && lastActivity > threeMinutesAgo);
 
     let offlineTimeLabel: string | undefined = undefined;
     let actualOfflineTime: string | undefined = undefined;
@@ -594,7 +613,9 @@ export function refineOfflineStatus(
         : null;
       const aceEnabled = machine.aceEnabled === true;
       const isOnline =
-        aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
+        isWowMachine(machine) ||
+        aceEnabled ||
+        (lastActivity && lastActivity > threeMinutesAgo);
       machine.online = !!isOnline;
 
       if (isOnline) return false;

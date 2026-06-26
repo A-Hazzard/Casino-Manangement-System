@@ -278,7 +278,6 @@ export async function handleExportSASEvaluation({
 export async function handleExportRevenueAnalysis({
   selectedLocations,
   allLocationsForDropdown,
-  topLocations,
   activeMetricsFilter,
   format,
   formatAmount,
@@ -289,13 +288,12 @@ export async function handleExportRevenueAnalysis({
     const filteredData =
       selectedLocations.length > 0
         ? allLocationsForDropdown.filter(loc => {
-            // Find the corresponding topLocation to get the correct locationId
-            const topLocation = topLocations.find(
-              tl => tl.locationName === (loc.name || loc.locationName)
+            // Match the selected ids against each row's own id directly so
+            // locations outside the top-5 are not dropped from the export.
+            const locId = String(
+              (loc as Record<string, unknown>).location ?? loc._id ?? ''
             );
-            return topLocation
-              ? selectedLocations.includes(topLocation.locationId)
-              : false;
+            return locId !== '' && selectedLocations.includes(locId);
           })
         : allLocationsForDropdown;
 

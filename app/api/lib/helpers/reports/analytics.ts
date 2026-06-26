@@ -154,9 +154,6 @@ export async function getMachineAnalytics(
  */
 export type MachineStatsResult = {
   stats: {
-    totalDrop: number;
-    totalCancelledCredits: number;
-    totalGross: number;
     totalMachines: number;
     onlineMachines: number;
     offlineMachines: number;
@@ -171,6 +168,12 @@ export type MachineStatsResult = {
   totalCount: number;
   onlineCount: number;
   offlineCount: number;
+};
+
+type MachineStatsCounts = {
+  totalMachines: number;
+  onlineMachines: number;
+  sasMachines: number;
 };
 
 /**
@@ -225,132 +228,82 @@ export async function getMachineStatsForAnalytics(
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
   const machineMatchStage = buildMachineStatsMatchStage(allowedLocationIds);
 
-  // Use aggregation to properly implement ACE logic and get counts in one pass
-  const [countsResult, financialTotals] = await Promise.all([
-    Machine.aggregate([
-      { $match: machineMatchStage },
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
+  // Use aggregation to properly implement ACE logic and get counts in one pass.
+  // Financial totals are intentionally NOT computed here: the only consumer
+  // (dashboard machine-status widget) reads counts only, and returning
+  // unscaled financials would bypass the reviewer scale.
+  const countsResult = await Machine.aggregate<MachineStatsCounts>([
+    { $match: machineMatchStage },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'gamingLocation',
+        foreignField: '_id',
+        as: 'locationDetails',
+      },
+    },
+    {
+      $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+    },
+    {
+      $match: {
+        $or: [
+          { $and: [{ relayId: { $ne: null } }, { relayId: { $ne: '' } }] },
+          { 'meta.dataSync.source': 'wow' },
+        ],
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalMachines: { $sum: 1 },
+        sasMachines: {
+          $sum: { $cond: ['$isSasMachine', 1, 0] },
         },
-      },
-      {
-        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
-      },
-      {
-        $match: {
-          $and: [{ relayId: { $ne: null } }, { relayId: { $ne: '' } }],
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalMachines: { $sum: 1 },
-          sasMachines: {
-            $sum: { $cond: ['$isSasMachine', 1, 0] },
-          },
-          onlineMachines: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$relayId', null] },
-                    { $ne: ['$relayId', ''] },
-                    {
-                      $or: [
-                        { $eq: ['$locationDetails.aceEnabled', true] },
-                        {
-                          $and: [
-                            { $gt: ['$lastActivity', null] },
-                            {
-                              $gte: [
-                                {
-                                  $convert: {
-                                    input: '$lastActivity',
-                                    to: 'date',
-                                    onError: new Date(0),
-                                  },
-                                },
-                                onlineThreshold,
-                              ],
-                            },
-                          ],
-                        },
-                      ],
-                    },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
-        },
-      },
-    ]).exec(),
-    Machine.aggregate([
-      { $match: machineMatchStage },
-      {
-        $lookup: {
-          from: 'gaminglocations',
-          localField: 'gamingLocation',
-          foreignField: '_id',
-          as: 'locationDetails',
-        },
-      },
-      {
-        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
-      },
-      {
-        $lookup: {
-          from: 'licencees',
-          localField: 'locationDetails.rel.licencee',
-          foreignField: '_id',
-          as: 'licenceeDetails',
-        },
-      },
-      {
-        $project: {
-          moneyIn: { $ifNull: ['$sasMeters.drop', 0] },
-          rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-          jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
-          includeJackpot: {
-            $ifNull: [
-              { $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] },
-              false,
-            ],
-          },
-        },
-      },
-      {
-        $project: {
-          moneyIn: 1,
-          totalJackpot: '$jackpot',
-          moneyOut: {
-            $add: [
-              '$rawMoneyOut',
+        onlineMachines: {
+          $sum: {
+            $cond: [
               {
-                $cond: [{ $eq: ['$includeJackpot', true] }, '$jackpot', 0],
+                $or: [
+                  { $eq: ['$meta.dataSync.source', 'wow'] },
+                  {
+                    $and: [
+                      { $ne: ['$relayId', null] },
+                      { $ne: ['$relayId', ''] },
+                      {
+                        $or: [
+                          { $eq: ['$locationDetails.aceEnabled', true] },
+                          {
+                            $and: [
+                              { $gt: ['$lastActivity', null] },
+                              {
+                                $gte: [
+                                  {
+                                    $convert: {
+                                      input: '$lastActivity',
+                                      to: 'date',
+                                      onError: new Date(0),
+                                    },
+                                  },
+                                  onlineThreshold,
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
+              1,
+              0,
             ],
           },
         },
       },
-      {
-        $group: {
-          _id: null,
-          totalDrop: { $sum: '$moneyIn' },
-          totalCancelledCredits: { $sum: '$moneyOut' },
-          totalGross: {
-            $sum: { $subtract: ['$moneyIn', '$moneyOut'] },
-          },
-        },
-      },
-    ]).exec(),
-  ]);
+    },
+  ]).exec();
 
   const counts = countsResult[0] || {
     totalMachines: 0,
@@ -358,17 +311,8 @@ export async function getMachineStatsForAnalytics(
     sasMachines: 0,
   };
 
-  const financials = financialTotals[0] || {
-    totalDrop: 0,
-    totalCancelledCredits: 0,
-    totalGross: 0,
-  };
-
   return {
     stats: {
-      totalDrop: financials.totalDrop,
-      totalCancelledCredits: financials.totalCancelledCredits,
-      totalGross: financials.totalGross,
       totalMachines: counts.totalMachines,
       onlineMachines: counts.onlineMachines,
       offlineMachines: counts.totalMachines - counts.onlineMachines,
@@ -686,7 +630,9 @@ function applyChartsCurrencyConversion(
     financialFields.forEach(field => {
       if (typeof item[field] === 'number') {
         (convertedItem as Record<string, unknown>)[field] =
-          Math.round(convertFromUSD(item[field] as number, displayCurrency) * 100) / 100;
+          Math.round(
+            convertFromUSD(item[field] as number, displayCurrency) * 100
+          ) / 100;
       }
     });
     return convertedItem;
@@ -1048,15 +994,18 @@ export async function getTopLocationsAnalytics(
       const r = (v: number) => Math.round(v * 100) / 100;
       return {
         ...location,
-        totalDrop: nativeCurrency !== displayCurrency
-          ? r(convertFromUSD(totalDropUSD, displayCurrency))
-          : location.totalDrop,
-        cancelledCredits: nativeCurrency !== displayCurrency
-          ? r(convertFromUSD(cancelledCreditsUSD, displayCurrency))
-          : location.cancelledCredits || 0,
-        gross: nativeCurrency !== displayCurrency
-          ? r(convertFromUSD(grossUSD, displayCurrency))
-          : location.gross,
+        totalDrop:
+          nativeCurrency !== displayCurrency
+            ? r(convertFromUSD(totalDropUSD, displayCurrency))
+            : location.totalDrop,
+        cancelledCredits:
+          nativeCurrency !== displayCurrency
+            ? r(convertFromUSD(cancelledCreditsUSD, displayCurrency))
+            : location.cancelledCredits || 0,
+        gross:
+          nativeCurrency !== displayCurrency
+            ? r(convertFromUSD(grossUSD, displayCurrency))
+            : location.gross,
       };
     });
   }

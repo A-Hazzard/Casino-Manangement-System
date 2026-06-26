@@ -27,7 +27,8 @@ import type { LocationFilter, LocationSortOption } from '@/lib/types/location';
 import { isAbortError } from '@/lib/utils/errors';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 
 type SmibSyncStatus = {
@@ -40,6 +41,9 @@ export function useLocationsPageData() {
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const isInitialPageLoad = useRef(true);
 
   // ============================================================================
   // State & Hooks
@@ -50,7 +54,11 @@ export function useLocationsPageData() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const pageParam = searchParams.get('page');
+    const parsed = pageParam ? parseInt(pageParam, 10) : 0;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  });
   const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
     null
   );
@@ -62,7 +70,7 @@ export function useLocationsPageData() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // SMIB Sync State
-  const [smibSyncStatus, _setSmibSyncStatus] = useState<SmibSyncStatus | null>(
+  const [smibSyncStatus, setSmibSyncStatus] = useState<SmibSyncStatus | null>(
     null
   );
   const [hasCheckedSmibSync, setHasCheckedSmibSync] = useState(false);
@@ -156,11 +164,42 @@ export function useLocationsPageData() {
 
   const effectiveTotalPages = useMemo(() => {
     if (hasMoreLocations) {
-      const loadedBatchCount = Math.ceil(locationData.length / ITEMS_PER_BATCH) || 1;
+      const loadedBatchCount =
+        Math.ceil(locationData.length / ITEMS_PER_BATCH) || 1;
       return loadedBatchCount * PAGES_PER_BATCH;
     }
     return Math.max(1, Math.ceil(locationData.length / ITEMS_PER_PAGE));
-  }, [locationData.length, hasMoreLocations, ITEMS_PER_BATCH, ITEMS_PER_PAGE, PAGES_PER_BATCH]);
+  }, [
+    locationData.length,
+    hasMoreLocations,
+    ITEMS_PER_BATCH,
+    ITEMS_PER_PAGE,
+    PAGES_PER_BATCH,
+  ]);
+
+  // ============================================================================
+  // URL Pagination Sync
+  // ============================================================================
+  const pushPageToUrl = useCallback(
+    (page: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (page > 0) {
+        params.set('page', String(page + 1));
+      } else {
+        params.delete('page');
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  // Sync URL page param on mount (only on initial load)
+  useEffect(() => {
+    if (isInitialPageLoad.current) {
+      isInitialPageLoad.current = false;
+      // URL state already used to initialize currentPage — no push needed
+    }
+  }, []);
 
   // ============================================================================
   // Handlers
@@ -168,6 +207,7 @@ export function useLocationsPageData() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setCurrentPage(0);
+    pushPageToUrl(0);
     setLoadedBatches(new Set());
 
     // Check and sync SMIB status on refresh
@@ -186,13 +226,8 @@ export function useLocationsPageData() {
       );
     }
 
-    const firstBatch = calculateBatchNumber(0);
-    setLoadedBatches(new Set([firstBatch]));
-    await Promise.all([
-      refreshMachineStats(),
-      refreshMembershipStats(),
-      fetchData(firstBatch, ITEMS_PER_BATCH),
-    ]);
+    // Refresh stats while data-fetch effect handles location data re-fetch
+    await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
     setRefreshing(false);
   };
 
@@ -203,11 +238,13 @@ export function useLocationsPageData() {
         : prev.filter(activeFilter => activeFilter !== filter)
     );
     setCurrentPage(0);
+    pushPageToUrl(0);
   };
 
   const handleMultiFilterChange = (filters: LocationFilter[]) => {
     setSelectedFilters(filters);
     setCurrentPage(0);
+    pushPageToUrl(0);
   };
 
   const handleSort = (option: LocationSortOption) => {
@@ -218,6 +255,7 @@ export function useLocationsPageData() {
       setSortOrder('desc');
     }
     setCurrentPage(0);
+    pushPageToUrl(0);
     setLoadedBatches(new Set());
   };
 
@@ -233,6 +271,7 @@ export function useLocationsPageData() {
   // Reset accumulation when filters change
   useEffect(() => {
     setCurrentPage(0);
+    pushPageToUrl(0);
     setLoadedBatches(new Set());
   }, [
     selectedFilters,
@@ -270,7 +309,7 @@ export function useLocationsPageData() {
             `[useLocationsPageData] SMIB status fresh (last sync: ${status.lastSync}), skipping sync`
           );
         }
-        _setSmibSyncStatus(status);
+        setSmibSyncStatus(status);
       } catch (err) {
         console.error(
           '[useLocationsPageData] Failed to check SMIB sync status:',
@@ -291,7 +330,10 @@ export function useLocationsPageData() {
 
       // If we are trying to view a page that is beyond our currently loaded data,
       // but the server has more data, we should fetch the next batch.
-      if (locationData.length <= startIndex && totalCount > locationData.length) {
+      if (
+        locationData.length <= startIndex &&
+        totalCount > locationData.length
+      ) {
         targetBatch = Math.ceil(locationData.length / ITEMS_PER_BATCH) + 1;
       }
 
@@ -368,6 +410,17 @@ export function useLocationsPageData() {
     selectedStatus,
   ]);
 
+  // ============================================================================
+  // Page Change Handler (state + URL sync)
+  // ============================================================================
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      pushPageToUrl(page);
+    },
+    [pushPageToUrl]
+  );
+
   return {
     loading:
       loading ||
@@ -397,8 +450,8 @@ export function useLocationsPageData() {
     handleFilterChange,
     handleMultiFilterChange,
     handleSort,
+    handlePageChange,
     setSearchTerm,
-    setCurrentPage,
     setSelectedStatus,
     fetchData,
     totalCount,

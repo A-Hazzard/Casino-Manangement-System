@@ -17,8 +17,7 @@
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
@@ -32,316 +31,301 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
   const functionName = 'POST /api/cashier/shift/open';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'Unauthorized',
-        user
-      );
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const userId = userPayload._id as string;
-    const username = userPayload.username as string;
-    const userRoles = (userPayload.roles as string[]) || [];
-
-    const hasCashierAccess = userRoles.some((role: string) =>
-      ['developer', 'admin', 'manager', 'cashier'].includes(role.toLowerCase())
-    );
-
-    if (!hasCashierAccess) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'Insufficient permissions',
-        user
-      );
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 2: Parse and validate request
-    // ============================================================================
-    const body: OpenCashierShiftRequest = await request.json();
-    const { locationId, requestedFloat, denominations } = body;
-
-    if (!locationId || requestedFloat === undefined || !denominations) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'Missing required fields: locationId, requestedFloat, denominations',
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Missing required fields: locationId, requestedFloat, denominations',
-        },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Validate denominations
-    // ============================================================================
-    const denominationValidation = validateDenominations(denominations);
-    if (!denominationValidation.valid) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'Invalid denominations',
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid denominations',
-          details: denominationValidation.errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    if (denominationValidation.total !== requestedFloat) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        `Denomination total ($${denominationValidation.total}) does not match requested float ($${requestedFloat})`,
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Denomination total ($${denominationValidation.total}) does not match requested float ($${requestedFloat})`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 5: Check for active Vault Shift
-    // ============================================================================
-    const vaultShift = await VaultShiftModel.findOne({
-      locationId,
-      status: 'active',
-    });
-
-    if (!vaultShift) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'No active vault shift found',
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'No active vault shift found. Please ask a Vault Manager to open the vault.',
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!vaultShift.isReconciled) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'Vault is not reconciled',
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Vault is not reconciled. Please ask a Vault Manager to perform the mandatory opening reconciliation.',
-        },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Ensure cashier is assigned to this location
-    // ============================================================================
-    const assignedLocations = (userPayload.assignedLocations as string[]) || [];
-    if (!assignedLocations.includes(locationId)) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        'You are not assigned to this location',
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'You are not assigned to this location.',
-        },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Check if cashier already has an active or pending shift
-    // ============================================================================
-    const existingShift = await CashierShiftModel.findOne({
-      cashierId: userId,
-      status: { $in: ['active', 'pending_start', 'pending_review'] },
-    });
-
-    if (existingShift) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cashier/shift/open',
-        `You already have a shift with status: ${existingShift.status}`,
-        user
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: `You already have a shift with status: ${existingShift.status}`,
-        },
-        { status: 409 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 8: Create Cashier Shift (Pending Start)
-    // ============================================================================
-    const shiftId = await generateMongoId();
-    const now = new Date();
-
-    const cashierShift = await CashierShiftModel.create({
-      _id: shiftId,
-      locationId,
-      cashierId: userId,
-      vaultShiftId: vaultShift._id,
-      status: 'pending_start',
-      openedAt: now,
-      openingBalance: requestedFloat,
-      openingDenominations: denominations,
-      payoutsTotal: 0,
-      payoutsCount: 0,
-      floatAdjustmentsTotal: 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // ============================================================================
-    // STEP 9: Create Float Request
-    // ============================================================================
-    const requestId = await generateMongoId();
-    const floatRequest = await FloatRequestModel.create({
-      _id: requestId,
-      locationId,
-      cashierId: userId,
-      cashierShiftId: shiftId,
-      vaultShiftId: vaultShift._id,
-      type: 'increase', // Initial float is essentially an increase from 0
-      requestedAmount: requestedFloat,
-      requestedDenominations: denominations,
-      requestNotes: 'Initial shift float',
-      requestedAt: now,
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // ============================================================================
-    // STEP 10: Audit Activity
-    // ============================================================================
-    await logActivity({
-      userId,
-      username,
-      action: 'create',
-      details: `Cashier shift opened (pending approval) for location ${locationId} with float $${requestedFloat}`,
-      metadata: {
-        resource: 'cashier_shift',
-        resourceId: shiftId,
-        resourceName: 'Cashier Shift',
-        locationId: locationId,
-        floatRequestId: requestId,
-      },
-    });
-
-    // ============================================================================
-    // STEP 11: Create notification for Vault Manager
-    // ============================================================================
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
-      const { createFloatRequestNotification } =
-        await import('@/lib/helpers/vault/notifications');
-      // Target the VM who opened the vault shift
-      if (vaultShift.vaultManagerId) {
-        await createFloatRequestNotification(
-          floatRequest.toObject(),
-          username, // Using username as cashierName for now
-          vaultShift.vaultManagerId
+      const userId = userPayload._id as string;
+      const username = userPayload.username as string;
+
+      // ============================================================================
+      // STEP 1: Authorization check
+      // ============================================================================
+      const hasCashierAccess = userRoles.some((role: string) =>
+        ['developer', 'admin', 'manager', 'cashier'].includes(role.toLowerCase())
+      );
+
+      if (!hasCashierAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'Insufficient permissions',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
         );
       }
-    } catch (notifError) {
-      console.error(
-        'Failed to create notification but shift request was created:',
-        notifError
-      );
-      // We don't fail the whole request if only notification fails
-    }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Shift request submitted. Waiting for Vault Manager approval.',
-        shift: cashierShift.toObject(),
-        floatRequest: floatRequest.toObject(),
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/cashier/shift/open',
-      errorMessage,
-      user
-    );
-    console.error('Error opening cashier shift:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
+      // ============================================================================
+      // STEP 2: Parse and validate request
+      // ============================================================================
+      const body: OpenCashierShiftRequest = await request.json();
+      const { locationId, requestedFloat, denominations } = body;
+
+      if (!locationId || requestedFloat === undefined || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'Missing required fields: locationId, requestedFloat, denominations',
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Missing required fields: locationId, requestedFloat, denominations',
+          },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Validate denominations
+      // ============================================================================
+      const denominationValidation = validateDenominations(denominations);
+      if (!denominationValidation.valid) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'Invalid denominations',
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid denominations',
+            details: denominationValidation.errors,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (denominationValidation.total !== requestedFloat) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          `Denomination total ($${denominationValidation.total}) does not match requested float ($${requestedFloat})`,
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Denomination total ($${denominationValidation.total}) does not match requested float ($${requestedFloat})`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Check for active Vault Shift
+      // ============================================================================
+      const vaultShift = await VaultShiftModel.findOne({
+        locationId,
+        status: 'active',
+      });
+
+      if (!vaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'No active vault shift found',
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'No active vault shift found. Please ask a Vault Manager to open the vault.',
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!vaultShift.isReconciled) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'Vault is not reconciled',
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Vault is not reconciled. Please ask a Vault Manager to perform the mandatory opening reconciliation.',
+          },
+          { status: 403 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 5: Ensure cashier is assigned to this location
+      // ============================================================================
+      const assignedLocations =
+        (userPayload.assignedLocations as string[]) || [];
+      if (!assignedLocations.includes(locationId)) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          'You are not assigned to this location',
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'You are not assigned to this location.',
+          },
+          { status: 403 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 6: Check if cashier already has an active or pending shift
+      // ============================================================================
+      const existingShift = await CashierShiftModel.findOne({
+        cashierId: userId,
+        status: { $in: ['active', 'pending_start', 'pending_review'] },
+      });
+
+      if (existingShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/cashier/shift/open',
+          `You already have a shift with status: ${existingShift.status}`,
+          user
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: `You already have a shift with status: ${existingShift.status}`,
+          },
+          { status: 409 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 7: Create Cashier Shift (Pending Start)
+      // ============================================================================
+      const shiftId = await generateMongoId();
+      const now = new Date();
+
+      const cashierShift = await CashierShiftModel.create({
+        _id: shiftId,
+        locationId,
+        cashierId: userId,
+        vaultShiftId: vaultShift._id,
+        status: 'pending_start',
+        openedAt: now,
+        openingBalance: requestedFloat,
+        openingDenominations: denominations,
+        payoutsTotal: 0,
+        payoutsCount: 0,
+        floatAdjustmentsTotal: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // ============================================================================
+      // STEP 8: Create Float Request
+      // ============================================================================
+      const requestId = await generateMongoId();
+      const floatRequest = await FloatRequestModel.create({
+        _id: requestId,
+        locationId,
+        cashierId: userId,
+        cashierShiftId: shiftId,
+        vaultShiftId: vaultShift._id,
+        type: 'increase', // Initial float is essentially an increase from 0
+        requestedAmount: requestedFloat,
+        requestedDenominations: denominations,
+        requestNotes: 'Initial shift float',
+        requestedAt: now,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      // ============================================================================
+      // STEP 9: Audit Activity
+      // ============================================================================
+      await logActivity({
+        userId,
+        username,
+        action: 'create',
+        details: `Cashier shift opened (pending approval) for location ${locationId} with float $${requestedFloat}`,
+        metadata: {
+          resource: 'cashier_shift',
+          resourceId: shiftId,
+          resourceName: 'Cashier Shift',
+          locationId: locationId,
+          floatRequestId: requestId,
+        },
+      });
+
+      // ============================================================================
+      // STEP 10: Create notification for Vault Manager
+      // ============================================================================
+      try {
+        const { createFloatRequestNotification } =
+          await import('@/lib/helpers/vault/notifications');
+        // Target the VM who opened the vault shift
+        if (vaultShift.vaultManagerId) {
+          await createFloatRequestNotification(
+            floatRequest.toObject(),
+            username, // Using username as cashierName for now
+            vaultShift.vaultManagerId
+          );
+        }
+      } catch (notifError) {
+        console.error(
+          'Failed to create notification but shift request was created:',
+          notifError
+        );
+        // We don't fail the whole request if only notification fails
+      }
+
+      const duration = Date.now() - startTime;
+      if (duration > 1000) console.warn(`[${functionName}] slow: ${duration}ms`);
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Shift request submitted. Waiting for Vault Manager approval.',
+          shift: cashierShift.toObject(),
+          floatRequest: floatRequest.toObject(),
+        },
+        { status: 201 }
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        errorMessage,
+        user
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Internal server error',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        { status: 500 }
+      );
+    }
+  });
 }

@@ -1,5 +1,9 @@
 /**
  * Hourly Trends Metrics API Route
+ *
+ * Returns hourly revenue trend data for one or more gaming locations.
+ *
+ * @module app/api/metrics/hourly-trends/route
  */
 import {
   getHourlyTrends,

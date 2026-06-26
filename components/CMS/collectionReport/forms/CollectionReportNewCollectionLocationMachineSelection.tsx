@@ -27,12 +27,15 @@
 
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
+import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { toast } from 'sonner';
 
@@ -54,6 +57,8 @@ type NewCollectionLocationMachineSelectionProps = {
   onLocationChange: (value: string) => void;
   onMachineSearchChange: (value: string) => void;
   onMachineSelect: (machineId: string) => void;
+  autoReport?: WowAutoReportControl;
+  autoHighlightId?: string | null;
 };
 
 export default function CollectionReportNewCollectionLocationMachineSelection({
@@ -74,7 +79,22 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
   onLocationChange,
   onMachineSearchChange,
   onMachineSelect,
+  autoReport,
+  autoHighlightId,
 }: NewCollectionLocationMachineSelectionProps) {
+  // ============================================================================
+  // Auto-scroll: keep the highlighted machine button in view during auto-report
+  // ============================================================================
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!autoHighlightId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector<HTMLElement>(
+      `[data-machine-id="${autoHighlightId}"]`
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [autoHighlightId]);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -108,6 +128,10 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
         )}
       </div>
 
+      {autoReport?.enabled && (
+        <WowAutoReportButton control={autoReport} disabled={isProcessing} />
+      )}
+
       {lockedLocationId && (
         <p className="text-xs italic text-gray-500">
           Location is locked to the first machine&apos;s location
@@ -137,7 +161,7 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
         </div>
       )}
 
-      <div className="min-h-[100px] flex-grow space-y-2 overflow-y-auto">
+      <div ref={scrollContainerRef} className="min-h-[100px] flex-grow space-y-2 overflow-y-auto">
         {isLoadingExistingCollections &&
         !selectedLocationId &&
         !lockedLocationId ? (
@@ -185,6 +209,7 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
                             machine.serialNumber || 'unknown'
                           }`
                     }
+                    data-machine-id={String(machine._id)}
                     variant={
                       selectedMachineId === machine._id
                         ? 'secondary'
@@ -194,7 +219,11 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
                           ? 'default'
                           : 'outline'
                     }
-                    className="h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left"
+                    className={`h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left ${
+                      autoHighlightId === String(machine._id)
+                        ? 'ring-2 ring-purple-500 ring-offset-1'
+                        : ''
+                    }`}
                     onClick={() => {
                       if (
                         collectedMachineEntries.find(

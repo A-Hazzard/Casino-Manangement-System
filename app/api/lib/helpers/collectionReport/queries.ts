@@ -25,6 +25,29 @@ import { PipelineStage } from 'mongoose';
 import type { GamingLocationDocument } from '@shared/types';
 
 /**
+ * Pipeline stage that joins a location's licencee and exposes includeJackpot.
+ */
+function buildLicenceeIncludeJackpotLookup(): PipelineStage[] {
+  return [
+    {
+      $lookup: {
+        from: 'licencees',
+        localField: 'rel.licencee',
+        foreignField: '_id',
+        as: 'licenceeDoc',
+      },
+    },
+    {
+      $addFields: {
+        includeJackpot: {
+          $ifNull: [{ $arrayElemAt: ['$licenceeDoc.includeJackpot', 0] }, false],
+        },
+      },
+    },
+  ];
+}
+
+/**
  * Fetches locations with machines for collection reports
  *
  * @param {string | null} [rawLicenceeParam] - Raw licencee parameter (supports both spellings)
@@ -104,8 +127,10 @@ export async function fetchLocationsWithMachines(
         collectionBalance: 1,
         gameDayOffset: 1,
         noSMIBLocation: 1,
+        'rel.licencee': 1,
       },
     },
+    ...buildLicenceeIncludeJackpotLookup(),
   ];
 
   if (includeMachines) {
@@ -150,6 +175,7 @@ export async function fetchLocationsWithMachines(
         collectionBalance: 1,
         gameDayOffset: 1,
         noSMIBLocation: 1,
+        includeJackpot: 1,
         machines: {
           $map: {
             input: '$machines',
@@ -176,9 +202,23 @@ export async function fetchLocationsWithMachines(
               },
               collectionTime: '$$machine.collectionTime',
               sasMeters: '$$machine.sasMeters',
+              includeJackpot: '$includeJackpot',
             },
           },
         },
+      },
+    });
+  } else {
+    pipeline.push({
+      $project: {
+        _id: 1,
+        name: 1,
+        previousCollectionTime: 1,
+        profitShare: 1,
+        collectionBalance: 1,
+        gameDayOffset: 1,
+        noSMIBLocation: 1,
+        includeJackpot: 1,
       },
     });
   }

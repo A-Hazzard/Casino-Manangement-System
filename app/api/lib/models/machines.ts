@@ -17,6 +17,12 @@ export const machineSchema = new Schema(
     },
     playableBalance: Number,
     custom: { name: String },
+    meta: {
+      dataSync: {
+        source: String,
+        wowbettingshopid: String,
+      },
+    },
     balances: { cashable: Number },
     curProcess: { name: String, next: String },
     tasks: {

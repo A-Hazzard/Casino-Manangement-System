@@ -107,10 +107,12 @@ export async function calculateSasMetrics(
 
   const machineIdentifier = await getMachineIdentifier(machineId);
 
-  // Query all meters within the SAS time period
+  // Query all meters within the SAS time period, excluding COLLECTION_REPORT
+  // meters to avoid double-counting supplemental meters created for offline machines.
   const metersInPeriod = await Meters.find({
     machine: machineIdentifier,
     readAt: { $gte: sasStartTime, $lte: sasEndTime },
+    meterSource: { $ne: 'COLLECTION_REPORT' },
   })
     .sort({ readAt: 1 })
     .lean<MeterDocument[]>();
@@ -130,22 +132,42 @@ export async function calculateSasMetrics(
 
   // Sum all movement fields (daily deltas) within the SAS time period
   // This is the correct approach when machines only have movement data, not cumulative data
-  const drop = metersInPeriod.reduce(
+  let drop = metersInPeriod.reduce(
     (sum, meterItem) => sum + (meterItem.movement?.drop || 0),
     0
   );
-  const totalCancelledCredits = metersInPeriod.reduce(
+  let totalCancelledCredits = metersInPeriod.reduce(
     (sum, meterItem) => sum + (meterItem.movement?.totalCancelledCredits || 0),
     0
   );
-  const gamesPlayed = metersInPeriod.reduce(
+  let gamesPlayed = metersInPeriod.reduce(
     (sum, meterItem) => sum + (meterItem.movement?.gamesPlayed || 0),
     0
   );
-  const jackpot = metersInPeriod.reduce(
+  let jackpot = metersInPeriod.reduce(
     (sum, meterItem) => sum + (meterItem.movement?.jackpot || 0),
     0
   );
+
+  // WOW_SYNC records store cumulative absolute values (drop, totalCancelledCredits)
+  // with movement.* always 0. When movement sums are 0 but WOW_SYNC records exist,
+  // compute SAS values from the first/last cumulative reading.
+  const hasWowSync = metersInPeriod.some(
+    meter => meter.meterSource === 'WOW_SYNC'
+  );
+  if (hasWowSync && metersInPeriod.length >= 2) {
+    const first = metersInPeriod[0];
+    const last = metersInPeriod[metersInPeriod.length - 1];
+    if (drop === 0) drop = (last.drop ?? 0) - (first.drop ?? 0);
+    if (totalCancelledCredits === 0)
+      totalCancelledCredits =
+        (last.totalCancelledCredits ?? 0) - (first.totalCancelledCredits ?? 0);
+    if (gamesPlayed === 0)
+      gamesPlayed =
+        (last.gamesPlayed ?? 0) - (first.gamesPlayed ?? 0);
+    if (jackpot === 0)
+      jackpot = (last.jackpot ?? 0) - (first.jackpot ?? 0);
+  }
 
   const gross = drop - totalCancelledCredits;
 
@@ -154,6 +176,9 @@ export async function calculateSasMetrics(
     `  Time period: ${sasStartTime.toISOString()} to ${sasEndTime.toISOString()}`
   );
   console.warn(`  Meters found: ${metersInPeriod.length}`);
+  console.warn(
+    `  Has WOW_SYNC records: ${hasWowSync}`
+  );
   console.warn(`  Total drop (sum of movement.drop): ${drop}`);
   console.warn(
     `  Total cancelled (sum of movement.totalCancelledCredits): ${totalCancelledCredits}`
@@ -364,10 +389,10 @@ export async function getSasTimePeriod(
       }
     }
 
-    // FINAL VALIDATION: Ensure sasStartTime is strictly before sasEndTime
-    if (sasStartTime >= sasEndTime) {
+    // FINAL VALIDATION: Ensure sasStartTime is not after sasEndTime (equal is allowed)
+    if (sasStartTime > sasEndTime) {
       throw new Error(
-        `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after or equal to sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range.`
+        `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range.`
       );
     }
   } catch (error) {
@@ -738,10 +763,10 @@ export async function createCollectionWithCalculations(
     payload.sasEndTime as Date
   );
 
-  // CRITICAL VALIDATION: Ensure SAS times are valid before proceeding
-  if (sasStartTime >= sasEndTime) {
+  // CRITICAL VALIDATION: Ensure SAS times are valid before proceeding (equal is allowed)
+  if (sasStartTime > sasEndTime) {
     throw new Error(
-      `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after or equal to sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range for machine ${
+      `SAS Time Validation Failed: sasStartTime (${sasStartTime.toISOString()}) cannot be after sasEndTime (${sasEndTime.toISOString()}). This would create an invalid time range for machine ${
         payload.machineId
       }.`
     );

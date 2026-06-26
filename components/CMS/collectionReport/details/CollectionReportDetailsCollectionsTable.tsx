@@ -9,6 +9,7 @@ import {
 } from '@/components/shared/ui/table';
 import type { MachineMetric } from '@/lib/types/api';
 import { formatSasTime } from '@/lib/utils/collection';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { Zap } from 'lucide-react';
@@ -81,6 +82,12 @@ export function CollectionReportDetailsCollectionsTable({
   useNetGross = false,
 }: CollectionReportDetailsCollectionsTableProps) {
   // ============================================================================
+  // State & Hooks
+  // ============================================================================
+  const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
   // Helpers
   // ============================================================================
   // Show decimals only when the fractional part is >= 0.1 (e.g. 78596 → "78,596", 26440.50 → "26,440.50")
@@ -95,12 +102,14 @@ export function CollectionReportDetailsCollectionsTable({
         : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
-  const smartCurrency = (value: number | string) => '$' + smartNum(value);
-
-  // ============================================================================
-  // State & Hooks
-  // ============================================================================
-  const router = useRouter();
+  // Universal format: [Sign][CurrencyCode] [Amount]. Collection reports are
+  // single-licencee, so amounts are already in the licencee's native currency.
+  const smartCurrency = (value: number | string): string => {
+    const numericValue = Number(value);
+    if (isNaN(numericValue)) return `${displayCurrency} ${smartNum(value)}`;
+    const sign = numericValue < 0 ? '-' : '';
+    return `${sign}${displayCurrency} ${smartNum(Math.abs(numericValue))}`;
+  };
 
   // Online/offline status — collect actualMachineId for each metric that has one
   const detailsMachineIds = useMemo(
@@ -157,8 +166,10 @@ export function CollectionReportDetailsCollectionsTable({
             {metrics.filter(metric => metric.ramClear).length > 1
               ? 'machines'
               : 'machine'}{' '}
-            {metrics.filter(metric => metric.ramClear).length > 1 ? 'were' : 'was'} ram
-            cleared
+            {metrics.filter(metric => metric.ramClear).length > 1
+              ? 'were'
+              : 'was'}{' '}
+            ram cleared
           </p>
         </div>
       )}
@@ -261,11 +272,13 @@ export function CollectionReportDetailsCollectionsTable({
                 </TableCell>
 
                 <TableCell className="px-4 py-4 text-gray-600">
-                  {smartNum(metric.metersIn ?? 0)} / {smartNum(metric.metersOut ?? 0)}
+                  {smartNum(metric.metersIn ?? 0)} /{' '}
+                  {smartNum(metric.metersOut ?? 0)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4 text-gray-600">
-                  {smartNum(metric.prevIn ?? 0)} / {smartNum(metric.prevOut ?? 0)}
+                  {smartNum(metric.prevIn ?? 0)} /{' '}
+                  {smartNum(metric.prevOut ?? 0)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4 text-gray-600">

@@ -31,6 +31,8 @@ export type CollectionMovement = {
   metersIn: number;
   metersOut: number;
   gross: number;
+  drop?: number;
+  totalCancelledCredits?: number;
 };
 
 export type CollectionDocument = {
@@ -63,6 +65,8 @@ export type CollectionDocument = {
   sasStartTime?: Date;
   sasEndTime?: Date;
   serialNumber?: string;
+  wasOnline?: boolean;
+  editedWhileOnline?: boolean;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -124,10 +128,12 @@ export type CollectionView =
   | 'collector'
   | 'collection-v2';
 
+import type { FC } from 'react';
+
 export type CollectionTab = {
   id: CollectionView;
   label: string;
-  icon: string;
+  icon: FC<{ className?: string }>;
   description?: string;
   available?: boolean;
   highlight?: boolean;

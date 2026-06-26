@@ -16,8 +16,7 @@ import {
   getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   logRouteFetch,
@@ -42,117 +41,105 @@ import {
  * 6. Return machine statistics
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'GET /api/analytics/machines/stats';
-  const user = extractUserFromRequest(request);
+  return withApiAuth(request, async ({ user, userRoles }) => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/analytics/machines/stats';
+    const logUser = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
-    const effectiveLicencee =
-      licencee && licencee.toLowerCase() !== 'all' ? licencee : null;
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(request.url);
+      const licencee = searchParams.get('licencee');
+      const effectiveLicencee =
+        licencee && licencee.toLowerCase() !== 'all' ? licencee : null;
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
+      // ============================================================================
+      // STEP 2: Resolve accessible locations for the authenticated user
+      // ============================================================================
+      const userAccessibleLicencees =
+        await getUserAccessibleLicenceesFromToken();
+      const userLocationPermissions = Array.isArray(user.assignedLocations)
+        ? user.assignedLocations
+        : [];
 
-    // ============================================================================
-    // STEP 3: Authenticate user and get accessible locations
-    // ============================================================================
-    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
-    }
+      const allowedLocationIds = await getUserLocationFilter(
+        userAccessibleLicencees,
+        effectiveLicencee ?? undefined,
+        userLocationPermissions,
+        userRoles
+      );
 
-    const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicencees,
-      effectiveLicencee ?? undefined,
-      userLocationPermissions,
-      userRoles
-    );
-
-    // ============================================================================
-    // STEP 4: Validate location access
-    // ============================================================================
-    if (allowedLocationIds !== 'all') {
-      if (
-        !Array.isArray(allowedLocationIds) ||
-        allowedLocationIds.length === 0
-      ) {
-        const zeroStats = {
-          totalDrop: 0,
-          totalCancelledCredits: 0,
-          totalGross: 0,
-          totalMachines: 0,
-          onlineMachines: 0,
-          sasMachines: 0,
-        };
-        return NextResponse.json({
-          stats: zeroStats,
-          totalMachines: 0,
-          onlineMachines: 0,
-          offlineMachines: 0,
-        });
+      // ============================================================================
+      // STEP 3: Validate location access
+      // ============================================================================
+      if (allowedLocationIds !== 'all') {
+        if (
+          !Array.isArray(allowedLocationIds) ||
+          allowedLocationIds.length === 0
+        ) {
+          return NextResponse.json({
+            stats: {
+              totalMachines: 0,
+              onlineMachines: 0,
+              sasMachines: 0,
+            },
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
       }
-    }
 
-    // ============================================================================
-    // STEP 5: Fetch machine statistics
-    // ============================================================================
-    const result = await getMachineStatsForAnalytics(allowedLocationIds);
+      // ============================================================================
+      // STEP 4: Fetch machine statistics
+      // ============================================================================
+      const result = await getMachineStatsForAnalytics(allowedLocationIds);
 
-    // ============================================================================
-    // STEP 6: Return machine statistics
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/machines/stats',
-      1,
-      user,
-      duration
-    );
+      // ============================================================================
+      // STEP 5: Return machine statistics
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/machines/stats',
+        1,
+        logUser,
+        duration
+      );
 
-    if (duration > 1000) {
-      console.warn(
-        `[Analytics Machines Stats GET API] Completed in ${duration}ms`
+      if (duration > 1000) {
+        console.warn(
+          `[Analytics Machines Stats GET API] Completed in ${duration}ms`
+        );
+      }
+      return NextResponse.json(result);
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch machine stats';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/machines/stats',
+        errorMessage,
+        logUser
+      );
+      console.error(
+        `[Machine Stats GET API] Error after ${duration}ms:`,
+        errorMessage
+      );
+      return NextResponse.json(
+        {
+          message: 'Failed to fetch machine stats',
+          error: errorMessage,
+        },
+        { status: 500 }
       );
     }
-    return NextResponse.json(result);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch machine stats';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/machines/stats',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Machine Stats GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        message: 'Failed to fetch machine stats',
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

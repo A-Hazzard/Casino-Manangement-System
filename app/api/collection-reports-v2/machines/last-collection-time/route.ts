@@ -6,9 +6,11 @@
  * chronological boundaries and check for middle-date captures.
  *
  * GET /api/collection-reports-v2/machines/last-collection-time?machineId=<id>
+ *
+ * @module app/api/collection-reports-v2/machines/last-collection-time/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import {
   createSuccessResponse,
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
     'GET /api/collection-reports-v2/machines/last-collection-time';
   const user = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
     // ============================================================================
     // STEP 1: Parse request parameters
@@ -54,11 +57,6 @@ export async function GET(request: NextRequest) {
       );
       return createErrorResponse('machineId query parameter is required', 400);
     }
-
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
 
     // ============================================================================
     // STEP 3: Find most recent and oldest submitted session machines
@@ -140,16 +138,17 @@ export async function GET(request: NextRequest) {
         ? 'Last collection time found (V2)'
         : 'No previous submitted V2 collection found for this machine'
     );
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/collection-reports-v2/machines/last-collection-time',
-      message,
-      user
-    );
-    return createErrorResponse(message, 500);
-  }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports-v2/machines/last-collection-time',
+        message,
+        user
+      );
+      return createErrorResponse(message, 500);
+    }
+  });
 }

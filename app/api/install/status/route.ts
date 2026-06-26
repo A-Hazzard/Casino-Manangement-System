@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       duration
     );
     return NextResponse.json({ initialized: !!existingUser }, { status: 200 });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     logRouteError(

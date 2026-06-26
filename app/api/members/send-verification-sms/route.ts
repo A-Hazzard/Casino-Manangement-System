@@ -20,7 +20,7 @@
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { sendVerificationSMS } from '@/app/api/lib/helpers/sms';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   logRouteFetch,
   logRouteError,
@@ -33,16 +33,12 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/members/send-verification-sms';
   const logUser = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to Database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse Query Parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
+  return withApiAuth(req, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse Query Parameters
+      // ============================================================================
+      const { searchParams } = new URL(req.url);
     const memberId = searchParams.get('memberId');
     const phoneNumber = searchParams.get('phoneNumber');
 
@@ -80,12 +76,12 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Send SMS and update member record
+    // STEP 2: Send SMS and update member record
     // ============================================================================
     const result = await sendVerificationSMS(memberId, phoneNumber);
 
     // ============================================================================
-    // STEP 4: Log Activity (Success)
+    // STEP 3: Log Activity (Success)
     // ============================================================================
     const user = await getUserFromServer();
     if (user) {
@@ -111,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Return Success Response
+    // STEP 4: Return Success Response
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
@@ -183,5 +179,6 @@ export async function GET(req: NextRequest) {
       { success: false, error: errorMessage },
       { status: isConfigError ? 500 : 400 }
     );
-  }
+    }
+  });
 }

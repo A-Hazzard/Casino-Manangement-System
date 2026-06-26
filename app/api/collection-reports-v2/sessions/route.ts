@@ -109,6 +109,9 @@ export async function GET(req: NextRequest) {
 
     const total = totalResult[0]?.total ?? 0;
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[${functionName}] slow: ${duration}ms`);
+    }
     logRouteFetch(functionName, 'GET', '/api/collection-reports-v2/sessions', sessions.length, user, duration);
 
     // ============================================================================

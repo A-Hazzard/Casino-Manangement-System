@@ -3,12 +3,14 @@
  *
  * Accepts a comma-separated list of machine IDs via ?ids=... and returns a map
  * of machineId → boolean (true = online within last 3 minutes).
- * Only machines that have a relayId (SMIB) can be online; others are omitted.
+ * Machines with a relayId (SMIB) are online when recently active; WOW machines
+ * (no SMIB) are always online. Machines that are neither are omitted.
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { MachineDocument } from '@/shared/types/models';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { NextRequest, NextResponse } from 'next/server';
 
 const THREE_MINUTES_MS = 3 * 60 * 1000;
@@ -49,9 +51,12 @@ export async function GET(req: NextRequest) {
   const machines = await Machine.find(
     {
       _id: { $in: machineIds },
-      relayId: { $exists: true, $nin: [null, ''] },
+      $or: [
+        { relayId: { $exists: true, $nin: [null, ''] } },
+        { 'meta.dataSync.source': 'wow' },
+      ],
     },
-    { _id: 1, relayId: 1, lastActivity: 1 }
+    { _id: 1, relayId: 1, lastActivity: 1, 'meta.dataSync.source': 1 }
   ).lean<MachineDocument[]>();
 
   // ============================================================================
@@ -61,6 +66,11 @@ export async function GET(req: NextRequest) {
 
   for (const machine of machines) {
     const machineId = String(machine._id);
+    // WOW machines have no SMIB/relay but are always treated as online.
+    if (isWowMachine(machine as Parameters<typeof isWowMachine>[0])) {
+      statusMap[machineId] = true;
+      continue;
+    }
     const lastActivity = machine.lastActivity
       ? new Date(machine.lastActivity as string | Date)
       : null;

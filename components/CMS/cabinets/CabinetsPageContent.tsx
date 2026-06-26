@@ -12,11 +12,9 @@ import { CabinetsActions } from '@/components/CMS/cabinets/CabinetsActions';
 import { CabinetsCabinetContentDisplay } from '@/components/CMS/cabinets/CabinetsCabinetContentDisplay';
 import { CabinetsCabinetSearchFilters } from '@/components/CMS/cabinets/CabinetsCabinetSearchFilters';
 import CabinetsNavigation from '@/components/CMS/cabinets/CabinetsNavigation';
-import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
-import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import UploadSmibDataModal from '@/components/shared/ui/firmware/UploadSmibDataModal';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import NewMovementRequestModal from '@/components/shared/ui/movements/NewMovementRequestModal';
@@ -25,7 +23,14 @@ import { useCabinetsPageData } from '@/lib/hooks/cabinets/useCabinetsPageData';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
-import { Info, RefreshCw } from 'lucide-react';
+import {
+  Info,
+  MonitorPlay,
+  Package,
+  RefreshCw,
+  Settings,
+  Wrench,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
@@ -44,10 +49,10 @@ const SMIBFirmwareSection = dynamic(
 );
 
 const CABINET_TABS_CONFIG = [
-  { id: 'cabinets' as const, label: 'Cabinets', icon: '🎰' },
-  { id: 'movement' as const, label: 'Movement Requests', icon: '🔄' },
-  { id: 'smib' as const, label: 'SMIB Management', icon: '🧩' },
-  { id: 'firmware' as const, label: 'Firmware', icon: '🛠️' },
+  { id: 'cabinets' as const, label: 'Cabinets', icon: MonitorPlay },
+  { id: 'movement' as const, label: 'Movement Requests', icon: Package },
+  { id: 'smib' as const, label: 'SMIB Management', icon: Settings },
+  { id: 'firmware' as const, label: 'Firmware', icon: Wrench },
 ];
 
 const EXCLUDED_MOVEMENT_ROLES = ['collector'];
@@ -58,7 +63,7 @@ export default function CabinetsPageContent() {
   // ============================================================================
   const cabinetsPageData = useCabinetsPageData();
   const { user } = useUserStore();
-  const { setSelectedLicencee, activeMetricsFilter } = useDashBoardStore();
+  const { setSelectedLicencee } = useDashBoardStore();
 
   const {
     activeSection,
@@ -67,9 +72,6 @@ export default function CabinetsPageContent() {
     error,
     locations,
     gameTypes,
-    financialTotals,
-    metricsTotals,
-    metricsTotalsLoading,
     machineStats,
     paginatedCabinets,
     allCabinets,
@@ -87,8 +89,6 @@ export default function CabinetsPageContent() {
     isNewMovementOpen,
     isUploadSmibOpen,
     refreshTrigger,
-    chartData,
-    loadingChart,
     totalPages,
     hasMoreCabinets,
     setActiveSection,
@@ -229,66 +229,6 @@ export default function CabinetsPageContent() {
            ============================================================================ */}
         {activeSection === 'cabinets' && (
           <div className="mt-6 w-full max-w-full overflow-x-hidden">
-            {/* Financial Metrics Summary Cards */}
-            {false && (
-              <div className="mb-6 w-full max-w-full">
-                <FinancialMetricsCards
-                  totals={metricsTotals || financialTotals}
-                  loading={loading || metricsTotalsLoading}
-                  title="Total for all Machines"
-                  includeJackpot={cabinetsPageData.includeJackpot}
-                />
-              </div>
-            )}
-
-            {/* Performance Visualization Chart */}
-            {false && (
-              <div className="mb-6 w-full max-w-full">
-                {/* Granularity Selector for Last 30 Days and Quarterly */}
-                {(activeMetricsFilter === '30d' ||
-                  activeMetricsFilter === 'last30days' ||
-                  activeMetricsFilter === 'Quarterly') &&
-                  !loadingChart && (
-                    <div className="mb-3 flex items-center justify-end gap-2">
-                      <label
-                        htmlFor="chart-granularity-cabinets"
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        Granularity:
-                      </label>
-                      <select
-                        id="chart-granularity-cabinets"
-                        value={cabinetsPageData.chartGranularity}
-                        onChange={e =>
-                          cabinetsPageData.setChartGranularity(
-                            e.target.value as 'daily' | 'weekly' | 'monthly'
-                          )
-                        }
-                        className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-                      >
-                        {activeMetricsFilter === 'Quarterly' ? (
-                          <>
-                            <option value="monthly">Monthly</option>
-                            <option value="weekly">Weekly</option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  )}
-                <DashboardChart
-                  loadingChartData={loadingChart}
-                  chartData={chartData}
-                  activeMetricsFilter={activeMetricsFilter}
-                  granularity={cabinetsPageData.chartGranularity}
-                />
-              </div>
-            )}
-
             {/* Filter Controls Row: Date selection and machine status widget */}
             <div className="mb-6 mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
               <div className="order-1">

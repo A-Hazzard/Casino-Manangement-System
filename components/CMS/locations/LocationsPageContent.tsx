@@ -32,6 +32,7 @@ import LocationsLocationCard from './LocationsLocationCard';
 import LocationsLocationSkeleton from './LocationsLocationSkeleton';
 import LocationsArchivedLocationSkeleton from './LocationsArchivedLocationSkeleton';
 import LocationsLocationTable from './LocationsLocationTable';
+import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import LocationsDeleteLocationModal from './modals/LocationsDeleteLocationModal';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
 import LocationsNewLocationModal from './modals/LocationsNewLocationModal';
@@ -46,6 +47,8 @@ export default function LocationsPageContent() {
   const { openEditModal, openDeleteModal, closeDeleteModal } =
     useLocationsActionsStore();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<Partial<AggregatedLocation> | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Custom hook for locations page data and logic
   const locationsPageData = useLocationsPageData();
@@ -69,8 +72,8 @@ export default function LocationsPageContent() {
     handleRefresh,
     handleFilterChange,
     handleMultiFilterChange,
+    handlePageChange,
     setSearchTerm,
-    setCurrentPage,
     hasMoreLocations,
     isDataComplete,
   } = locationsPageData;
@@ -111,21 +114,31 @@ export default function LocationsPageContent() {
   /**
    * Restore an archived location back to active status.
    */
-  const handleRestore = async (location: Partial<AggregatedLocation>) => {
-    const loc = location as Record<string, unknown>;
+  const handleRestore = (location: Partial<AggregatedLocation>) => {
+    setRestoreTarget(location);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget) return;
+
+    const loc = restoreTarget as Record<string, unknown>;
     const locationId = loc.location as string;
     const locationName = loc.locationName as string;
     if (!locationId) return;
 
+    setIsRestoring(true);
     try {
       await axios.patch('/api/locations', {
         id: locationId,
         action: 'restore',
       });
       toast.success(`${locationName || 'Location'} restored successfully`);
+      setRestoreTarget(null);
       handleRefresh();
     } catch {
       toast.error('Failed to restore location');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -151,6 +164,18 @@ export default function LocationsPageContent() {
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onCreated={handleRefresh}
+      />
+      <InfoConfirmationDialog
+        isOpen={!!restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={handleConfirmRestore}
+        title="Restore Location"
+        message={`Are you sure you want to restore ${
+          (restoreTarget as Record<string, unknown>)?.locationName || 'this location'
+        }? It will become active again.`}
+        confirmText="Restore"
+        cancelText="Cancel"
+        isLoading={isRestoring}
       />
 
       <PageLayout
@@ -264,9 +289,11 @@ export default function LocationsPageContent() {
             <div>
               {/* Mobile View: Cards display */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
-                {locationData.map(loc => (
+                {locationData.map((loc, locationIndex) => (
                   <LocationsLocationCard
-                    key={String(loc._id || loc.location || Math.random())}
+                    key={String(
+                      loc._id || loc.location || `location-${locationIndex}`
+                    )}
                     location={loc}
                     onLocationClick={handleLocationClick}
                     onEdit={location => openEditModal(location)}
@@ -285,6 +312,7 @@ export default function LocationsPageContent() {
               <div className="hidden overflow-x-auto border border-gray-200 bg-white shadow-sm lg:block">
                 <LocationsLocationTable
                   locations={locationData}
+                  selectedFilters={selectedFilters}
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
                   canManageLocations={canManageLocations}
@@ -307,7 +335,7 @@ export default function LocationsPageContent() {
               <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
+                setCurrentPage={handlePageChange}
                 hasMore={hasMoreLocations}
               />
             </div>

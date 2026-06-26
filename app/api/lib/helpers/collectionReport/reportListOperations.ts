@@ -9,28 +9,23 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import {
-  fetchLocationsWithMachines,
-  getMonthlyCollectionReportByLocation,
-  getMonthlyCollectionReportSummary,
-} from '@/app/api/lib/helpers/collectionReport/queries';
-import {
-  logRouteFetch,
-  logRouteError,
-} from '@/app/api/lib/utils/routeLogger';
-import { resolveLicenceeId } from '@/lib/utils/licencee';
+import { fetchLocationsWithMachines } from '@/app/api/lib/helpers/collectionReport/queries';
+import { logRouteError } from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { CollectionDocument, GamingLocationDocument } from '@shared/types';
 import { NextResponse } from 'next/server';
 
-type RouteUser = {
-  _id: string;
-  emailAddress?: string;
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-} | null | undefined;
+type RouteUser =
+  | {
+      _id: string;
+      emailAddress?: string;
+      firstName?: string;
+      lastName?: string;
+      username?: string;
+    }
+  | null
+  | undefined;
 
 /**
  * Validates machine collections for chronological ordering.
@@ -167,10 +162,7 @@ export async function handleLocationsWithMachinesRequest(
         user ?? undefined
       );
       return {
-        response: NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        ),
+        response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
       };
     }
     logRouteError(
@@ -194,64 +186,4 @@ export async function handleLocationsWithMachinesRequest(
       ),
     };
   }
-}
-
-/**
- * Handles the monthly report summary sub-query for the GET handler.
- * Returns { response } if startDate/endDate are present without timePeriod, or null otherwise.
- */
-export async function handleMonthlyReportSummaryRequest(
-  searchParams: URLSearchParams,
-  user: RouteUser,
-  startTime: number,
-  functionName: string
-): Promise<{ response: NextResponse } | null> {
-  const timePeriod = searchParams.get('timePeriod');
-  const startDateStr = searchParams.get('startDate');
-  const endDateStr = searchParams.get('endDate');
-  if (!startDateStr || !endDateStr || timePeriod) return null;
-
-  const locationName = searchParams.get('locationName') || undefined;
-  const locationId = searchParams.get('locationId') || undefined;
-  const locationIds =
-    searchParams.get('locationIds')?.split(',') || undefined;
-  const rawLicenceeParam = searchParams.get('licencee') || undefined;
-  const licencee =
-    rawLicenceeParam && rawLicenceeParam !== 'all'
-      ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
-      : rawLicenceeParam;
-
-  const summary = await getMonthlyCollectionReportSummary(
-    new Date(startDateStr),
-    new Date(endDateStr),
-    locationName || locationIds || (locationId ? [locationId] : undefined),
-    licencee
-  );
-  const details = await getMonthlyCollectionReportByLocation(
-    new Date(startDateStr),
-    new Date(endDateStr),
-    locationName || locationIds || (locationId ? [locationId] : undefined),
-    licencee
-  );
-
-  if (summary.drop === '-' && summary.gross === '-') {
-    console.warn('[Collection Reports GET] Failed to fetch summary');
-  }
-  if (details.length === 0) {
-    console.warn(
-      '[Collection Reports GET] No details found for location report'
-    );
-  }
-
-  const duration = Date.now() - startTime;
-  logRouteFetch(
-    functionName,
-    'GET',
-    '/api/collection-reports',
-    details.length,
-    user ?? undefined,
-    duration
-  );
-
-  return { response: NextResponse.json({ summary, details }) };
 }

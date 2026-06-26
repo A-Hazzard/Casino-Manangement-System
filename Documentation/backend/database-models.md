@@ -1,7 +1,7 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** June 5, 2026  
+**Last Updated:** June 25, 2026  
 **Version:** 4.4.0
 
 ## Table of Contents
@@ -9,11 +9,10 @@
 1. [Overview](#overview)
 2. [Core Entity Hierarchy](#core-entity-hierarchy)
 3. [Key Models Used in UI](#key-models-used-in-ui)
-4. [Financial Data Flow](#financial-data-flow)
-5. [Important Relationships](#important-relationships)
-6. [Model Specifications](#model-specifications)
-7. [Data Relationships](#data-relationships)
-8. [Business Logic](#business-logic)
+4. [Collections Model](#4-collections-model-collection-report-entries)
+5. [CollectionReport Model](#5-collectionreport-model-report-summary)
+6. [Vault Management Models](#6-vault-management-models-vms)
+7. [User Model](#user-model-usert)
 
 ## Overview
 
@@ -74,7 +73,14 @@ Machine {
   gamingLocation: string;         // Links to GamingLocation
   loggedIn: boolean;              // Machine login state (online/offline for UI)
   machineStatus: string;          // Operational status (separate from login state)
-  relayId: string;               // SMIB controller identifier
+
+  // SMIB / Connectivity
+  relayId: string;                // SMIB controller identifier (if set = SMIB machine)
+  lastActivity?: Date;            // Last SMIB heartbeat — stale >3min = offline SMIB
+  smibBoard?: string;             // Physical SMIB board identifier
+  smbId?: string;                 // Alternate SMIB identifier
+  isWow?: boolean;                // WOW-synced machine (no relay, sync instead)
+  connectionMode?: 'WOW' | 'SMIB' | 'NONE'; // How machine gets meter data
   smibConfig: SmibConfig;        // Device configuration
   smibVersion: {
     firmware: string;
@@ -91,9 +97,13 @@ Machine {
   };
 
   // Collection Data (for Collection Reports)
+  collectionMeters: {
+    metersIn: number;             // Current machine meter In (advanced on report creation)
+    metersOut: number;            // Current machine meter Out
+  };
   collectionMetersHistory: [{
     metersIn: number;             // Money in at collection start
-    metersOut: number;            // Money in at collection end
+    metersOut: number;            // Money out at collection start
     prevMetersIn: number;         // Baseline for deltas
     prevMetersOut: number;        // Baseline for deltas
     timestamp: Date;              // Collection timestamp
@@ -127,8 +137,8 @@ Meter {
 
   // ⚠️ CRITICAL: movement field is REQUIRED for aggregation APIs
   movement: {
-    drop: number;                 // Money In - primary financial metric
-    totalCancelledCredits: number; // Money Out - primary financial metric
+    drop: number;                 // Money In (DELTA for SAS_READ, always 0 for WOW_SYNC)
+    totalCancelledCredits: number; // Money Out (DELTA for SAS_READ, always 0 for WOW_SYNC)
     coinIn: number;               // Handle - betting activity
     jackpot: number;              // Jackpot payouts
     gamesPlayed: number;          // Game activity
@@ -138,11 +148,17 @@ Meter {
     totalHandPaidCancelledCredits: number; // Hand-paid credits
   };
 
+  // Source type — determines how downstream aggregation computes SAS values
+  meterSource: 'COLLECTION_REPORT' | 'SAS_READ' | 'WOW_SYNC' | 'OTHER';
+  isSupplemental: boolean;        // true = offline SMIB fallback meter
+  isRamClear: boolean;            // true = pre-reset peak reading (RAM clear event)
+  isSasCreated: boolean;          // false = manually entered, not from SAS relay
+
   // Top-level fields (duplicated for backward compatibility)
-  drop: number;
+  drop: number;                   // For SAS_READ = per-reading abs; for WOW_SYNC = cumulative abs
   coinIn: number;
   coinOut: number;
-  totalCancelledCredits: number;
+  totalCancelledCredits: number;  // For SAS_READ = per-reading abs; for WOW_SYNC = cumulative abs
   jackpot: number;
   gamesPlayed: number;
   lastSasMeterAt?: Date;
@@ -181,7 +197,96 @@ GamingLocation {
 }
 ```
 
-### 4. Vault Management Models (VMS)
+### 4. Collections Model (Collection Report Entries)
+
+**Purpose**: Per-machine meter entry within a collection report. One document per machine per report.
+
+```typescript
+Collection {
+  _id: string;
+  locationReportId: string;       // Links to CollectionReport (empty = draft, set = finalized)
+  isCompleted: boolean;           // false = draft, true = part of finalized report
+  machineId: string;              // Links to Machine
+  location: string;               // Links to GamingLocation
+  collector: string;              // User ID of collector
+
+  // Meter readings (collector-entered)
+  metersIn: number;               // Physical meter In reading
+  metersOut: number;              // Physical meter Out reading
+  prevIn: number;                 // Previous meter In (calculated by backend on creation)
+  prevOut: number;                // Previous meter Out (calculated by backend on creation)
+  ramClear: boolean;              // RAM clear occurred
+  ramClearMetersIn?: number;      // Pre-reset peak In
+  ramClearMetersOut?: number;     // Pre-reset peak Out
+
+  // Movement (calculated)
+  movement: {
+    drop: number;                 // metersIn - prevIn (with RAM clear handling)
+    totalCancelledCredits: number; // metersOut - prevOut (with RAM clear handling)
+    gross: number;                // drop - totalCancelledCredits
+  };
+
+  // SAS metrics snapshot (calculated from Meters collection)
+  sasMeters: {
+    sasStartTime: Date;           // SAS window start
+    sasEndTime: Date;             // SAS window end
+    drop: number;                 // SAS drop over window
+    totalCancelledCredits: number; // SAS cancelled over window
+    gross: number;                // SAS gross = drop - totalCancelledCredits
+    jackpot: number;              // SAS jackpot over window
+    gamesPlayed: number;          // SAS games played over window
+  };
+
+  // Meter document references (for manual meters)
+  meterId?: string;               // Links to Meters._id (supplemental meter for offline SMIB)
+  ramClearMeterId?: string;       // Links to Meters._id (RAM clear meter document)
+
+  timestamp: Date;                // Collection timestamp
+  notes?: string;                 // Collector notes
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### 5. CollectionReport Model (Report Summary)
+
+**Purpose**: Parent document for a set of Collections at one location on one gaming day.
+
+```typescript
+CollectionReport {
+  _id: string;
+  locationReportId: string;       // Unique report identifier (used by Collections to link back)
+  location: string;               // Location name (denormalized — NOT ObjectId)
+  locationId: string;             // Location ObjectId string
+  collector: string;              // User ID of collector
+  licencee: string;               // Licencee context
+
+  // Financial fields (set during creation, editable via edit modal)
+  amountCollected: number;        // Physical cash collected
+  amountToCollect: number;        // Expected amount (computed from formula)
+  amountUncollected: number;      // difference
+  variance: number;               // Manual variance input
+  advance: number;                // Advance deduction
+  partnerProfit: number;          // Partner profit share
+  taxes: number;                  // Taxes deducted
+  previousBalance: number;        // Carry-over from prior report
+  balanceCorrection: number;      // Manual balance override
+  currentBalance: number;         // Balance after this report
+
+  // State tracking
+  isEditing: boolean;             // true = being edited, histories not synced
+  profitShare: number;            // Profit share percentage
+  isPartnerCollection: boolean;   // Partner collection flag
+  includeJackpot: boolean;        // Whether jackpot was subtracted from SAS gross for variation
+
+  timestamp: Date;                // Report date
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### 6. Vault Management Models (VMS)
 
 The Vault Management System (VMS) is designed for strict audibility and cash control.
 

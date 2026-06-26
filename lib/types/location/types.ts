@@ -44,6 +44,7 @@ export type LocationFilter =
   | 'FullSMIBs'
   | 'SemiSMIBs'
   | 'LocalServersOnly'
+  | 'WowOnly'
   | 'MembershipOnly'
   | 'MissingCoordinates'
   | 'HasCoordinates'
@@ -93,12 +94,10 @@ export type LocationCardData = {
   onRestore: (location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
   canManageLocations?: boolean;
-  isDeveloper?: boolean;
 };
 
 export type LocationTableProps = {
-  canManageLocations?: boolean; // If false, hide edit/delete buttons
-  isDeveloper?: boolean; // If true, show permanent delete button for archived locations
+  canManageLocations?: boolean;
   locations: AggregatedLocation[];
   onSort: (column: LocationSortOption) => void;
   sortOption: LocationSortOption;

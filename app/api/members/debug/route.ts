@@ -11,7 +11,7 @@
  * @features Debugging, Member Statistics, Data Inspection
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Member } from '@/app/api/lib/models/members';
 import {
   logRouteFetch,
@@ -37,73 +37,84 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/members/debug';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Get member counts
-    // ============================================================================
-    const totalMembers = await Member.countDocuments({});
-    const membersWithDeletedAt = await Member.countDocuments({
-      deletedAt: { $exists: true },
-    });
-    const membersWithoutDeletedAt = await Member.countDocuments({
-      deletedAt: { $exists: false },
-    });
-    const membersWithNullDeletedAt = await Member.countDocuments({
-      deletedAt: null,
-    });
-
-    // ============================================================================
-    // STEP 3: Fetch sample members for inspection
-    // ============================================================================
-    const sampleMembers = await Member.find({}).limit(5).lean<CasinoMember[]>();
-
-    // ============================================================================
-    // STEP 4: Return debug information
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/members/debug',
-      sampleMembers.length,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(`[Members Debug GET API] Completed in ${duration}ms`);
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    // Debug data exposes raw member documents — restrict to admin/dev/owner.
+    if (!isAdminOrDev) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/debug',
+        'Forbidden - insufficient permissions',
+        user
+      );
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        counts: {
-          totalMembers,
-          membersWithDeletedAt,
-          membersWithoutDeletedAt,
-          membersWithNullDeletedAt,
+    try {
+      // ============================================================================
+      // STEP 1: Get member counts
+      // ============================================================================
+      const totalMembers = await Member.countDocuments({});
+      const membersWithDeletedAt = await Member.countDocuments({
+        deletedAt: { $exists: true },
+      });
+      const membersWithoutDeletedAt = await Member.countDocuments({
+        deletedAt: { $exists: false },
+      });
+      const membersWithNullDeletedAt = await Member.countDocuments({
+        deletedAt: null,
+      });
+
+      // ============================================================================
+      // STEP 2: Fetch sample members for inspection
+      // ============================================================================
+      const sampleMembers = await Member.find({})
+        .limit(5)
+        .lean<CasinoMember[]>();
+
+      // ============================================================================
+      // STEP 3: Return debug information
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/members/debug',
+        sampleMembers.length,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[Members Debug GET API] Completed in ${duration}ms`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          counts: {
+            totalMembers,
+            membersWithDeletedAt,
+            membersWithoutDeletedAt,
+            membersWithNullDeletedAt,
+          },
+          sampleMembers,
         },
-        sampleMembers,
-      },
-    });
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/members/debug',
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+      });
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/debug',
+        errorMessage,
+        user
+      );
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+  });
 }

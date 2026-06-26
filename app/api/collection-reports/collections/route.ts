@@ -30,6 +30,8 @@ import {
   logRouteDelete,
   logRouteError,
   logRouteFetch,
+  logRoutePhase,
+  logRouteRequest,
   logRouteUpdate,
 } from '@/app/api/lib/utils/routeLogger'
 import type {
@@ -63,6 +65,7 @@ export async function GET(req: NextRequest) {
   const startTime = Date.now()
   const functionName = 'GET /api/collection-reports/collections'
   const logUser = extractUserFromRequest(req)
+  logRouteRequest(functionName, 'GET', ROUTE_PATH, logUser)
 
   try {
     // STEP 1: Connect to database
@@ -138,6 +141,12 @@ export async function GET(req: NextRequest) {
     if (limit) query = query.limit(parseInt(limit, 10))
 
     // STEP 7: Execute query and return
+    logRoutePhase(
+      functionName,
+      'executing query',
+      Date.now() - startTime,
+      `filter: ${JSON.stringify(filter)}`
+    )
     const collections = await query.lean<CollectionDocument[]>()
     const duration = Date.now() - startTime
     logRouteFetch(functionName, 'GET', ROUTE_PATH, collections.length, logUser, duration)
@@ -238,9 +247,10 @@ export async function POST(req: NextRequest) {
       sasMeters.gross = movement.gross
     }
 
-    // STEP 5: Build and save
+    // STEP 5: Build and save — persist wasOnline so we know connectivity at collection time
     const collectionData = await buildCollectionData(
-      calculationPayload, machine, sasMeters, movement,
+      { ...calculationPayload, wasOnline: !isOfflineMachine },
+      machine, sasMeters, movement,
       previousMeters, effectiveCollector, finalLocationReportId
     )
     const created = await Collections.create(collectionData)

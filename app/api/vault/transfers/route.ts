@@ -18,9 +18,6 @@ import type { InterLocationTransferDocument } from '@shared/types';
 
 /**
  * POST /api/vault/transfers
- */
-/**
- * POST /api/vault/transfers
  *
  * @body {string} fromLocationId - Source location ID (REQUIRED)
  * @body {string} toLocationId - Destination location ID (REQUIRED)
@@ -39,7 +36,7 @@ export async function POST(request: NextRequest) {
       // STEP 1: Validate permissions
       // ============================================================================
       const vaultManagerId = userPayload._id as string;
-      const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
+      const normalizedRoles = userRoles.map(role => String(role).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager'].includes(role)
       );
@@ -161,7 +158,7 @@ export async function POST(request: NextRequest) {
       // STEP 5: Return response
       // ============================================================================
       return NextResponse.json({ success: true, transfer });
-    } catch (error: unknown) {
+    } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to create transfer';
       logRouteError(
@@ -286,7 +283,7 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(total / limit),
         },
       });
-    } catch (error: unknown) {
+    } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to fetch transfers';
       logRouteError(

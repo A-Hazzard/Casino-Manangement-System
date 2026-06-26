@@ -14,7 +14,7 @@ import {
   getUserById,
   updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../../lib/services/loggerService';
 import {
@@ -33,94 +33,91 @@ import {
  * @param id {string} Required (path). The string `_id` of the user to retrieve.
  */
 export async function GET(request: NextRequest): Promise<Response> {
-  const startTime = Date.now();
-  const functionName = 'GET /api/users/[id]';
-  const logUser = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(request, `/api/users/${userId}`);
-  apiLogger.startLogging();
+  return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/users/[id]';
+    const logUser = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const userId = pathname.split('/').pop();
+    const context = apiLogger.createContext(request, `/api/users/${userId}`);
+    apiLogger.startLogging();
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+    try {
+      // ============================================================================
+      // STEP 1: Validate user ID
+      // ============================================================================
 
-    // ============================================================================
-    // STEP 2: Validate user ID
-    // ============================================================================
+      if (!userId) {
+        apiLogger.logError(context, 'User fetch failed', 'User ID is required');
+        return NextResponse.json(
+          { success: false, message: 'User ID is required' },
+          { status: 400 }
+        );
+      }
 
-    if (!userId) {
-      apiLogger.logError(context, 'User fetch failed', 'User ID is required');
+      // ============================================================================
+      // STEP 2: Fetch user from database
+      // ============================================================================
+      const user = await getUserById(userId);
+      if (!user) {
+        apiLogger.logError(context, 'User fetch failed', 'User not found');
+        return NextResponse.json(
+          { success: false, message: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Format user data
+      // ============================================================================
+      if (Array.isArray(user)) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      const formattedUser = {
+        ...user,
+      };
+
+      // ============================================================================
+      // STEP 4: Return user data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Users API] GET completed in ${duration}ms`);
+      }
+
+      logRouteFetch(
+        functionName,
+        'GET',
+        `/api/users/${userId}`,
+        1,
+        logUser,
+        duration
+      );
+      apiLogger.logSuccess(context, `Successfully fetched user ${userId}`);
+      return NextResponse.json({ success: true, user: formattedUser });
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`[Users API] GET error after ${duration}ms:`, errorMsg);
+      logRouteError(
+        functionName,
+        'GET',
+        `/api/users/${userId}`,
+        errorMsg,
+        logUser
+      );
+      apiLogger.logError(context, 'User fetch failed', errorMsg);
       return NextResponse.json(
-        { success: false, message: 'User ID is required' },
-        { status: 400 }
+        {
+          success: false,
+          message:
+            errorMsg === 'User not found' ? errorMsg : 'Failed to fetch user',
+          error: errorMsg,
+        },
+        { status: errorMsg === 'User not found' ? 404 : 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 3: Fetch user from database
-    // ============================================================================
-    const user = await getUserById(userId);
-    if (!user) {
-      apiLogger.logError(context, 'User fetch failed', 'User not found');
-      return NextResponse.json(
-        { success: false, message: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Format user data
-    // ============================================================================
-    if (Array.isArray(user)) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-    const formattedUser = {
-      ...user,
-    };
-
-    // ============================================================================
-    // STEP 5: Return user data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Users API] GET completed in ${duration}ms`);
-    }
-
-    logRouteFetch(
-      functionName,
-      'GET',
-      `/api/users/${userId}`,
-      1,
-      logUser,
-      duration
-    );
-    apiLogger.logSuccess(context, `Successfully fetched user ${userId}`);
-    return NextResponse.json({ success: true, user: formattedUser });
-  } catch (err: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Users API] GET error after ${duration}ms:`, errorMsg);
-    logRouteError(
-      functionName,
-      'GET',
-      `/api/users/${userId}`,
-      errorMsg,
-      logUser
-    );
-    apiLogger.logError(context, 'User fetch failed', errorMsg);
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          errorMsg === 'User not found' ? errorMsg : 'Failed to fetch user',
-        error: errorMsg,
-      },
-      { status: errorMsg === 'User not found' ? 404 : 500 }
-    );
-  }
+  });
 }
 
 /**
@@ -155,88 +152,114 @@ export async function GET(request: NextRequest): Promise<Response> {
  * @param password         {string}   Optional. New plain-text password; hashed before storage.
  */
 export async function PUT(request: NextRequest): Promise<Response> {
-  const startTime = Date.now();
-  const functionName = 'PUT /api/users/[id]';
-  const user = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(request, `/api/users/${userId}`);
-  apiLogger.startLogging();
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    const startTime = Date.now();
+    const functionName = 'PUT /api/users/[id]';
+    const user = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const userId = pathname.split('/').pop();
+    const context = apiLogger.createContext(request, `/api/users/${userId}`);
+    apiLogger.startLogging();
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+    try {
+      // ============================================================================
+      // STEP 1: Enforce role-based access (admin/owner/developer only)
+      // ============================================================================
+      if (!isAdminOrDev) {
+        logRouteError(
+          functionName,
+          'PUT',
+          `/api/users/${userId}`,
+          'Forbidden - insufficient permissions',
+          user
+        );
+        apiLogger.logError(context, 'User update failed', 'Forbidden');
+        return NextResponse.json(
+          { success: false, message: 'Forbidden' },
+          { status: 403 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 2: Parse request body
-    // ============================================================================
-    const body = await request.json();
-    const { _id, ...updateFields } = body;
+      // ============================================================================
+      // STEP 2: Parse request body
+      // ============================================================================
+      const body = await request.json();
+      const { _id, ...updateFields } = body;
+      void _id;
 
-    // ============================================================================
-    // STEP 3: Validate user ID
-    // ============================================================================
-    // Use the ID from the URL parameter
+      // ============================================================================
+      // STEP 3: Validate user ID
+      // ============================================================================
+      // Use the ID from the URL parameter
 
-    if (!userId) {
-      apiLogger.logError(context, 'User update failed', 'User ID is required');
+      if (!userId) {
+        apiLogger.logError(
+          context,
+          'User update failed',
+          'User ID is required'
+        );
+        return NextResponse.json(
+          { success: false, message: 'User ID is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Update user in database
+      // ============================================================================
+      const updatedUser = await updateUserHelper(userId, updateFields, request);
+
+      // ============================================================================
+      // STEP 5: Convert Mongoose document to plain object
+      // ============================================================================
+      const userObject = updatedUser.toObject
+        ? updatedUser.toObject({ virtuals: false, getters: true })
+        : updatedUser;
+
+      const formattedUser = {
+        ...userObject,
+      };
+
+      // ============================================================================
+      // STEP 6: Return updated user data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Users API] PUT completed in ${duration}ms`);
+      }
+
+      logRouteUpdate(
+        functionName,
+        'PUT',
+        `/api/users/${userId}`,
+        1,
+        user,
+        duration
+      );
+      apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
+      return NextResponse.json({ success: true, user: formattedUser });
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`[Users API] PUT error after ${duration}ms:`, errorMsg);
+      logRouteError(
+        functionName,
+        'PUT',
+        `/api/users/${userId}`,
+        errorMsg,
+        user
+      );
+      apiLogger.logError(context, 'User update failed', errorMsg);
       return NextResponse.json(
-        { success: false, message: 'User ID is required' },
-        { status: 400 }
+        {
+          success: false,
+          message: errorMsg === 'User not found' ? errorMsg : 'Update failed',
+          error: errorMsg,
+        },
+        { status: errorMsg === 'User not found' ? 404 : 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 4: Update user in database
-    // ============================================================================
-    const updatedUser = await updateUserHelper(userId, updateFields, request);
-
-    // ============================================================================
-    // STEP 5: Convert Mongoose document to plain object
-    // ============================================================================
-    const userObject = updatedUser.toObject
-      ? updatedUser.toObject({ virtuals: false, getters: true })
-      : updatedUser;
-
-    const formattedUser = {
-      ...userObject,
-    };
-
-    // ============================================================================
-    // STEP 6: Return updated user data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Users API] PUT completed in ${duration}ms`);
-    }
-
-    logRouteUpdate(
-      functionName,
-      'PUT',
-      `/api/users/${userId}`,
-      1,
-      user,
-      duration
-    );
-    apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
-    return NextResponse.json({ success: true, user: formattedUser });
-  } catch (err: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Users API] PUT error after ${duration}ms:`, errorMsg);
-    logRouteError(functionName, 'PUT', `/api/users/${userId}`, errorMsg, user);
-    apiLogger.logError(context, 'User update failed', errorMsg);
-    return NextResponse.json(
-      {
-        success: false,
-        message: errorMsg === 'User not found' ? errorMsg : 'Update failed',
-        error: errorMsg,
-      },
-      { status: errorMsg === 'User not found' ? 404 : 500 }
-    );
-  }
+  });
 }
 
 /**
@@ -271,92 +294,112 @@ export async function PUT(request: NextRequest): Promise<Response> {
  * @param password         {string}   New plain-text password; hashed before storage.
  */
 export async function PATCH(request: NextRequest): Promise<Response> {
-  const startTime = Date.now();
-  const functionName = 'PATCH /api/users/[id]';
-  const user = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(request, `/api/users/${userId}`);
-  apiLogger.startLogging();
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    const startTime = Date.now();
+    const functionName = 'PATCH /api/users/[id]';
+    const user = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const userId = pathname.split('/').pop();
+    const context = apiLogger.createContext(request, `/api/users/${userId}`);
+    apiLogger.startLogging();
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+    try {
+      // ============================================================================
+      // STEP 1: Enforce role-based access (admin/owner/developer only)
+      // ============================================================================
+      if (!isAdminOrDev) {
+        logRouteError(
+          functionName,
+          'PATCH',
+          `/api/users/${userId}`,
+          'Forbidden - insufficient permissions',
+          user
+        );
+        apiLogger.logError(context, 'User update failed', 'Forbidden');
+        return NextResponse.json(
+          { success: false, message: 'Forbidden' },
+          { status: 403 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 2: Parse request body
-    // ============================================================================
-    const body = await request.json();
-    const { _id, ...updateFields } = body;
+      // ============================================================================
+      // STEP 2: Parse request body
+      // ============================================================================
+      const body = await request.json();
+      const { _id, ...updateFields } = body;
+      void _id;
 
-    // ============================================================================
-    // STEP 3: Validate user ID
-    // ============================================================================
-    // Use the ID from the URL parameter
+      // ============================================================================
+      // STEP 3: Validate user ID
+      // ============================================================================
+      // Use the ID from the URL parameter
 
-    if (!userId) {
-      apiLogger.logError(context, 'User update failed', 'User ID is required');
+      if (!userId) {
+        apiLogger.logError(
+          context,
+          'User update failed',
+          'User ID is required'
+        );
+        return NextResponse.json(
+          { success: false, message: 'User ID is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Update user in database
+      // ============================================================================
+      const updatedUser = await updateUserHelper(userId, updateFields, request);
+
+      // ============================================================================
+      // STEP 5: Convert Mongoose document to plain object
+      // ============================================================================
+      const userObject = updatedUser.toObject
+        ? updatedUser.toObject({ virtuals: false, getters: true })
+        : updatedUser;
+
+      const formattedUser = {
+        ...userObject,
+      };
+
+      // ============================================================================
+      // STEP 6: Return updated user data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Users API] PATCH completed in ${duration}ms`);
+      }
+
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        `/api/users/${userId}`,
+        1,
+        user,
+        duration
+      );
+      apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
+      return NextResponse.json({ success: true, user: formattedUser });
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`[Users API] PATCH error after ${duration}ms:`, errorMsg);
+      logRouteError(
+        functionName,
+        'PATCH',
+        `/api/users/${userId}`,
+        errorMsg,
+        user
+      );
+      apiLogger.logError(context, 'User update failed', errorMsg);
       return NextResponse.json(
-        { success: false, message: 'User ID is required' },
-        { status: 400 }
+        {
+          success: false,
+          message: errorMsg === 'User not found' ? errorMsg : 'Update failed',
+          error: errorMsg,
+        },
+        { status: errorMsg === 'User not found' ? 404 : 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 4: Update user in database
-    // ============================================================================
-    const updatedUser = await updateUserHelper(userId, updateFields, request);
-
-    // ============================================================================
-    // STEP 5: Convert Mongoose document to plain object
-    // ============================================================================
-    const userObject = updatedUser.toObject
-      ? updatedUser.toObject({ virtuals: false, getters: true })
-      : updatedUser;
-
-    const formattedUser = {
-      ...userObject,
-    };
-
-    // ============================================================================
-    // STEP 6: Return updated user data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Users API] PATCH completed in ${duration}ms`);
-    }
-
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      `/api/users/${userId}`,
-      1,
-      user,
-      duration
-    );
-    apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
-    return NextResponse.json({ success: true, user: formattedUser });
-  } catch (err: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[Users API] PATCH error after ${duration}ms:`, errorMsg);
-    logRouteError(
-      functionName,
-      'PATCH',
-      `/api/users/${userId}`,
-      errorMsg,
-      user
-    );
-    apiLogger.logError(context, 'User update failed', errorMsg);
-    return NextResponse.json(
-      {
-        success: false,
-        message: errorMsg === 'User not found' ? errorMsg : 'Update failed',
-        error: errorMsg,
-      },
-      { status: errorMsg === 'User not found' ? 404 : 500 }
-    );
-  }
+  });
 }

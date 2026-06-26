@@ -82,9 +82,11 @@ export default function ReportsMetersTab() {
   );
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
 
-  // Constants Used for API Requests
+  // Constants Used for API Requests.
+  // itemsPerBatch MUST be a whole multiple of itemsPerPage so pagesPerBatch is
+  // an integer; otherwise batch-boundary and page-offset math drift.
   const itemsPerPage = 20;
-  const itemsPerBatch = 50;
+  const itemsPerBatch = 60;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 
   // Data Fetching Hook

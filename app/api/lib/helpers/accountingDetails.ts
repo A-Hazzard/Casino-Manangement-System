@@ -5,14 +5,21 @@ import type {
 import { CollectionReportData } from '@/lib/types/api';
 import type { CollectionMetersHistoryEntry } from '@/shared/types';
 import type { TimePeriod } from '@/shared/types/common';
-import type { CollectionReportDocument, GamingMachine } from '@/shared/types';
+import type {
+  CollectionDocument,
+  CollectionReportDocument,
+  GamingMachine,
+} from '@/shared/types';
 import { AcceptedBill } from '../models/acceptedBills';
 import { CollectionReport } from '../models/collectionReport';
 import { Collections } from '../models/collections';
 import { GamingLocations } from '../models/gaminglocations';
 import { MachineEvent } from '../models/machineEvents';
 import { Machine } from '../models/machines';
+import { aggregateMeterDataForWindows } from './collectionReport/variation';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { getDatesForTimePeriod } from '../utils/dates';
+import { logRoutePhase } from '../utils/routeLogger';
 import {
   getMoneyInScale,
   getMoneyOutAndJackpotScale,
@@ -203,15 +210,135 @@ export async function getAccountingDetails(
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
 }
 
+// ============================================================================
+// Collection Report Detail Helpers
+// ============================================================================
+
+/**
+ * Fetches the location's noSMIBLocation flag and its licencee's includeJackpot flag.
+ * Returns safe defaults on missing location or error.
+ */
+async function fetchLocationLicenceeFlags(
+  locationId?: string
+): Promise<{ includeJackpot: boolean; isNoSMIBLocation: boolean }> {
+  if (!locationId) return { includeJackpot: false, isNoSMIBLocation: false };
+
+  try {
+    const location = await GamingLocations.findOne(
+      { _id: locationId },
+      { 'rel.licencee': 1, noSMIBLocation: 1 }
+    ).lean<{
+      rel?: { licencee?: string };
+      noSMIBLocation?: boolean;
+    } | null>();
+
+    const isNoSMIBLocation = location?.noSMIBLocation === true;
+    const licenceeId = location?.rel?.licencee;
+
+    let includeJackpot = false;
+    if (licenceeId) {
+      const { Licencee } = await import('@/app/api/lib/models/licencee');
+      const licenceeDoc = await Licencee.findOne(
+        { _id: licenceeId },
+        { includeJackpot: 1 }
+      ).lean<Record<string, unknown> | null>();
+      includeJackpot = Boolean(licenceeDoc?.includeJackpot);
+    }
+
+    return { includeJackpot, isNoSMIBLocation };
+  } catch (err) {
+    console.error(
+      '[getCollectionReportById] Could not fetch licencee includeJackpot:',
+      err instanceof Error ? err.message : 'Unknown error'
+    );
+    return { includeJackpot: false, isNoSMIBLocation: false };
+  }
+}
+
+/**
+ * Counts active machines for a location, returning the provided fallback on error.
+ */
+async function countMachinesForLocation(
+  locationId: string | undefined,
+  fallback: number
+): Promise<number> {
+  if (!locationId) return fallback;
+
+  try {
+    return await Machine.countDocuments({
+      gamingLocation: locationId,
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    });
+  } catch (error) {
+    console.error(
+      '[getAccountingDetails] Could not count total machines for location:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return fallback;
+  }
+}
+
+/**
+ * Resolves the human-readable collector name for a report, looking up the user
+ * document when only an id is stored. Falls back to "Deleted User" for id-shaped
+ * collectors that no longer resolve, or the raw collector value otherwise.
+ */
+async function resolveCollectorName(
+  report: CollectionReportDocument
+): Promise<string> {
+  let collectorName = report.collectorName || '';
+  if (!report.collector) return collectorName;
+
+  try {
+    const UserModel = (await import('@/app/api/lib/models/user')).default;
+    const collectorUser = await UserModel.findOne({
+      _id: report.collector,
+    }).lean<{
+      username?: string;
+      profile?: { firstName?: string; lastName?: string };
+      emailAddress?: string;
+    } | null>();
+    if (collectorUser) {
+      if (collectorUser.username) {
+        collectorName = collectorUser.username;
+      } else if (collectorUser.profile?.firstName) {
+        collectorName = collectorUser.profile.firstName;
+      } else if (collectorUser.emailAddress) {
+        collectorName = collectorUser.emailAddress;
+      }
+    } else if (
+      /^[0-9a-fA-F]{24}$/.test(report.collector) ||
+      report.collector.startsWith('user_') ||
+      report.collector.length > 15
+    ) {
+      collectorName = 'Deleted User';
+    } else {
+      collectorName = report.collector;
+    }
+  } catch (err) {
+    console.warn(
+      '[getCollectionReportById] Failed to look up collector user:',
+      err
+    );
+  }
+
+  return collectorName;
+}
+
 /**
  * Fetches and formats a collection report by its reportId.
  * @param reportId - The unique report ID to fetch.
  * @param currentUser - The authenticated user with multiplier from DB.
+ * @param preloadedReport - Optional already-fetched report to avoid a redundant query.
  * @returns Promise resolving to a CollectionReportData object or null if not found.
  */
 export async function getCollectionReportById(
   reportId: string,
-  currentUser: UserWithMultiplier
+  currentUser: UserWithMultiplier,
+  preloadedReport?: CollectionReportDocument | null
 ): Promise<CollectionReportData | null> {
   if (!reportId || !currentUser) {
     console.error(
@@ -219,49 +346,20 @@ export async function getCollectionReportById(
     );
     return null;
   }
-  const report = await CollectionReport.findOne({
-    locationReportId: reportId,
-  }).lean<CollectionReportDocument>();
-  if (!report) return null;
 
-  // Resolve collector name
-  let collectorName = report.collectorName || '';
-  if (report.collector) {
-    try {
-      const UserModel = (await import('@/app/api/lib/models/user')).default;
-      const collectorUser = await UserModel.findOne({
-        _id: report.collector,
-      }).lean<{
-        username?: string;
-        profile?: { firstName?: string; lastName?: string };
-        emailAddress?: string;
-      } | null>();
-      if (collectorUser) {
-        if (collectorUser.username) {
-          collectorName = collectorUser.username;
-        } else if (collectorUser.profile?.firstName) {
-          collectorName = collectorUser.profile.firstName;
-        } else if (collectorUser.emailAddress) {
-          collectorName = collectorUser.emailAddress;
-        }
-      } else {
-        if (
-          /^[0-9a-fA-F]{24}$/.test(report.collector) ||
-          report.collector.startsWith('user_') ||
-          report.collector.length > 15
-        ) {
-          collectorName = 'Deleted User';
-        } else {
-          collectorName = report.collector;
-        }
-      }
-    } catch (err) {
-      console.warn(
-        '[getCollectionReportById] Failed to look up collector user:',
-        err
-      );
-    }
-  }
+  // Per-phase timing so server logs show progress through this multi-step query.
+  const phaseStart = Date.now();
+  const PHASE_FN = 'getCollectionReportById';
+
+  // Reuse the report already fetched by the caller (the [reportId] route) when
+  // provided, avoiding a redundant findOne on the hot path.
+  const report =
+    preloadedReport ??
+    (await CollectionReport.findOne({
+      locationReportId: reportId,
+    }).lean<CollectionReportDocument>());
+  if (!report) return null;
+  logRoutePhase(PHASE_FN, 'report fetched', Date.now() - phaseStart, reportId);
 
   // Get multipliers from user for reviewer calculations
   const moneyInScale = getMoneyInScale(currentUser, report.timestamp);
@@ -270,138 +368,53 @@ export async function getCollectionReportById(
     report.timestamp
   );
 
-  // Fetch actual collections for this report with machine details resolved
-  const collections = await Collections.aggregate([
+  // Resolve collector name and fetch collections concurrently — the collector
+  // lookup only needs `report`, so it overlaps with the collections query.
+  logRoutePhase(
+    PHASE_FN,
+    'fetching collections + collector — start',
+    Date.now() - phaseStart
+  );
+  const collectorNamePromise = resolveCollectorName(report);
+
+  // Fetch actual collections for this report.
+  // Previously this used an aggregation with a $lookup to machines only to populate
+  // sasMeters.machine, but that display field is not used downstream. We now fetch
+  // collections directly and batch-load machine metadata (relayId/meta) in one query.
+  const collectionsPromise = Collections.find(
+    { locationReportId: reportId },
     {
-      $match: {
-        locationReportId: reportId,
-      },
-    },
-    {
-      $lookup: {
-        from: 'machines',
-        localField: 'machineId',
-        foreignField: '_id',
-        as: 'machineDetails',
-        pipeline: [
-          {
-            $project: {
-              _id: 1,
-              serialNumber: 1,
-              custom: 1,
-              machineId: 1,
-              'gameConfig.accountingDenomination': 1,
-              collectorDenomination: 1,
-            },
-          },
-        ],
-      },
-    },
-    {
-      $addFields: {
-        'sasMeters.machine': {
-          $let: {
-            vars: {
-              machine: { $arrayElemAt: ['$machineDetails', 0] },
-            },
-            in: {
-              $cond: {
-                if: { $ne: ['$$machine', null] },
-                then: {
-                  $cond: {
-                    // Check if serialNumber is not null and not empty/whitespace
-                    if: {
-                      $and: [
-                        { $ne: ['$$machine.serialNumber', null] },
-                        {
-                          $ne: [
-                            {
-                              $trim: {
-                                input: {
-                                  $ifNull: ['$$machine.serialNumber', ''],
-                                },
-                              },
-                            },
-                            '',
-                          ],
-                        },
-                      ],
-                    },
-                    then: '$$machine.serialNumber',
-                    else: {
-                      $cond: {
-                        // Check if custom.name is not null and not empty/whitespace
-                        if: {
-                          $and: [
-                            { $ne: ['$$machine.custom.name', null] },
-                            {
-                              $ne: [
-                                {
-                                  $trim: {
-                                    input: {
-                                      $ifNull: ['$$machine.custom.name', ''],
-                                    },
-                                  },
-                                },
-                                '',
-                              ],
-                            },
-                          ],
-                        },
-                        then: '$$machine.custom.name',
-                        else: {
-                          $cond: {
-                            if: { $ne: ['$$machine.machineId', null] },
-                            then: '$$machine.machineId',
-                            else: '$$machine._id',
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                else: {
-                  // Fallback to collection fields if no machine found
-                  $cond: {
-                    if: { $ne: ['$machineCustomName', null] },
-                    then: '$machineCustomName',
-                    else: {
-                      $cond: {
-                        if: { $ne: ['$serialNumber', null] },
-                        then: '$serialNumber',
-                        else: {
-                          $cond: {
-                            if: { $ne: ['$machineName', null] },
-                            then: '$machineName',
-                            else: {
-                              $cond: {
-                                if: { $ne: ['$machineId', null] },
-                                then: '$machineId',
-                                else: '$sasMeters.machine',
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        machineDetails: 0, // Remove the temporary machineDetails field
-      },
-    },
+      machineId: 1,
+      serialNumber: 1,
+      machineName: 1,
+      machineCustomName: 1,
+      'custom.name': 1,
+      game: 1,
+      metersIn: 1,
+      metersOut: 1,
+      prevIn: 1,
+      prevOut: 1,
+      movement: 1,
+      sasMeters: 1,
+      ramClear: 1,
+      notes: 1,
+    }
+  ).lean<CollectionDocument[]>();
+
+  const [collectorName, collections] = await Promise.all([
+    collectorNamePromise,
+    collectionsPromise,
   ]);
 
+  logRoutePhase(
+    PHASE_FN,
+    'collections + collector resolved',
+    Date.now() - phaseStart,
+    `${collections.length} collections`
+  );
+
   // 🚀 OPTIMIZATION: Batch fetch ALL meter data in ONE query instead of N queries
-  // This must be done BEFORE calculating location metrics so we can use it for SAS gross
-  const { Meters } = await import('@/app/api/lib/models/meters');
+  // This must be done BEFORE calculating location metrics so we can use it for SAS gross.
 
   // Collect machineId + SAS time ranges for all collections
   // CRITICAL: Use collection.machineId (_id) as the lookup key.
@@ -420,84 +433,63 @@ export async function getCollectionReportById(
       endTime: new Date(collection.sasMeters!.sasEndTime!),
     }));
 
-  // Build a single aggregation to get all meter data grouped by machine
-  const allMeterData: Array<{
-    _id: string;
-    totalDrop: number;
-    totalCancelled: number;
-    totalJackpot: number;
-    meterCount: number;
-  }> = [];
-
-  // Create a machine denomination map for the second aggregation if possible,
-  // or use $lookup in aggregation. Let's use $lookup for accuracy in aggregation sum.
-  if (meterQueries.length > 0) {
-    const cursor = Meters.aggregate([
-      {
-        $match: {
-          $or: meterQueries.map(q => ({
-            machine: q.machineId,
-            readAt: {
-              $gte: q.startTime,
-              $lte: q.endTime,
-            },
-            $or: [
-              { meterSource: { $ne: 'COLLECTION_REPORT' } },
-              {
-                meterSource: 'COLLECTION_REPORT',
-                isSupplemental: true,
-                readAt: q.endTime,
-              },
-            ],
-          })),
-        },
-      },
-      {
-        $group: {
-          _id: '$machine',
-          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          totalCancelled: {
-            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
-          },
-          totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-          meterCount: { $sum: 1 },
-        },
-      },
-    ]).cursor({ batchSize: 1000 });
-
-    for await (const doc of cursor) {
-      allMeterData.push(doc);
-    }
-  }
-
-  // Create lookup map for O(1) access
-  const meterDataMap = new Map(
-    allMeterData.map(m => [
-      m._id,
-      {
-        drop: m.totalDrop,
-        cancelled: m.totalCancelled,
-        jackpot: m.totalJackpot,
-        count: m.meterCount,
-      },
-    ])
+  logRoutePhase(
+    PHASE_FN,
+    'aggregating meters — start',
+    Date.now() - phaseStart,
+    `${meterQueries.length} meter windows`
   );
 
-  // Fetch relayId per machine to identify machines without a SMIB.
-  // Machines without a relayId cannot produce SAS data, so they render as
-  // "No SMIB for this Machine" with zero variation.
   const machineIdsForRelay = collections
     .map(collection => collection.machineId)
     .filter((id): id is string => Boolean(id));
-  const relayDocs = machineIdsForRelay.length
-    ? await Machine.find(
-        { _id: { $in: machineIdsForRelay } },
-        { relayId: 1 }
-      ).lean<{ _id: string; relayId?: string }[]>()
-    : [];
-  const hasRelayMap = new Map(
-    relayDocs.map(doc => [String(doc._id), Boolean(doc.relayId?.trim())])
+
+  // Run the four independent reads concurrently: the meter scan, machine relay/meta
+  // metadata, the location + licencee includeJackpot flag, and the location machine
+  // count. Previously these executed sequentially.
+  const [meterDataMap, machineMetaDocs, locationFlags, totalMachinesForLocation] =
+    await Promise.all([
+      aggregateMeterDataForWindows(meterQueries),
+      machineIdsForRelay.length
+        ? Machine.find(
+            { _id: { $in: machineIdsForRelay } },
+            { relayId: 1, meta: 1 }
+          ).lean<
+            {
+              _id: string;
+              relayId?: string;
+              meta?: { dataSync?: { source?: string } };
+            }[]
+          >()
+        : Promise.resolve(
+            [] as {
+              _id: string;
+              relayId?: string;
+              meta?: { dataSync?: { source?: string } };
+            }[]
+          ),
+      fetchLocationLicenceeFlags(report.location),
+      countMachinesForLocation(report.location, collections.length),
+    ]);
+
+  logRoutePhase(
+    PHASE_FN,
+    'meters aggregated',
+    Date.now() - phaseStart,
+    `${meterDataMap.size} machine groups`
   );
+
+  // relayId identifies SMIB-capable machines; meta identifies WOW machines which
+  // have synced meter data but no relayId and must be treated as SMIB-equivalent.
+  const hasRelayMap = new Map(
+    machineMetaDocs.map(doc => [String(doc._id), Boolean(doc.relayId?.trim())])
+  );
+  const isWowMap = new Map(
+    machineMetaDocs.map(doc => [String(doc._id), isWowMachine(doc)])
+  );
+  const { includeJackpot, isNoSMIBLocation } = locationFlags;
+
+  logRoutePhase(PHASE_FN, 'relay map built', Date.now() - phaseStart);
 
   // Calculate location metrics from actual collections using the same logic as individual machines
   const totalDrop = collections.reduce((sum, collection) => {
@@ -523,38 +515,6 @@ export async function getCollectionReportById(
     );
   }, 0);
 
-  // Fetch licencee's includeJackpot flag BEFORE calculating total variation
-  let includeJackpot = false;
-  let isNoSMIBLocation = false;
-  try {
-    if (report.location) {
-      const location = await GamingLocations.findOne(
-        { _id: report.location },
-        { 'rel.licencee': 1, noSMIBLocation: 1 }
-      ).lean<{
-        rel?: { licencee?: string };
-        noSMIBLocation?: boolean;
-      } | null>();
-
-      isNoSMIBLocation = location?.noSMIBLocation === true;
-      const licenceeId = location?.rel?.licencee;
-
-      if (licenceeId) {
-        const { Licencee } = await import('@/app/api/lib/models/licencee');
-        const licenceeDoc = await Licencee.findOne(
-          { _id: licenceeId },
-          { includeJackpot: 1 }
-        ).lean<Record<string, unknown> | null>();
-        includeJackpot = Boolean(licenceeDoc?.includeJackpot);
-      }
-    }
-  } catch (err) {
-    console.error(
-      '[getCollectionReportById] Could not fetch licencee includeJackpot:',
-      err instanceof Error ? err.message : 'Unknown error'
-    );
-  }
-
   // Calculate total SAS gross from meter data map (for display purposes only)
   let totalSasGross = 0;
   for (const collection of collections) {
@@ -570,31 +530,12 @@ export async function getCollectionReportById(
     }
   }
 
-  // Get total number of machines for this location
-  let totalMachinesForLocation = collections.length; // Default fallback
-  try {
-    if (report.location) {
-      const totalMachinesCount = await Machine.countDocuments({
-        gamingLocation: report.location,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
-      });
-      totalMachinesForLocation = totalMachinesCount;
-    }
-  } catch (error) {
-    console.error(
-      '[getAccountingDetails] Could not count total machines for location:',
-      error instanceof Error ? error.message : 'Unknown error'
-    );
-    // Keep the fallback value
-  }
-
   // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
   // Money in fields use moneyInScale, money out fields use moneyOutScale
   const totalJackpot = collections.reduce((sum, collection) => {
-    const meterData = meterDataMap.get(collection.machineId);
+    const meterData = collection.machineId
+      ? meterDataMap.get(collection.machineId)
+      : undefined;
     return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
   }, 0);
   const scaledGross = totalMetersGross * moneyInScale;
@@ -605,7 +546,9 @@ export async function getCollectionReportById(
   let computedTotalVariation = 0;
   for (const collection of collections) {
     const machineHasSmib =
-      hasRelayMap.get(String(collection.machineId)) ?? false;
+      (hasRelayMap.get(String(collection.machineId)) ?? false) ||
+      (isWowMap.get(String(collection.machineId)) ?? false) ||
+      isNoSMIBLocation;
     if (!machineHasSmib) continue;
 
     const machineMeterGross = collection.movement?.gross ?? 0;
@@ -637,17 +580,36 @@ export async function getCollectionReportById(
       machineMeterGross - (machineHasNoSasData ? 0 : machineAdjustedSasGross);
   }
 
+  // Self-heal: the stored totalVariation field can diverge from the live
+  // computation (e.g. reports created before the unified computeTotalVariation
+  // fix). When it diverges, overwrite the stored value and use the live value.
+  const storedTotalVariation =
+    typeof report.totalVariation === 'number' ? report.totalVariation : 0;
+  const liveTotalVariation = computedTotalVariation;
+  if (
+    Math.abs(storedTotalVariation - liveTotalVariation) > 0.001
+  ) {
+    console.warn(
+      `[accountingDetails] totalVariation mismatch for report ${report.locationReportId}: stored=${storedTotalVariation} live=${liveTotalVariation}. Correcting stored value.`
+    );
+    CollectionReport.findOneAndUpdate(
+      { locationReportId: report.locationReportId },
+      { $set: { totalVariation: Number(liveTotalVariation.toFixed(2)) } }
+    ).catch(err => {
+      console.error(
+        '[accountingDetails] Failed to correct totalVariation:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
+    });
+  }
+
   const locationMetrics = {
     droppedCancelled: `${formatSmartDecimal(totalDrop * moneyInScale)} / ${formatSmartDecimal(totalCancelled * moneyOutScale)}`,
     metersGross: scaledGross,
     jackpot: scaledJackpot,
     netGross: scaledGross - scaledJackpot,
-    variation: isNoSMIBLocation
-      ? 'No SMIB for this Machine'
-      : computedTotalVariation * moneyInScale,
-    sasGross: isNoSMIBLocation
-      ? 'No SMIB for this Machine'
-      : totalSasGross * moneyInScale,
+    variation: liveTotalVariation * moneyInScale,
+    sasGross: totalSasGross * moneyInScale,
     locationRevenue: (report.partnerProfit || 0) * moneyInScale,
     amountUncollected: (report.amountUncollected || 0) * moneyInScale,
     amountToCollect: (report.amountToCollect || 0) * moneyInScale,
@@ -695,12 +657,38 @@ export async function getCollectionReportById(
     gross: sasGrossTotal * moneyInScale,
   };
 
+  logRoutePhase(
+    PHASE_FN,
+    'metrics calculated — done',
+    Date.now() - phaseStart,
+    `${collections.length} machines`
+  );
+
+  // Derive timeframe from collections
+  const sasStartTimes = collections
+    .map(c => c.sasMeters?.sasStartTime)
+    .filter((t): t is Date => !!t);
+  const sasEndTimes = collections
+    .map(c => c.sasMeters?.sasEndTime)
+    .filter((t): t is Date => !!t);
+  const timeframeStart = sasStartTimes.length
+    ? new Date(Math.min(...sasStartTimes.map(t => t.getTime()))).toISOString()
+    : undefined;
+  const timeframeEnd = sasEndTimes.length
+    ? new Date(Math.max(...sasEndTimes.map(t => t.getTime()))).toISOString()
+    : undefined;
+
   return {
     reportId: report.locationReportId || '',
     locationName: report.locationName || '',
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
+    createdAt: (report as Record<string, unknown>).createdAt
+      ? new Date((report as Record<string, unknown>).createdAt as Date).toISOString()
+      : undefined,
+    timeframeStart,
+    timeframeEnd,
     deletedAt: report.deletedAt?.toISOString() || null,
     includeJackpot: includeJackpot,
     useNetGross: includeJackpot,
@@ -783,7 +771,9 @@ export async function getCollectionReportById(
         !collection.sasMeters?.sasEndTime ||
         !meterDataMap.has(String(collection.machineId));
 
-      const hasSmib = hasRelayMap.get(String(collection.machineId)) ?? false;
+      const hasRelay = hasRelayMap.get(String(collection.machineId)) ?? false;
+      const isWow = isWowMap.get(String(collection.machineId)) ?? false;
+      const hasSmib = hasRelay || isWow || isNoSMIBLocation;
 
       const variation = hasSmib
         ? meterGross - (hasNoSasData ? 0 : adjustedSasGross)
@@ -817,13 +807,13 @@ export async function getCollectionReportById(
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
         sasGross:
-          isNoSMIBLocation || !hasSmib
+          !hasSmib
             ? 'No SMIB for this Machine'
             : hasNoSasData
               ? 'No SAS Data'
               : scaled.sasGross,
         variation:
-          isNoSMIBLocation || !hasSmib
+          !hasSmib
             ? 'No SMIB for this Machine'
             : scaled.variation,
         sasStartTime: collection.sasMeters?.sasStartTime || null,

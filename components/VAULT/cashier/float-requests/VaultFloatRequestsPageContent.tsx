@@ -138,27 +138,27 @@ export default function VaultFloatRequestsPageContent() {
   const mapRequests = (
     data: Record<string, unknown>[]
   ): MappedFloatRequest[] => {
-    return data.map(r => ({
-      id: String(r._id || ''),
-      cashier: String(r.cashierName || r.cashierId || 'Unknown'),
-      cashierId: String(r.cashierId || ''),
+    return data.map(request => ({
+      id: String(request._id || ''),
+      cashier: String(request.cashierName || request.cashierId || 'Unknown'),
+      cashierId: String(request.cashierId || ''),
       station: 'Cash Desk',
       type:
-        String(r.type || '').toLowerCase() === 'decrease'
+        String(request.type || '').toLowerCase() === 'decrease'
           ? 'Decrease'
           : 'Increase',
-      amount: Number(r.requestedAmount || 0),
-      reason: String(r.requestNotes || ''),
+      amount: Number(request.requestedAmount || 0),
+      reason: String(request.requestNotes || ''),
       status:
-        r.status === 'denied'
+        request.status === 'denied'
           ? 'rejected'
-          : r.status === 'approved' || r.status === 'approved_vm'
+          : request.status === 'approved' || request.status === 'approved_vm'
             ? 'approved'
             : 'pending',
-      requested: String(r.requestedAt || r.createdAt || ''),
-      processed: String(r.processedAt || r.updatedAt || ''),
+      requested: String(request.requestedAt || request.createdAt || ''),
+      processed: String(request.processedAt || request.updatedAt || ''),
       processedBy: String(
-        r.processedByName || r.processedBy || 'Vault Manager'
+        request.processedByName || request.processedBy || 'Vault Manager'
       ),
     }));
   };

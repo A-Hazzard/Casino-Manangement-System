@@ -2,6 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Created:** November 6th, 2025  
+**Last Updated:** June 25, 2026  
 **Purpose:** High-level understanding of the `isEditing` system philosophy
 
 ---
@@ -466,9 +467,9 @@ Transition true → false:
 
 ## Related Documentation
 
-- **Technical Implementation (Frontend):** [Documentation/frontend/collection-report.md](../Documentation/frontend/collection-report.md#isediting-flag-system---unsaved-changes-protection)
-- **Technical Implementation (Backend):** [Documentation/backend/collection-report.md](../Documentation/backend/collection-report.md#isediting-flag-system---unsaved-changes-protection)
-- **Collection System Guidelines:** [.cursor/collection-reports-guidelines.md](./collection-reports-guidelines.md)
+- **Technical Implementation (Frontend):** [Collection Report Page](../Documentation/collection-reports/frontend/collection-report-page.md#isediting-flag-system---unsaved-changes-protection)
+- **Technical Implementation (Backend):** [Collections API](../Documentation/collection-reports/api/collections-api.md#isediting-flag-system---unsaved-changes-protection)
+- **Collection System Guidelines:** [.instructions/collection-reports-guidelines.md](./collection-reports-guidelines.md)
 
 ---
 

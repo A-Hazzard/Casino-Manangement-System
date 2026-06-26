@@ -16,7 +16,7 @@ const ACTIVE_METER_FILTER = {
   $or: [
     { deletedAt: null },
     { deletedAt: { $exists: false } },
-    { deletedAt: { $lt: new Date('2026-01-01') } },
+    { deletedAt: { $lt: new Date('2025-01-01') } },
   ],
 };
 

@@ -116,10 +116,18 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  return withApiAuth(request, async () => {
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
     const startTime = Date.now();
     const functionName = 'POST /api/licencees';
     const user = extractUserFromRequest(request);
+
+    if (!isAdminOrDev) {
+      return NextResponse.json(
+        { success: false, message: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, country } = body;
 
@@ -138,10 +146,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  return withApiAuth(request, async () => {
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
     const startTime = Date.now();
     const functionName = 'PUT /api/licencees';
     const user = extractUserFromRequest(request);
+
+    if (!isAdminOrDev) {
+      return NextResponse.json(
+        { success: false, message: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { _id } = body;
 
@@ -160,7 +176,14 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  return withApiAuth(request, async () => {
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json(
+        { success: false, message: 'Forbidden' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { _id } = body;
 

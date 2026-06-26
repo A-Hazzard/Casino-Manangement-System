@@ -1,3 +1,12 @@
+/**
+ * TOTP Setup API Route
+ *
+ * Generates a TOTP secret and QR code for the authenticated user to scan
+ * with their authenticator app. Enables 2FA after confirmation.
+ *
+ * @module app/api/auth/totp/setup/route
+ */
+
 import {
   generateOTPAuthURI,
   generateTOTPSecret,

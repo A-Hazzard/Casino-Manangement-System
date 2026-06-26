@@ -39,22 +39,19 @@ async function cascadeTimestampUpdate(
     console.error('[cascadeTimestampUpdate] newTimestamp is required');
     return;
   }
-  // Update all collections with the new timestamp
-  const collections = await Collections.find({
-    locationReportId: reportId,
-  });
-
-  for (const collection of collections) {
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await Collections.findOneAndUpdate(
-      { _id: collection._id },
-      {
+  // Update all collections with the new timestamp in a single query.
+  // updateMany is safe here because this is a simple timestamp mutation with
+  // no per-document middleware dependencies.
+  await Collections.updateMany(
+    { locationReportId: reportId },
+    {
+      $set: {
         collectionTime: newTimestamp,
         timestamp: newTimestamp,
         updatedAt: new Date(),
-      }
-    );
-  }
+      },
+    }
+  );
 
   // Update gaming location's previousCollectionTime if this is the latest report
   if (locationId) {
@@ -102,10 +99,12 @@ async function getAffectedMachineIds(reportId: string): Promise<string[]> {
  * Recalculates collections for multiple machines
  *
  * @param {string[]} machineIds - Array of machine IDs to recalculate
+ * @param {onProgress} [onProgress] - Optional callback for per-machine progress
  * @returns {Promise<void>}
  */
 async function recalculateMultipleMachineCollections(
-  machineIds: string[]
+  machineIds: string[],
+  onProgress?: (done: number, total: number, machineName?: string) => void
 ): Promise<void> {
   if (!machineIds?.length) {
     console.error(
@@ -113,19 +112,54 @@ async function recalculateMultipleMachineCollections(
     );
     return;
   }
-  for (const machineId of machineIds) {
-    try {
-      // writeSasMeters=true: this is called from updateCollectionReport which
-      // runs after the report is already finalized (post-submit edit).
-      await recalculateMachineCollections(machineId, true);
-    } catch (error) {
-      console.error(
-        `Failed to cascade recalculation for machine ${machineId}:`,
-        error
-      );
-      // Continue with other machines even if one fails
-    }
-  }
+
+  // Batch-fetch display names so progress events can include the machine name
+  // without an N+1 query pattern.
+  const machines = await Machine.find({ _id: { $in: machineIds } }).lean<
+    Array<{
+      _id: string;
+      name?: string;
+      serialNumber?: string;
+      custom?: { name?: string };
+    }>
+  >();
+  const machineNameMap = new Map(
+    machines.map(machine => [
+      String(machine._id),
+      machine.custom?.name ||
+        machine.name ||
+        machine.serialNumber ||
+        String(machine._id),
+    ])
+  );
+
+  // Run per-machine recalculations in parallel while streaming progress
+  // as each individual machine finishes.
+  let machinesCompleted = 0;
+  const totalMachines = machineIds.length;
+
+  const machinePromises = machineIds.map((machineId, index) => {
+    const machineName =
+      machineNameMap.get(machineId) || `Machine ${index + 1}`;
+    return (async () => {
+      try {
+        // writeSasMeters=true: this is called from updateCollectionReport which
+        // runs after the report is already finalized (post-submit edit).
+        await recalculateMachineCollections(machineId, true);
+      } catch (error) {
+        console.error(
+          `Failed to cascade recalculation for machine ${machineId}:`,
+          error
+        );
+        // Continue with other machines even if one fails
+      } finally {
+        machinesCompleted++;
+        onProgress?.(machinesCompleted, totalMachines, machineName);
+      }
+    })();
+  });
+
+  await Promise.all(machinePromises);
 }
 
 /**
@@ -293,54 +327,66 @@ export async function revertMachineCollectionMeters(
     return { success: true, revertedCount: 0, errors: [] };
   }
 
-  const errors: string[] = [];
-  let revertedCount = 0;
+  type RevertResult =
+    | { success: true }
+    | { success: false; error: string };
 
-  for (const collection of collections) {
-    if (!collection.machineId) {
-      continue;
-    }
-
-    try {
-      const collectionTime =
-        collection.collectionTime || collection.timestamp || new Date();
-      const previousCollection = await findPreviousCollectionForRevert(
-        collection.machineId,
-        collectionTime
-      );
-
-      // CRITICAL: If no previous collection exists, use the prevIn/prevOut from the collection being deleted
-      // This preserves the machine's state before this collection was created
-      const revertToMetersIn =
-        previousCollection?.metersIn ?? collection.prevIn ?? 0;
-      const revertToMetersOut =
-        previousCollection?.metersOut ?? collection.prevOut ?? 0;
-
-      const updateResult = await Machine.findOneAndUpdate(
-        { _id: collection.machineId },
-        {
-          $set: {
-            'collectionMeters.metersIn': revertToMetersIn,
-            'collectionMeters.metersOut': revertToMetersOut,
-            updatedAt: new Date(),
-          },
-        }
-      );
-
-      if (!updateResult) {
-        console.warn(
-          `[revertMachineCollectionMeters] Machine ${collection.machineId} not found in database — skipping meter revert`
-        );
-        continue;
+  // Revert each machine's collectionMeters in parallel. Each machine is
+  // independent: the previous-collection lookup and the Machine update target
+  // a single machine ID.
+  const revertResults: RevertResult[] = await Promise.all(
+    collections.map(async collection => {
+      if (!collection.machineId) {
+        return { success: true as const };
       }
 
-      revertedCount++;
-    } catch (error) {
-      const errorMsg = `Failed to revert collection meters for machine ${collection.machineId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      console.error(`[revertMachineCollectionMeters] ${errorMsg}`);
-      errors.push(errorMsg);
-    }
-  }
+      try {
+        const collectionTime =
+          collection.collectionTime || collection.timestamp || new Date();
+        const previousCollection = await findPreviousCollectionForRevert(
+          collection.machineId,
+          collectionTime
+        );
+
+        // CRITICAL: If no previous collection exists, use the prevIn/prevOut from the collection being deleted
+        // This preserves the machine's state before this collection was created
+        const revertToMetersIn =
+          previousCollection?.metersIn ?? collection.prevIn ?? 0;
+        const revertToMetersOut =
+          previousCollection?.metersOut ?? collection.prevOut ?? 0;
+
+        const updateResult = await Machine.findOneAndUpdate(
+          { _id: collection.machineId },
+          {
+            $set: {
+              'collectionMeters.metersIn': revertToMetersIn,
+              'collectionMeters.metersOut': revertToMetersOut,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+        if (!updateResult) {
+          console.warn(
+            `[revertMachineCollectionMeters] Machine ${collection.machineId} not found in database — skipping meter revert`
+          );
+          return { success: true as const };
+        }
+
+        return { success: true as const };
+      } catch (error) {
+        const errorMsg = `Failed to revert collection meters for machine ${collection.machineId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.error(`[revertMachineCollectionMeters] ${errorMsg}`);
+        return { success: false, error: errorMsg };
+      }
+    })
+  );
+
+  const errors = revertResults
+    .filter(result => !result.success)
+    .map(result => result.error)
+    .filter((error): error is string => Boolean(error));
+  const revertedCount = revertResults.filter(result => result.success).length;
 
   return {
     success: errors.length === 0,
@@ -353,11 +399,19 @@ export async function revertMachineCollectionMeters(
  *
  * @param {string} reportId - The collection report ID
  * @param {Partial<CreateCollectionReportPayload>} updateData - The data to update
+ * @param {(phase: string) => void} [onPhase] - Optional callback invoked at each phase boundary for SSE streaming
  * @returns {Promise<{ success: boolean; data?: unknown; error?: string }>}
  */
 export async function updateCollectionReport(
   reportId: string,
-  updateData: Partial<CreateCollectionReportPayload>
+  updateData: Partial<CreateCollectionReportPayload>,
+  onPhase?: (phase: string) => void,
+  onProgress?: (
+    phase: string,
+    done: number,
+    total: number,
+    machineName?: string
+  ) => void
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   if (!reportId) {
     console.error('[updateCollectionReport] reportId is required');
@@ -404,8 +458,12 @@ export async function updateCollectionReport(
     };
   }
 
+  const updateStart = Date.now();
+  onPhase?.('saving');
+
   // Cascade timestamp changes if needed
   if (isTimestampChanged && updateData.timestamp) {
+    console.log(`[updateCollectionReport] PHASE: cascading timestamp | +${Date.now() - updateStart}ms`);
     try {
       await cascadeTimestampUpdate(
         reportId,
@@ -418,24 +476,35 @@ export async function updateCollectionReport(
         error
       );
     }
+    console.log(`[updateCollectionReport] PHASE: timestamp cascaded | +${Date.now() - updateStart}ms`);
   }
 
   // Recalculate affected machines
+  onPhase?.('recalculating');
+  console.log(`[updateCollectionReport] PHASE: recalculating machines — start | +${Date.now() - updateStart}ms`);
   const affectedMachineIds = await getAffectedMachineIds(reportId);
-  await recalculateMultipleMachineCollections(affectedMachineIds);
+  await recalculateMultipleMachineCollections(
+    affectedMachineIds,
+    (done, total, machineName) =>
+      onProgress?.('recalculating', done, total, machineName)
+  );
+  console.log(`[updateCollectionReport] PHASE: recalculating machines — done (${affectedMachineIds.length} machines) | +${Date.now() - updateStart}ms`);
 
   // Compute and store total variation from collections after recalculation
+  onPhase?.('variation');
+  console.log(`[updateCollectionReport] PHASE: calculating variation | +${Date.now() - updateStart}ms`);
   try {
     const totalVariationValue = await computeTotalVariation(
       reportId,
-      updatedReport.location
+      updatedReport.location,
+      undefined
     );
     await CollectionReport.findOneAndUpdate(
       { locationReportId: reportId },
       { $set: { totalVariation: Number(totalVariationValue.toFixed(2)) } }
     );
     console.log(
-      `[updateCollectionReport] totalVariation stored: ${totalVariationValue}`
+      `[updateCollectionReport] PHASE: variation stored: ${totalVariationValue} | +${Date.now() - updateStart}ms`
     );
   } catch (varErr) {
     console.warn(
@@ -480,98 +549,96 @@ export async function deleteManualMetersPerCollection(
       `[deleteManualMetersPerCollection] Found ${collections.length} collections to clean up meters for`
     );
 
-    for (const collection of collections) {
-      // Check if machine is an online SMIB machine — skip if it is, because
-      // the relay manages its meters. For offline SMIB machines we created
-      // manual meters during collection, so they still need cleanup.
-      let hasRelay = false;
-      let isOffline = false;
-      if (collection.machineId) {
-        const machineDoc = await Machine.findOne(
-          { _id: collection.machineId },
-          'relayId lastActivity'
-        ).lean<{ relayId?: string | null; lastActivity?: Date | string | null }>();
-        hasRelay = !!machineDoc?.relayId;
-        if (hasRelay) {
-          const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-          isOffline =
-            !machineDoc?.lastActivity ||
-            Date.now() - new Date(machineDoc.lastActivity).getTime() >=
-              OFFLINE_THRESHOLD_MS;
-        }
-      }
-      if (hasRelay && !isOffline && !collection.meterId && !collection.ramClearMeterId) {
-        console.log(
-          `⏭️ [deleteManualMetersPerCollection] Skipping online SMIB machine ${collection.machineId} (has relayId, online, no manual meters)`
+    // ============================================================================
+    // Batch-fetch all machine relay/activity state in one query so the parallel
+    // loop below doesn't fire N individual Machine.findOne() calls.
+    // ============================================================================
+    const allMachineIds = [...new Set(
+      collections.map(col => col.machineId).filter((id): id is string => !!id)
+    )];
+    const machineDocs = await Machine.find(
+      { _id: { $in: allMachineIds } },
+      'relayId lastActivity'
+    ).lean<Array<{ _id: string; relayId?: string | null; lastActivity?: Date | string | null }>>();
+    const machineMap = new Map(machineDocs.map(doc => [String(doc._id), doc]));
+
+    const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
+
+    // ============================================================================
+    // Process all collections in parallel. Each machine/collection is independent
+    // so there's no ordering requirement. Supplemental-meter fixes run before
+    // the batch meter deletion below.
+    // ============================================================================
+    const meterIdsToDelete: string[] = [];
+
+    await Promise.all(
+      collections.map(async collection => {
+        const machineDoc = collection.machineId ? machineMap.get(collection.machineId) : undefined;
+        const hasRelay = !!machineDoc?.relayId;
+        const isOffline = hasRelay && (
+          !machineDoc?.lastActivity ||
+          Date.now() - new Date(machineDoc.lastActivity).getTime() >= OFFLINE_THRESHOLD_MS
         );
-        continue;
-      }
 
-      // Before deleting supplemental meters, fix the SMIB meter that follows them.
-      // When the machine came back online after an offline CR, the SMIB pushed a
-      // SAS_READ meter whose movement.drop was calculated against the supplemental
-      // meter (same lifetime value), yielding 0. After we remove the supplemental,
-      // that SMIB meter needs its movement recalculated against the pre-offline meter.
-      if (collection.meterId && collection.machineId) {
-        const supplementalMeter = await Meters.findOne(
-          { _id: collection.meterId }
-        ).lean<MeterDocument>();
+        if (hasRelay && !isOffline && !collection.meterId && !collection.ramClearMeterId) {
+          console.log(
+            `⏭️ [deleteManualMetersPerCollection] Skipping online SMIB machine ${collection.machineId} (has relayId, online, no manual meters)`
+          );
+          return;
+        }
 
-        if (supplementalMeter?.isSupplemental) {
-          let earliestSupplementalReadAt: Date = supplementalMeter.readAt;
+        // Before deleting supplemental meters, fix the SMIB meter that follows them.
+        // When the machine came back online after an offline CR, the SMIB pushed a
+        // SAS_READ meter whose movement.drop was calculated against the supplemental
+        // meter (same lifetime value), yielding 0. After we remove the supplemental,
+        // that SMIB meter needs its movement recalculated against the pre-offline meter.
+        if (collection.meterId && collection.machineId) {
+          const supplementalMeter = await Meters.findOne(
+            { _id: collection.meterId }
+          ).lean<MeterDocument>();
 
-          if (collection.ramClearMeterId) {
-            const ramMeter = await Meters.findOne(
-              { _id: collection.ramClearMeterId }
-            ).lean<MeterDocument>();
-            if (ramMeter?.readAt && new Date(ramMeter.readAt) < new Date(earliestSupplementalReadAt)) {
-              earliestSupplementalReadAt = ramMeter.readAt;
+          if (supplementalMeter?.isSupplemental) {
+            let earliestSupplementalReadAt: Date = supplementalMeter.readAt;
+
+            if (collection.ramClearMeterId) {
+              const ramMeter = await Meters.findOne(
+                { _id: collection.ramClearMeterId }
+              ).lean<MeterDocument>();
+              if (ramMeter?.readAt && new Date(ramMeter.readAt) < new Date(earliestSupplementalReadAt)) {
+                earliestSupplementalReadAt = ramMeter.readAt;
+              }
             }
+
+            await fixSmibMeterAfterSupplementalDeletion(
+              collection.machineId,
+              supplementalMeter.readAt,
+              earliestSupplementalReadAt
+            );
           }
-
-          await fixSmibMeterAfterSupplementalDeletion(
-            collection.machineId,
-            supplementalMeter.readAt,
-            earliestSupplementalReadAt
-          );
         }
-      }
 
-      // Delete RAM clear meter if it exists (only for collections with RAM clear)
-      if (collection.ramClearMeterId) {
-        const ramClearResult = await Meters.findOneAndDelete({
-          _id: collection.ramClearMeterId,
-        });
-        if (ramClearResult) {
-          console.log(
-            `[deleteManualMetersPerCollection] Deleted ramClear meter ${collection.ramClearMeterId}`
-          );
+        if (collection.ramClearMeterId) {
+          meterIdsToDelete.push(collection.ramClearMeterId);
+        }
+        if (collection.meterId) {
+          meterIdsToDelete.push(collection.meterId);
         } else {
           console.warn(
-            `[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted`
+            `[deleteManualMetersPerCollection] Collection ${collection._id} has no meterId set`
           );
         }
-      }
+      })
+    );
 
-      // Delete regular meter (all collections should have this)
-      if (collection.meterId) {
-        const meterResult = await Meters.findOneAndDelete({
-          _id: collection.meterId,
-        });
-        if (meterResult) {
-          console.log(
-            `[deleteManualMetersPerCollection] Deleted meter ${collection.meterId}`
-          );
-        } else {
-          console.warn(
-            `[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted`
-          );
-        }
-      } else {
-        console.warn(
-          `[deleteManualMetersPerCollection] Collection ${collection._id} has no meterId set`
-        );
-      }
+    // ============================================================================
+    // Batch-delete all collected meter IDs in one deleteMany instead of N
+    // individual findOneAndDelete calls.
+    // ============================================================================
+    if (meterIdsToDelete.length > 0) {
+      const deleteResult = await Meters.deleteMany({ _id: { $in: meterIdsToDelete } });
+      console.log(
+        `[deleteManualMetersPerCollection] Deleted ${deleteResult.deletedCount}/${meterIdsToDelete.length} meters`
+      );
     }
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Unknown error';

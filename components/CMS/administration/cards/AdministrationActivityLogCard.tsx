@@ -19,7 +19,7 @@
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
-import { Eye, EyeOff, Copy, Check, Trash2 } from 'lucide-react';
+import { ClipboardList, Eye, EyeOff, Copy, Check, Trash2 } from 'lucide-react';
 import { safeFormatDate } from '@/lib/utils/formatting';
 import { toast } from 'sonner';
 import type { ActivityLog } from '@/shared/types/activityLog';
@@ -329,10 +329,10 @@ function AdministrationActivityLogCard({
                         className="cursor-pointer text-left transition-colors hover:text-blue-600 hover:underline"
                         title="Click to view full description"
                       >
-                        <span className="inline-flex items-center gap-1">
-                          {description}
-                          <span className="text-xs text-blue-500">📋</span>
-                        </span>
+                          <span className="inline-flex items-center gap-1">
+                            {description}
+                            <ClipboardList className="h-3.5 w-3.5 text-blue-500" />
+                          </span>
                       </button>
                     ) : (
                       <button

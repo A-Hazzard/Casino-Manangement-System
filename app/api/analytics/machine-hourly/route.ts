@@ -14,7 +14,7 @@
  */
 
 import { getMachineHourlyData } from '@/app/api/lib/helpers/trends/machineHourly';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -49,104 +49,82 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/analytics/machine-hourly';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
+  return withApiAuth(req, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(req.url);
+      const locationIds = searchParams.get('locationIds');
+      const machineIds = searchParams.get('machineIds');
+      const timePeriod =
+        (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+      const licencee = searchParams.get('licencee');
+      const startDateParam = searchParams.get('startDate');
+      const endDateParam = searchParams.get('endDate');
+      const displayCurrency =
+        (searchParams.get('currency') as CurrencyCode) || 'USD';
+
+      if (!locationIds && !machineIds) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/analytics/machine-hourly',
+          'Location IDs or Machine IDs are required',
+          user
+        );
+        return NextResponse.json(
+          { error: 'Location IDs or Machine IDs are required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Execute the core machine hourly fetching logic via helper
+      // ============================================================================
+      const machineHourlyData = await getMachineHourlyData(
+        locationIds,
+        machineIds,
+        timePeriod,
+        licencee,
+        startDateParam,
+        endDateParam,
+        displayCurrency
+      );
+
+      // ============================================================================
+      // STEP 3: Return machine hourly trends data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/machine-hourly',
+        1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json(machineHourlyData);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
       logRouteError(
         functionName,
         'GET',
         '/api/analytics/machine-hourly',
-        'Database connection not established',
+        errorMessage,
         user
       );
+      console.error(`[${functionName}] Error:`, errorMessage);
       return NextResponse.json(
-        { error: 'Database connection not established' },
+        { error: 'Failed to fetch machine hourly data' },
         { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 2: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const locationIds = searchParams.get('locationIds');
-    const machineIds = searchParams.get('machineIds');
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
-
-    if (!locationIds && !machineIds) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/analytics/machine-hourly',
-        'Location IDs or Machine IDs are required',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Location IDs or Machine IDs are required' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Execute the core machine hourly fetching logic via helper
-    // ============================================================================
-    const machineHourlyData = await getMachineHourlyData(
-      locationIds,
-      machineIds,
-      timePeriod,
-      licencee,
-      startDateParam,
-      endDateParam,
-      displayCurrency
-    );
-
-    // ============================================================================
-    // STEP 4: Return machine hourly trends data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/machine-hourly',
-      1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(
-        `[Analytics Machine Hourly GET API] Completed in ${duration}ms`
-      );
-    }
-
-    return NextResponse.json(machineHourlyData);
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/machine-hourly',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Analytics Machine Hourly GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { error: 'Failed to fetch machine hourly data' },
-      { status: 500 }
-    );
-  }
+  });
 }

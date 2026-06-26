@@ -1057,10 +1057,10 @@ const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
 ## 🔗 Related Documentation
 
-- [Complete System Guide](../Documentation/licencee-location-filtering.md)
-- [Role Based Permissions](../Documentation/Role%20Based%20Permissions.md)
-- [API Overview](../Documentation/backend/api-overview.md)
-- [Pages Overview](../Documentation/frontend/pages-overview.md)
+- [Licencee Management Flow](../Documentation/backend/api-flows/licencee-management-flow.md)
+- [Role Based Permissions](../.instructions/authorization.md)
+- [API Overview](../Documentation/backend/api/README.md)
+- [Pages Overview](../Documentation/frontend/pages/README.md)
 
 ---
 
@@ -1082,6 +1082,6 @@ node -e "require('dotenv').config(); const mongoose = require('mongoose'); mongo
 
 ---
 
-**Remember:** When in doubt, check the comprehensive guide at `Documentation/licencee-location-filtering.md`
+**Remember:** When in doubt, check the licencee management flow in `Documentation/backend/api-flows/licencee-management-flow.md`
 
-**Last Updated:** December 22nd, 2025
+**Last Updated:** June 25, 2026

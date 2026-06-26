@@ -9,6 +9,7 @@ import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { isAbortError } from '@/lib/utils/errors';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { differenceInMinutes } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -150,7 +151,10 @@ export function useCabinetDetailsData({
         setLocationName('No Location Assigned');
       }
 
-      if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
+      // WOW machines have no SMIB/relay but are always treated as online.
+      if (isWowMachine(cabinetData)) {
+        setIsOnline(true);
+      } else if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
         setIsOnline(true);
       } else if (cabinetData?.lastActivity) {
         const lastActive = new Date(cabinetData.lastActivity);
@@ -305,7 +309,10 @@ export function useCabinetDetailsData({
         setLocationName(cabinetData.locationName);
       }
 
-      if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
+      // WOW machines have no SMIB/relay but are always treated as online.
+      if (isWowMachine(cabinetData)) {
+        setIsOnline(true);
+      } else if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
         setIsOnline(true);
       } else if (cabinetData?.lastActivity) {
         const lastActive = new Date(cabinetData.lastActivity);

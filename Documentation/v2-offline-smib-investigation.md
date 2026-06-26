@@ -114,4 +114,4 @@ If V2 has no issues, confirm this explicitly for each of the 6 questions above w
 
 V2 uses `LocationSession` + `ReportedMachine` documents instead of V1 `CollectionReport` + `Collection`. The submit route creates `Meters` documents. Look at what field (if any) on `ReportedMachine` corresponds to V1 `Collection.meterId` (the supplemental meter pointer).
 
-See also: `Documentation/manual-meters-flow.md` section 7 (CR V2 RAM Clear & Meter Creation) and section 8 (Offline SMIB Invariants).
+See also: `Documentation/collection-reports/reference/manual-meters-flow.md` section 7 (CR V2 RAM Clear & Meter Creation) and section 8 (Offline SMIB Invariants).

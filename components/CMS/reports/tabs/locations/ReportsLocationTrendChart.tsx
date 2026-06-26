@@ -21,7 +21,7 @@
  * @param formatter - Value formatter function
  * @param isHourly - Whether data is hourly
  */
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import {
   Card,
   CardContent,
@@ -87,46 +87,6 @@ export function ReportsLocationTrendChart({
   timePeriod,
   granularity,
 }: ReportsLocationTrendChartProps) {
-  // ============================================================================
-  // Effects
-  // ============================================================================
-  // Debug: Log raw data for jackpot to investigate missing data points
-  useEffect(() => {
-    if (dataKey === 'jackpot' && data.length > 0) {
-      const jackpotDataPoints = data.filter(item =>
-        locations.some(locId => {
-          const locData = item[locId];
-          return (
-            typeof locData === 'object' &&
-            locData !== null &&
-            (locData.jackpot || 0) > 0
-          );
-        })
-      );
-      console.log(`[LocationTrendChart] ${title} - Raw Data Analysis`, {
-        dataKey,
-        totalDataPoints: data.length,
-        jackpotDataPoints: jackpotDataPoints.length,
-        sampleRawData: data.slice(0, 3).map(item => ({
-          day: item.day,
-          time: item.time,
-          locations: locations.map(locId => ({
-            id: locId,
-            name: locationNames?.[locId],
-            data: item[locId],
-          })),
-        })),
-        sampleJackpotPoints: jackpotDataPoints.slice(0, 5).map(item => ({
-          day: item.day,
-          time: item.time,
-          locations: locations.map(locId => ({
-            name: locationNames?.[locId],
-            jackpot: (item[locId] as { jackpot?: number })?.jackpot || 0,
-          })),
-        })),
-      });
-    }
-  }, [data, dataKey, locations, locationNames, title]);
   // ============================================================================
   // Computed
   // ============================================================================

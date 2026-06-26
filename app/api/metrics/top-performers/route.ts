@@ -11,7 +11,7 @@
  * @module app/api/metrics/top-performers/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Meters } from '@/app/api/lib/models/meters';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
@@ -212,7 +212,8 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/metrics/top-performers';
   const user = extractUserFromRequest(req);
 
-  try {
+  return withApiAuth(req, async () => {
+    try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
@@ -239,25 +240,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/metrics/top-performers',
-        'Database connection not established',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Database connection not established' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Fetch top performer data
+    // STEP 2: Fetch top performer data
     // ============================================================================
     const topPerformer = await getTopPerformer(
       locationId,
@@ -268,7 +251,7 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 4: Return top performer
+    // STEP 3: Return top performer
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
@@ -304,4 +287,5 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+  });
 }

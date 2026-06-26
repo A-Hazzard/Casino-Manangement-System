@@ -23,7 +23,6 @@ import {
   CardTitle,
 } from '@/components/shared/ui/card';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
-import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
@@ -39,7 +38,6 @@ import {
   HelpCircle,
   Home,
   MonitorOff,
-  Search,
   Server,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -92,7 +90,6 @@ export default function ReportsLocationsTable({
   // ============================================================================
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
   const { formatAmount } = useCurrencyFormat();
 
   // ============================================================================
@@ -115,17 +112,7 @@ export default function ReportsLocationsTable({
     }
   };
 
-  const filteredLocations = locations.filter(location => {
-    if (!searchTerm.trim()) return true;
-    const searchQuery = searchTerm.toLowerCase().trim();
-    const name = String(location.locationName || '').toLowerCase();
-    const id = String(
-      ((location as Record<string, unknown>).location as string) || ''
-    ).toLowerCase();
-    return name.includes(searchQuery) || id.includes(searchQuery);
-  });
-
-  const sortedLocations = [...filteredLocations].sort((a, b) => {
+  const sortedLocations = [...locations].sort((a, b) => {
     let aValue: string | number;
     let bValue: string | number;
 
@@ -398,20 +385,6 @@ export default function ReportsLocationsTable({
   // ============================================================================
   return (
     <div className={`rounded-lg bg-white shadow ${className}`}>
-      {/* Search Bar */}
-      <div className="border-b border-gray-200 p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search locations..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
       {/* Content */}
       {loading ? (
         <div className="p-4">

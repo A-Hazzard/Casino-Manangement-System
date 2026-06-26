@@ -1,3 +1,19 @@
+/**
+ * Machines Report API Route
+ *
+ * Fetches machine report data across accessible locations. Supports several
+ * sub-types via the `type` query param:
+ * - 'stats'    — aggregate machine financial/status statistics
+ * - 'offline'  — machines currently offline
+ * - 'all'      — full machine list
+ * - 'overview' — default evaluation/overview rows
+ *
+ * Applies licencee/location access filtering, reviewer multiplier scaling, and
+ * currency conversion for Admin/Developer "All Licencees" views.
+ *
+ * @module app/api/reports/machines/route
+ */
+
 import {
   getUserLocationFilter,
   getUserAccessibleLicenceesFromToken,
@@ -96,7 +112,8 @@ export async function GET(req: NextRequest) {
         const assignedLocations =
           (userPayload as { assignedLocations?: string[] })
             ?.assignedLocations || [];
-        const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
+        const userAccessibleLicencees =
+          await getUserAccessibleLicenceesFromToken();
 
         const allowedLocationIds = await getUserLocationFilter(
           userAccessibleLicencees,
@@ -137,21 +154,28 @@ export async function GET(req: NextRequest) {
           const aceEnabledLocIds = aceEnabledLocs.map(loc => String(loc._id));
 
           if (onlineStatus === 'online') {
+            // Online = WOW OR (recently active OR aceEnabled location)
+            const onlineFilter: Record<string, unknown> = {
+              $or: [
+                { 'meta.dataSync.source': 'wow' },
+                { lastActivity: { $gte: threeMinutesAgo } },
+              ],
+            };
             if (aceEnabledLocIds.length > 0) {
-              // Online = recently active OR at an aceEnabled location
-              if (!machineMatchStage.$and) machineMatchStage.$and = [];
-              (machineMatchStage.$and as Array<Record<string, unknown>>).push({
-                $or: [
-                  { lastActivity: { $gte: threeMinutesAgo } },
-                  { gamingLocation: { $in: aceEnabledLocIds } },
-                ],
+              (onlineFilter.$or as Array<Record<string, unknown>>).push({
+                gamingLocation: { $in: aceEnabledLocIds },
               });
-            } else {
-              machineMatchStage.lastActivity = { $gte: threeMinutesAgo };
             }
-          } else {
-            // Offline = NOT recently active AND NOT at an aceEnabled location
             if (!machineMatchStage.$and) machineMatchStage.$and = [];
+            (machineMatchStage.$and as Array<Record<string, unknown>>).push(
+              onlineFilter
+            );
+          } else {
+            // Offline = NOT WOW AND (NOT recently active AND NOT aceEnabled)
+            if (!machineMatchStage.$and) machineMatchStage.$and = [];
+            (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+              'meta.dataSync.source': { $ne: 'wow' },
+            });
             (machineMatchStage.$and as Array<Record<string, unknown>>).push({
               $or: [
                 { lastActivity: { $lt: threeMinutesAgo } },
@@ -167,13 +191,18 @@ export async function GET(req: NextRequest) {
         }
 
         if (searchTerm?.trim()) {
-          machineMatchStage.$or = [
-            { serialNumber: { $regex: searchTerm, $options: 'i' } },
-            { origSerialNumber: { $regex: searchTerm, $options: 'i' } },
-            { game: { $regex: searchTerm, $options: 'i' } },
-            { manufacturer: { $regex: searchTerm, $options: 'i' } },
-            { 'custom.name': { $regex: searchTerm, $options: 'i' } },
-          ];
+          // Add the search clause under $and so it does NOT overwrite the base
+          // soft-delete $or filter (which would let deleted machines surface).
+          if (!machineMatchStage.$and) machineMatchStage.$and = [];
+          (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+            $or: [
+              { serialNumber: { $regex: searchTerm, $options: 'i' } },
+              { origSerialNumber: { $regex: searchTerm, $options: 'i' } },
+              { game: { $regex: searchTerm, $options: 'i' } },
+              { manufacturer: { $regex: searchTerm, $options: 'i' } },
+              { 'custom.name': { $regex: searchTerm, $options: 'i' } },
+            ],
+          });
         }
 
         if (locationId && locationId !== 'all') {

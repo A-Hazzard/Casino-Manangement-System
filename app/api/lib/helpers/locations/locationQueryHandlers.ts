@@ -273,7 +273,7 @@ export async function handleRestoreLocation(
     throw error;
   }
 
-  const location = await findLocationById(id);
+  const location = await findLocationById(id, true);
   if (!location) {
     const error = new Error('Not found');
     (error as unknown as Record<string, unknown>).statusCode = 404;

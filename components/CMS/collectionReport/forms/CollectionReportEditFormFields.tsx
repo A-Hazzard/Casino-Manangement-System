@@ -65,6 +65,7 @@ import {
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { formatDate } from '@/lib/utils/formatting';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ExternalLink } from 'lucide-react';
 
 type EditCollectionFormFieldsProps = {
@@ -101,6 +102,8 @@ type EditCollectionFormFieldsProps = {
   onCancelEdit: () => void;
   onDisabledFieldClick: () => void;
   onViewMachine: () => void;
+  includeJackpot?: boolean;
+  jackpot?: number;
 };
 
 export default function CollectionReportEditFormFields({
@@ -136,7 +139,15 @@ export default function CollectionReportEditFormFields({
   onCancelEdit,
   onDisabledFieldClick,
   onViewMachine,
+  includeJackpot = false,
+  jackpot = 0,
 }: EditCollectionFormFieldsProps) {
+  // ============================================================================
+  // Computed
+  // ============================================================================
+  // WOW machines: meters are synced (WOW_SYNC) and shown read-only, never edited.
+  const isWow = isWowMachine(machineForDataEntry);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -237,6 +248,67 @@ export default function CollectionReportEditFormFields({
         </p>
       </div>
 
+      {isWow ? (
+        <div className="rounded-md border border-purple-200 bg-purple-50/60 p-3">
+          <p className="mb-2 text-xs font-medium italic text-purple-700">
+            WOW machine — meters are synced automatically and cannot be edited.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-sm font-medium text-grayHighlight">
+                Meter In:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {currentMetersIn !== '' && currentMetersIn != null
+                  ? Number(currentMetersIn).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-sm font-medium text-grayHighlight">
+                Meter Out:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {currentMetersOut !== '' && currentMetersOut != null
+                  ? Number(currentMetersOut).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-grayHighlight">
+                Prev In:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {prevIn != null && String(prevIn) !== ''
+                  ? Number(prevIn).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-grayHighlight">
+                Prev Out:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {prevOut != null && String(prevOut) !== ''
+                  ? Number(prevOut).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+          </div>
+          {includeJackpot && jackpot > 0 && (
+            <div className="mt-2 rounded border border-purple-100 bg-purple-50 p-2.5 text-[10px] text-purple-700 space-y-1 leading-normal">
+              <div className="flex items-center gap-1 font-bold">
+                <span>✨ Jackpot Included (+{Number(jackpot).toLocaleString()})</span>
+              </div>
+              <p>
+                Base Meter Out: <strong>{currentMetersOut && Number(currentMetersOut) > jackpot ? (Number(currentMetersOut) - jackpot).toLocaleString() : '--'}</strong><br />
+                Jackpot Amount: <strong>+{Number(jackpot).toLocaleString()}</strong><br />
+                Total (Included): <strong>{currentMetersOut ? Number(currentMetersOut).toLocaleString() : '--'}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
@@ -341,10 +413,23 @@ export default function CollectionReportEditFormFields({
                 </p>
               </div>
             )}
+          {includeJackpot && jackpot > 0 && (
+            <div className="mt-2 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-800 space-y-1 leading-normal">
+              <div className="flex items-center gap-1 font-bold">
+                <span>✨ Jackpot Included (+{Number(jackpot).toLocaleString()})</span>
+              </div>
+              <p className="text-[10px] text-purple-700 leading-normal">
+                Base Meter Out: <strong>{currentMetersOut && Number(currentMetersOut) > jackpot ? (Number(currentMetersOut) - jackpot).toLocaleString() : '--'}</strong><br />
+                Jackpot Amount: <strong>+{Number(jackpot).toLocaleString()}</strong><br />
+                Total (Included): <strong>{currentMetersOut ? Number(currentMetersOut).toLocaleString() : '--'}</strong>
+              </p>
+            </div>
+          )}
         </div>
       </div>
+      )}
 
-      {currentRamClear && (
+      {!isWow && currentRamClear && (
         <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
           <h4 className="mb-3 text-sm font-medium text-blue-800">
             RAM Clear Meters (Before Rollover)
@@ -477,7 +562,7 @@ export default function CollectionReportEditFormFields({
                 (inputsEnabled &&
                   !!sasStartTime &&
                   !!sasEndTime &&
-                  sasStartTime >= sasEndTime)
+                  sasStartTime > sasEndTime)
               }
             >
               {isProcessing ? 'Processing...' : 'Update Entry'}
@@ -497,7 +582,7 @@ export default function CollectionReportEditFormFields({
                     (inputsEnabled &&
                       !!sasStartTime &&
                       !!sasEndTime &&
-                      sasStartTime >= sasEndTime)
+                      sasStartTime > sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

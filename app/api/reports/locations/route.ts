@@ -99,6 +99,23 @@ export async function GET(req: NextRequest) {
         if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0)
           return createEmptyResponse(params.page, params.limit, displayCurrency);
 
+        // WOW filter needs location IDs derived from WOW machines (no persisted flag).
+        let wowLocationIds: string[] | null = null;
+        if (
+          params.machineTypeFilter
+            ?.split(',')
+            .some(type => type.trim() === 'WowOnly')
+        ) {
+          const wowLocs = await Machine.distinct('gamingLocation', {
+            'meta.dataSync.source': 'wow',
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          });
+          wowLocationIds = wowLocs.map(id => String(id));
+        }
+
         const locationMatchStage = buildLocationMatchStage({
           showArchived: params.showArchived,
           allowedLocationIds,
@@ -107,6 +124,7 @@ export async function GET(req: NextRequest) {
           searchTerm: params.searchTerm,
           machineTypeFilter: params.machineTypeFilter,
           isAdminOrDev,
+          wowLocationIds,
         });
 
         const locations =
@@ -177,7 +195,8 @@ export async function GET(req: NextRequest) {
           allLocationIds,
           allMachineIds,
           globalStart,
-          globalEnd
+          globalEnd,
+          locationRanges
         );
 
         const memberCountMap = await getMemberCountsPerLocation(allLocationIds);

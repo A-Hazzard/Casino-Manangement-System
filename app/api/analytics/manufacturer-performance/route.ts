@@ -13,7 +13,7 @@
  */
 
 import { getManufacturerPerformance } from '@/app/api/lib/helpers/reports/manufacturerPerformance';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -45,97 +45,76 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/analytics/manufacturer-performance';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const locationId = searchParams.get('locationId');
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const licencee = searchParams.get('licencee');
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(request.url);
+      const locationId = searchParams.get('locationId');
+      const timePeriod =
+        (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+      const startDate = searchParams.get('startDate');
+      const endDate = searchParams.get('endDate');
+      const licencee = searchParams.get('licencee');
 
-    if (!locationId || locationId === 'all') {
+      if (!locationId || locationId === 'all') {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/analytics/manufacturer-performance',
+          'Location ID is required',
+          user
+        );
+        return NextResponse.json(
+          { error: 'Location ID is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Fetch manufacturer performance data
+      // ============================================================================
+      const result = await getManufacturerPerformance(
+        locationId,
+        timePeriod,
+        startDate,
+        endDate,
+        licencee
+      );
+
+      // ============================================================================
+      // STEP 3: Return manufacturer performance
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/manufacturer-performance',
+        1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json(result);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error
+          ? e.message
+          : 'Failed to fetch manufacturer performance data';
       logRouteError(
         functionName,
         'GET',
         '/api/analytics/manufacturer-performance',
-        'Location ID is required',
+        errorMessage,
         user
       );
-      return NextResponse.json(
-        { error: 'Location ID is required' },
-        { status: 400 }
-      );
+      console.error(`[${functionName}] Error:`, errorMessage);
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/analytics/manufacturer-performance',
-        'Database connection not established',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Database connection not established' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Fetch manufacturer performance data
-    // ============================================================================
-    const result = await getManufacturerPerformance(
-      locationId,
-      timePeriod,
-      startDate,
-      endDate,
-      licencee
-    );
-
-    // ============================================================================
-    // STEP 4: Return manufacturer performance
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/manufacturer-performance',
-      1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(
-        `[Analytics Manufacturer Performance GET API] Completed in ${duration}ms`
-      );
-    }
-    return NextResponse.json(result);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'Failed to fetch manufacturer performance data';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/manufacturer-performance',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Manufacturer Performance Analytics GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }

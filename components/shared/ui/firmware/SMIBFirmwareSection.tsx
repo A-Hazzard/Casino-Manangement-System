@@ -166,8 +166,8 @@ export default function SMIBFirmwareSection({
         <div className="lg:hidden">
           {loading ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i}>{renderCardSkeleton()}</div>
+              {[...Array(4)].map((_, index) => (
+                <div key={index}>{renderCardSkeleton()}</div>
               ))}
             </div>
           ) : firmwares.length === 0 ? (

@@ -10,6 +10,7 @@
 import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/mobileEditCollectionModalHelpers';
 import { logActivity } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
+import { updateCollectionReportStreaming } from '@/lib/helpers/collectionReport/fetching';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -18,12 +19,14 @@ import type {
   CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import type { VariationsCheckResponse } from '@/lib/types/api';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
+import type { SubStepProgress } from '@/components/shared/ui/ProcessingPhaseBar';
 
 export type MobileModalState = {
   // Panel visibility states - ALL HIDDEN BY DEFAULT
@@ -179,6 +182,10 @@ export function useMobileEditCollectionModal({
     completed: number;
     total: number;
   } | null>(null);
+  const [currentSubStep, setCurrentSubStep] = useState<SubStepProgress | null>(null);
+  const [currentEditPhase, setCurrentEditPhase] = useState<string | undefined>(
+    undefined
+  );
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
@@ -442,6 +449,72 @@ export function useMobileEditCollectionModal({
       }));
     },
   };
+
+  // ==========================================================================
+  // WOW Meter Sync
+  // ==========================================================================
+
+  // WOW machines: meters are synced (WOW_SYNC) and shown read-only. Mirror the
+  // create flow — fetch the synced current reading + prev baseline whenever a WOW
+  // machine becomes the active entry or its time window changes, so the read-only
+  // fields stay populated (re-sync on edit, and fillable when adding a new WOW
+  // machine during an edit session).
+  const wowSelectedMachineId = modalState.selectedMachine;
+  const wowSelected = isWowMachine(modalState.selectedMachineData);
+  const wowStartTime = modalState.formData.sasStartTime;
+  const wowEndTime = modalState.formData.sasEndTime;
+  const wowMachineCollectionTime = modalState.selectedMachineData?.collectionTime;
+
+  useEffect(() => {
+    if (!show || !wowSelectedMachineId || !wowSelected) return;
+
+    const startHint = wowStartTime
+      ? wowStartTime.toISOString()
+      : wowMachineCollectionTime
+        ? new Date(wowMachineCollectionTime).toISOString()
+        : '';
+    const endIso = (wowEndTime ?? new Date()).toISOString();
+    let cancelled = false;
+
+    axios
+      .get(
+        `/api/collection-reports/collections/wow-meters?machineId=${wowSelectedMachineId}` +
+          (startHint ? `&startTime=${startHint}` : '') +
+          `&endTime=${endIso}`
+      )
+      .then(res => {
+        if (cancelled) return;
+        const wow = res.data?.data;
+        if (!wow) return;
+        setModalState(prev => ({
+          ...prev,
+          formData: {
+            ...prev.formData,
+            metersIn: wow.metersIn != null ? String(wow.metersIn) : '',
+            metersOut: wow.metersOut != null ? String(wow.metersOut) : '',
+            prevIn: wow.prevIn != null ? String(wow.prevIn) : '',
+            prevOut: wow.prevOut != null ? String(wow.prevOut) : '',
+          },
+        }));
+      })
+      .catch(wowErr => {
+        console.error(
+          '[useMobileEditCollectionModal] WOW meters fetch failed:',
+          wowErr instanceof Error ? wowErr.message : 'Unknown error'
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    show,
+    wowSelectedMachineId,
+    wowSelected,
+    wowStartTime,
+    wowEndTime,
+    wowMachineCollectionTime,
+  ]);
 
   // Debounced values
   const debouncedSelectedMachineData = useDebounce(
@@ -922,17 +995,32 @@ export function useMobileEditCollectionModal({
     setStoreLockedLocation,
   ]);
 
-  // Delete machine from collection list
+  // Show delete confirmation for entry
   const deleteMachineFromList = useCallback(
-    async (entryId: string) => {
+    (entryId: string) => {
+      if (modalState.collectedMachines.length === 1) {
+        toast.error('Cannot delete the last collection. A collection report must have at least one machine.');
+        return;
+      }
+      setEntryToDelete(entryId);
+      setShowDeleteConfirmation(true);
+    },
+    [modalState.collectedMachines.length]
+  );
+
+  // Execute entry deletion
+  const confirmDeleteEntry = useCallback(
+    async () => {
+      if (!entryToDelete) return;
+
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
-        await axios.delete(`/api/collection-reports/collections?id=${entryId}`);
+        await axios.delete(`/api/collection-reports/collections?id=${entryToDelete}`);
 
         // Calculate new state values
         const newCollectedMachines = modalState.collectedMachines.filter(
-          machine => machine._id !== entryId
+          machine => machine._id !== entryToDelete
         );
         const newLockedLocationId =
           newCollectedMachines.length === 0
@@ -944,11 +1032,18 @@ export function useMobileEditCollectionModal({
           ...prev,
           collectedMachines: newCollectedMachines,
           originalCollections: prev.originalCollections.filter(
-            machine => machine._id !== entryId
+            machine => machine._id !== entryToDelete
           ),
           lockedLocationId: newLockedLocationId,
           isProcessing: false,
         }));
+
+        // Sync Zustand store
+        setStoreCollectedMachines(newCollectedMachines);
+        if (newCollectedMachines.length === 0) setStoreLockedLocation(undefined);
+
+        setShowDeleteConfirmation(false);
+        setEntryToDelete(null);
 
         toast.success('Collection removed successfully');
       } catch (error) {
@@ -958,6 +1053,7 @@ export function useMobileEditCollectionModal({
       }
     },
     [
+      entryToDelete,
       modalState.collectedMachines,
       modalState.lockedLocationId,
       setStoreCollectedMachines,
@@ -1109,8 +1205,78 @@ export function useMobileEditCollectionModal({
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
-        const { updateCollectionReport: updateReportAPI } =
-          await import('@/lib/helpers/collectionReport');
+        // ============================================================================
+        // PHASE 0: Verbose per-machine validation
+        // ============================================================================
+        const progressTotal = collectedMachines.length;
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: 0,
+          total: progressTotal,
+          detail: 'Starting validation...',
+        });
+
+        for (let index = 0; index < collectedMachines.length; index++) {
+          const entry = collectedMachines[index];
+          const machineName =
+            (entry.machineName as string | undefined) ||
+            (entry.serialNumber as string | undefined) ||
+            entry.machineId ||
+            `Machine ${index + 1}`;
+          const detail = entry.ramClear
+            ? 'RAM clear & meters'
+            : 'meters, movement & SAS window';
+
+          setCurrentSubStep({
+            phaseKey: 'validating',
+            done: index + 1,
+            total: progressTotal,
+            machineName,
+            detail,
+          });
+
+          if (!entry.machineId) {
+            throw new Error(`${machineName} is missing a machine ID.`);
+          }
+          if (
+            typeof entry.metersIn !== 'number' ||
+            isNaN(entry.metersIn) ||
+            typeof entry.metersOut !== 'number' ||
+            isNaN(entry.metersOut)
+          ) {
+            throw new Error(`${machineName} has invalid meter values.`);
+          }
+
+          const movement = calculateCabinetMovement(
+            entry.metersIn || 0,
+            entry.metersOut || 0,
+            entry.prevIn || 0,
+            entry.prevOut || 0,
+            entry.ramClear || false,
+            undefined,
+            undefined,
+            entry.ramClearMetersIn,
+            entry.ramClearMetersOut
+          );
+          if (
+            !Number.isFinite(movement.metersIn) ||
+            !Number.isFinite(movement.metersOut) ||
+            !Number.isFinite(movement.gross)
+          ) {
+            throw new Error(`${machineName} produced an invalid movement calculation.`);
+          }
+
+          // Yield to React so the UI updates for each machine
+          await new Promise<void>(resolve => setTimeout(resolve, 5));
+        }
+
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: progressTotal,
+          total: progressTotal,
+          detail: 'Validation complete',
+        });
+
         const { validateCollectionReportPayload } =
           await import('@/lib/utils/validation');
 
@@ -1314,7 +1480,13 @@ export function useMobileEditCollectionModal({
           throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
         }
 
-        await updateReportAPI(reportId, payload);
+        await updateCollectionReportStreaming(
+          reportId,
+          payload,
+          setCurrentEditPhase,
+          (phase, done, total, machineName) =>
+            setCurrentSubStep({ phaseKey: phase, done, total, machineName })
+        );
 
         toast.dismiss('mobile-update-report-toast');
         toast.success('Collection report updated successfully!');
@@ -1339,6 +1511,8 @@ export function useMobileEditCollectionModal({
         );
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
+        setCurrentEditPhase(undefined);
+        setCurrentSubStep(null);
       }
     },
     [
@@ -1724,6 +1898,7 @@ export function useMobileEditCollectionModal({
     // API functions
     addMachineToList,
     deleteMachineFromList,
+    confirmDeleteEntry,
     editMachineInList,
     updateCollectionReportHandler,
 
@@ -1865,6 +2040,8 @@ export function useMobileEditCollectionModal({
       }
     },
     sasUpdateProgress,
+    currentSubStep,
+    currentEditPhase,
 
     // Store actions
     setStoreSelectedLocation,

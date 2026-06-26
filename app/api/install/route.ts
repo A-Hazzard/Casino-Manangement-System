@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     logRouteError(functionName, 'GET', '/api/install', errorMessage, user);

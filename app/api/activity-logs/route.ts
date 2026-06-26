@@ -269,7 +269,7 @@ export async function GET(request: NextRequest) {
           { $limit: limit },
         ];
         [logs, totalCount] = await Promise.all([
-          ActivityLog.aggregate(pipeline),
+          ActivityLog.aggregate<ActivityLogDocument>(pipeline),
           ActivityLog.countDocuments(filter),
         ]);
       } else {
@@ -284,6 +284,9 @@ export async function GET(request: NextRequest) {
       }
 
       const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[${functionName}] slow: ${duration}ms`);
+      }
       logRouteFetch(
         functionName,
         'GET',

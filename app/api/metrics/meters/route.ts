@@ -161,10 +161,6 @@ export async function GET(req: NextRequest) {
     const onlineStatus = params.onlineStatus;
     const searchTerm = params.search;
 
-    console.log(
-      `[Metrics Meters] Request — timePeriod: ${timePeriod}, licencee: ${licencee || 'all'}, startDate: ${startDate ?? 'none'}, endDate: ${endDate ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}, locations: ${locationIds?.join(',') ?? 'all'}`
-    );
-
     if (!timePeriod) {
       logRouteError(
         functionName,
@@ -303,9 +299,6 @@ export async function GET(req: NextRequest) {
       resultCount,
       user,
       duration
-    );
-    console.log(
-      `[Metrics Meters] Response — ${resultCount} data point(s), ${duration}ms`
     );
     if (duration > 1000) {
       console.warn(`[Metrics Meters] Slow response — ${duration}ms`);

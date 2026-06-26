@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     );
 
     return response;
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(

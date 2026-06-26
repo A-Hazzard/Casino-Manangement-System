@@ -18,6 +18,7 @@ import type {
   TransformedCabinet,
 } from '@shared/types';
 import { getMoneyInScale, getMoneyOutAndJackpotScale } from '@/app/api/lib/utils/reviewerScale';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 
 // ============================================================================
 // Types
@@ -89,6 +90,7 @@ export type CabinetItemData = {
   online: boolean;
   includeJackpot: boolean;
   deletedAt: Date | null;
+  meta?: { dataSync?: { source?: string; wowbettingshopid?: string } };
 };
 
 export type CabinetMappingContext = {
@@ -140,12 +142,13 @@ export async function computeAndUpdateSmibTags(
         { deletedAt: { $lt: DELETION_SOFT_CUTOFF } },
       ],
     },
-    { _id: 1, relayId: 1 }
-  ).lean<{ _id: string; relayId?: string }[]>();
+    { _id: 1, relayId: 1, 'meta.dataSync.source': 1 }
+  ).lean<{ _id: string; relayId?: string; meta?: { dataSync?: { source?: string } } }[]>();
 
   const totalForTag = activeMachinesForTag.length;
   const withRelayForTag = activeMachinesForTag.filter(
-    m => m.relayId && String(m.relayId).trim()
+    m =>
+      (m.relayId && String(m.relayId).trim()) || isWowMachine(m as Parameters<typeof isWowMachine>[0])
   ).length;
   const withoutRelayForTag = totalForTag - withRelayForTag;
 
@@ -234,7 +237,7 @@ export function buildMachinesFilter(params: CabinetsFilterParams): Record<string
     });
   } else {
     andConditions.push({
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: true } }],
+      deletedAt: { $gte: DELETION_SOFT_CUTOFF },
     });
   }
 
@@ -419,7 +422,9 @@ export function mapMachinesToCabinetData(
       ((machine.custom as unknown as { name?: string })?.name as string)?.trim() || '';
     const assetNumber = serialNumber || customName || '';
     const lastActivityDate = machine.lastActivity as Date | null;
+    // WOW machines have no SMIB/relay but are always treated as online.
     const isOnline =
+      isWowMachine(machine) ||
       context.aceEnabled ||
       (lastActivityDate &&
         new Date(lastActivityDate) > new Date(Date.now() - CABINET_ONLINE_THRESHOLD_MS));
@@ -460,6 +465,7 @@ export function mapMachinesToCabinetData(
       online: !!isOnline,
       includeJackpot: context.includeJackpotSetting,
       deletedAt: (machine as unknown as { deletedAt?: Date }).deletedAt || null,
+      meta: machine.meta,
     };
   });
 }

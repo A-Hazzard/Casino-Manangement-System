@@ -88,13 +88,13 @@ export default function FloatRequestModal({
   // ============================================================================
   const totalAmount = useMemo(() => {
     return denominations.reduce(
-      (sum, d) => sum + d.denomination * d.quantity,
+      (sum, denom) => sum + denom.denomination * denom.quantity,
       0
     );
   }, [denominations]);
 
   const isAllTouched = useMemo(
-    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    () => denomsList.every(denomValue => touchedDenominations.has(Number(denomValue))),
     [denomsList, touchedDenominations]
   );
   const isFormValid = totalAmount > 0 || isAllTouched;
@@ -215,16 +215,16 @@ export default function FloatRequestModal({
                       <div className="grid grid-cols-2 gap-2">
                         {denominations
                           .filter(denom => denom.quantity > 0)
-                          .map(d => (
+                          .map(denom => (
                             <div
-                              key={d.denomination}
+                              key={denom.denomination}
                               className="flex justify-between rounded-lg border border-violet-100 bg-white px-3 py-2 shadow-sm"
                             >
                               <span className="text-sm font-medium text-gray-600">
-                                ${d.denomination}
+                                ${denom.denomination}
                               </span>
                               <span className="text-sm font-bold text-gray-900">
-                                x{d.quantity}
+                                x{denom.quantity}
                               </span>
                             </div>
                           ))}

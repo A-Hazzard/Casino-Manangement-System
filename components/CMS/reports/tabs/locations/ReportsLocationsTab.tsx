@@ -19,6 +19,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Lightbulb } from 'lucide-react';
 
 import {
   Tabs,
@@ -582,9 +583,7 @@ export default function ReportsLocationsTab() {
             Compare performance across all casino locations
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-blue-600">
-            <span role="img" aria-label="lightbulb">
-              💡
-            </span>{' '}
+            <Lightbulb className="h-3.5 w-3.5" />
             Click any location card to view detailed information
           </p>
         </div>

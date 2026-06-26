@@ -30,7 +30,7 @@ type VaultOverviewActiveShiftsModalProps = {
   onReviewShift: (shiftId: string) => void;
   onForceCloseShift: (cashier: CashDesk) => void;
   isBlurred?: boolean;
-}
+};
 
 export default function VaultOverviewActiveShiftsModal({
   open,
@@ -123,7 +123,7 @@ export default function VaultOverviewActiveShiftsModal({
                             })}
                           </span>
                           <span className="flex items-center gap-1 font-mono text-gray-600">
-                            ${shift.balance?.toLocaleString()} Float
+                            {formatAmount(shift.balance || 0)} Float
                           </span>
                         </div>
                       </div>

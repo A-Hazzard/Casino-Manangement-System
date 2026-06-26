@@ -38,6 +38,8 @@ import {
 import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import { useRef } from 'react';
+import { formatCurrency as formatCurrencyFallback } from '@/lib/utils/formatting';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 type MemberSortOption =
   | 'name'
@@ -80,6 +82,7 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
   // State & Hooks
   // ============================================================================
   const tableRef = useRef<HTMLTableElement>(null);
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // Handlers
@@ -135,11 +138,10 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
   };
 
   const formatCurrency = (amount: number | undefined) => {
-    if (amount === undefined || amount === null) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+    const value = amount ?? 0;
+    return shouldShowCurrency()
+      ? formatAmount(value)
+      : formatCurrencyFallback(value);
   };
 
   // ============================================================================

@@ -109,6 +109,7 @@ type CollectionDataForCreate = {
   ramClearMetersIn: unknown
   ramClearMetersOut: unknown
   serialNumber: string
+  wasOnline?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -269,6 +270,7 @@ export async function buildCollectionData(
       (calculationPayload.serialNumber as string) ||
       (machineData.serialNumber as string) ||
       '',
+    wasOnline: calculationPayload.wasOnline as boolean | undefined,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

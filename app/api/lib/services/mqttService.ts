@@ -1120,7 +1120,8 @@ class MQTTService {
       await this.connect();
     }
 
-    const topic = this.buildPublishTopic(relayId);
+    // WHY: Update meters commands are published to the shared 'sas/gli/server' topic
+    const topic = 'sas/gli/server';
     const payload = JSON.stringify({
       typ: 'exp',
       rly: relayId,

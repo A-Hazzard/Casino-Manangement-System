@@ -3,6 +3,7 @@
 import { ReactElement } from 'react';
 import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ArrowLeft, X } from 'lucide-react';
 
 type MobileFormPanelProps = {
@@ -224,6 +225,7 @@ export default function CollectionReportMobileFormPanel({
                   onFormDataChange('sasEndTime', val || null)
                 }
                 isLoadingTime={isLoadingTime}
+                isWow={isWowMachine(selectedMachineData)}
               />
             )}
           </div>

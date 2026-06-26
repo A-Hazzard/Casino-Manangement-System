@@ -303,7 +303,7 @@ export async function POST(request: Request) {
       },
       logs,
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : String(error);
     logRouteError(

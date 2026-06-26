@@ -20,6 +20,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
+import { ProcessingPhaseBar } from '@/components/shared/ui/ProcessingPhaseBar';
+import type {
+  ProcessingPhase,
+  SubStepProgress,
+} from '@/components/shared/ui/ProcessingPhaseBar';
 
 type VariationsConfirmationDialogProps = {
   isOpen: boolean;
@@ -28,6 +33,10 @@ type VariationsConfirmationDialogProps = {
   isLoading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  progress?: { done: number; total: number };
+  processingPhases?: ProcessingPhase[];
+  currentServerPhase?: string;
+  subStep?: SubStepProgress | null;
 }
 
 export function VariationsConfirmationDialog({
@@ -37,6 +46,10 @@ export function VariationsConfirmationDialog({
   isLoading = false,
   onConfirm,
   onCancel,
+  progress,
+  processingPhases,
+  currentServerPhase,
+  subStep,
 }: VariationsConfirmationDialogProps) {
   // ============================================================================
   // State & Hooks
@@ -99,6 +112,38 @@ export function VariationsConfirmationDialog({
                 </p>
               </div>
             </div>
+
+            {isLoading && processingPhases && processingPhases.length > 0 && (
+              <div className="mt-6">
+                <ProcessingPhaseBar
+                  phases={processingPhases}
+                  isActive={isLoading}
+                  color="purple"
+                  serverPhase={currentServerPhase}
+                  progress={progress}
+                  subStep={subStep}
+                />
+              </div>
+            )}
+
+            {isLoading && progress && (!processingPhases || processingPhases.length === 0) && (
+              <div className="mt-6 space-y-1.5">
+                <div className="flex justify-between text-xs font-medium text-gray-600">
+                  <span>Processing…</span>
+                  <span className="tabular-nums">
+                    {progress.done} / {progress.total} machines
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div
+                    className="h-full rounded-full bg-purple-600 transition-all duration-200"
+                    style={{
+                      width: `${Math.round((progress.done / progress.total) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3">
               <Button

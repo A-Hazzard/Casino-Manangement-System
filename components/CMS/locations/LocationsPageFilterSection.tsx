@@ -15,6 +15,7 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import type { LocationFilter } from '@/lib/types/location';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { Disc3 } from 'lucide-react';
 
 type LocationsPageFilterSectionProps = {
   searchTerm: string;
@@ -31,6 +32,7 @@ const STATUS_OPTIONS = [
   { id: 'SemiSMIBs', name: 'Semi SMIB' },
   { id: 'NoSMIBLocation', name: 'No SMIB' },
   { id: 'LocalServersOnly', name: 'Local Server' },
+  { id: 'WowOnly', name: 'WOW' },
   { id: 'MembershipOnly', name: 'Membership' },
   { id: 'MissingCoordinates', name: 'Missing Coordinates' },
   { id: 'HasCoordinates', name: 'Has Coordinates' },
@@ -106,7 +108,7 @@ export default function LocationsPageFilterSection({
         <div className="hidden flex-wrap items-center gap-x-6 gap-y-2 2xl:flex">
           {/* Connection Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(0, 4).map(opt => (
+            {STATUS_OPTIONS.slice(0, 5).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
@@ -118,8 +120,9 @@ export default function LocationsPageFilterSection({
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 transition-colors hover:text-white"
+                  className="flex cursor-pointer items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-white/90 transition-colors hover:text-white"
                 >
+                  {opt.id === 'WowOnly' && <Disc3 className="h-3.5 w-3.5" />}
                   {opt.name}
                 </Label>
               </div>
@@ -130,7 +133,7 @@ export default function LocationsPageFilterSection({
 
           {/* Features Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(4, 5).map(opt => (
+            {STATUS_OPTIONS.slice(5, 6).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
@@ -154,7 +157,7 @@ export default function LocationsPageFilterSection({
 
           {/* Quality Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(5).map(opt => (
+            {STATUS_OPTIONS.slice(6).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}

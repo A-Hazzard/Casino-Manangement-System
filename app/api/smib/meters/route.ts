@@ -20,7 +20,7 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import {
@@ -39,140 +39,122 @@ import { NextRequest, NextResponse } from 'next/server';
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId
- * 3. Connect to database
- * 4. Find machine by relayId
- * 5. Check for MQTT callbacks
- * 6. Authenticate user
- * 7. Send meter request via MQTT
- * 8. Log activity
- * 9. Return success response
+ * 3. Find machine by relayId
+ * 4. Check for MQTT callbacks
+ * 5. Send meter request via MQTT
+ * 6. Log activity
+ * 7. Return success response
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const functionName = 'POST /api/smib/meters';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse request body
-    // ============================================================================
-    const { relayId } = await request.json();
-
-    // ============================================================================
-    // STEP 2: Validate relayId
-    // ============================================================================
-
-    if (!relayId) {
-      return NextResponse.json(
-        { success: false, error: 'RelayId is required' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 4: Find machine by relayId
-    // ============================================================================
-    const machine = await Machine.findOne({
-      $or: [{ relayId }, { smibBoard: relayId }],
-    });
-
-    if (!machine) {
-      return NextResponse.json(
-        { success: false, error: 'Machine not found for this relayId' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 5: Check for MQTT callbacks
-    // ============================================================================
-    const hasCallbacks = mqttService.hasCallbacksForRelayId(relayId);
-
-    if (!hasCallbacks) {
-      console.warn(
-        `No callbacks registered for relayId ${relayId} - response may be lost`
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Authenticate user
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (!currentUser || !currentUser._id || !currentUser.emailAddress) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required to request meters' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Send meter request via MQTT
-    // ============================================================================
+  return withApiAuth(request, async () => {
     try {
-      await mqttService.requestMeterData(relayId);
-    } catch {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
+      const { relayId } = await request.json();
+
+      // ============================================================================
+      // STEP 2: Validate relayId
+      // ============================================================================
+      if (!relayId) {
+        return NextResponse.json(
+          { success: false, error: 'RelayId is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Find machine by relayId
+      // ============================================================================
+      const machine = await Machine.findOne({
+        $or: [{ relayId }, { smibBoard: relayId }],
+      });
+
+      if (!machine) {
+        return NextResponse.json(
+          { success: false, error: 'Machine not found for this relayId' },
+          { status: 404 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Check for MQTT callbacks
+      // ============================================================================
+      const hasCallbacks = mqttService.hasCallbacksForRelayId(relayId);
+      if (!hasCallbacks) {
+        console.warn(
+          `No callbacks registered for relayId ${relayId} - response may be lost`
+        );
+      }
+
+      // ============================================================================
+      // STEP 5: Send meter request via MQTT
+      // ============================================================================
+      try {
+        await mqttService.requestMeterData(relayId);
+      } catch {
+        return NextResponse.json(
+          { success: false, error: 'Failed to send meter request to SMIB' },
+          { status: 500 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 6: Log activity
+      // ============================================================================
+      const currentUser = await getUserFromServer();
+      const clientIP = getClientIP(request);
+      if (currentUser) {
+        try {
+          await logActivity({
+            action: 'VIEW',
+            details: `Meter data requested from SMIB ${relayId} for machine ${machine.serialNumber || machine._id}`,
+            ipAddress: clientIP || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id as string,
+            username: currentUser.username as string,
+            metadata: {
+              userRole: (currentUser.roles as string[])?.[0] || 'user',
+              resource: 'machine',
+              resourceId: machine._id.toString(),
+              resourceName: machine.serialNumber || machine.game || machine._id,
+              relayId,
+              requestedAt: new Date().toISOString(),
+            },
+          });
+        } catch (logError) {
+          console.error('Failed to log activity:', logError);
+        }
+      }
+
+      // ============================================================================
+      // STEP 7: Return success response
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteCreate(functionName, 'POST', '/api/smib/meters', 1, user, duration);
+
+      if (duration > 1000) {
+        console.warn(`[SMIB Meters API] Completed in ${duration}ms`);
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'Meter request sent successfully',
+        relayId,
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'POST', '/api/smib/meters', errorMessage, user);
+      console.error(`[SMIB Meters API] Error after ${duration}ms:`, errorMessage);
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to send meter request to SMIB',
-        },
+        { success: false, error: errorMessage },
         { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 8: Log activity
-    // ============================================================================
-    const clientIP = getClientIP(request);
-    try {
-      await logActivity({
-        action: 'VIEW',
-        details: `Meter data requested from SMIB ${relayId} for machine ${machine.serialNumber || machine._id}`,
-        ipAddress: clientIP || undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-        userId: currentUser._id as string,
-        username: currentUser.username as string,
-        metadata: {
-          userRole: (currentUser.roles as string[])?.[0] || 'user',
-          resource: 'machine',
-          resourceId: machine._id.toString(),
-          resourceName: machine.serialNumber || machine.game || machine._id,
-          relayId,
-          requestedAt: new Date().toISOString(),
-        },
-      });
-    } catch (logError) {
-      console.error('Failed to log activity:', logError);
-    }
-
-    // ============================================================================
-    // STEP9: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteCreate(functionName, 'POST', '/api/smib/meters', 1, user, duration);
-
-    if (duration > 1000) {
-      console.warn(`[SMIB Meters API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json({
-      success: true,
-      message: 'Meter request sent successfully',
-      relayId,
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(functionName, 'POST', '/api/smib/meters', errorMessage, user);
-    console.error(`[SMIB Meters API] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }

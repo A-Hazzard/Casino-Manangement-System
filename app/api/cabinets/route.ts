@@ -19,6 +19,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import type { MachinePayload } from '@/shared/types/machines';
+import type { MachineDocument } from '@/lib/types/common';
 import {
   logRouteFetch,
   logRouteCreate,
@@ -35,6 +36,40 @@ import {
 } from '@/app/api/lib/helpers/cabinets/cabinetListOperations';
 
 const functionName = '/api/cabinets';
+
+/**
+ * Resolves a cabinet's location and verifies the current user may access it.
+ *
+ * Legacy id-scoped PUT/DELETE handlers only receive a machine id, so the
+ * machine must be loaded to derive its location before access can be checked.
+ *
+ * @param id - Machine (cabinet) id to authorize
+ * @returns `{ ok: true }` when access is granted, otherwise an error status + message
+ */
+async function authorizeCabinetById(
+  id: string
+): Promise<{ ok: boolean; status: number; error?: string }> {
+  const machine = await Machine.findOne({ _id: id }).lean<MachineDocument>();
+  if (!machine) {
+    return { ok: false, status: 404, error: 'Cabinet not found' };
+  }
+
+  const locationId = String(machine.gamingLocation || '');
+  if (!locationId) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Cabinet has no associated location',
+    };
+  }
+
+  const hasAccess = await checkUserLocationAccess(locationId);
+  if (!hasAccess) {
+    return { ok: false, status: 403, error: 'Unauthorized: Access denied' };
+  }
+
+  return { ok: true, status: 200 };
+}
 
 /**
  * GET handler for fetching cabinets
@@ -132,13 +167,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const hasAccess = await checkUserLocationAccess(locationId as string);
       if (!hasAccess) {
-        logRouteError(
-          functionName,
-          'GET',
-          '/api/cabinets',
-          'Forbidden',
-          user
-        );
+        logRouteError(functionName, 'GET', '/api/cabinets', 'Forbidden', user);
         return NextResponse.json(
           { success: false, error: 'Forbidden' },
           { status: 403 }
@@ -161,13 +190,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to fetch cabinets';
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/cabinets',
-        errorMessage,
-        user
-      );
+      logRouteError(functionName, 'GET', '/api/cabinets', errorMessage, user);
       return NextResponse.json(
         { success: false, error: errorMessage },
         { status: 500 }
@@ -232,14 +255,7 @@ export async function POST(request: NextRequest) {
 
       revalidatePath('/cabinets');
       const duration = Date.now() - startTime;
-      logRouteCreate(
-        functionName,
-        'POST',
-        '/api/cabinets',
-        1,
-        user,
-        duration
-      );
+      logRouteCreate(functionName, 'POST', '/api/cabinets', 1, user, duration);
       return NextResponse.json(
         { success: true, data: result.cabinet },
         { status: 201 }
@@ -247,13 +263,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to create cabinet';
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/cabinets',
-        errorMessage,
-        user
-      );
+      logRouteError(functionName, 'POST', '/api/cabinets', errorMessage, user);
       return NextResponse.json(
         { success: false, error: errorMessage },
         { status: 500 }
@@ -282,7 +292,25 @@ export async function PUT(request: NextRequest) {
   return withApiAuth(request, async () => {
     try {
       // ============================================================================
-      // STEP 1: Update Cabinet
+      // STEP 1: Authorize access to the target cabinet's location
+      // ============================================================================
+      const access = await authorizeCabinetById(id);
+      if (!access.ok) {
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/cabinets',
+          access.error ?? 'Access denied',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: access.error },
+          { status: access.status }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Update Cabinet
       // ============================================================================
       const data = await request.json();
       const updated = await Machine.findOneAndUpdate(
@@ -292,25 +320,12 @@ export async function PUT(request: NextRequest) {
       );
       revalidatePath('/cabinets');
       const duration = Date.now() - startTime;
-      logRouteUpdate(
-        functionName,
-        'PUT',
-        '/api/cabinets',
-        1,
-        user,
-        duration
-      );
+      logRouteUpdate(functionName, 'PUT', '/api/cabinets', 1, user, duration);
       return NextResponse.json({ success: true, data: updated });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to update cabinet';
-      logRouteError(
-        functionName,
-        'PUT',
-        '/api/cabinets',
-        errorMessage,
-        user
-      );
+      logRouteError(functionName, 'PUT', '/api/cabinets', errorMessage, user);
       return NextResponse.json(
         { success: false, error: errorMessage },
         { status: 500 }
@@ -329,13 +344,7 @@ export async function DELETE(request: NextRequest) {
 
   const id = request.nextUrl.searchParams.get('id');
   if (!id) {
-    logRouteError(
-      functionName,
-      'DELETE',
-      '/api/cabinets',
-      'ID required',
-      user
-    );
+    logRouteError(functionName, 'DELETE', '/api/cabinets', 'ID required', user);
     return NextResponse.json(
       { success: false, error: 'ID required' },
       { status: 400 }
@@ -345,7 +354,25 @@ export async function DELETE(request: NextRequest) {
   return withApiAuth(request, async () => {
     try {
       // ============================================================================
-      // STEP 1: Delete Cabinet
+      // STEP 1: Authorize access to the target cabinet's location
+      // ============================================================================
+      const access = await authorizeCabinetById(id);
+      if (!access.ok) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/cabinets',
+          access.error ?? 'Access denied',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: access.error },
+          { status: access.status }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Delete Cabinet
       // ============================================================================
       await Machine.findOneAndUpdate(
         { _id: id },

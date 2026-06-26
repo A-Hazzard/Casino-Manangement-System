@@ -7,12 +7,12 @@ globs: **/*
 
 ## 📚 Essential Documentation References
 
-- **Collection Report System:** [Backend](../Documentation/backend/collection-report.md) | [Frontend](../Documentation/frontend/collection-report.md)
-- **Vault System:** [Backend](../Documentation/backend/vault/README.md) | [Frontend](../Documentation/frontend/vault/README.md)
-- **Financial Metrics:** [Financial Metrics Guide](../Documentation/financial-metrics-guide.md)
-- **Database:** [Database Models & Relationships](../Documentation/database-models.md)
-- **Type System:** [TypeScript Type Safety Rules](../Documentation/typescript-type-safety-rules.md)
-- **Engineering Guidelines:** [Engineering Guidelines](../Documentation/ENGINEERING_GUIDELINES.md)
+- **Collection Report System:** [Backend](../Documentation/collection-reports/api/collections-api.md) | [Frontend](../Documentation/collection-reports/frontend/collection-report-page.md)
+- **Vault System:** [Backend](../Documentation/backend/api/vault-api.md) | [Frontend](../Documentation/frontend/pages/vault-page.md)
+- **Financial Metrics:** [Financial System Pillar](../Documentation/pillars/financial-system.md)
+- **Database:** [Database Models & Relationships](../Documentation/backend/database-models.md)
+- **Type System:** [TypeScript Type Safety Rules](./type-safety.md)
+- **Engineering Guidelines:** [Engineering Guide](../Documentation/pillars/engineering-guide.md)
 
 ## 🏢 Core Architecture
 

@@ -1,7 +1,7 @@
 # Collection Reports System - Critical Guidelines for Cursor AI
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** December 22nd, 2025  
+**Last Updated:** June 25, 2026  
 **Version:** 2.2.0
 
 ---
@@ -27,8 +27,8 @@ This document provides critical guidelines for understanding, debugging, and mod
 ## Related Documentation
 
 - **Mobile Collection Modal Context**: See `.cursor/mobile-collection-modal-context.md` for detailed mobile modal state management, debugging, and common issues
-- **Collection Report Frontend Docs**: See `Documentation/frontend/collection-report.md` for feature documentation
-- **Collection Report Backend Docs**: See `Documentation/backend/collection-report.md` for API documentation
+- **Collection Report Frontend Docs**: See `Documentation/collection-reports/frontend/collection-report-page.md` for feature documentation
+- **Collection Report Backend Docs**: See `Documentation/collection-reports/api/collections-api.md` for API documentation
 
 ## Membership Filtering Compatibility
 
@@ -1070,6 +1070,6 @@ This document captures all critical knowledge about the Collection Reports syste
 2. Run investigation scripts
 3. Review the "Common Bugs to Avoid" section
 4. Consult the API endpoints reference
-5. Read the complete documentation in `Documentation/backend/collection-report.md` and `Documentation/frontend/collection-report.md`
+5. Read the complete documentation in `Documentation/collection-reports/api/collections-api.md` and `Documentation/collection-reports/frontend/collection-report-page.md`
 
 All guidelines verified through production debugging on November 4th, 2025. ✅

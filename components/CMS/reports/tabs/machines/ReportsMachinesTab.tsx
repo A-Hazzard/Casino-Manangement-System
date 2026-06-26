@@ -783,7 +783,8 @@ export default function ReportsMachinesTab() {
 
   // Batch loading effect for Overview
   useEffect(() => {
-    if (overviewLoading || !activeMetricsFilter || searchTerm.trim()) return;
+    if (overviewLoading || !activeMetricsFilter || debouncedSearchTerm.trim())
+      return;
 
     const currentBatch = calculateBatchNumber(overviewCurrentPage);
     const isLastPageOfBatch = (overviewCurrentPage + 1) % PAGES_PER_BATCH === 0;
@@ -796,7 +797,7 @@ export default function ReportsMachinesTab() {
       const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
       fetchOverviewMachines(
         batchToLoad,
-        searchTerm,
+        debouncedSearchTerm,
         overviewSelectedLocation,
         onlineStatusFilter
       );
@@ -806,7 +807,7 @@ export default function ReportsMachinesTab() {
     overviewCurrentPage,
     overviewLoading,
     activeMetricsFilter,
-    searchTerm,
+    debouncedSearchTerm,
     overviewLoadedBatches,
     fetchOverviewMachines,
     calculateBatchNumber,

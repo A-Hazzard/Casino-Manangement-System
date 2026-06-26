@@ -579,13 +579,14 @@ export function useMetersTabData({
   // ============================================================================
   // Computed
   // ============================================================================
-  // Get items for current page from filtered data
+  // Get items for current page from filtered data.
+  // filteredMetersData is the full accumulated list across batches, so the
+  // page offset is simply currentPage * itemsPerPage.
   const paginatedMetersData = useMemo(() => {
-    const positionInBatch = (currentPage % pagesPerBatch) * itemsPerPage;
-    const startIndex = positionInBatch;
+    const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredMetersData.slice(startIndex, endIndex);
-  }, [filteredMetersData, currentPage, itemsPerPage, pagesPerBatch]);
+  }, [filteredMetersData, currentPage, itemsPerPage]);
 
   // Calculate total pages based on filtered data
   const totalPages = useMemo(() => {

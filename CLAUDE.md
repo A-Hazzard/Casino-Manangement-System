@@ -59,6 +59,10 @@ The `reviewer` role sees a scaled-down version of all currency metrics to protec
 - **Rule**: If `reviewer` role is missing or `multiplier` is null/0, `scale = 1`.
 - Apply AFTER currency conversion, via `getReviewerScale` from `app/api/lib/utils/reviewerScale.ts` — never inline.
 
+### 6. Command & Search Execution Constraints (CRITICAL)
+
+- **Do NOT scan `.next` or `node_modules` folders** when searching for files, using grep/Select-String, or running shell commands. Always exclude these folders explicitly (e.g. `-Exclude *.next*,*node_modules*`) to prevent massive search loops and terminal output flood.
+
 ---
 
 ## 💰 Financial & Collection Systems
@@ -139,7 +143,7 @@ Skill: `api-route-structure`. Reference route: `app/api/reports/meters/route.ts`
 
 - **ID Pattern**: Use **String IDs** for everything (`_id: string`, NOT `ObjectId`).
 - **Query Tools**: Always use `findOne({ _id: id })`. **NEVER use `findById`** or `findByIdAndUpdate`.
-- **Deleted State**: Use `$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2026-01-01') } }]` for legacy vs active records.
+- **Deleted State**: Use `$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }]` for legacy vs active records.
 - **Models**: Always use imported Mongoose models from `app/api/lib/models/`. Never use `db.collection()`. See [`app/api/lib/models/README.md`](app/api/lib/models/README.md) for the full catalog.
 - **Licencee filtering**: Always apply via `getUserLocationFilter` from `licenceeFilter.ts`; support both `licencee` and `licencee` spellings in query params.
 

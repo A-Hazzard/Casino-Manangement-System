@@ -17,7 +17,7 @@ import {
   getCurrencyFromQuery,
   shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currency/helper';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import {
   logRouteFetch,
@@ -76,22 +76,18 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/members/[id]/sessions';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { pathname } = request.nextUrl;
-    const parts = pathname.split('/');
-    const id = parts[parts.length - 2]; // Extract [id] from /api/members/[id]/sessions
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse route parameters
+      // ============================================================================
+      const { pathname } = request.nextUrl;
+      const parts = pathname.split('/');
+      const id = parts[parts.length - 2]; // Extract [id] from /api/members/[id]/sessions
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 3: Build query for member sessions
-    // ============================================================================
+      // ============================================================================
+      // STEP 2: Build query for member sessions
+      // ============================================================================
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -489,5 +485,6 @@ export async function GET(request: NextRequest) {
       { success: false, error: errorMessage },
       { status: 500 }
     );
-  }
+    }
+  });
 }

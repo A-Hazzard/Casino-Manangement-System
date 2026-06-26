@@ -81,11 +81,17 @@ export async function getAllCollectionReportsWithMachineCounts(
   // Add search filter for fields available before the lookup stage
   if (search && searchType) {
     if (searchType === 'locationReportId') {
-      matchCriteria.locationReportId = { $regex: search, $options: 'i' };
+      matchCriteria.$or = [
+        { locationReportId: { $regex: search, $options: 'i' } },
+        { _id: { $regex: search, $options: 'i' } },
+      ];
     } else if (searchType === 'collectorId') {
       matchCriteria.collector = { $regex: search, $options: 'i' };
     } else if (searchType === 'locationId') {
-      matchCriteria.location = { $regex: search, $options: 'i' };
+      matchCriteria.$or = [
+        { location: { $regex: search, $options: 'i' } },
+        { locationReportId: { $regex: search, $options: 'i' } },
+      ];
     } else if (searchType === 'location') {
       // locationName is a required denormalized field — filter before lookup
       matchCriteria.locationName = { $regex: search, $options: 'i' };
@@ -231,7 +237,7 @@ export async function getAllCollectionReportsWithMachineCounts(
     ),
   ];
 
-  // Batch query 1: Get collection counts and gross values for all reports
+  // Batch query 1: Get collection counts, gross values, and timeframe for all reports
   const collectionAggregation = await Collections.aggregate([
     {
       $match: {
@@ -242,6 +248,8 @@ export async function getAllCollectionReportsWithMachineCounts(
       $group: {
         _id: '$locationReportId',
         collectedMachines: { $sum: 1 },
+        timeframeStart: { $min: '$timestamp' },
+        timeframeEnd: { $max: '$timestamp' },
         calculatedGross: {
           // Use stored movement.gross (denomination-adjusted) to match the detail page.
           // Fall back to raw delta for legacy documents that pre-date the movement.gross field.
@@ -301,12 +309,44 @@ export async function getAllCollectionReportsWithMachineCounts(
     machineCounts.map(item => [item._id, item.totalMachines])
   );
 
+  // Format a raw timestamp value (Date, string, or {$date}) to locale string.
+  const formatTs = (
+    ts: unknown,
+    opts?: Intl.DateTimeFormatOptions
+  ): string | undefined => {
+    if (!ts) return undefined;
+    let date: Date | null = null;
+    if (ts instanceof Date) {
+      date = ts;
+    } else if (typeof ts === 'string') {
+      date = new Date(ts);
+    } else if (
+      typeof ts === 'object' &&
+      '$date' in (ts as Record<string, unknown>)
+    ) {
+      date = new Date((ts as { $date: string }).$date);
+    }
+    if (!date || isNaN(date.getTime())) return undefined;
+    return date.toLocaleString(
+      undefined,
+      opts ?? {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }
+    );
+  };
+
   // Define type for the enriched report from aggregation
   type EnrichedCollectionReport = {
     _id: string;
     locationReportId?: string;
     locationName?: string;
     location?: string | { _id?: string; id?: string };
+    createdAt?: Date | string;
     locationDetails?: {
       _id?: string;
       id?: string;
@@ -346,6 +386,8 @@ export async function getAllCollectionReportsWithMachineCounts(
       collectedMachines: 0,
       calculatedGross: 0,
       calculatedSasGross: 0,
+      timeframeStart: undefined as Date | undefined,
+      timeframeEnd: undefined as Date | undefined,
     };
 
     // Get location ID for machine count lookup
@@ -574,6 +616,21 @@ export async function getAllCollectionReportsWithMachineCounts(
         }
         return '-';
       })(),
+      createdAt: formatTs(doc.createdAt),
+      timeframeStart: formatTs(collectionData.timeframeStart, {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      timeframeEnd: formatTs(collectionData.timeframeEnd, {
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
       noSMIBLocation: (doc.noSMIBLocation as boolean) || false,
       isLocalServer: (doc.isLocalServer as boolean) || false,
       deletedAt: (doc.deletedAt as string | null) || null,

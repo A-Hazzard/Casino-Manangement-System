@@ -26,6 +26,7 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   Fragment,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -315,7 +316,7 @@ export function SessionsEventsPageContent({
             }
           }
         });
-      } catch (err: unknown) {
+      } catch (err) {
         if (lastRequestIdRef.current !== requestId) return;
         if ((err as Error).name !== 'AbortError' && !axios.isCancel(err)) {
           console.error('[SessionEvents] Failed to fetch events:', err);
@@ -425,7 +426,7 @@ export function SessionsEventsPageContent({
   };
 
   const handleCommandKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: KeyboardEvent<HTMLInputElement>
   ) => {
     if (e.key === 'Enter') handleCommandSeek();
   };

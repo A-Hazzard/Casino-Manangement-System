@@ -58,8 +58,8 @@ export default function CashierDashboardPageContent() {
   // State & Hooks
   // ============================================================================
   const { user } = useUserStore();
-  const isAdminOrDev = user?.roles?.some(r =>
-    ['admin', 'developer'].includes(r.toLowerCase())
+  const isAdminOrDev = user?.roles?.some(role =>
+    ['admin', 'developer'].includes(role.toLowerCase())
   );
 
   const {
@@ -110,15 +110,15 @@ export default function CashierDashboardPageContent() {
         const data = await res.json();
         if (data.success) {
           const mapped: CashDesk[] = data.shifts.map(
-            (s: Record<string, unknown>) => ({
-              _id: String(s._id || ''),
-              locationId: String(s.locationId || ''),
-              name: String(s.cashierName || s.cashierUsername || 'Unknown'),
-              cashierName: s.cashierName ? String(s.cashierName) : undefined,
-              balance: Number(s.currentBalance || s.openingBalance || 0),
-              lastAudit: String(s.openedAt || s.createdAt || ''),
-              status: (s.status as CashDesk['status']) || 'active',
-              locationName: s.locationName ? String(s.locationName) : undefined,
+            (shift: Record<string, unknown>) => ({
+              _id: String(shift._id || ''),
+              locationId: String(shift.locationId || ''),
+              name: String(shift.cashierName || shift.cashierUsername || 'Unknown'),
+              cashierName: shift.cashierName ? String(shift.cashierName) : undefined,
+              balance: Number(shift.currentBalance || shift.openingBalance || 0),
+              lastAudit: String(shift.openedAt || shift.createdAt || ''),
+              status: (shift.status as CashDesk['status']) || 'active',
+              locationName: shift.locationName ? String(shift.locationName) : undefined,
             })
           );
           setGlobalCashDesks(mapped);
@@ -169,7 +169,7 @@ export default function CashierDashboardPageContent() {
    */
   const handleShiftOpen = async (denominations: Denomination[]) => {
     const totalAmount = denominations.reduce(
-      (sum, d) => sum + d.denomination * d.quantity,
+      (sum, denom) => sum + denom.denomination * denom.quantity,
       0
     );
     const success = await openShift(denominations, totalAmount);
@@ -516,21 +516,21 @@ export default function CashierDashboardPageContent() {
             onFloatClose={() => setShowFloatRequest(false)}
             onOpenSubmit={handleShiftOpen}
             onCloseSubmit={handleShiftClose}
-            onTicketSubmit={(t: string, a: number, pAt?: Date) =>
+            onTicketSubmit={(ticketNumber: string, amount: number, printedAt?: Date) =>
               handlePayout({
                 cashierShiftId: shift?._id || '',
                 type: 'ticket',
-                amount: a,
-                ticketNumber: t,
-                printedAt: pAt?.toISOString(),
+                amount: amount,
+                ticketNumber: ticketNumber,
+                printedAt: printedAt?.toISOString(),
               })
             }
-            onHandPaySubmit={(a: number, mid: string) =>
+            onHandPaySubmit={(amount: number, machineId: string) =>
               handlePayout({
                 cashierShiftId: shift?._id || '',
                 type: 'hand_pay',
-                amount: a,
-                machineId: mid,
+                amount: amount,
+                machineId: machineId,
               })
             }
             onFloatSubmit={handleFloatRequestSubmit}
@@ -603,8 +603,8 @@ type ShiftModalsProps = {
     physicalCount: number,
     denominations: Denomination[]
   ) => Promise<void>;
-  onTicketSubmit: (t: string, a: number, pAt?: Date) => Promise<void>;
-  onHandPaySubmit: (a: number, mid: string) => Promise<void>;
+  onTicketSubmit: (ticketNumber: string, amount: number, printedAt?: Date) => Promise<void>;
+  onHandPaySubmit: (amount: number, machineId: string) => Promise<void>;
   onFloatSubmit: (
     data: import('./shifts/FloatRequestModal').FloatRequestData
   ) => Promise<void>;

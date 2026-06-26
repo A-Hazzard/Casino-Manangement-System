@@ -24,6 +24,7 @@ import type {
   LicenceeDocument,
 } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatDistanceToNow } from 'date-fns';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
@@ -138,15 +139,20 @@ export async function getMachineStats(
   ]).exec();
   const totalCount = totalCountResult[0]?.total || 0;
 
-  // Get online machines count (machines with valid relayId AND (lastActivity >= 3 min ago OR aceEnabled))
+  // Get online machines count (WOW always online, otherwise relayId + recent activity or aceEnabled)
   const onlineCountResult = await Machine.aggregate([
     ...aggregationPipeline,
     {
       $match: {
-        relayId: { $exists: true, $nin: [null, ''] },
         $or: [
-          { lastActivity: { $exists: true, $gte: threeMinutesAgo } },
-          { 'locationDetails.aceEnabled': true },
+          { 'meta.dataSync.source': 'wow' },
+          {
+            relayId: { $exists: true, $nin: [null, ''] },
+            $or: [
+              { lastActivity: { $exists: true, $gte: threeMinutesAgo } },
+              { 'locationDetails.aceEnabled': true },
+            ],
+          },
         ],
       },
     },
@@ -658,6 +664,7 @@ export async function getOverviewMachines(
         relayId: 1,
         'custom.name': 1,
         gamingLocation: 1,
+        meta: 1,
         game: 1,
         manuf: 1,
         manufacturer: 1,
@@ -712,11 +719,12 @@ export async function getOverviewMachines(
       machine.relayId && String(machine.relayId).trim().length > 0
     );
     const isOnline =
-      hasRelay &&
-      !!(
-        machine.aceEnabled ||
-        (lastActivity && lastActivity > threeMinutesAgo)
-      );
+      isWowMachine(machine) ||
+      (hasRelay &&
+        !!(
+          machine.aceEnabled ||
+          (lastActivity && lastActivity > threeMinutesAgo)
+        ));
 
     let offlineTimeLabel: string | undefined = undefined;
     let actualOfflineTime: string | undefined = undefined;
@@ -864,6 +872,7 @@ export async function getAllMachines(
   }
 
   const searchTerm = searchParams.get('search');
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
   const machineMatchStage: Record<string, unknown> = {
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
@@ -999,6 +1008,7 @@ export async function getAllMachines(
         relayId: 1,
         'custom.name': 1,
         gamingLocation: 1,
+        meta: 1,
         game: 1,
         manuf: 1,
         manufacturer: 1,
@@ -1030,7 +1040,6 @@ export async function getAllMachines(
 
   // Build licencee jackpot settings map
   const licenceeJackpotMap = await buildLicenceeJackpotMap();
-  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
@@ -1070,11 +1079,12 @@ export async function getAllMachines(
       machine.relayId && String(machine.relayId).trim().length > 0
     );
     const isOnline =
-      hasRelay &&
-      !!(
-        machine.aceEnabled ||
-        (lastActivity && lastActivity > threeMinutesAgo)
-      );
+      isWowMachine(machine) ||
+      (hasRelay &&
+        !!(
+          machine.aceEnabled ||
+          (lastActivity && lastActivity > threeMinutesAgo)
+        ));
 
     return {
       machineId: (machine._id as string).toString(),
@@ -1373,6 +1383,7 @@ export async function getOfflineMachines(
         'custom.name': 1,
         'Custom.name': 1,
         gamingLocation: 1,
+        meta: 1,
         game: 1,
         manuf: 1,
         manufacturer: 1,
@@ -1489,11 +1500,12 @@ export async function getOfflineMachines(
       machine.relayId && String(machine.relayId).trim().length > 0
     );
     const isOnline =
-      hasRelay &&
-      !!(
-        machine.aceEnabled ||
-        (lastActivity && lastActivity > threeMinutesAgo)
-      );
+      isWowMachine(machine) ||
+      (hasRelay &&
+        !!(
+          machine.aceEnabled ||
+          (lastActivity && lastActivity > threeMinutesAgo)
+        ));
 
     let offlineTimeLabel: string | undefined = undefined;
     let actualOfflineTime: string | undefined = undefined;

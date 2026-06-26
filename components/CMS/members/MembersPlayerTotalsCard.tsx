@@ -59,15 +59,15 @@ export default function MembersPlayerTotalsCard({
   // Computed
   // ============================================================================
   const totalWonLoss = (member.sessions || []).reduce(
-    (acc, s) => acc + (s.won || 0) - (s.bet || 0),
+    (acc, session) => acc + (session.won || 0) - (session.bet || 0),
     0
   );
   const totalBet = (member.sessions || []).reduce(
-    (acc, s) => acc + (s.bet || 0),
+    (acc, session) => acc + (session.bet || 0),
     0
   );
   const totalGamesPlayed = (member.sessions || []).reduce(
-    (acc, s) => acc + (s.gamesPlayed || 0),
+    (acc, session) => acc + (session.gamesPlayed || 0),
     0
   );
   const wonLossColor = totalWonLoss >= 0 ? 'text-green-600' : 'text-red-600';

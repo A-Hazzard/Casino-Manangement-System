@@ -93,10 +93,7 @@ export function filterMetersData(
     const itemRecord = item as Record<string, unknown>;
     const serialNumber =
       (itemRecord.serialNumber as string)?.toLowerCase() || '';
-    const customName =
-      (
-        (itemRecord.custom as Record<string, unknown>)?.name as string
-      )?.toLowerCase() || '';
+    const customName = (itemRecord.customName as string)?.toLowerCase() || '';
 
     const machineIdMatch = machineId.includes(searchLower);
     const locationMatch = location.includes(searchLower);
@@ -142,7 +139,7 @@ export function calculateTopMachines(
         locationId: string;
         game?: string;
         serialNumber?: string;
-        custom?: Record<string, unknown>;
+        customName?: string;
       }
     >();
 
@@ -161,7 +158,7 @@ export function calculateTopMachines(
           locationId: item.locationId,
           game: item.game,
           serialNumber: itemRecord.serialNumber as string | undefined,
-          custom: itemRecord.custom as Record<string, unknown> | undefined,
+          customName: itemRecord.customName as string | undefined,
         });
       }
     });
@@ -173,10 +170,7 @@ export function calculateTopMachines(
         const serialNumber = item.serialNumber?.trim() || '';
         const hasSerialNumber = serialNumber !== '';
 
-        const customName = (item.custom as Record<string, unknown>)?.name as
-          | string
-          | undefined;
-        const customNameTrimmed = customName?.trim() || '';
+        const customNameTrimmed = item.customName?.trim() || '';
         const hasCustomName = customNameTrimmed !== '';
 
         const mainIdentifier = hasSerialNumber

@@ -250,6 +250,7 @@ export async function GET(request: NextRequest) {
         sasMeters: 1,
         assetStatus: 1,
         deletedAt: 1,
+        'meta.dataSync.source': 1,
       }).lean<GamingMachine[]>();
 
       if (!machines.length) {

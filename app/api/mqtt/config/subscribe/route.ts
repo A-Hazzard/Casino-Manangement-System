@@ -62,10 +62,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[MQTT Config Subscribe GET API] Establishing SSE connection for relayId: ${relayId}`
-    );
-
     // ============================================================================
     // STEP 2: Set up SSE headers
     // ============================================================================
@@ -166,19 +162,12 @@ export async function GET(request: NextRequest) {
         // STEP 5: Handle client disconnect and cleanup
         // ============================================================================
         const handleDisconnect = () => {
-          console.log(
-            `[MQTT Config Subscribe GET API] Client disconnected for relayId: ${relayId}`
-          );
           isClosed = true;
           mqttService.unsubscribeCallback(relayId, handleConfigMessage);
           try {
             controller.close();
-          } catch (closeError) {
+          } catch {
             // Controller might already be closed
-            console.log(
-              `[MQTT Config Subscribe GET API] Controller already closed:`,
-              closeError
-            );
           }
         };
 
@@ -216,9 +205,6 @@ export async function GET(request: NextRequest) {
         });
       },
       cancel() {
-        console.log(
-          `[MQTT Config Subscribe GET API] SSE stream cancelled for relayId: ${relayId}`
-        );
         // Fallback cleanup when stream is cancelled
         mqttService.unsubscribeFromConfig(relayId);
       },
@@ -235,9 +221,6 @@ export async function GET(request: NextRequest) {
       1,
       user,
       duration
-    );
-    console.log(
-      `[MQTT Config Subscribe GET API] SSE connection established for relayId: ${relayId} after ${duration}ms.`
     );
     return new Response(stream, { headers });
   } catch (error) {

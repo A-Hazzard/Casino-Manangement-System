@@ -146,12 +146,14 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {locations.map(loc => {
+            {locations.map((loc, locationIndex) => {
               const location = loc;
               return (
                 <TableRow
                   key={String(
-                    location.location || location._id || Math.random()
+                    location.location ||
+                      location._id ||
+                      `location-${locationIndex}`
                   )}
                   className="hover:bg-muted"
                 >

@@ -18,7 +18,10 @@ import {
   updateCollectionReport,
 } from '@/app/api/lib/helpers/collectionReport/operations';
 import { propagateCRDeletionForward } from '@/app/api/lib/helpers/collectionReport/deletionPropagation';
-import { logCRPatchActivity, logCRDeletionActivity } from '@/app/api/lib/helpers/collectionReport/crActivityLogger';
+import {
+  logCRPatchActivity,
+  logCRDeletionActivity,
+} from '@/app/api/lib/helpers/collectionReport/crActivityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
@@ -28,10 +31,13 @@ import {
   logRouteUpdate,
   logRouteDelete,
   logRouteError,
+  logRouteRequest,
+  logRoutePhase,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import { createSseResponse } from '@/app/api/lib/utils/sseStream';
 import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -60,12 +66,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now();
   const functionName = 'GET /api/collection-reports/[reportId]';
   const user = extractUserFromRequest(request);
+  logRouteRequest(functionName, 'GET', request.nextUrl.pathname, user);
 
   try {
     // ============================================================================
     // STEP 1: Connect to the database
     // ============================================================================
     await connectDB();
+    logRoutePhase(functionName, 'db connected', Date.now() - startTime);
 
     // ============================================================================
     // STEP 2: Parse reportId from URL
@@ -154,9 +162,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 6: Fetch enriched report data using helper
     // ============================================================================
+    logRoutePhase(
+      functionName,
+      'enriching report data — start',
+      Date.now() - startTime
+    );
     const reportData = await getCollectionReportById(
       (report.locationReportId as string) || reportId,
-      currentUser as Parameters<typeof getCollectionReportById>[1]
+      currentUser as Parameters<typeof getCollectionReportById>[1],
+      report
+    );
+    logRoutePhase(
+      functionName,
+      'enriching report data — done',
+      Date.now() - startTime
     );
 
     if (!reportData) {
@@ -219,7 +238,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
  * 6. Log activity
  * 7. Return success response
  */
-export async function PATCH(request: NextRequest): Promise<NextResponse> {
+export async function PATCH(
+  request: NextRequest
+): Promise<NextResponse | Response> {
   const startTime = Date.now();
   const functionName = 'PATCH /api/collection-reports/[reportId]';
   const user = extractUserFromRequest(request);
@@ -273,56 +294,106 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // ============================================================================
+    // STEP 3.5: Verify user has access to the report's location
+    // ============================================================================
+    if (existingReport.location) {
+      const hasAccess = await checkUserLocationAccess(existingReport.location);
+      if (!hasAccess) {
+        logRouteError(
+          functionName,
+          'PATCH',
+          '/api/collection-reports/[reportId]',
+          'Unauthorized: location access denied',
+          user
+        );
+        return NextResponse.json(
+          {
+            message:
+              "Unauthorized: You do not have access to this collection report's location",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const resolvedReportId = existingReport.locationReportId || reportId;
 
     // ============================================================================
-    // STEP 4: Fetch associated collections to track machine list changes
+    // STEP 4–7: Stream SSE phases while updating the report
     // ============================================================================
-    const existingCollections = await Collections.find({
-      locationReportId: resolvedReportId,
-    }).lean<CollectionDocument[]>();
+    const ipAddress = getClientIP(request) || undefined;
+    const userAgent = request.headers.get('user-agent');
 
-    // ============================================================================
-    // STEP 5: Update using specialized helper
-    // ============================================================================
-    const updateResult = await updateCollectionReport(resolvedReportId, body);
-
-    if (!updateResult.success) {
-      return NextResponse.json(
-        { message: updateResult.error || 'Failed to update collection report' },
-        { status: 500 }
+    return createSseResponse(async send => {
+      // Fetch existing collections for activity logging
+      send({ type: 'phase', phase: 'fetching' });
+      logRoutePhase(
+        functionName,
+        'fetching existing collections',
+        Date.now() - startTime
       );
-    }
+      const existingCollections = await Collections.find({
+        locationReportId: resolvedReportId,
+      }).lean<CollectionDocument[]>();
 
-    // ============================================================================
-    // STEP 6: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      await logCRPatchActivity({
-        existingReport,
-        existingCollections,
-        body,
+      // Update — helper emits saving / recalculating / variation
+      logRoutePhase(
+        functionName,
+        'updating report — start',
+        Date.now() - startTime
+      );
+      const updateResult = await updateCollectionReport(
         resolvedReportId,
-        ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get('user-agent'),
-        currentUser: { _id: currentUser._id, emailAddress: currentUser.emailAddress },
-      });
-    }
+        body,
+        phase => send({ type: 'phase', phase }),
+        (phase, done, total, machineName) =>
+          send({ type: 'progress', phase, done, total, machineName })
+      );
 
-    // ============================================================================
-    // STEP 7: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      '/api/collection-reports/[reportId]',
-      1,
-      user,
-      duration
-    );
-    return NextResponse.json({ success: true, data: updateResult.data });
+      if (!updateResult.success) {
+        send({
+          type: 'error',
+          message: updateResult.error || 'Failed to update collection report',
+        });
+        return;
+      }
+      logRoutePhase(
+        functionName,
+        'updating report — done',
+        Date.now() - startTime
+      );
+
+      // Log activity
+      send({ type: 'phase', phase: 'activity' });
+      logRoutePhase(functionName, 'recording activity', Date.now() - startTime);
+      const currentUser = await getUserFromServer();
+      if (currentUser && currentUser.emailAddress) {
+        await logCRPatchActivity({
+          existingReport,
+          existingCollections,
+          body,
+          resolvedReportId,
+          ipAddress,
+          userAgent,
+          currentUser: {
+            _id: currentUser._id,
+            emailAddress: currentUser.emailAddress,
+          },
+        });
+      }
+
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/[reportId]',
+        1,
+        user,
+        duration
+      );
+      send({ type: 'done', data: { success: true, data: updateResult.data } });
+    });
   } catch (error: unknown) {
     console.error(`[PATCH /api/collection-reports/[reportId]] Error:`, error);
     const errorMessage =
@@ -359,7 +430,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
  * 10. Log activity
  * 11. Return success response
  */
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
+export async function DELETE(
+  request: NextRequest
+): Promise<NextResponse | Response> {
   const startTime = Date.now();
   const functionName = 'DELETE /api/collection-reports/[reportId]';
   const user = extractUserFromRequest(request);
@@ -392,7 +465,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // STEP 2.5: Role check
     // ============================================================================
     const currentUser = await getUserFromServer();
-    const userRoles = ((currentUser as Record<string, unknown>)?.roles || []) as string[];
+    const userRoles = ((currentUser as Record<string, unknown>)?.roles ||
+      []) as string[];
     const deleteRoles = ['developer', 'owner', 'admin', 'location admin'];
     if (!deleteRoles.some(role => userRoles.includes(role))) {
       return NextResponse.json(
@@ -425,91 +499,164 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // ============================================================================
+    // STEP 3.5: Verify user has access to the report's location
+    // ============================================================================
+    if (existingReport.location) {
+      const hasAccess = await checkUserLocationAccess(existingReport.location);
+      if (!hasAccess) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/collection-reports/[reportId]',
+          'Unauthorized: location access denied',
+          user
+        );
+        return NextResponse.json(
+          {
+            message:
+              "Unauthorized: You do not have access to this collection report's location",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const resolvedReportId = existingReport.locationReportId || reportId;
 
     // ============================================================================
-    // STEP 4: Fetch associated collections
+    // STEP 4–11: Stream SSE phases while deleting the report
     // ============================================================================
-    const associatedCollections = await Collections.find({
-      locationReportId: resolvedReportId,
-    }).lean<CollectionDocument[]>();
-    console.log(
-      `[DELETE] Found ${associatedCollections.length} collections for report ${resolvedReportId}`
-    );
+    const ipAddress = getClientIP(request) || undefined;
+    const userAgent = request.headers.get('user-agent');
 
-    // ============================================================================
-    // STEP 7: Delete manual meters per collection
-    // ============================================================================
-    const deleteMetersResult = await deleteManualMetersPerCollection(
-      resolvedReportId
-    );
-    if (!deleteMetersResult.success) {
-      return NextResponse.json(
-        {
-          message:
-            deleteMetersResult.error || 'Failed to delete manual meters',
-        },
-        { status: 500 }
+    return createSseResponse(async send => {
+      // Fetch collections
+      send({ type: 'phase', phase: 'fetching' });
+      logRoutePhase(
+        functionName,
+        'fetching collections',
+        Date.now() - startTime
       );
-    }
-
-    // ============================================================================
-    // STEP 8: Delete associated collections
-    // ============================================================================
-    const result = await Collections.deleteMany({ locationReportId: resolvedReportId });
-    if (result.deletedCount === 0) {
-      console.warn(`[DELETE] No collections deleted for report ${resolvedReportId}`);
-    }
-
-    // ============================================================================
-    // STEP 9: Delete collection report
-    // ============================================================================
-    const deletedReport = await CollectionReport.findOneAndDelete({
-      _id: existingReport._id,
-    });
-    if (!deletedReport) {
-      return NextResponse.json(
-        {
-          message: 'Failed to delete collection report',
-        },
-        { status: 500 }
+      const associatedCollections = await Collections.find({
+        locationReportId: resolvedReportId,
+      }).lean<CollectionDocument[]>();
+      logRoutePhase(
+        functionName,
+        `found ${associatedCollections.length} collections`,
+        Date.now() - startTime
       );
-    }
 
-    // ============================================================================
-    // STEP 9.5: Propagate deletion forward and recalculate machines
-    // ============================================================================
-    await propagateCRDeletionForward(associatedCollections);
+      // Remove meter records
+      send({ type: 'phase', phase: 'meters' });
+      logRoutePhase(
+        functionName,
+        'removing meter records',
+        Date.now() - startTime
+      );
+      const deleteMetersResult =
+        await deleteManualMetersPerCollection(resolvedReportId);
+      if (!deleteMetersResult.success) {
+        send({
+          type: 'error',
+          message: deleteMetersResult.error || 'Failed to delete manual meters',
+        });
+        return;
+      }
+      logRoutePhase(
+        functionName,
+        'meter records removed',
+        Date.now() - startTime
+      );
 
-    // ============================================================================
-    // STEP 10: Log activity
-    // ============================================================================
-    if (currentUser) {
-      await logCRDeletionActivity({
-        existingReport: existingReport as CollectionReportDocument,
-        associatedCollections,
-        resolvedReportId,
-        ipAddress: getClientIP(request) || undefined,
-        userAgent: request.headers.get('user-agent'),
-        currentUser: { _id: currentUser._id, emailAddress: currentUser.emailAddress },
+      // Delete collections
+      send({ type: 'phase', phase: 'collections' });
+      logRoutePhase(
+        functionName,
+        'deleting collections',
+        Date.now() - startTime
+      );
+      const deleteResult = await Collections.deleteMany({
+        locationReportId: resolvedReportId,
       });
-    }
+      if (deleteResult.deletedCount === 0) {
+        console.warn(
+          `[DELETE] No collections deleted for report ${resolvedReportId}`
+        );
+      }
+      logRoutePhase(
+        functionName,
+        `deleted ${deleteResult.deletedCount} collections`,
+        Date.now() - startTime
+      );
 
-    // ============================================================================
-    // STEP 11: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteDelete(
-      functionName,
-      'DELETE',
-      '/api/collection-reports/[reportId]',
-      1,
-      user,
-      duration
-    );
-    return NextResponse.json({
-      success: true,
-      message: 'Collection report deleted successfully',
+      // Delete report document
+      logRoutePhase(
+        functionName,
+        'deleting report document',
+        Date.now() - startTime
+      );
+      const deletedReport = await CollectionReport.findOneAndDelete({
+        _id: existingReport._id,
+      });
+      if (!deletedReport) {
+        send({ type: 'error', message: 'Failed to delete collection report' });
+        return;
+      }
+      logRoutePhase(
+        functionName,
+        'report document deleted',
+        Date.now() - startTime
+      );
+
+      // Propagate deletion forward
+      send({ type: 'phase', phase: 'propagating' });
+      logRoutePhase(
+        functionName,
+        'updating linked reports — start',
+        Date.now() - startTime
+      );
+      await propagateCRDeletionForward(associatedCollections);
+      logRoutePhase(
+        functionName,
+        'updating linked reports — done',
+        Date.now() - startTime
+      );
+
+      // Log activity
+      send({ type: 'phase', phase: 'activity' });
+      logRoutePhase(functionName, 'recording activity', Date.now() - startTime);
+      if (currentUser) {
+        await logCRDeletionActivity({
+          existingReport: existingReport as CollectionReportDocument,
+          associatedCollections,
+          resolvedReportId,
+          ipAddress,
+          userAgent,
+          currentUser: {
+            _id: currentUser._id,
+            emailAddress: currentUser.emailAddress,
+          },
+        });
+      }
+      logRoutePhase(functionName, 'activity recorded', Date.now() - startTime);
+
+      const duration = Date.now() - startTime;
+      logRouteDelete(
+        functionName,
+        'DELETE',
+        '/api/collection-reports/[reportId]',
+        1,
+        user,
+        duration
+      );
+      send({
+        type: 'done',
+        data: {
+          success: true,
+          message: 'Collection report deleted successfully',
+        },
+      });
     });
   } catch (error: unknown) {
     console.error(`[DELETE /api/collection-reports/[reportId]] Error:`, error);

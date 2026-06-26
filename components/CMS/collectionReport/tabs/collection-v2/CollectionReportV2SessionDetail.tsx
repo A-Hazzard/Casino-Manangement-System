@@ -8,11 +8,14 @@
 'use client';
 
 import axios from 'axios';
+import { readSseStream } from '@/lib/utils/sseReader';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { ProcessingPhaseBar } from '@/components/shared/ui/ProcessingPhaseBar';
+import type { ProcessingPhase } from '@/components/shared/ui/ProcessingPhaseBar';
 import { toast } from 'sonner';
 import CameraOverlay from './CameraOverlay';
 import CollectionReportV2SessionDetailSkeleton from '@/components/ui/skeletons/CollectionReportV2SessionDetailSkeleton';
@@ -70,6 +73,8 @@ type SessionMachine = {
   metersMatch?: boolean;
   /** true when this machine has a SMIB relay, false when manual-only */
   hasRelay?: boolean;
+  /** true when this machine is synced from the WOW source (no manual meters) */
+  isWow?: boolean;
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
@@ -115,11 +120,23 @@ type CaptureState = {
 // Submit Progress Overlay
 // ============================================================================
 
+function buildV2SubmitPhases(machineCount: number): ProcessingPhase[] {
+  return [
+    { key: 'submitting',  label: 'Submitting machines',          estimatedMs: 800 },
+    { key: 'uploading',   label: 'Uploading images',             estimatedMs: 2000 },
+    { key: 'persisting',  label: 'Persisting machine meters',    estimatedMs: Math.max(500, machineCount * 15), detail: `${machineCount} machine${machineCount !== 1 ? 's' : ''}` },
+    { key: 'backfilling', label: 'Backfilling report version',   estimatedMs: 300 },
+    { key: 'activity',    label: 'Logging submission',           estimatedMs: 200 },
+  ];
+}
+
 type SubmitProgressOverlayProps = {
   submitPhase: 'idle' | 'pre-creating' | 'submitting' | 'error';
   machineName: string | null;
   error: string | null;
   onClose: () => void;
+  progress?: { done: number; total: number } | null;
+  serverPhase?: string;
 };
 
 function SubmitProgressOverlay({
@@ -127,6 +144,8 @@ function SubmitProgressOverlay({
   machineName,
   error,
   onClose,
+  progress,
+  serverPhase,
 }: SubmitProgressOverlayProps) {
   if (submitPhase === 'idle') return null;
   if (typeof document === 'undefined') return null;
@@ -148,24 +167,38 @@ function SubmitProgressOverlay({
         >
           {/* Pre-creating meters */}
           {submitPhase === 'pre-creating' && (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 w-full">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
               >
                 <Loader2 className="h-12 w-12 text-blue-500" />
               </motion.div>
-              <p className="text-center text-lg font-semibold text-gray-800">
-                Creating Manual Meters for{' '}
-                <span className="font-bold">{machineName ?? 'Machine'}</span>
-              </p>
-              <p className="text-center text-sm text-gray-600">Please wait...</p>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-800">
+                  Creating manual meters…{' '}
+                  <span className="tabular-nums">
+                    {progress?.done ?? 0} / {progress?.total ?? 0}
+                  </span>
+                </p>
+                {machineName && (
+                  <p className="mt-1 text-sm text-gray-600">{machineName}</p>
+                )}
+              </div>
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-200"
+                  style={{
+                    width: `${Math.round(((progress?.done ?? 0) / Math.max(progress?.total ?? 1, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
             </div>
           )}
 
           {/* Submitting */}
           {submitPhase === 'submitting' && (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-4 w-full">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
@@ -175,7 +208,12 @@ function SubmitProgressOverlay({
               <p className="text-center text-lg font-semibold text-gray-800">
                 Submitting session...
               </p>
-              <p className="text-center text-sm text-gray-600">Please wait</p>
+              <ProcessingPhaseBar
+                phases={buildV2SubmitPhases(progress?.total ?? 0)}
+                isActive={true}
+                color="blue"
+                serverPhase={serverPhase}
+              />
             </div>
           )}
 
@@ -296,6 +334,11 @@ export default function CollectionReportV2SessionDetail({
     string | null
   >(null);
   const [submitMeterError, setSubmitMeterError] = useState<string | null>(null);
+  const [submitProgress, setSubmitProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [currentV2Phase, setCurrentV2Phase] = useState<string | undefined>();
   const [mode, setMode] = useState<WizardMode>('capture');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -452,6 +495,52 @@ export default function CollectionReportV2SessionDetail({
     getInitialCaptureStateForMachine,
   ]);
 
+  // WOW machines: meters are synced (WOW_SYNC), not collector-entered. Auto-fill the
+  // capture state with the synced current reading so it is shown read-only.
+  useEffect(() => {
+    if (!currentMachine || currentMachine.isWow !== true) return;
+    const machineId = String(currentMachine.machineId);
+    const startHint =
+      currentMachine.sasStartTime ?? currentMachine.lastCollectionTime ?? '';
+    const startParam = startHint
+      ? `&startTime=${new Date(startHint).toISOString()}`
+      : '';
+    // If the machine already has a stored end time (re-editing), use it so the
+    // reading stays consistent with what was captured, not the current wall clock.
+    const endIso = currentMachine.sasEndTime
+      ? new Date(currentMachine.sasEndTime).toISOString()
+      : new Date().toISOString();
+    axios
+      .get(
+        `/api/collection-reports/collections/wow-meters?machineId=${machineId}${startParam}&endTime=${endIso}`
+      )
+      .then(res => {
+        const wow = res.data?.data;
+        if (wow) {
+          setCaptureState(prev => ({
+            ...prev,
+            manualMetersIn: wow.metersIn != null ? String(wow.metersIn) : '',
+            manualMetersOut:
+              wow.metersOut != null ? String(wow.metersOut) : '',
+          }));
+        }
+      })
+      .catch(wowErr => {
+        console.error(
+          '[CollectionReportV2SessionDetail] WOW meters fetch failed:',
+          wowErr instanceof Error ? wowErr.message : 'Unknown error'
+        );
+      });
+  }, [
+    currentIndex,
+    currentMachine?.reportedMachineId,
+    currentMachine?.isWow,
+    currentMachine?.machineId,
+    currentMachine?.sasStartTime,
+    currentMachine?.sasEndTime,
+    currentMachine?.lastCollectionTime,
+  ]);
+
   // Reset preview failure flag whenever the image data changes (e.g. user replaces HEIC with JPG)
   const prevImageDataRef = useRef(captureState.imageData);
   useEffect(() => {
@@ -596,7 +685,7 @@ export default function CollectionReportV2SessionDetail({
       toast.error('Please select both start and end date/time');
       return;
     }
-    if (new Date(customSasStart) >= new Date(customSasEnd)) {
+    if (new Date(customSasStart) > new Date(customSasEnd)) {
       toast.error('Start time must be before end time', {
         description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
         duration: 6000,
@@ -605,6 +694,42 @@ export default function CollectionReportV2SessionDetail({
     }
     setFetchingCustomMeters(true);
     try {
+      // WOW machines: query WOW_SYNC meters for the selected period window.
+      // The wow-meters endpoint returns metersIn = WOW_SYNC at endTime (current)
+      // and prevIn = WOW_SYNC at startTime (baseline), so both update correctly.
+      if (currentMachine.isWow) {
+        const wowRes = await axios.get(
+          '/api/collection-reports/collections/wow-meters',
+          {
+            params: {
+              machineId: currentMachine.machineId,
+              startTime: customSasStart,
+              endTime: customSasEnd,
+            },
+          }
+        );
+        const wow = wowRes.data?.data;
+        if (wow && session) {
+          setCaptureState(prev => ({
+            ...prev,
+            manualMetersIn: wow.metersIn != null ? String(wow.metersIn) : prev.manualMetersIn,
+            manualMetersOut: wow.metersOut != null ? String(wow.metersOut) : prev.manualMetersOut,
+          }));
+          const updatedMachines = [...session.machines];
+          updatedMachines[currentIndex] = {
+            ...updatedMachines[currentIndex],
+            prevSasMetersIn: wow.prevIn ?? 0,
+            prevSasMetersOut: wow.prevOut ?? 0,
+          };
+          setSession({ ...session, machines: updatedMachines });
+          toast.success('WOW meters updated for selected period');
+        } else {
+          toast.error('Failed to fetch WOW meters for this period');
+        }
+        return;
+      }
+
+      // Non-WOW: fetch SAS delta meters via the custom-meters endpoint
       const res = await axios.get('/api/collection-reports-v2/custom-meters', {
         params: {
           machineId: currentMachine.machineId,
@@ -857,7 +982,7 @@ export default function CollectionReportV2SessionDetail({
 
       // Validate custom period start/end ordering before saving
       if (useCustomPeriod && customSasStart && customSasEnd) {
-        if (new Date(customSasStart) >= new Date(customSasEnd)) {
+        if (new Date(customSasStart) > new Date(customSasEnd)) {
           toast.error('Start time must be before end time', {
             description: `Start: ${new Date(customSasStart).toLocaleString()} — End: ${new Date(customSasEnd).toLocaleString()}`,
             duration: 6000,
@@ -1072,6 +1197,7 @@ export default function CollectionReportV2SessionDetail({
     setSubmitPhase('idle');
     setSubmitMeterMachineName(null);
     setSubmitMeterError(null);
+    setSubmitProgress(null);
 
     try {
       // ============================================================================
@@ -1080,16 +1206,21 @@ export default function CollectionReportV2SessionDetail({
       // and to ensure meter docs exist before the submit endpoint fires.
       // The submit endpoint's deleteMany+recreate still runs to handle re-submits.
       // ============================================================================
+      // WOW machines never get manual meters (synced via WOW_SYNC), so they are
+      // excluded from the pre-create step entirely.
       const offlineMachines = (session.machines ?? []).filter(
-        m => !m.hasRelay || m.isSupplemental
+        m => !m.isWow && (!m.hasRelay || m.isSupplemental)
       );
 
       if (offlineMachines.length > 0) {
         setSubmitPhase('pre-creating');
+        setSubmitProgress({ done: 0, total: offlineMachines.length });
 
-        for (const machine of offlineMachines) {
+        for (let machineIndex = 0; machineIndex < offlineMachines.length; machineIndex++) {
+          const machine = offlineMachines[machineIndex];
           const displayName = machine.machineCustomName || machine.machineName || 'Machine';
           setSubmitMeterMachineName(displayName);
+          setSubmitProgress({ done: machineIndex, total: offlineMachines.length });
 
           const metersIn = machine.manualMetersIn ?? machine.sasMetersIn ?? 0;
           const metersOut = machine.manualMetersOut ?? machine.sasMetersOut ?? 0;
@@ -1130,6 +1261,7 @@ export default function CollectionReportV2SessionDetail({
             return;
           }
         }
+        setSubmitProgress(prev => prev ? { done: prev.total, total: prev.total } : null);
       }
 
       // ============================================================================
@@ -1139,16 +1271,22 @@ export default function CollectionReportV2SessionDetail({
       // ============================================================================
       setSubmitPhase('submitting');
       setSubmitMeterMachineName(null);
+      setCurrentV2Phase(undefined);
 
       const payload: Record<string, unknown> = {};
       if (session.sessionStartTime) {
         payload.sessionStartTime = session.sessionStartTime;
       }
 
-      await axios.patch(
+      const submitResponse = await fetch(
         `/api/collection-reports-v2/sessions/${sessionId}/submit`,
-        payload
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
       );
+      await readSseStream(submitResponse, setCurrentV2Phase);
       setEditMode(false);
       // Close the modal / navigate back to the list — submit is the end of the flow.
       // Don't refetch here: the session-status change to 'submitted' would trigger
@@ -1162,6 +1300,8 @@ export default function CollectionReportV2SessionDetail({
       setSubmitPhase('error');
     } finally {
       setSubmitting(false);
+      setSubmitProgress(null);
+      setCurrentV2Phase(undefined);
     }
   };
 
@@ -1276,6 +1416,8 @@ export default function CollectionReportV2SessionDetail({
           submitPhase={submitPhase}
           machineName={submitMeterMachineName}
           error={submitMeterError}
+          progress={submitProgress}
+          serverPhase={currentV2Phase}
           onClose={() => {
             setSubmitPhase('idle');
             setSubmitMeterError(null);
@@ -1309,6 +1451,8 @@ export default function CollectionReportV2SessionDetail({
           submitPhase={submitPhase}
           machineName={submitMeterMachineName}
           error={submitMeterError}
+          progress={submitProgress}
+          serverPhase={currentV2Phase}
           onClose={() => {
             setSubmitPhase('idle');
             setSubmitMeterError(null);
@@ -1322,6 +1466,9 @@ export default function CollectionReportV2SessionDetail({
   // Per-machine SMIB flag: true when this machine has no SAS relay (manual entry only).
   // Replace all former `session?.noSMIBLocation` checks in the JSX with this value.
   const isCurrentMachineNoSMIB = currentMachine.hasRelay === false;
+
+  // WOW machines: meters are synced (WOW_SYNC) and shown read-only, never entered.
+  const isCurrentMachineWow = currentMachine.isWow === true;
 
   const totalCount = session.machines.length;
   const doneCount = session.machines.filter(
@@ -1632,17 +1779,17 @@ export default function CollectionReportV2SessionDetail({
                       </Popover>
                     </div>
                   </div>
-                  {/* Inline error when start >= end */}
+                  {/* Inline error when start > end */}
                   {customSasStart &&
                     customSasEnd &&
-                    new Date(customSasStart) >= new Date(customSasEnd) && (
+                    new Date(customSasStart) > new Date(customSasEnd) && (
                       <p className="mt-2 text-xs font-semibold text-red-600">
                         ⚠️ Start time must be before end time
                       </p>
                     )}
 
-                  {/* Apply Period Meters button — SMIB locations only */}
-                  {!isCurrentMachineNoSMIB && (
+                  {/* Apply Period Meters button — SMIB and WOW locations */}
+                  {(!isCurrentMachineNoSMIB || isCurrentMachineWow) && (
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
@@ -1653,7 +1800,7 @@ export default function CollectionReportV2SessionDetail({
                           !customSasEnd ||
                           (!!customSasStart &&
                             !!customSasEnd &&
-                            new Date(customSasStart) >= new Date(customSasEnd))
+                            new Date(customSasStart) > new Date(customSasEnd))
                         }
                         className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -2049,9 +2196,38 @@ export default function CollectionReportV2SessionDetail({
             </div>
           )}
 
+          {/* WOW Meters — synced, read-only */}
+          {isCurrentMachineWow && (
+            <div className="mb-6 rounded-lg border border-purple-200 bg-purple-50/60 p-4">
+              <p className="mb-3 text-sm font-medium text-purple-800">
+                WOW machine — meters are synced automatically and cannot be
+                edited.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="rounded-lg border border-purple-200 bg-white p-3">
+                  <div className="text-xs text-purple-700">Meters In</div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {captureState.manualMetersIn !== ''
+                      ? Number(captureState.manualMetersIn).toLocaleString()
+                      : '--'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-purple-200 bg-white p-3">
+                  <div className="text-xs text-purple-700">Meters Out</div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {captureState.manualMetersOut !== ''
+                      ? Number(captureState.manualMetersOut).toLocaleString()
+                      : '--'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Manual Entry */}
-          {(isCurrentMachineNoSMIB === true ||
-            captureState.metersMatch === false) && (
+          {!isCurrentMachineWow &&
+            (isCurrentMachineNoSMIB === true ||
+              captureState.metersMatch === false) && (
             <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
               <label className="mb-3 block text-sm font-medium text-amber-800">
                 {isCurrentMachineNoSMIB === true
@@ -2260,7 +2436,7 @@ export default function CollectionReportV2SessionDetail({
                         (useCustomPeriod &&
                           !!customSasStart &&
                           !!customSasEnd &&
-                          new Date(customSasStart) >= new Date(customSasEnd))
+                          new Date(customSasStart) > new Date(customSasEnd))
                       }
                       className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                     >
@@ -2277,7 +2453,7 @@ export default function CollectionReportV2SessionDetail({
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
-                          new Date(customSasStart) >= new Date(customSasEnd)
+                          new Date(customSasStart) > new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }
@@ -2299,7 +2475,7 @@ export default function CollectionReportV2SessionDetail({
                     (useCustomPeriod &&
                       !!customSasStart &&
                       !!customSasEnd &&
-                      new Date(customSasStart) >= new Date(customSasEnd))
+                      new Date(customSasStart) > new Date(customSasEnd))
                   }
                   className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 sm:flex-none sm:px-5"
                 >
@@ -2337,7 +2513,7 @@ export default function CollectionReportV2SessionDetail({
                       (useCustomPeriod
                         ? !customSasStart ||
                           !customSasEnd ||
-                          new Date(customSasStart) >= new Date(customSasEnd)
+                          new Date(customSasStart) > new Date(customSasEnd)
                         : !currentMachine.lastCollectionTime &&
                           !machineLastCollectionInput)
                     }

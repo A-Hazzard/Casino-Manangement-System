@@ -48,9 +48,6 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const status = await getSmibSyncStatus();
-    console.log(
-      `[GET /api/admin/smib-sync] Status: lastSync=${status.lastSync}, isStale=${status.isStale}, staleAfterHours=${status.staleAfterHours}`
-    );
 
     logRouteFetch(functionName, 'GET', '/api/admin/smib-sync', 1, user);
     return NextResponse.json(status, { status: 200 });
@@ -115,8 +112,6 @@ export async function POST(request: NextRequest) {
       const locations =
         await GamingLocations.find(queryFilter).lean<LocationDocument[]>();
       const locationIds = locations.map(l => String(l._id));
-
-      console.log(`[${functionName}] Syncing ${locationIds.length} locations`);
 
       const locationsWithMachines =
         await fetchLocationsWithMachinesForSmib(locationIds);

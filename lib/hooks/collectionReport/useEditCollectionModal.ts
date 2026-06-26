@@ -25,7 +25,7 @@
 // External Dependencies
 // ============================================================================
 
-import { updateCollectionReport } from '@/lib/helpers/collectionReport';
+import { updateCollectionReportStreaming } from '@/lib/helpers/collectionReport/fetching';
 import {
   calculateAmountToCollect,
   calculateTotalMovementFromEntries,
@@ -51,13 +51,15 @@ import type {
   PreviousCollectionMeters,
 } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
-import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import type { VariationsCheckResponse } from '@/lib/types/api';
 import {
   calculateMovement,
 } from '@/lib/utils/movement';
 import axios from 'axios';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import type { SubStepProgress } from '@/components/shared/ui/ProcessingPhaseBar';
 
 // ============================================================================
 // Type Definitions
@@ -158,10 +160,16 @@ export function useEditCollectionModal({
   // Local State - Processing & Loading
   // ==========================================================================
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentEditPhase, setCurrentEditPhase] = useState<string | undefined>();
   const [hasChanges, setHasChanges] = useState(false);
   const [hasUnsavedEdits, setHasUnsavedEdits] = useState(false);
   const [, setShowUnsavedChangesWarning] = useState(false);
   const [isFirstCollection, setIsFirstCollection] = useState(false);
+  const [updateReportProgress, setUpdateReportProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [currentSubStep, setCurrentSubStep] = useState<SubStepProgress | null>(null);
 
   // ==========================================================================
   // Local State - Editing Mode
@@ -202,6 +210,7 @@ export function useEditCollectionModal({
   } | null>(null);
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('');
+  const [currentJackpot, setCurrentJackpot] = useState<number>(0);
 
   // ==========================================================================
   // Form Data Bindings - From Store
@@ -437,6 +446,11 @@ export function useEditCollectionModal({
 
     return found;
   }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
+
+  /**
+   * Whether the active entry is a WOW machine (synced, read-only meters)
+   */
+  const isWowSelected = isWowMachine(machineForDataEntry);
 
   /**
    * Filter machines based on search term
@@ -721,6 +735,7 @@ export function useEditCollectionModal({
         setCurrentRamClearMetersOut(
           entryToEdit.ramClearMetersOut?.toString() || ''
         );
+        setCurrentJackpot(entryToEdit.sasMeters?.jackpot ?? 0);
 
         // Ensure advanced is NOT selected by default when editing.
         // Must happen BEFORE setCurrentCollectionTime so the store auto-sync
@@ -826,6 +841,7 @@ export function useEditCollectionModal({
     setCurrentRamClear(false);
     setCurrentRamClearMetersIn('');
     setCurrentRamClearMetersOut('');
+    setCurrentJackpot(0);
     // Keep existing collectionTime - don't reset it
 
     // Reset prev values
@@ -981,7 +997,7 @@ export function useEditCollectionModal({
         if (capturedSasStartTime && capturedSasEndTime) {
           const sasStart = new Date(capturedSasStartTime as string | Date);
           const sasEnd = new Date(capturedSasEndTime as string | Date);
-          if (sasStart >= sasEnd) {
+          if (sasStart > sasEnd) {
             toast.error('SAS start time must be before end time', {
               description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
               duration: 7000,
@@ -1292,7 +1308,7 @@ export function useEditCollectionModal({
             const sasEnd = new Date(
               collectionPayload.sasEndTime as string | Date
             );
-            if (sasStart >= sasEnd) {
+            if (sasStart > sasEnd) {
               toast.error('SAS start time must be before end time', {
                 description: `Start: ${sasStart.toLocaleString()} · End: ${sasEnd.toLocaleString()}`,
                 duration: 7000,
@@ -1709,7 +1725,99 @@ export function useEditCollectionModal({
 
       // Clear unsaved edits flag BEFORE async operations (prevents race with close handler)
       setHasUnsavedEdits(false);
+
+      // Start simulated progress counter
+      const progressTotal = collectedMachineEntries.length;
+      let progressDone = 0;
+      setUpdateReportProgress({ done: 0, total: progressTotal });
+      const progressInterval = setInterval(() => {
+        progressDone++;
+        if (progressDone >= progressTotal) {
+          clearInterval(progressInterval);
+        }
+        setUpdateReportProgress({ done: progressDone, total: progressTotal });
+      }, Math.max(80, 3000 / progressTotal));
+
       try {
+        // ============================================================================
+        // PHASE 0: Verbose per-machine validation
+        // ============================================================================
+        // Pause the animated counter so validation drives the progress text, then
+        // validate each machine individually so the UI shows the current machine
+        // and what is being checked.
+        clearInterval(progressInterval);
+
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: 0,
+          total: progressTotal,
+          detail: 'Starting validation...',
+        });
+
+        for (let index = 0; index < collectedMachineEntries.length; index++) {
+          const entry = collectedMachineEntries[index];
+          const machineName =
+            (entry.machineName as string | undefined) ||
+            (entry.serialNumber as string | undefined) ||
+            entry.machineId ||
+            `Machine ${index + 1}`;
+          const detail = entry.ramClear
+            ? 'RAM clear & meters'
+            : 'meters, movement & SAS window';
+
+          setCurrentSubStep({
+            phaseKey: 'validating',
+            done: index + 1,
+            total: progressTotal,
+            machineName,
+            detail,
+          });
+          setUpdateReportProgress({ done: index + 1, total: progressTotal });
+
+          if (!entry.machineId) {
+            throw new Error(`${machineName} is missing a machine ID.`);
+          }
+          if (
+            typeof entry.metersIn !== 'number' ||
+            isNaN(entry.metersIn) ||
+            typeof entry.metersOut !== 'number' ||
+            isNaN(entry.metersOut)
+          ) {
+            throw new Error(`${machineName} has invalid meter values.`);
+          }
+
+          const movement = calculateMovement(
+            entry.metersIn || 0,
+            entry.metersOut || 0,
+            {
+              metersIn: entry.prevIn || 0,
+              metersOut: entry.prevOut || 0,
+            },
+            entry.ramClear || false,
+            undefined,
+            undefined,
+            entry.ramClearMetersIn,
+            entry.ramClearMetersOut
+          );
+          if (
+            !Number.isFinite(movement.metersIn) ||
+            !Number.isFinite(movement.metersOut) ||
+            !Number.isFinite(movement.gross)
+          ) {
+            throw new Error(`${machineName} produced an invalid movement calculation.`);
+          }
+
+          // Yield to React so the UI updates for each machine
+          await new Promise<void>(resolve => setTimeout(resolve, 5));
+        }
+
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: progressTotal,
+          total: progressTotal,
+          detail: 'Validation complete',
+        });
+
         // PHASE 1: Detect machine meter changes and call batch update API
         const changes: Array<{
           machineId: string;
@@ -1864,7 +1972,17 @@ export function useEditCollectionModal({
           timestamp: earliestTimestamp,
         };
 
-        await updateCollectionReport(reportId, updateData);
+        await updateCollectionReportStreaming(
+          reportId,
+          updateData,
+          setCurrentEditPhase,
+          (phase, done, total, machineName) =>
+            setCurrentSubStep({ phaseKey: phase, done, total, machineName })
+        );
+        clearInterval(progressInterval);
+        setUpdateReportProgress({ done: progressTotal, total: progressTotal });
+        setCurrentEditPhase(undefined);
+        setCurrentSubStep(null);
         toast.success('Report updated successfully!', { position: 'top-left' });
 
         // Clear unsaved edits flag and close modal
@@ -1881,6 +1999,10 @@ export function useEditCollectionModal({
         toast.error('Failed to update report. Please try again.', {
           position: 'top-left',
         });
+        clearInterval(progressInterval);
+        setUpdateReportProgress(null);
+        setCurrentEditPhase(undefined);
+        setCurrentSubStep(null);
       } finally {
         setIsProcessing(false);
       }
@@ -2109,6 +2231,63 @@ export function useEditCollectionModal({
       setIsFirstCollection(false);
     }
   }, [show, selectedMachineId]);
+
+  // ==========================================================================
+  // WOW Meter Sync
+  // ==========================================================================
+
+  /**
+   * WOW machines: meters are synced (WOW_SYNC) and shown read-only. Mirror the
+   * create flow — fetch the synced current reading + prev baseline whenever a WOW
+   * machine becomes the active entry or its time window changes, so the read-only
+   * fields stay populated. This covers both re-syncing an existing WOW entry on
+   * edit and adding a new WOW machine during an edit session (where the read-only
+   * fields would otherwise stay blank and un-fillable).
+   */
+  useEffect(() => {
+    if (!show || !selectedMachineId || !isWowSelected) return;
+
+    const startIso = sasStartTime ? sasStartTime.toISOString() : '';
+    const endIso = (sasEndTime ?? new Date()).toISOString();
+    let cancelled = false;
+
+    axios
+      .get(
+        `/api/collection-reports/collections/wow-meters?machineId=${selectedMachineId}` +
+          (startIso ? `&startTime=${startIso}` : '') +
+          `&endTime=${endIso}`
+      )
+      .then(res => {
+        if (cancelled) return;
+        const wow = res.data?.data;
+        if (!wow) return;
+        setCurrentMetersIn(wow.metersIn != null ? String(wow.metersIn) : '');
+        setCurrentMetersOut(wow.metersOut != null ? String(wow.metersOut) : '');
+        setPrevIn(wow.prevIn ?? 0);
+        setPrevOut(wow.prevOut ?? 0);
+        setCurrentJackpot(wow.jackpot ?? 0);
+      })
+      .catch(wowErr => {
+        console.error(
+          '[useEditCollectionModal] WOW meters fetch failed:',
+          wowErr instanceof Error ? wowErr.message : 'Unknown error'
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    show,
+    selectedMachineId,
+    isWowSelected,
+    sasStartTime,
+    sasEndTime,
+    setCurrentMetersIn,
+    setCurrentMetersOut,
+    setPrevIn,
+    setPrevOut,
+  ]);
 
   // ==========================================================================
   // Amount Calculation
@@ -2636,6 +2815,7 @@ export function useEditCollectionModal({
     setPrevIn,
     prevOut: storeFormData.prevOut,
     setPrevOut,
+    jackpot: currentJackpot,
     isFirstCollection,
     setIsFirstCollection,
     showDeleteConfirmation,
@@ -2679,6 +2859,7 @@ export function useEditCollectionModal({
     handleEditEntry,
     handleCancelEdit,
     handleAddOrUpdateEntry,
+    executeAddOrUpdateEntry,
     confirmUpdateEntry,
     handleDeleteEntry,
     confirmDeleteEntry,
@@ -2686,6 +2867,9 @@ export function useEditCollectionModal({
     handleConfirmMachineRollover,
     handleCancelMachineRollover,
     handleApplyAllDates,
+    currentEditPhase,
+    updateReportProgress,
+    currentSubStep,
 
     // User
     user,

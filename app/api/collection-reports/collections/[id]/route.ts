@@ -22,7 +22,8 @@ import {
   updateMachineHistoryForPatch,
 } from '@/app/api/lib/helpers/collectionReport/collectionByIdOperations';
 import { Collections } from '@/app/api/lib/models/collections';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import {
   logRouteUpdate,
   logRouteError,
@@ -83,214 +84,235 @@ import { NextRequest, NextResponse } from 'next/server';
  * 10. Log activity and return updated collection
  */
 export async function PATCH(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'PATCH /api/collection-reports/collections/[id]';
-  const user = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const collectionId = pathname.split('/').pop();
+  return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'PATCH /api/collection-reports/collections/[id]';
+    const user = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const collectionId = pathname.split('/').pop();
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse request body
-    // ============================================================================
-    const updateData = await request.json();
+    try {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
+      const updateData = await request.json();
 
-    // ============================================================================
-    // STEP 2: Validate collection ID
-    // ============================================================================
-    if (!collectionId) {
+      // ============================================================================
+      // STEP 2: Validate collection ID
+      // ============================================================================
+      if (!collectionId) {
+        logRouteError(
+          functionName,
+          'PATCH',
+          '/api/collection-reports/collections/[id]',
+          'Collection ID is required',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Collection ID is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Fetch original collection (DB connection handled by withApiAuth)
+      // ============================================================================
+      const originalCollection = await Collections.findOne({
+        _id: collectionId,
+      }).lean<CollectionDocument | null>();
+
+      if (!originalCollection) {
+        return NextResponse.json(
+          { success: false, error: 'Collection not found' },
+          { status: 404 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3.5: Verify the user may access the collection's location
+      // ============================================================================
+      const hasAccess = await checkUserLocationAccess(
+        String(originalCollection.location || '')
+      );
+      if (!hasAccess) {
+        logRouteError(
+          functionName,
+          'PATCH',
+          '/api/collection-reports/collections/[id]',
+          'Unauthorized: Access denied',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Access denied' },
+          { status: 403 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Handle RAM clear toggle (relay-aware)
+      // ============================================================================
+      const explicitSasEndTime = updateData.sasEndTime;
+      const { unsetData } = await handleRamClearToggleWithRelayGuard(
+        originalCollection,
+        updateData,
+        explicitSasEndTime
+      );
+
+      // ============================================================================
+      // STEP 5: Remove immutable _id, extract SAS time fields, determine flags
+      // ============================================================================
+      const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
+      if ('_id' in updateData) {
+        console.warn('⚠️ API: Removed _id field from update data');
+      }
+
+      const sasFields = extractSasTimeFieldsFromPayload(safeUpdateData);
+      const flags = determineRecalculationFlags(updateData, sasFields);
+
+      // ============================================================================
+      // STEP 6: Build and apply first update (basic fields + explicit SAS times)
+      // ============================================================================
+      const updatePayload: Record<string, unknown> = {
+        ...safeUpdateData,
+        updatedAt: new Date(),
+      };
+
+      if (sasFields.hasPayloadSasEndTime) {
+        updatePayload['sasMeters.sasEndTime'] = new Date(
+          sasFields.payloadSasEndTime as Date
+        );
+      }
+      if (sasFields.hasPayloadSasStartTime) {
+        updatePayload['sasMeters.sasStartTime'] = new Date(
+          sasFields.payloadSasStartTime as Date
+        );
+      }
+
+      const updateQuery: Record<string, unknown> = {
+        $set: updatePayload,
+      };
+      if (Object.keys(unsetData).length > 0) {
+        updateQuery.$unset = unsetData;
+      }
+
+      const updatedCollection = await Collections.findOneAndUpdate(
+        { _id: collectionId },
+        updateQuery,
+        { new: true, runValidators: false }
+      );
+
+      if (!updatedCollection) {
+        return NextResponse.json(
+          { success: false, error: 'Collection not found' },
+          { status: 404 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 7: Recalculate movement and SAS metrics if needed
+      // ============================================================================
+      if (flags.shouldRecalculate || flags.needsSasTimeRecalculation) {
+        try {
+          const finalUpdatedCollection =
+            await recalculateMovementAndSasForPatch(
+              collectionId,
+              updatedCollection,
+              updateData,
+              sasFields,
+              flags
+            );
+
+          // ========================================================================
+          // STEP 8: Update machine collectionMetersHistory
+          // ========================================================================
+          await updateMachineHistoryForPatch(updatedCollection, updateData);
+
+          // ========================================================================
+          // STEP 9: Cascade recalculation to related collections
+          // ========================================================================
+          await cascadeRecalculationForPatch(
+            updatedCollection,
+            flags.shouldRecalculate
+          );
+
+          // ========================================================================
+          // STEP 10: Log activity and return
+          // ========================================================================
+          await logCollectionPatchActivity(
+            request,
+            updatedCollection,
+            originalCollection as unknown as Record<string, unknown> | null,
+            updateData,
+            finalUpdatedCollection,
+            collectionId
+          );
+
+          const duration = Date.now() - startTime;
+          logRouteUpdate(
+            functionName,
+            'PATCH',
+            '/api/collection-reports/collections/[id]',
+            1,
+            user,
+            duration
+          );
+
+          return NextResponse.json({
+            success: true,
+            data: finalUpdatedCollection,
+          });
+        } catch (recalculationError) {
+          console.error(
+            '[PATCH /api/collection-reports/collections/[id]] Recalculation error:',
+            recalculationError instanceof Error
+              ? recalculationError.message
+              : 'Unknown error'
+          );
+          return NextResponse.json({
+            success: true,
+            data: updatedCollection,
+            warning: 'Recalculation failed, but basic update succeeded',
+          });
+        }
+      }
+
+      // No recalculation needed - return the updated collection
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/collections/[id]',
+        1,
+        user,
+        duration
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: updatedCollection,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
       logRouteError(
         functionName,
         'PATCH',
         '/api/collection-reports/collections/[id]',
-        'Collection ID is required',
+        errorMessage,
         user
       );
+      console.error(
+        '[PATCH /api/collection-reports/collections/[id]] Error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return NextResponse.json(
-        { success: false, error: 'Collection ID is required' },
-        { status: 400 }
+        {
+          success: false,
+          error: 'Internal server error',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 3: Connect to database and fetch original collection
-    // ============================================================================
-    await connectDB();
-
-    const originalCollection = await Collections.findOne({
-      _id: collectionId,
-    }).lean<CollectionDocument | null>();
-
-    if (!originalCollection) {
-      return NextResponse.json(
-        { success: false, error: 'Collection not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Handle RAM clear toggle (relay-aware)
-    // ============================================================================
-    const explicitSasEndTime = updateData.sasEndTime;
-    const { unsetData } = await handleRamClearToggleWithRelayGuard(
-      originalCollection,
-      updateData,
-      explicitSasEndTime
-    );
-
-    // ============================================================================
-    // STEP 5: Remove immutable _id, extract SAS time fields, determine flags
-    // ============================================================================
-    const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
-    if ('_id' in updateData) {
-      console.warn('⚠️ API: Removed _id field from update data');
-    }
-
-    const sasFields = extractSasTimeFieldsFromPayload(safeUpdateData);
-    const flags = determineRecalculationFlags(updateData, sasFields);
-
-    // ============================================================================
-    // STEP 6: Build and apply first update (basic fields + explicit SAS times)
-    // ============================================================================
-    const updatePayload: Record<string, unknown> = {
-      ...safeUpdateData,
-      updatedAt: new Date(),
-    };
-
-    if (sasFields.hasPayloadSasEndTime) {
-      updatePayload['sasMeters.sasEndTime'] = new Date(
-        sasFields.payloadSasEndTime as Date
-      );
-    }
-    if (sasFields.hasPayloadSasStartTime) {
-      updatePayload['sasMeters.sasStartTime'] = new Date(
-        sasFields.payloadSasStartTime as Date
-      );
-    }
-
-    const updateQuery: Record<string, unknown> = {
-      $set: updatePayload,
-    };
-    if (Object.keys(unsetData).length > 0) {
-      updateQuery.$unset = unsetData;
-    }
-
-    const updatedCollection = await Collections.findOneAndUpdate(
-      { _id: collectionId },
-      updateQuery,
-      { new: true, runValidators: false }
-    );
-
-    if (!updatedCollection) {
-      return NextResponse.json(
-        { success: false, error: 'Collection not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Recalculate movement and SAS metrics if needed
-    // ============================================================================
-    if (flags.shouldRecalculate || flags.needsSasTimeRecalculation) {
-      try {
-        const finalUpdatedCollection = await recalculateMovementAndSasForPatch(
-          collectionId,
-          updatedCollection,
-          updateData,
-          sasFields,
-          flags
-        );
-
-        // ========================================================================
-        // STEP 8: Update machine collectionMetersHistory
-        // ========================================================================
-        await updateMachineHistoryForPatch(updatedCollection, updateData);
-
-        // ========================================================================
-        // STEP 9: Cascade recalculation to related collections
-        // ========================================================================
-        await cascadeRecalculationForPatch(
-          updatedCollection,
-          flags.shouldRecalculate
-        );
-
-        // ========================================================================
-        // STEP 10: Log activity and return
-        // ========================================================================
-        await logCollectionPatchActivity(
-          request,
-          updatedCollection,
-          originalCollection as unknown as Record<string, unknown> | null,
-          updateData,
-          finalUpdatedCollection,
-          collectionId
-        );
-
-        const duration = Date.now() - startTime;
-        logRouteUpdate(
-          functionName,
-          'PATCH',
-          '/api/collection-reports/collections/[id]',
-          1,
-          user,
-          duration
-        );
-
-        return NextResponse.json({
-          success: true,
-          data: finalUpdatedCollection,
-        });
-      } catch (recalculationError) {
-        console.error(
-          '[PATCH /api/collection-reports/collections/[id]] Recalculation error:',
-          recalculationError instanceof Error
-            ? recalculationError.message
-            : 'Unknown error'
-        );
-        return NextResponse.json({
-          success: true,
-          data: updatedCollection,
-          warning: 'Recalculation failed, but basic update succeeded',
-        });
-      }
-    }
-
-    // No recalculation needed - return the updated collection
-    const duration = Date.now() - startTime;
-    logRouteUpdate(
-      functionName,
-      'PATCH',
-      '/api/collection-reports/collections/[id]',
-      1,
-      user,
-      duration
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: updatedCollection,
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'PATCH',
-      '/api/collection-reports/collections/[id]',
-      errorMessage,
-      user
-    );
-    console.error(
-      '[PATCH /api/collection-reports/collections/[id]] Error:',
-      error instanceof Error ? error.message : 'Unknown error'
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

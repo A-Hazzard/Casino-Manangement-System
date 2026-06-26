@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
     // STEP 4: Return rates and currency information
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 500) {
-      console.warn(`[Rates API] Completed in ${duration}ms`);
+    if (duration > 1000) {
+      console.warn(`[${functionName}] slow: ${duration}ms`);
     }
 
     logRouteFetch(functionName, 'GET', '/api/rates', 1, user, duration);

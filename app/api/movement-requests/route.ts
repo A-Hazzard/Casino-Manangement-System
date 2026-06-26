@@ -239,7 +239,7 @@ export async function GET(req: NextRequest) {
           { _id: 1, name: 1 }
         ).lean<GamingLocationDocument[]>();
         const idToName = Object.fromEntries(
-          locations.map(l => [String(l._id), l.name])
+          locations.map(loc => [String(loc._id), loc.name])
         );
 
         // ============================================================================
@@ -290,7 +290,7 @@ export async function GET(req: NextRequest) {
           console.warn(`[Movement Requests API] Completed in ${duration}ms`);
         }
         return NextResponse.json(transformed);
-      } catch (error: unknown) {
+      } catch (error) {
         const duration = Date.now() - startTime;
         logRouteError(
           functionName,
@@ -421,7 +421,7 @@ export async function POST(req: NextRequest) {
         console.warn(`[Movement Requests API POST] Completed in ${duration}ms`);
       }
       return NextResponse.json(created, { status: 201 });
-    } catch (error: unknown) {
+    } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage =
         error instanceof Error ? error.message : 'An unknown error occurred';

@@ -1,5 +1,6 @@
 'use client';
 
+import { SessionsListSkeleton } from '@/components/shared/ui/skeletons/SessionsSkeletons';
 import { SessionsTableProps } from '@/lib/types/sessions';
 import { History } from 'lucide-react';
 import { SessionsDesktopTable } from './SessionsDesktopTable';
@@ -23,11 +24,7 @@ export function SessionsTable({
   // ============================================================================
   // === Loading State ===
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-button"></div>
-      </div>
-    );
+    return <SessionsListSkeleton />;
   }
 
   // === Empty State ===

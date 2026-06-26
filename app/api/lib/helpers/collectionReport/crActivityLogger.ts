@@ -293,26 +293,10 @@ export async function logCRDeletionActivity(params: {
   } = params;
 
   const changes = mapDeletedFieldsToChanges(existingReport || {});
-  await logActivity({
-    action: 'DELETE',
-    details: `Deleted collection report for ${existingReport.locationName}`,
-    ipAddress,
-    userAgent: userAgent ?? undefined,
-    userId: currentUser._id as string,
-    username: currentUser.emailAddress as string,
-    metadata: {
-      resource: 'collection-report',
-      resourceId: resolvedReportId,
-      resourceName: existingReport.locationName,
-      changes,
-      previousData: { ...existingReport, collections: associatedCollections },
-      newData: null,
-    },
-  });
 
-  for (const collection of associatedCollections) {
+  const collectionLogs = associatedCollections.map(collection => {
     const collectionChanges = mapDeletedFieldsToChanges(collection || {});
-    await logActivity({
+    return logActivity({
       action: 'DELETE',
       details: `Deleted collection for machine "${collection.machineCustomName || collection.machineName || collection.machineId || 'Machine'}" as part of collection report deletion`,
       ipAddress,
@@ -328,5 +312,25 @@ export async function logCRDeletionActivity(params: {
         newData: null,
       },
     });
-  }
+  });
+
+  await Promise.all([
+    logActivity({
+      action: 'DELETE',
+      details: `Deleted collection report for ${existingReport.locationName}`,
+      ipAddress,
+      userAgent: userAgent ?? undefined,
+      userId: currentUser._id as string,
+      username: currentUser.emailAddress as string,
+      metadata: {
+        resource: 'collection-report',
+        resourceId: resolvedReportId,
+        resourceName: existingReport.locationName,
+        changes,
+        previousData: { ...existingReport, collections: associatedCollections },
+        newData: null,
+      },
+    }),
+    ...collectionLogs,
+  ]);
 }

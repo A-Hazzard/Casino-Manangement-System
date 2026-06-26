@@ -177,6 +177,8 @@ export type CollectionReportMachineSummary = {
   };
   sasMeters?: CollectionSasMeters | null;
   collectionTime?: string | Date;
+  includeJackpot?: boolean;
+  meta?: { dataSync?: { source?: string; wowbettingshopid?: string } };
 };
 
 export type CollectionReportLocationWithMachines = {
@@ -245,6 +247,9 @@ export type CollectionReportData = {
   reportId: string;
   locationName: string;
   collectionDate: string;
+  createdAt?: string;
+  timeframeStart?: string;
+  timeframeEnd?: string;
   machineMetrics: MachineMetric[];
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
@@ -259,8 +264,8 @@ export type CollectionReportData = {
 export type MachineVariationData = {
   machineId: string;
   machineName: string;
-  variation: number | string;
-  sasGross: number | string;
+  variation: number | null;
+  sasGross: number | null;
   meterGross: number;
   sasStartTime?: Date | string | null;
   sasEndTime?: Date | string | null;

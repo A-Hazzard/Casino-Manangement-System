@@ -14,7 +14,7 @@
  */
 
 import { getLocationTrends } from '@/app/api/lib/helpers/trends/locations';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -53,128 +53,101 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/analytics/location-trends';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
+  return withApiAuth(req, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(req.url);
+      const locationIds = searchParams.get('locationIds');
+      const timePeriod =
+        (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+      const licencee = searchParams.get('licencee');
+      const startDateParam = searchParams.get('startDate');
+      const endDateParam = searchParams.get('endDate');
+      const displayCurrency =
+        (searchParams.get('currency') as CurrencyCode) || 'USD';
+      const granularity = searchParams.get('granularity') as
+        | 'hourly'
+        | 'minute'
+        | 'daily'
+        | 'weekly'
+        | 'monthly';
+      const status = searchParams.get('status') as
+        | 'Online'
+        | 'Offline'
+        | 'All'
+        | null;
+      const gameType = searchParams.get('gameType');
+      const searchTerm = searchParams.get('search');
+      const includeArchived = searchParams.get('includeArchived') === 'true';
+
+      if (!locationIds) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/analytics/location-trends',
+          'Location IDs are required',
+          user
+        );
+        return NextResponse.json(
+          { error: 'Location IDs are required' },
+          { status: 400 }
+        );
+      }
+
+      const effectiveGranularity = granularity || 'daily';
+
+      // ============================================================================
+      // STEP 2: Execute the core location trends fetching logic via helper
+      // ============================================================================
+      const trendsData = await getLocationTrends(
+        locationIds,
+        timePeriod,
+        licencee,
+        startDateParam,
+        endDateParam,
+        displayCurrency,
+        effectiveGranularity,
+        status,
+        gameType,
+        searchTerm || undefined,
+        includeArchived
+      );
+
+      // ============================================================================
+      // STEP 3: Return location trends data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/location-trends',
+        1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json(trendsData);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
       logRouteError(
         functionName,
         'GET',
         '/api/analytics/location-trends',
-        'Database connection not established',
+        errorMessage,
         user
       );
+      console.error(`[${functionName}] Error:`, errorMessage);
       return NextResponse.json(
-        { error: 'Database connection not established' },
+        { error: 'Failed to fetch location trends' },
         { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 2: Parse and validate request parameters
-    // Example: GET /api/analytics/location-trends?locationIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&timePeriod=Yesterday&granularity=hourly
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const locationIds = searchParams.get('locationIds');
-    const timePeriod =
-      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = searchParams.get('licencee');
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
-    const granularity = searchParams.get('granularity') as
-      | 'hourly'
-      | 'minute'
-      | 'daily'
-      | 'weekly'
-      | 'monthly';
-    const status = searchParams.get('status') as
-      | 'Online'
-      | 'Offline'
-      | 'All'
-      | null;
-    const gameType = searchParams.get('gameType');
-    const searchTerm = searchParams.get('search');
-    const includeArchived = searchParams.get('includeArchived') === 'true';
-
-    console.log(
-      `[Location Trends API] Request — locationIds: ${locationIds}, timePeriod: ${timePeriod}, startDate: ${startDateParam ?? 'none'}, endDate: ${endDateParam ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`
-    );
-
-    if (!locationIds) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/analytics/location-trends',
-        'Location IDs are required',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Location IDs are required' },
-        { status: 400 }
-      );
-    }
-
-    const effectiveGranularity = granularity || 'daily';
-
-    // ============================================================================
-    // STEP 3: Execute the core location trends fetching logic via helper
-    // ============================================================================
-    const trendsData = await getLocationTrends(
-      locationIds,
-      timePeriod,
-      licencee,
-      startDateParam,
-      endDateParam,
-      displayCurrency,
-      effectiveGranularity,
-      status,
-      gameType,
-      searchTerm || undefined,
-      includeArchived
-    );
-
-    // ============================================================================
-    // STEP 4: Return location trends data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/location-trends',
-      1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(`[Location Trends API] Slow response — ${duration}ms`);
-    } else {
-      console.log(`[Location Trends API] Completed in ${duration}ms`);
-    }
-
-    return NextResponse.json(trendsData);
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/location-trends',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Location Trends API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { error: 'Failed to fetch location trends' },
-      { status: 500 }
-    );
-  }
+  });
 }

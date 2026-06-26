@@ -34,4 +34,5 @@ export type CabinetCardProps = {
   includeJackpot?: boolean;
   deletedAt?: string | Date;
   showArchived?: boolean;
+  meta?: { dataSync?: { source?: string; wowbettingshopid?: string } };
 };

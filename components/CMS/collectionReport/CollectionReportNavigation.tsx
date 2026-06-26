@@ -70,7 +70,7 @@ export default function CollectionReportNavigation({
               disabled={isLoading}
               type="button"
             >
-              <span className="text-lg">{tab.icon}</span>
+              <tab.icon className="h-4 w-4" />
               <span>{tab.label}</span>
               {isHighlighted && (
                 <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
@@ -92,7 +92,7 @@ export default function CollectionReportNavigation({
         >
           {accessibleTabs.map(t => (
             <option key={t.id} value={t.id}>
-              {t.icon} {t.label}
+              {t.label}
               {t.highlight ? ' [DEV]' : ''}
             </option>
           ))}

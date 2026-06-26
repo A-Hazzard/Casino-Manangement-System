@@ -16,8 +16,11 @@ import {
 } from '@/app/api/lib/utils/routeLogger';
 
 /**
- * Main GET handler for fetching firmwares
+ * GET /api/firmwares
  *
+ * Returns all firmware records. Pass `?includeDeleted=true` to include archived entries.
+ *
+ * @module app/api/firmwares/route
  * @param {boolean} includeDeleted - Whether to include archived firmware records
  */
 export async function GET(request: NextRequest) {

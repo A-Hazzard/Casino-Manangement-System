@@ -29,8 +29,7 @@ import CollectionReportNewCollectionCollectedMachines from '@/components/CMS/col
 import CollectionReportNewCollectionFinancials from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionFinancials';
 import CollectionReportNewCollectionFormFields from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionFormFields';
 import CollectionReportNewCollectionLocationMachineSelection from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionLocationMachineSelection';
-import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
-import { VariationsListDisplay } from '@/components/CMS/collectionReport/variations/VariationsListDisplay';
+import { VariationCheckPanel } from '@/components/CMS/collectionReport/variations/VariationCheckPanel';
 import { VariationsCollapsibleSection } from '@/components/CMS/collectionReport/variations/VariationsCollapsibleSection';
 import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
 import { Button } from '@/components/shared/ui/button';
@@ -47,22 +46,23 @@ import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationD
 import {
   getUserDisplayName,
   logActivity,
+  deleteMachineCollectionBatch,
 } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { useNewCollectionModal } from '@/lib/hooks/collectionReport/useNewCollectionModal';
+import { useWowAutoReport } from '@/lib/hooks/collectionReport/useWowAutoReport';
+import { persistWowCollection } from '@/lib/helpers/collectionReport/wowAutoReportPersist';
 import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
 import {
-  useCollectionReportVariationCheck,
-  type CheckVariationsMachine,
-  type PreCreateMeterPayload,
-} from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+  useVariationStreamCheck,
+  type VariationCheckMachine,
+} from '@/lib/hooks/collectionReport/useVariationStreamCheck';
 import { useUserStore } from '@/lib/store/userStore';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatDate } from '@/lib/utils/formatting';
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Info } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -83,22 +83,33 @@ export default function CollectionReportNewCollectionModal({
   const user = useUserStore(state => state.user);
   const userId = user?._id;
 
-  // Variation checking state
+  // Variation checking — streaming per-machine check (matches the report detail page).
   const {
-    isChecking,
-    checkComplete,
-    hasVariations,
-    variationsData,
+    status: variationStatus,
+    done: checkDone,
+    total: checkTotal,
+    currentMachineName,
+    result: variationResult,
     error: variationError,
-    isMinimized,
-    isPreCreating,
-    currentMeterMachineName,
-    meterCreationError,
-    checkVariations,
-    preCreateThenCheck,
-    toggleMinimize,
+    run: runVariationCheck,
+    cancel: cancelVariationCheck,
     reset: resetVariationCheck,
-  } = useCollectionReportVariationCheck();
+  } = useVariationStreamCheck();
+
+  // Adapters so the existing in-form consumers keep working unchanged.
+  const checkComplete = variationStatus === 'done';
+  const hasVariations =
+    variationStatus === 'done' ? (variationResult?.hasVariations ?? false) : null;
+  const variationsData = variationResult;
+  // The new panel has no minimize concept; keep the flag for the legacy in-form block.
+  const isMinimized = false;
+
+  // Captures the last check inputs so the panel's Retry can replay them.
+  const lastCheckArgsRef = useRef<{
+    locationId: string;
+    machines: VariationCheckMachine[];
+  } | null>(null);
+
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [showVariationCheckPopover, setShowVariationCheckPopover] =
@@ -178,6 +189,7 @@ export default function CollectionReportNewCollectionModal({
     sasEndTime,
     setSasEndTime,
     collectedMachineEntries,
+    setCollectedMachineEntries,
     isProcessing,
     editingEntryId,
     showUpdateConfirmation,
@@ -197,6 +209,8 @@ export default function CollectionReportNewCollectionModal({
     setPrevIn,
     prevOut,
     setPrevOut,
+    jackpot,
+    includeJackpot,
     previousCollectionTime,
     isLoadingExistingCollections,
     filteredMachines,
@@ -221,6 +235,8 @@ export default function CollectionReportNewCollectionModal({
     handleCancelMachineRollover,
     handleCancelEdit,
     handleAddEntry,
+    setLockedLocation,
+    setHasChanges,
     anyConfirmationOpen,
     updateAllSasStartDate,
     setUpdateAllSasStartDate,
@@ -228,6 +244,10 @@ export default function CollectionReportNewCollectionModal({
     setUpdateAllSasEndDate,
     handleApplyAllDates,
     sasUpdateProgress,
+    createReportProgress,
+    createPhases,
+    currentCreatePhase,
+    currentSubStep,
   } = useNewCollectionModal({
     show,
     locations: propLocations,
@@ -258,6 +278,44 @@ export default function CollectionReportNewCollectionModal({
   const machineStatusMap = useMachineOnlineStatus(availableMachineIds);
 
   // ============================================================================
+  // Selection State (Bulk Delete)
+  // ============================================================================
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkDeleteConfirmation, setShowBulkDeleteConfirmation] =
+    useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    setShowBulkDeleteConfirmation(false);
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      await deleteMachineCollectionBatch(selectedIds);
+      const updatedEntries = collectedMachineEntries.filter(
+        entry => !selectedIds.includes(String(entry._id))
+      );
+      setCollectedMachineEntries(updatedEntries);
+      clearSelection();
+      toast.success(`${selectedIds.length} machine(s) deleted successfully`);
+    } catch (error) {
+      console.error('[BulkDelete] Error:', error instanceof Error ? error.message : 'Unknown error');
+      toast.error('Failed to delete some machines. Please try again.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [selectedIds, collectedMachineEntries, setCollectedMachineEntries, clearSelection]);
+
+  // ============================================================================
   // Effects
   // ============================================================================
   // Reset variation check when modal opens/closes
@@ -271,6 +329,11 @@ export default function CollectionReportNewCollectionModal({
   // modal opens (e.g. machines/financials left over from a prior edit modal session).
   const resetCollectionModalStore = useCollectionModalStore(
     state => state.resetState
+  );
+  // Atomic append to the shared store — used by WOW Auto Report to add each machine to the
+  // collected list as it is scanned (avoids stale-state batching).
+  const addCollectedMachineToStore = useCollectionModalStore(
+    state => state.addCollectedMachine
   );
   useEffect(() => {
     if (show) {
@@ -289,6 +352,161 @@ export default function CollectionReportNewCollectionModal({
   }, [selectedMachineId, machineStatusMap, editingEntryId, machineForDataEntry, currentMachineNotes, setCurrentMachineNotes]);
 
   // ============================================================================
+  // Submit handler (extracted so WOW Auto Report can trigger the same flow)
+  // ============================================================================
+  const handleDesktopCreateSubmit = useCallback(async () => {
+    if (collectedMachineEntries.length === 0 || isProcessing) return;
+
+    // Check if there's unsaved data (machine selected with form data but not added)
+    const hasUnsavedData =
+      selectedMachineId &&
+      (currentMetersIn.trim() !== '' ||
+        currentMetersOut.trim() !== '' ||
+        currentMachineNotes.trim() !== '');
+
+    if (hasUnsavedData) {
+      toast.error(
+        'You have unsaved machine data. Please click "Add Machine to List" or cancel the current machine entry before creating the report.',
+        { duration: 6000, position: 'top-center' }
+      );
+      return;
+    }
+
+    const locationIdToUse =
+      selectedLocationId ||
+      lockedLocationId ||
+      collectedMachineEntries[0]?.location ||
+      '';
+
+    const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
+    if (isNoSmib) {
+      setShowCreateReportConfirmation(true);
+      return;
+    }
+
+    // Check EVERY collected machine (WOW included). Offline non-SMIB machines have
+    // no SAS data until finalization, so they surface as "no SAS data" (variation null),
+    // and finalization (createManualMetersForEachMachine) creates their meters.
+    const machinesForCheck: VariationCheckMachine[] =
+      collectedMachineEntries.map(entry => ({
+        machineId: entry.machineId,
+        machineName:
+          `${entry.serialNumber || ''} ${entry.machineCustomName || ''} (${entry.game || ''})`.trim() ||
+          entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        prevIn: entry.prevIn || 0,
+        prevOut: entry.prevOut || 0,
+        movementGross: (entry as { movement?: { gross?: number } }).movement
+          ?.gross,
+        sasStartTime: entry.sasMeters?.sasStartTime
+          ? new Date(entry.sasMeters.sasStartTime).toISOString()
+          : undefined,
+        sasEndTime: entry.sasMeters?.sasEndTime
+          ? new Date(entry.sasMeters.sasEndTime).toISOString()
+          : undefined,
+      }));
+
+    lastCheckArgsRef.current = {
+      locationId: locationIdToUse,
+      machines: machinesForCheck,
+    };
+    setShowVariationCheckPopover(true);
+    runVariationCheck(locationIdToUse, machinesForCheck);
+  }, [
+    collectedMachineEntries,
+    isProcessing,
+    selectedMachineId,
+    currentMetersIn,
+    currentMetersOut,
+    currentMachineNotes,
+    selectedLocationId,
+    lockedLocationId,
+    machinesOfSelectedLocation,
+    setShowCreateReportConfirmation,
+    runVariationCheck,
+  ]);
+
+  // ============================================================================
+  // WOW Auto Report (developer-only, all-WOW locations)
+  // ============================================================================
+  const isDeveloper = (user?.roles ?? []).includes('developer');
+  const isAllWowLocation =
+    machinesOfSelectedLocation.length > 0 &&
+    machinesOfSelectedLocation.every(machine => isWowMachine(machine));
+  const uncollectedWowMachines = machinesOfSelectedLocation
+    .filter(
+      machine =>
+        !collectedMachineEntries.some(
+          entry => String(entry.machineId) === String(machine._id)
+        )
+    )
+    .map(machine => ({
+      id: String(machine._id),
+      name:
+        machine.custom?.name ||
+        machine.serialNumber ||
+        machine.name ||
+        String(machine._id),
+    }));
+
+  const wowStartTimeIso = useMemo(() => {
+    if (!isAllWowLocation) return undefined;
+    const times = machinesOfSelectedLocation
+      .map(m => (m.collectionTime ? new Date(m.collectionTime as string | Date).getTime() : null))
+      .filter((t): t is number => t !== null);
+    if (times.length > 0) {
+      return new Date(Math.min(...times)).toISOString();
+    }
+    if (previousCollectionTime) {
+      return new Date(previousCollectionTime).toISOString();
+    }
+    const collectionTimeDate = currentCollectionTime instanceof Date
+      ? currentCollectionTime
+      : new Date();
+    return new Date(collectionTimeDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  }, [isAllWowLocation, machinesOfSelectedLocation, previousCollectionTime, currentCollectionTime]);
+
+  const [createAutoHighlightId, setCreateAutoHighlightId] = useState<
+    string | null
+  >(null);
+
+  const autoReport = useWowAutoReport({
+    enabled: isDeveloper && isAllWowLocation,
+    machines: uncollectedWowMachines,
+    startOffset: collectedMachineEntries.length,
+    startTimeIso: wowStartTimeIso,
+    onHighlight: setCreateAutoHighlightId,
+    persist: (machine, meters, ctx) => {
+      const machineDoc = machinesOfSelectedLocation.find(
+        m => String(m._id) === machine.id
+      );
+      const loc = locations.find(
+        l => String(l._id) === (selectedLocationId || lockedLocationId)
+      );
+      return persistWowCollection(machine, meters, {
+        locationId: selectedLocationId || lockedLocationId || '',
+        collector: userId || '',
+        collectionTime: ctx?.collectionTime,
+        useMeterTimes: ctx?.useMeterTimes,
+        machineName: machineDoc?.name,
+        serialNumber: machineDoc?.serialNumber,
+        machineCustomName: machineDoc?.custom?.name,
+        previousCollectionTime: previousCollectionTime
+          ? new Date(previousCollectionTime)
+          : undefined,
+        gameDayOffset: ctx?.gameDayOffset !== undefined ? ctx.gameDayOffset : loc?.gameDayOffset,
+      });
+    },
+    commit: entry => {
+      addCollectedMachineToStore(entry);
+      setLockedLocation(selectedLocationId || lockedLocationId || '');
+      setHasChanges(true);
+    },
+    openSubmit: handleDesktopCreateSubmit,
+  });
+
+  // ============================================================================
   // Render
   // ============================================================================
   return (
@@ -297,7 +515,14 @@ export default function CollectionReportNewCollectionModal({
       <Dialog
         open={show}
         onOpenChange={open => {
-          if (!open && anyConfirmationOpen) return;
+          if (!open && (isProcessing || anyConfirmationOpen)) return;
+          if (!open && autoReport.isRunning) {
+            toast.error('Auto report is in progress. Use the Cancel button to stop it first.', {
+              position: 'top-center',
+              duration: 3000,
+            });
+            return;
+          }
           if (!open) {
             resetVariationCheck();
           }
@@ -306,7 +531,7 @@ export default function CollectionReportNewCollectionModal({
       >
         <DialogContent
           className="flex h-auto max-h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-auto md:w-full md:max-w-6xl lg:max-w-7xl"
-          showCloseButton={!isProcessing}
+          showCloseButton={!isProcessing && !autoReport.isRunning}
           onPointerDownOutside={e => e.preventDefault()}
           onEscapeKeyDown={e => e.preventDefault()}
         >
@@ -347,6 +572,8 @@ export default function CollectionReportNewCollectionModal({
                 onLocationChange={handleLocationChange}
                 onMachineSearchChange={setMachineSearchTerm}
                 onMachineSelect={setSelectedMachineId}
+                autoReport={autoReport}
+                autoHighlightId={createAutoHighlightId}
               />
             </div>
 
@@ -368,6 +595,7 @@ export default function CollectionReportNewCollectionModal({
                     }
                     machineForDataEntry={machineForDataEntry || null}
                     isLoadingTime={isLoadingTime}
+                    isWow={isWowMachine(machineForDataEntry)}
                     sasStartTime={sasStartTime}
                     sasEndTime={sasEndTime}
                     currentMetersIn={currentMetersIn}
@@ -410,6 +638,8 @@ export default function CollectionReportNewCollectionModal({
                           setCurrentRamClearMetersOut(prevOut);
                       }
                     }}
+                    jackpot={jackpot}
+                    includeJackpot={includeJackpot}
                     onPrevInChange={setPrevIn}
                     onPrevOutChange={setPrevOut}
                     onDisabledFieldClick={handleDisabledFieldClick}
@@ -565,128 +795,26 @@ export default function CollectionReportNewCollectionModal({
                 sasUpdateProgress={sasUpdateProgress}
                 variationMachineIds={variationsData?.machines
                   .filter(
-                    machine => typeof machine.variation === 'number' && machine.variation !== 0
+                    machine => machine.variation !== null && machine.variation !== 0
                   )
                   .map(machine => machine.machineId)}
+                includeJackpotMap={useMemo(() => {
+                  const map: Record<string, boolean> = {};
+                  machinesOfSelectedLocation.forEach(machine => {
+                    map[String(machine._id)] = machine.includeJackpot ?? false;
+                  });
+                  return map;
+                }, [machinesOfSelectedLocation])}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onDeleteSelected={() => setShowBulkDeleteConfirmation(true)}
               />
             </div>
           </div>
 
           <DialogFooter className="flex justify-center border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4">
             <Button
-              onClick={async () => {
-                if (collectedMachineEntries.length === 0 || isProcessing)
-                  return;
-
-                // Check if there's unsaved data (machine selected with form data but not added)
-                const hasUnsavedData =
-                  selectedMachineId &&
-                  (currentMetersIn.trim() !== '' ||
-                    currentMetersOut.trim() !== '' ||
-                    currentMachineNotes.trim() !== '');
-
-                if (hasUnsavedData) {
-                  toast.error(
-                    'You have unsaved machine data. Please click "Add Machine to List" or cancel the current machine entry before creating the report.',
-                    {
-                      duration: 6000,
-                      position: 'top-center',
-                    }
-                  );
-                  return;
-                }
-
-                // Get locationId from store state, fallback to first entry's location field
-                const locationIdToUse =
-                  selectedLocationId ||
-                  lockedLocationId ||
-                  collectedMachineEntries[0]?.location ||
-                  '';
-
-                // Query gaminglocations directly to check noSMIBLocation flag.
-                // If true, skip the /api/collection-reports/check-variations request entirely.
-                const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
-                if (isNoSmib) {
-                  setShowCreateReportConfirmation(true);
-                  return;
-                }
-
-                // Build machines for variation check
-                const machinesForCheck: CheckVariationsMachine[] =
-                  collectedMachineEntries.map(entry => ({
-                    machineId: entry.machineId,
-                    machineName:
-                      `${entry.serialNumber || ''} ${entry.machineCustomName || ''} (${entry.game || ''})`.trim() ||
-                      entry.machineId,
-                    metersIn: entry.metersIn || 0,
-                    metersOut: entry.metersOut || 0,
-                    sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-                    sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-                    prevMetersIn: entry.prevIn || 0,
-                    prevMetersOut: entry.prevOut || 0,
-                    movementGross: (entry as { movement?: { gross?: number } })
-                      .movement?.gross,
-                  }));
-
-                // Build pre-create payloads only for machines that actually
-                // need manual meters. Skip when:
-                //   (a) The collection already has a meterId (idempotency — meter exists)
-                //   (b) The machine is online SMIB (relayId + recent lastActivity)
-                // A machine needs one when:
-                //   (c) It has no relayId (non-SMIB — relay doesn't supply meters), OR
-                //   (d) It has a relayId but is offline (lastActivity > 3 min ago)
-                const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-                const preCreatePayloads: PreCreateMeterPayload[] =
-                  collectedMachineEntries
-                    .filter(entry => {
-                      if (entry.meterId) return false;
-                      const machine = machinesOfSelectedLocation.find(
-                        m => m._id === entry.machineId
-                      );
-                      if (!machine) return true;
-                      if (!machine.relayId) return true;
-                      if (!machine.lastActivity) return true;
-                      const lastActivityAgo =
-                        Date.now() -
-                        new Date(machine.lastActivity).getTime();
-                      return lastActivityAgo >= OFFLINE_THRESHOLD_MS;
-                    })
-                    .map(entry => ({
-                      machineId: entry.machineId,
-                      collectionId: entry._id,
-                      locationId: entry.location || locationIdToUse,
-                      metersIn: entry.metersIn || 0,
-                      metersOut: entry.metersOut || 0,
-                      prevMetersIn: entry.prevIn || 0,
-                      prevMetersOut: entry.prevOut || 0,
-                      customName: entry.machineCustomName || entry.machineId,
-                      ramClear: entry.ramClear,
-                      ramClearMetersIn: entry.ramClearMetersIn,
-                      ramClearMetersOut: entry.ramClearMetersOut,
-                      sasEndTime: entry.sasMeters?.sasEndTime
-                        ? new Date(entry.sasMeters.sasEndTime).toISOString()
-                        : undefined,
-                    }));
-
-                // Filter machines for variation check — exclude offline/non-SMIB
-                // machines that got manual meters pre-created. Those machines
-                // have no live SAS data to compare against, so variation checks
-                // on them are meaningless.
-                const offlineMachineIds = new Set(
-                  preCreatePayloads.map(payload => payload.machineId)
-                );
-                const onlineMachinesForCheck = machinesForCheck.filter(
-                  machine => !offlineMachineIds.has(machine.machineId)
-                );
-
-                // Open popover immediately and kick off pre-create → variation check
-                setShowVariationCheckPopover(true);
-                preCreateThenCheck(
-                  locationIdToUse,
-                  onlineMachinesForCheck,
-                  preCreatePayloads
-                );
-              }}
+              onClick={handleDesktopCreateSubmit}
               className={`w-auto bg-button px-8 py-3 text-base hover:bg-buttonActive ${
                 collectedMachineEntries.length === 0 || isProcessing
                   ? 'cursor-not-allowed'
@@ -711,6 +839,19 @@ export default function CollectionReportNewCollectionModal({
         message="This machine has a meters value less than its previous value. This typically indicates a rollover or RAM clear situation. Are you sure you want to add this machine?"
         confirmText="Yes, Add Machine"
         cancelText="Cancel"
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showBulkDeleteConfirmation}
+        onClose={() => { if (!isBulkDeleting) setShowBulkDeleteConfirmation(false); }}
+        onConfirm={handleBulkDelete}
+        title={`Delete ${selectedIds.length} Machine(s)`}
+        message={`Are you sure you want to delete ${selectedIds.length} collection entries? Each machine's meters will be reverted to their previous values.`}
+        confirmText={`Yes, Delete ${selectedIds.length}`}
+        cancelText="Cancel"
+        isLoading={isProcessing || isBulkDeleting}
+        confirmButtonVariant="destructive"
       />
 
       {/* Delete Confirmation Dialog */}
@@ -758,148 +899,64 @@ export default function CollectionReportNewCollectionModal({
         confirmText="Yes, Create Report"
         cancelText="Cancel"
         isLoading={isProcessing}
+        progress={createReportProgress ?? undefined}
+        processingPhases={createPhases}
+        currentServerPhase={currentCreatePhase}
+        subStep={currentSubStep}
       />
-      {/* Variation Check Popover */}
-      <VariationCheckPopover
-        isOpen={showVariationCheckPopover && (!isMinimized || isPreCreating || !!meterCreationError)}
-        isChecking={isChecking}
-        hasVariations={hasVariations}
+      {/* Variation Check Panel — streaming per-machine check (matches detail page) */}
+      <VariationCheckPanel
+        isOpen={showVariationCheckPopover}
+        status={variationStatus}
+        done={checkDone}
+        total={checkTotal}
+        currentMachineName={currentMachineName}
+        result={variationResult}
         error={variationError}
-        variationsData={variationsData}
-        isPreCreating={isPreCreating}
-        currentMeterMachineName={currentMeterMachineName}
-        meterCreationError={meterCreationError}
-        onMinimize={() => {
-          toggleMinimize();
-        }}
-        onSubmit={() => {
+        onConfirm={() => {
           setShowVariationCheckPopover(false);
-          // Filter out machines with "No SMIB" (no relayId)
-          const machinesWithSmib =
-            variationsData?.machines.filter(
-              m => typeof m.variation === 'number'
-            ) || [];
-
-          // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
-          if (machinesWithSmib.length === 0 || !hasVariations) {
+          const hasSmibMachines =
+            (variationsData?.machines.filter(m => m.variation !== null) || [])
+              .length > 0;
+          if (!hasSmibMachines || !hasVariations) {
             setShowCreateReportConfirmation(true);
           } else {
-            // Show variations confirmation only if there are actual variations with SMIB machines
             setShowVariationsConfirmation(true);
           }
         }}
-        onRetry={() => {
-          const machinesForCheck: CheckVariationsMachine[] =
-            collectedMachineEntries.map(entry => ({
-              machineId: entry.machineId,
-              machineName:
-                `${entry.serialNumber || ''} ${entry.machineCustomName || ''} (${entry.game || ''})`.trim() ||
-                entry.machineId,
-              metersIn: entry.metersIn || 0,
-              metersOut: entry.metersOut || 0,
-              sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-              sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-              prevMetersIn: entry.prevIn || 0,
-              prevMetersOut: entry.prevOut || 0,
-            }));
-          const locationIdToUse =
-            selectedLocationId ||
-            lockedLocationId ||
-            collectedMachineEntries[0]?.location ||
-            '';
-          checkVariations(locationIdToUse, machinesForCheck);
-        }}
-        onClose={() => {
+        onCancel={() => {
+          cancelVariationCheck();
           setShowVariationCheckPopover(false);
-          // If no variations or error, reset. If there ARE variations, keep them highlighted.
-          if (!hasVariations || variationError) {
-            resetVariationCheck();
-          }
+        }}
+        onRetry={() => {
+          const args = lastCheckArgsRef.current;
+          if (args) runVariationCheck(args.locationId, args.machines);
         }}
       />
-
-      {/* Variations with Detail Display */}
-      {showVariationCheckPopover &&
-        !isChecking &&
-        hasVariations &&
-        variationsData &&
-        isMinimized &&
-        createPortal(
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className={`fixed inset-0 z-[100005] flex justify-center bg-black/60 p-4 ${isMobile ? 'items-center' : 'items-end md:pb-24'} pointer-events-auto`}
-          >
-            <div
-              className={`w-full ${isMobile ? 'max-w-lg rounded-2xl' : 'max-w-6xl rounded-t-xl'} bg-white p-6 shadow-2xl ${isMobile ? 'max-h-[85vh]' : 'max-h-[75vh]'} overflow-y-auto border-t-8 border-amber-500 shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.4)]`}
-            >
-              <div className="mb-6 flex items-center justify-between border-b pb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    Machine Variation Analysis
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Detailed comparison between Sas data and manual meter entry
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleMinimize}
-                  className="border-amber-200 font-bold hover:bg-amber-50"
-                >
-                  Close
-                </Button>
-              </div>
-              <VariationsListDisplay
-                machines={variationsData.machines}
-                isCompact={isMobile}
-              />
-
-              {isMobile && (
-                <div className="mt-8">
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    onClick={() => {
-                      setShowVariationCheckPopover(false);
-                      setShowVariationsConfirmation(true);
-                    }}
-                  >
-                    Finalize with{' '}
-                    {
-                      variationsData.machines.filter(
-                        m => typeof m.variation === 'number'
-                      ).length
-                    }{' '}
-                    variations
-                  </Button>
-                </div>
-              )}
-            </div>
-          </motion.div>,
-          document.body
-        )}
 
       {/* Variations Confirmation Dialog (submit with variations) */}
       <VariationsConfirmationDialog
         isOpen={showVariationsConfirmation}
         machineCount={
           variationsData?.machines.filter(
-            m => typeof m.variation === 'number' && m.variation !== 0
+            m => m.variation !== null && m.variation !== 0
           ).length || 0
         }
         totalVariation={variationsData?.totalVariation || 0}
         isLoading={isProcessing}
-        onConfirm={() => {
-          // Call creation BEFORE closing confirmation to ensure state is definitely present
-          confirmCreateReports(variationsData);
+        onConfirm={async () => {
+          // Keep the dialog open so the ProcessingPhaseBar is visible,
+          // then close it once creation finishes.
+          await confirmCreateReports(variationsData);
           setShowVariationsConfirmation(false);
         }}
         onCancel={() => {
           setShowVariationsConfirmation(false);
         }}
+        progress={createReportProgress ?? undefined}
+        processingPhases={createPhases}
+        currentServerPhase={currentCreatePhase}
+        subStep={currentSubStep}
       />
 
       {/* View Machine Confirmation Dialog */}

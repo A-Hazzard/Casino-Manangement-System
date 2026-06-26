@@ -13,7 +13,7 @@
  */
 
 import { getTopLocationsAnalytics } from '@/app/api/lib/helpers/reports/analytics';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -42,94 +42,74 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/analytics/locations';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(request.url);
+      const licencee = searchParams.get('licencee');
+      const displayCurrency =
+        (searchParams.get('currency') as CurrencyCode) || 'USD';
+
+      if (!licencee) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/analytics/locations',
+          'Licencee is required',
+          user
+        );
+        return NextResponse.json(
+          { message: 'Licencee is required' },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Execute the core top locations fetching logic via helper
+      // ============================================================================
+      const locationsData = await getTopLocationsAnalytics(
+        licencee,
+        displayCurrency
+      );
+
+      // ============================================================================
+      // STEP 3: Return top locations analytics data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/locations',
+        1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json(locationsData);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
       logRouteError(
         functionName,
         'GET',
         '/api/analytics/locations',
-        'Database connection failed',
+        errorMessage,
         user
       );
+      console.error(`[${functionName}] Error:`, errorMessage);
       return NextResponse.json(
-        { error: 'Database connection failed' },
+        {
+          message: 'Failed to fetch location analytics',
+          error: errorMessage,
+        },
         { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 2: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const licencee = searchParams.get('licencee');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
-
-    if (!licencee) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/analytics/locations',
-        'Licencee is required',
-        user
-      );
-      return NextResponse.json(
-        { message: 'Licencee is required' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Execute the core top locations fetching logic via helper
-    // ============================================================================
-    const locationsData = await getTopLocationsAnalytics(
-      licencee,
-      displayCurrency
-    );
-
-    // ============================================================================
-    // STEP 4: Return top locations analytics data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/locations',
-      1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(`[Analytics Locations GET API] Completed in ${duration}ms`);
-    }
-
-    return NextResponse.json(locationsData);
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/locations',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Analytics Locations GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        message: 'Failed to fetch location analytics',
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
-  }
+  });
 }

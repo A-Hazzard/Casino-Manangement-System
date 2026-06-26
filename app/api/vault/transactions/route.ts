@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
-      const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
+      const normalizedRoles = userRoles.map(role => String(role).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
       );
@@ -114,14 +114,14 @@ export async function GET(request: NextRequest) {
       if (status && status !== 'all') query.isVoid = status === 'voided';
 
       if (search) {
-        const sr = { $regex: search, $options: 'i' };
+        const searchRegex = { $regex: search, $options: 'i' };
         const orConditions: Record<string, unknown>[] = [
-          { notes: sr },
-          { auditComment: sr },
-          { performedBy: sr },
+          { notes: searchRegex },
+          { auditComment: searchRegex },
+          { performedBy: searchRegex },
         ];
-        const ns = parseFloat(search);
-        if (!isNaN(ns)) orConditions.push({ amount: ns });
+        const numericSearch = parseFloat(search);
+        if (!isNaN(numericSearch)) orConditions.push({ amount: numericSearch });
         query.$or = orConditions;
       }
 
@@ -137,61 +137,66 @@ export async function GET(request: NextRequest) {
       let finalTx: ExtendedVaultTransaction[] =
         transactions as unknown as ExtendedVaultTransaction[];
       if (locationId === 'all' || !locationId) {
-        const locIds = transactions.map(tx => tx.locationId);
+        const locationIds = transactions.map(tx => tx.locationId);
         const locations = await GamingLocations.find(
-          { _id: { $in: locIds } },
+          { _id: { $in: locationIds } },
           { _id: 1, name: 1 }
         )
           .lean<GamingLocationDocument[]>()
-          .then(loc => loc.map(l => ({ _id: String(l._id), name: l.name })));
-        const nMap = locations.reduce(
-          (acc, loc) => {
-            acc[loc._id] = loc.name;
+          .then(docs =>
+            docs.map(doc => ({ _id: String(doc._id), name: doc.name }))
+          );
+        const locationNameMap = locations.reduce(
+          (acc, location) => {
+            acc[location._id] = location.name;
             return acc;
           },
           {} as Record<string, string>
         );
         finalTx = transactions.map(tx => ({
           ...(tx as unknown as Record<string, unknown>),
-          locationName: nMap[tx.locationId] || 'Unknown',
+          locationName: locationNameMap[tx.locationId] || 'Unknown',
         })) as unknown as ExtendedVaultTransaction[];
       }
 
-      const uIds = new Set<string>();
-      const mIds = new Set<string>();
+      const userIds = new Set<string>();
+      const machineIds = new Set<string>();
       finalTx.forEach(tx => {
-        if (tx.performedBy) uIds.add(tx.performedBy);
+        if (tx.performedBy) userIds.add(tx.performedBy);
         const from = tx.from;
         const to = tx.to;
-        if (from?.type === 'cashier' && from.id) uIds.add(from.id);
-        if (to?.type === 'cashier' && to.id) uIds.add(to.id);
-        if (from?.type === 'machine' && from.id) mIds.add(from.id);
-        if (to?.type === 'machine' && to.id) mIds.add(to.id);
+        if (from?.type === 'cashier' && from.id) userIds.add(from.id);
+        if (to?.type === 'cashier' && to.id) userIds.add(to.id);
+        if (from?.type === 'machine' && from.id) machineIds.add(from.id);
+        if (to?.type === 'machine' && to.id) machineIds.add(to.id);
         if (tx.expenseDetails?.machineIds?.length)
-          tx.expenseDetails.machineIds.forEach(id => mIds.add(id));
+          tx.expenseDetails.machineIds.forEach(id => machineIds.add(id));
       });
 
       const [userMap, machineMap] = await Promise.all([
-        uIds.size
+        userIds.size
           ? (await import('@/app/api/lib/models/user')).default
               .find(
-                { _id: { $in: Array.from(uIds) } },
+                { _id: { $in: Array.from(userIds) } },
                 { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
               )
               .lean<LeanUserDocument[]>()
               .then(users =>
                 users.reduce(
-                  (acc, u) => {
-                    acc[String(u._id)] = u as Record<string, unknown>;
+                  (acc, userDoc) => {
+                    acc[String(userDoc._id)] = userDoc as Record<
+                      string,
+                      unknown
+                    >;
                     return acc;
                   },
                   {} as Record<string, Record<string, unknown>>
                 )
               )
           : Promise.resolve({} as Record<string, Record<string, unknown>>),
-        mIds.size
+        machineIds.size
           ? (await import('@/app/api/lib/models/machines')).Machine.find(
-              { _id: { $in: Array.from(mIds) } },
+              { _id: { $in: Array.from(machineIds) } },
               {
                 serialNumber: 1,
                 'custom.name': 1,
@@ -203,8 +208,11 @@ export async function GET(request: NextRequest) {
               .lean<GamingMachine[]>()
               .then(machines =>
                 machines.reduce(
-                  (acc, m) => {
-                    acc[String(m._id)] = m as Record<string, unknown>;
+                  (acc, machine) => {
+                    acc[String(machine._id)] = machine as Record<
+                      string,
+                      unknown
+                    >;
                     return acc;
                   },
                   {} as Record<string, Record<string, unknown>>
@@ -214,15 +222,15 @@ export async function GET(request: NextRequest) {
       ]);
 
       const populated = finalTx.map(tx => {
-        const res: Record<string, unknown> = {
+        const result: Record<string, unknown> = {
           ...(tx as unknown as Record<string, unknown>),
         };
         const performedByKey = tx.performedBy ?? '';
-        const perf = userMap[performedByKey] as
+        const performer = userMap[performedByKey] as
           | { profile?: { firstName?: string; lastName?: string } }
           | undefined;
-        if (perf?.profile?.firstName)
-          res.performedByName = `${perf.profile.firstName} ${perf.profile.lastName}`;
+        if (performer?.profile?.firstName)
+          result.performedByName = `${performer.profile.firstName} ${performer.profile.lastName}`;
 
         const formatActor = (
           actor: { type: string; id?: string } | undefined
@@ -252,17 +260,19 @@ export async function GET(request: NextRequest) {
 
         const fromName = formatActor(tx.from);
         const toName = formatActor(tx.to);
-        if (fromName) res.fromName = fromName;
-        if (toName) res.toName = toName;
+        if (fromName) result.fromName = fromName;
+        if (toName) result.toName = toName;
 
-        const aMIds = new Set<string>();
-        if (tx.from?.type === 'machine' && tx.from.id) aMIds.add(tx.from.id);
-        if (tx.to?.type === 'machine' && tx.to.id) aMIds.add(tx.to.id);
+        const relatedMachineIds = new Set<string>();
+        if (tx.from?.type === 'machine' && tx.from.id)
+          relatedMachineIds.add(tx.from.id);
+        if (tx.to?.type === 'machine' && tx.to.id)
+          relatedMachineIds.add(tx.to.id);
         if (tx.expenseDetails?.machineIds?.length)
-          tx.expenseDetails.machineIds.forEach(id => aMIds.add(id));
+          tx.expenseDetails.machineIds.forEach(id => relatedMachineIds.add(id));
 
-        if (aMIds.size > 0) {
-          res.machineDetails = Array.from(aMIds).map(id => {
+        if (relatedMachineIds.size > 0) {
+          result.machineDetails = Array.from(relatedMachineIds).map(id => {
             const machineData = machineMap[id] as
               | {
                   serialNumber?: string;
@@ -274,21 +284,24 @@ export async function GET(request: NextRequest) {
               | undefined;
             if (!machineData)
               return { identifier: id, game: 'N/A', gameType: 'N/A' };
-            const sn = String(machineData.serialNumber || '').trim();
-            const nm = String(machineData.custom?.name || '').trim();
+            const serialNumber = String(machineData.serialNumber || '').trim();
+            const customName = String(machineData.custom?.name || '').trim();
             const game = String(
               machineData.game || machineData.installedGame || ''
             );
             const gameType = String(machineData.gameType || '');
-            const main = sn || nm || 'N/A';
+            const mainIdentifier = serialNumber || customName || 'N/A';
             return {
-              identifier: nm && nm !== main ? `${main} (${nm})` : main,
+              identifier:
+                customName && customName !== mainIdentifier
+                  ? `${mainIdentifier} (${customName})`
+                  : mainIdentifier,
               game: game.trim(),
               gameType: gameType.trim(),
             };
           });
         }
-        return res;
+        return result;
       });
 
       // ============================================================================
@@ -310,8 +323,8 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      populated.forEach(t => {
-        const expenseDetails = t.expenseDetails as
+      populated.forEach(transaction => {
+        const expenseDetails = transaction.expenseDetails as
           | {
               machineIds?: string[];
             }
@@ -340,7 +353,7 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(total / limit),
         },
       });
-    } catch (error: unknown) {
+    } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message

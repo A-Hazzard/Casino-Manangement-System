@@ -43,13 +43,13 @@ export type FeedbackResponse = {
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  bug: '🐛 Bug Report',
-  suggestion: '💡 Suggestion',
-  'general-review': '⭐ General Review',
-  'feature-request': '✨ Feature Request',
-  performance: '⚡ Performance',
-  'ui-ux': '🎨 UI/UX',
-  other: '📝 Other',
+  bug: 'Bug Report',
+  suggestion: 'Suggestion',
+  'general-review': 'General Review',
+  'feature-request': 'Feature Request',
+  performance: 'Performance',
+  'ui-ux': 'UI/UX',
+  other: 'Other',
 };
 
 export const STATUS_COLORS: Record<string, string> = {

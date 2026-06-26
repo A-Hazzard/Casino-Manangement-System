@@ -71,8 +71,12 @@ export default function TopPerformingCabinetModal({
   const [loadingChart, setLoadingChart] = useState(false);
   const router = useRouter();
   const { displayCurrency } = useCurrency();
-  const { activePieChartFilter, activeMetricsFilter, customDateRange } =
-    useDashBoardStore();
+  const {
+    activePieChartFilter,
+    activeMetricsFilter,
+    customDateRange,
+    gameDayOffset,
+  } = useDashBoardStore();
 
   // Chart granularity state - initialize after store values are available
   const [chartGranularity, setChartGranularity] = useState<
@@ -108,7 +112,7 @@ export default function TopPerformingCabinetModal({
       try {
         const range = getGamingDayRangeForPeriod(
           'Custom',
-          8, // Default gaming day start hour
+          gameDayOffset,
           customDateRange.startDate instanceof Date
             ? customDateRange.startDate
             : new Date(customDateRange.startDate),
@@ -126,7 +130,7 @@ export default function TopPerformingCabinetModal({
       }
     }
     return false;
-  }, [effectiveTimePeriod, customDateRange]);
+  }, [effectiveTimePeriod, customDateRange, gameDayOffset]);
 
   // ============================================================================
   // Effects

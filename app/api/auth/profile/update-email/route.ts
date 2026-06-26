@@ -1,3 +1,12 @@
+/**
+ * Update Email API Route
+ *
+ * Securely updates the authenticated user's email address after verifying
+ * the current password. Checks for duplicate email addresses.
+ *
+ * @module app/api/auth/profile/update-email/route
+ */
+
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
@@ -161,7 +170,6 @@ export async function POST(req: NextRequest) {
       errorMessage,
       user
     );
-    console.error('[POST] Error:', errorMessage);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

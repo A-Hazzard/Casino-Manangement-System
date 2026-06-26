@@ -190,7 +190,18 @@ export async function handleSummaryMode(
         onlineMachines: {
           $sum: {
             $cond: [
-              { $gt: ['$lastActivity', new Date(Date.now() - 3 * 60 * 1000)] },
+              {
+                // WOW machines have no relay/activity but always count as online.
+                $or: [
+                  {
+                    $gt: [
+                      '$lastActivity',
+                      new Date(Date.now() - 3 * 60 * 1000),
+                    ],
+                  },
+                  { $eq: ['$meta.dataSync.source', 'wow'] },
+                ],
+              },
               1,
               0,
             ],

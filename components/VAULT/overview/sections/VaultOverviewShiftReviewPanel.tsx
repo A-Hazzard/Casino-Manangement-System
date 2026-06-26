@@ -754,7 +754,7 @@ export default function VaultOverviewShiftReviewPanel({
                                         Total:
                                       </span>
                                       <span className="text-sm font-black text-orange-600">
-                                        ${shiftTotal.toLocaleString()}
+                                        {formatAmount(shiftTotal)}
                                       </span>
                                     </div>
                                   </div>

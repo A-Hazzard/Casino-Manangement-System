@@ -5,7 +5,7 @@ import CollectionReportEditLocationMachineSelection from '@/components/CMS/colle
 import { VariationsCollapsibleSection } from '@/components/CMS/collectionReport/variations/VariationsCollapsibleSection';
 import { Info } from 'lucide-react';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type {
   CollectionReportLocationWithMachines,
   CollectionReportMachineSummary,
@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
+import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 
 type DesktopEditLayoutProps = {
   selectedLocationId: string | undefined;
@@ -92,7 +93,12 @@ type DesktopEditLayoutProps = {
   handleApplyAllDates: () => void;
   sasUpdateProgress?: { completed: number; total: number } | null;
   locations: CollectionReportLocationWithMachines[];
-  gameDayOffset?: number;
+  autoReport?: WowAutoReportControl;
+  autoHighlightId?: string | null;
+
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onDeleteSelected: () => void;
 };
 
 export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
@@ -160,6 +166,9 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     handleApplyAllDates,
     sasUpdateProgress,
     locations,
+    selectedIds,
+    onToggleSelect,
+    onDeleteSelected,
   } = props;
 
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -205,6 +214,8 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           collectedMachineEntries={collectedMachineEntries}
           editingEntryId={editingEntryId}
           machineStatusMap={desktopMachineStatusMap}
+          autoReport={props.autoReport}
+          autoHighlightId={props.autoHighlightId}
         />
       </div>
 
@@ -338,9 +349,19 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           variationMachineIds={variationsData?.machines
             .filter(
               (variation: MachineVariationData) =>
-                typeof variation.variation === 'number' && Math.abs(variation.variation) > 0.1
+                variation.variation !== null && variation.variation !== 0
             )
             .map((variation: MachineVariationData) => variation.machineId)}
+          includeJackpotMap={useMemo(() => {
+            const map: Record<string, boolean> = {};
+            machinesOfSelectedLocation.forEach(machine => {
+              map[String(machine._id)] = machine.includeJackpot ?? false;
+            });
+            return map;
+          }, [machinesOfSelectedLocation])}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          onDeleteSelected={onDeleteSelected}
         />
       </div>
     </div>

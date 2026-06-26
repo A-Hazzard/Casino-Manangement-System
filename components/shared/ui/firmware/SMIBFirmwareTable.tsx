@@ -85,8 +85,8 @@ export default function SMIBFirmwareTable({
             </tr>
           </thead>
           <tbody>
-            {[...Array(3)].map((_, i) => (
-              <tr key={i}>
+            {[...Array(3)].map((_, index) => (
+              <tr key={index}>
                 <td className="border border-border bg-container p-3">
                   <div className="h-4 animate-pulse rounded bg-gray-200"></div>
                 </td>

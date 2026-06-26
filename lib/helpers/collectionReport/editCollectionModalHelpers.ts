@@ -52,6 +52,18 @@ export async function deleteMachineCollection(
 }
 
 /**
+ * Delete multiple machine collections and update their cabinet history entries in one request
+ */
+export async function deleteMachineCollectionBatch(
+  ids: string[]
+): Promise<{ success: boolean; deleted: number }> {
+  const res = await axios.delete('/api/collection-reports/collections/batch', {
+    data: { ids, updateCabinetHistory: true },
+  });
+  return res.data;
+}
+
+/**
  * Utility function for proper alphabetical and numerical sorting
  */
 export function sortMachinesAlphabetically<

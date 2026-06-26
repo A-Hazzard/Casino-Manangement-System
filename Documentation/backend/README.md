@@ -291,10 +291,10 @@ import { gamingDayRange } from '@/lib/utils/gamingDayRange';
 | Mongoose models catalog      | [app/api/lib/models/README.md](../../app/api/lib/models/README.md)           |
 | Database Models              | [database-models.md](./database-models.md)                                   |
 | Page & Tab Access            | [api-flows/page-auth-restrictions.md](./api-flows/page-auth-restrictions.md) |
-| Vault Flows                  | [vault-api.md](../api/vault-api.md)                                          |
-| Collection Reports (Backend) | [collections-technical-deep-dive.md](../api/collections-technical-deep-dive.md) |
+| Vault Flows                  | [vault-api.md](./api/vault-api.md)                                          |
+| Collection Reports (Backend) | [collections-technical-deep-dive.md](./api/collections-technical-deep-dive.md) |
 | RBAC & Authorization         | [.instructions/authorization.md](../../.instructions/authorization.md)       |
 
 ---
 
-_Last Updated: June 5, 2026 — v4.4.0 — Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard_
+_Last Updated: June 25, 2026 — v4.4.0 — Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard_

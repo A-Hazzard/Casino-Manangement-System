@@ -26,6 +26,7 @@
 
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
@@ -37,6 +38,8 @@ import type {
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
+import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import { toast } from 'sonner';
 
 type EditCollectionLocationMachineSelectionProps = {
@@ -55,6 +58,8 @@ type EditCollectionLocationMachineSelectionProps = {
   collectedMachineEntries: CollectionDocument[];
   editingEntryId: string | null;
   machineStatusMap?: Record<string, boolean>;
+  autoReport?: WowAutoReportControl;
+  autoHighlightId?: string | null;
 };
 
 export default function CollectionReportEditLocationMachineSelection({
@@ -73,7 +78,22 @@ export default function CollectionReportEditLocationMachineSelection({
   collectedMachineEntries,
   editingEntryId,
   machineStatusMap = {},
+  autoReport,
+  autoHighlightId,
 }: EditCollectionLocationMachineSelectionProps) {
+  // ============================================================================
+  // Auto-scroll: keep the highlighted machine button in view during auto-report
+  // ============================================================================
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!autoHighlightId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector<HTMLElement>(
+      `[data-machine-id="${autoHighlightId}"]`
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [autoHighlightId]);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -96,6 +116,10 @@ export default function CollectionReportEditLocationMachineSelection({
           />
         )}
       </div>
+
+      {autoReport?.enabled && (
+        <WowAutoReportButton control={autoReport} disabled={isProcessing} />
+      )}
 
       {/* Machine search bar - always visible when location is selected */}
       {selectedLocationId && (
@@ -121,7 +145,7 @@ export default function CollectionReportEditLocationMachineSelection({
       )}
 
       {/* Machine list */}
-      <div className="custom-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <div ref={scrollContainerRef} className="custom-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {selectedLocationId ? (
           isLoadingMachines ? (
             <div className="space-y-2">
@@ -133,6 +157,7 @@ export default function CollectionReportEditLocationMachineSelection({
             filteredMachines.map(machine => (
               <Button
                 key={String(machine._id)}
+                data-machine-id={String(machine._id)}
                 variant={
                   selectedMachineId === String(machine._id)
                     ? 'secondary'
@@ -142,7 +167,11 @@ export default function CollectionReportEditLocationMachineSelection({
                       ? 'default'
                       : 'outline'
                 }
-                className="h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left"
+                className={`h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left ${
+                  autoHighlightId === String(machine._id)
+                    ? 'ring-2 ring-purple-500 ring-offset-1'
+                    : ''
+                }`}
                 onClick={() => {
                   if (
                     collectedMachineEntries.find(

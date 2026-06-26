@@ -33,7 +33,7 @@ const MetersSchema = new Schema(
     gamesWon: { type: Number, default: 0 },
     meterSource: {
       type: String,
-      enum: ['COLLECTION_REPORT', 'SAS_READ', 'OTHER'],
+      enum: ['COLLECTION_REPORT', 'SAS_READ', 'WOW_SYNC', 'OTHER'],
       default: 'COLLECTION_REPORT',
     },
     isRamClear: { type: Boolean },
@@ -58,7 +58,7 @@ MetersSchema.pre(
       $or: [
         { deletedAt: null },
         { deletedAt: { $exists: false } },
-        { deletedAt: { $lt: new Date('2026-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     next();
@@ -72,7 +72,7 @@ MetersSchema.pre(
       $or: [
         { deletedAt: null },
         { deletedAt: { $exists: false } },
-        { deletedAt: { $lt: new Date('2026-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     next();
@@ -86,7 +86,7 @@ MetersSchema.pre(
       $or: [
         { deletedAt: null },
         { deletedAt: { $exists: false } },
-        { deletedAt: { $lt: new Date('2026-01-01') } },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
     });
     next();
@@ -101,7 +101,7 @@ MetersSchema.pre(
         $or: [
           { deletedAt: null },
           { deletedAt: { $exists: false } },
-          { deletedAt: { $lt: new Date('2026-01-01') } },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
     });

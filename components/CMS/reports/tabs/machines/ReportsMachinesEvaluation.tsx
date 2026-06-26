@@ -40,6 +40,8 @@ import type {
   TopMachinesCriteria,
 } from '@/shared/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
   BarChart3,
@@ -131,6 +133,9 @@ export const ReportsMachinesEvaluation = ({
   // State & Hooks
   // ============================================================================
   const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value ?? 0, displayCurrency);
 
   // ============================================================================
   // Render
@@ -402,19 +407,19 @@ export const ReportsMachinesEvaluation = ({
                         <span
                           className={getFinancialColorClass(machine.coinIn)}
                         >
-                          ${machine.coinIn.toLocaleString()}
+                          {formatCurrency(machine.coinIn)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span
                           className={getFinancialColorClass(machine.netWin)}
                         >
-                          ${machine.netWin.toLocaleString()}
+                          {formatCurrency(machine.netWin)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span className={getFinancialColorClass(machine.gross)}>
-                          ${machine.gross.toLocaleString()}
+                          {formatCurrency(machine.gross)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm font-medium">
@@ -542,19 +547,19 @@ export const ReportsMachinesEvaluation = ({
                         <span
                           className={getFinancialColorClass(machine.coinIn)}
                         >
-                          ${machine.coinIn.toLocaleString()}
+                          {formatCurrency(machine.coinIn)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span
                           className={getFinancialColorClass(machine.netWin)}
                         >
-                          ${machine.netWin.toLocaleString()}
+                          {formatCurrency(machine.netWin)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span className={getFinancialColorClass(machine.gross)}>
-                          ${machine.gross.toLocaleString()}
+                          {formatCurrency(machine.gross)}
                         </span>
                       </td>
                       <td className="p-3 text-left text-sm font-medium">

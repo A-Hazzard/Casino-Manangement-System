@@ -1,3 +1,12 @@
+/**
+ * TOTP Status API Route
+ *
+ * Returns the 2FA configuration state for the currently authenticated user.
+ * Used by the frontend to decide which setup or recovery flow to show.
+ *
+ * @module app/api/auth/totp/status/route
+ */
+
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';

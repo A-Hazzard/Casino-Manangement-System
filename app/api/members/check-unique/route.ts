@@ -7,7 +7,7 @@
  * @module app/api/members/check-unique/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Member } from '@/app/api/lib/models/members';
 import {
   logRouteFetch,
@@ -35,79 +35,76 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/members/check-unique';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse query parameters
-    // ============================================================================
-    const { searchParams } = new URL(req.url);
-    const username = searchParams.get('username');
-    const email = searchParams.get('email');
-    const excludeId = searchParams.get('excludeId'); // For edit mode - exclude current member
+  return withApiAuth(req, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse query parameters
+      // ============================================================================
+      const { searchParams } = new URL(req.url);
+      const username = searchParams.get('username');
+      const email = searchParams.get('email');
+      const excludeId = searchParams.get('excludeId'); // For edit mode - exclude current member
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 3: Check username uniqueness
-    // ============================================================================
-    let usernameAvailable = true;
-    if (username && username.trim()) {
-      const query: Record<string, unknown> = { username: username.trim() };
-      // Exclude current member if editing
-      if (excludeId) {
-        query._id = { $ne: excludeId };
+      // ============================================================================
+      // STEP 2: Check username uniqueness
+      // ============================================================================
+      let usernameAvailable = true;
+      if (username && username.trim()) {
+        const query: Record<string, unknown> = { username: username.trim() };
+        // Exclude current member if editing
+        if (excludeId) {
+          query._id = { $ne: excludeId };
+        }
+        const existingUsername = await Member.findOne(query);
+        usernameAvailable = !existingUsername;
       }
-      const existingUsername = await Member.findOne(query);
-      usernameAvailable = !existingUsername;
-    }
 
-    // ============================================================================
-    // STEP 4: Check email uniqueness
-    // ============================================================================
-    let emailAvailable = true;
-    if (email && email.trim()) {
-      const query: Record<string, unknown> = {
-        'profile.email': email.trim(),
-      };
-      // Exclude current member if editing
-      if (excludeId) {
-        query._id = { $ne: excludeId };
+      // ============================================================================
+      // STEP 3: Check email uniqueness
+      // ============================================================================
+      let emailAvailable = true;
+      if (email && email.trim()) {
+        const query: Record<string, unknown> = {
+          'profile.email': email.trim(),
+        };
+        // Exclude current member if editing
+        if (excludeId) {
+          query._id = { $ne: excludeId };
+        }
+        const existingEmail = await Member.findOne(query);
+        emailAvailable = !existingEmail;
       }
-      const existingEmail = await Member.findOne(query);
-      emailAvailable = !existingEmail;
+
+      // ============================================================================
+      // STEP 4: Return availability status
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/members/check-unique',
+        1,
+        user,
+        duration
+      );
+
+      return NextResponse.json({
+        usernameAvailable,
+        emailAvailable,
+        username: username ? username.trim() : null,
+        email: email ? email.trim() : null,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/check-unique',
+        errorMessage,
+        user
+      );
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    // ============================================================================
-    // STEP 5: Return availability status
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/members/check-unique',
-      1,
-      user,
-      duration
-    );
-
-    return NextResponse.json({
-      usernameAvailable,
-      emailAvailable,
-      username: username ? username.trim() : null,
-      email: email ? email.trim() : null,
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/members/check-unique',
-      errorMessage,
-      user
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }

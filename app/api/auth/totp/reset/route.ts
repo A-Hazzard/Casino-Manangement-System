@@ -1,3 +1,12 @@
+/**
+ * TOTP Reset API Route
+ *
+ * Clears the TOTP secret and disables 2FA for a target user.
+ * Restricted to Vault Manager, Admin, and Developer roles.
+ *
+ * @module app/api/auth/totp/reset/route
+ */
+
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
@@ -119,7 +128,7 @@ export async function POST(req: NextRequest) {
         }
       );
       if (!notifResult) {
-        console.warn(`[TOTP Reset] Notification ${notificationId} not found`);
+        console.error(`[totpReset] Notification ${notificationId} not found`);
       }
     }
 

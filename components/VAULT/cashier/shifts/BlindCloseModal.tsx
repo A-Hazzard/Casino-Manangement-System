@@ -71,8 +71,8 @@ export default function BlindCloseModal({
   useEffect(() => {
     if (open) {
       setDenominations(
-        denomsList.map(d => ({
-          denomination: d as Denomination['denomination'],
+        denomsList.map(denomValue => ({
+          denomination: denomValue as Denomination['denomination'],
           quantity: 0,
         }))
       );
@@ -84,7 +84,7 @@ export default function BlindCloseModal({
   // Computed
   // ============================================================================
   const totalAmount = denominations.reduce(
-    (sum, d) => sum + d.denomination * d.quantity,
+    (sum, denom) => sum + denom.denomination * denom.quantity,
     0
   );
 
@@ -105,8 +105,8 @@ export default function BlindCloseModal({
     });
   };
 
-  const isAllTouched = denomsList.every(d =>
-    touchedDenominations.has(Number(d))
+  const isAllTouched = denomsList.every(denomValue =>
+    touchedDenominations.has(Number(denomValue))
   );
   const isValid = totalAmount > 0 || isAllTouched;
 

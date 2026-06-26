@@ -15,8 +15,7 @@ import {
   logActivity,
   mapDeletedFieldsToChanges,
 } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Member } from '@/app/api/lib/models/members';
 import {
   logRouteFetch,
@@ -48,45 +47,49 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/members/[id]';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { pathname } = request.nextUrl;
-    const id = pathname.split('/').pop();
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse route parameters
+      // ============================================================================
+      const { pathname } = request.nextUrl;
+      const id = pathname.split('/').pop();
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
+      // ============================================================================
+      // STEP 2: Fetch member with location information using aggregation
+      // ============================================================================
+      const member = await fetchMemberWithLocation(id || '');
 
-    // ============================================================================
-    // STEP 3: Fetch member with location information using aggregation
-    // ============================================================================
-    const member = await fetchMemberWithLocation(id || '');
+      // ============================================================================
+      // STEP 3: Return member data
+      // ============================================================================
+      if (!member) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/members/[id]',
+          `Not found: ${id}`,
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Member not found' },
+          { status: 404 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 4: Return member data
-    // ============================================================================
-    if (!member) {
-      logRouteError(functionName, 'GET', '/api/members/[id]', `Not found: ${id}`, user);
+      const duration = Date.now() - startTime;
+      logRouteFetch(functionName, 'GET', '/api/members/[id]', 1, user, duration);
+      return NextResponse.json(member);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'GET', '/api/members/[id]', errorMessage, user);
       return NextResponse.json(
-        { success: false, error: 'Member not found' },
-        { status: 404 }
+        { success: false, error: errorMessage },
+        { status: 500 }
       );
     }
-
-    const duration = Date.now() - startTime;
-    logRouteFetch(functionName, 'GET', '/api/members/[id]', 1, user, duration);
-    return NextResponse.json(member);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(functionName, 'GET', '/api/members/[id]', errorMessage, user);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 /**
@@ -119,188 +122,180 @@ export async function PUT(request: NextRequest) {
   const functionName = 'PUT /api/members/[id]';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and request body
-    // ============================================================================
-    const { pathname } = request.nextUrl;
-    const memberId = pathname.split('/').pop();
-    const body = await request.json();
+  return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse route parameters and request body
+      // ============================================================================
+      const { pathname } = request.nextUrl;
+      const memberId = pathname.split('/').pop();
+      const body = await request.json();
 
-    console.log(`[Member PUT] Request — member: ${memberId}`);
+      // ============================================================================
+      // STEP 2: Validate member ID
+      // ============================================================================
+      if (!memberId) {
+        return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
+      }
 
-    // ============================================================================
-    // STEP 2: Validate member ID
-    // ============================================================================
-    if (!memberId) {
-      return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
-    }
-
-    // ============================================================================
-    // STEP 3: Connect to database and authenticate user
-    // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-
-    if (!userPayload) {
-      logRouteError(functionName, 'PUT', '/api/members/[id]', 'Unauthorized', user);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userRoles = (userPayload.roles as string[]) || [];
-    const isAdminOrDeveloper = userRoles.some(
-      role => role === 'admin' || role === 'developer'
-    );
-
-    if (!isAdminOrDeveloper) {
-      logRouteError(functionName, 'PUT', '/api/members/[id]', 'Forbidden - insufficient permissions', user);
-      return NextResponse.json(
-        { error: 'Forbidden: Only administrators and developers can edit members' },
-        { status: 403 }
+      // ============================================================================
+      // STEP 3: Authorize caller (admin or developer only)
+      // ============================================================================
+      const isAdminOrDeveloper = isAdminOrDev || userRoles.some(
+        role => role === 'admin' || role === 'developer'
       );
-    }
 
-    // ============================================================================
-    // STEP 4: Find member by ID
-    // ============================================================================
-    const member = await Member.findOne({ _id: memberId });
-
-    if (!member) {
-      logRouteError(functionName, 'PUT', '/api/members/[id]', `Member not found: ${memberId}`, user);
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-    }
-
-    const originalMemberData = member.toObject();
-
-    // ============================================================================
-    // STEP 5: Update member fields
-    // ============================================================================
-    if (body.profile !== undefined) {
-      if (!member.profile) {
-        member.profile = {
-          firstName: '',
-          lastName: '',
-          email: '',
-          occupation: '',
-          address: '',
-          gender: '',
-          dob: '',
-          indentification: { number: '', type: '' },
-        };
-      }
-
-      const trimString = (value: unknown): string =>
-        typeof value === 'string' ? value.trim() : '';
-
-      if (body.profile.firstName !== undefined) {
-        const trimmed = trimString(body.profile.firstName);
-        if (!trimmed) {
-          return NextResponse.json({ error: 'First name cannot be blank' }, { status: 400 });
-        }
-      }
-      if (body.profile.lastName !== undefined) {
-        const trimmed = trimString(body.profile.lastName);
-        if (!trimmed) {
-          return NextResponse.json({ error: 'Last name cannot be blank' }, { status: 400 });
-        }
-      }
-      if (body.profile.email !== undefined) {
-        const trimmedEmail = trimString(body.profile.email);
-        if (trimmedEmail) {
-          const exists = await checkMemberFieldUniqueness('profile.email', trimmedEmail, memberId);
-          if (exists) {
-            logRouteError(functionName, 'PUT', '/api/members/[id]', 'Email address already in use', user);
-            return NextResponse.json({ error: 'Email address already in use' }, { status: 400 });
-          }
-        }
-      }
-
-      const updatedProfile = updateMemberProfileFields(
-        member.profile as Record<string, unknown>,
-        body.profile
-      );
-      if (updatedProfile) {
-        member.profile = updatedProfile;
-      }
-    }
-
-    if (body.username !== undefined) {
-      const trimmedUsername = typeof body.username === 'string' ? body.username.trim() : '';
-      if (!trimmedUsername) {
-        return NextResponse.json({ error: 'Username is required and cannot be blank' }, { status: 400 });
-      }
-      const exists = await checkMemberFieldUniqueness('username', trimmedUsername, memberId);
-      if (exists) {
-        logRouteError(functionName, 'PUT', '/api/members/[id]', 'Username already exists', user);
-        return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
-      }
-      member.username = trimmedUsername;
-    }
-
-    if (body.phoneNumber !== undefined) {
-      member.phoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : body.phoneNumber;
-    }
-    if (body.points !== undefined) {
-      member.points = body.points;
-    }
-    if (body.uaccount !== undefined) {
-      member.uaccount = body.uaccount;
-    }
-    if (body.gamingLocation !== undefined) {
-      const trimmedLocation = typeof body.gamingLocation === 'string' ? body.gamingLocation.trim() : '';
-      if (trimmedLocation) {
-        member.gamingLocation = trimmedLocation;
-      } else {
-        logRouteError(functionName, 'PUT', '/api/members/[id]', 'gamingLocation is required and cannot be empty', user);
+      if (!isAdminOrDeveloper) {
+        logRouteError(functionName, 'PUT', '/api/members/[id]', 'Forbidden - insufficient permissions', user);
         return NextResponse.json(
-          { error: 'gamingLocation is required and cannot be empty' },
-          { status: 400 }
+          { error: 'Forbidden: Only administrators and developers can edit members' },
+          { status: 403 }
         );
       }
+
+      // ============================================================================
+      // STEP 4: Find member by ID
+      // ============================================================================
+      const member = await Member.findOne({ _id: memberId });
+
+      if (!member) {
+        logRouteError(functionName, 'PUT', '/api/members/[id]', `Member not found: ${memberId}`, user);
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+
+      const originalMemberData = member.toObject();
+
+      // ============================================================================
+      // STEP 5: Update member fields
+      // ============================================================================
+      if (body.profile !== undefined) {
+        if (!member.profile) {
+          member.profile = {
+            firstName: '',
+            lastName: '',
+            email: '',
+            occupation: '',
+            address: '',
+            gender: '',
+            dob: '',
+            indentification: { number: '', type: '' },
+          };
+        }
+
+        const trimString = (value: unknown): string =>
+          typeof value === 'string' ? value.trim() : '';
+
+        if (body.profile.firstName !== undefined) {
+          const trimmed = trimString(body.profile.firstName);
+          if (!trimmed) {
+            return NextResponse.json({ error: 'First name cannot be blank' }, { status: 400 });
+          }
+        }
+        if (body.profile.lastName !== undefined) {
+          const trimmed = trimString(body.profile.lastName);
+          if (!trimmed) {
+            return NextResponse.json({ error: 'Last name cannot be blank' }, { status: 400 });
+          }
+        }
+        if (body.profile.email !== undefined) {
+          const trimmedEmail = trimString(body.profile.email);
+          if (trimmedEmail) {
+            const exists = await checkMemberFieldUniqueness('profile.email', trimmedEmail, memberId);
+            if (exists) {
+              logRouteError(functionName, 'PUT', '/api/members/[id]', 'Email address already in use', user);
+              return NextResponse.json({ error: 'Email address already in use' }, { status: 400 });
+            }
+          }
+        }
+
+        const updatedProfile = updateMemberProfileFields(
+          member.profile as Record<string, unknown>,
+          body.profile
+        );
+        if (updatedProfile) {
+          member.profile = updatedProfile;
+        }
+      }
+
+      if (body.username !== undefined) {
+        const trimmedUsername = typeof body.username === 'string' ? body.username.trim() : '';
+        if (!trimmedUsername) {
+          return NextResponse.json({ error: 'Username is required and cannot be blank' }, { status: 400 });
+        }
+        const exists = await checkMemberFieldUniqueness('username', trimmedUsername, memberId);
+        if (exists) {
+          logRouteError(functionName, 'PUT', '/api/members/[id]', 'Username already exists', user);
+          return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
+        }
+        member.username = trimmedUsername;
+      }
+
+      if (body.phoneNumber !== undefined) {
+        member.phoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : body.phoneNumber;
+      }
+      if (body.points !== undefined) {
+        member.points = body.points;
+      }
+      if (body.uaccount !== undefined) {
+        member.uaccount = body.uaccount;
+      }
+      if (body.gamingLocation !== undefined) {
+        const trimmedLocation = typeof body.gamingLocation === 'string' ? body.gamingLocation.trim() : '';
+        if (trimmedLocation) {
+          member.gamingLocation = trimmedLocation;
+        } else {
+          logRouteError(functionName, 'PUT', '/api/members/[id]', 'gamingLocation is required and cannot be empty', user);
+          return NextResponse.json(
+            { error: 'gamingLocation is required and cannot be empty' },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (!member.gamingLocation || member.gamingLocation.trim() === '') {
+        member.gamingLocation = 'default';
+      }
+
+      // ============================================================================
+      // STEP 6: Save updated member
+      // ============================================================================
+      await member.save();
+
+      // ============================================================================
+      // STEP 7: Activity log + return updated member
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteUpdate(functionName, 'PUT', '/api/members/[id]', 1, user, duration);
+
+      if (Date.now() - startTime > 1000) {
+        console.error(`[Member PUT] Slow response: ${Date.now() - startTime}ms`);
+      }
+
+      logActivity({
+        action: 'update',
+        details: `Member ${member.username || memberId} profile updated`,
+        userId: String(currentUser._id),
+        username: String(currentUser.username || currentUser.emailAddress || currentUser._id),
+        metadata: {
+          resource: 'member',
+          resourceId: memberId,
+          resourceName: member.username || memberId,
+          changes: calculateChanges(
+            originalMemberData as unknown as Record<string, unknown>,
+            body as Record<string, unknown>
+          ),
+          previousData: originalMemberData,
+          newData: member.toObject(),
+        },
+      }).catch(err => console.error('[Member PUT] Activity log failed:', err));
+
+      return NextResponse.json(member);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'PUT', '/api/members/[id]', errorMessage, user);
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    if (!member.gamingLocation || member.gamingLocation.trim() === '') {
-      member.gamingLocation = 'default';
-    }
-
-    // ============================================================================
-    // STEP 6: Save updated member
-    // ============================================================================
-    await member.save();
-
-    // ============================================================================
-    // STEP 7: Activity log + return updated member
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteUpdate(functionName, 'PUT', '/api/members/[id]', 1, user, duration);
-    console.log(`[Member PUT] Member ${memberId} updated — ${duration}ms`);
-
-    logActivity({
-      action: 'update',
-      details: `Member ${member.username || memberId} profile updated`,
-      userId: String(userPayload._id),
-      username: String(userPayload.username || userPayload.email || userPayload._id),
-      metadata: {
-        resource: 'member',
-        resourceId: memberId,
-        resourceName: member.username || memberId,
-        changes: calculateChanges(
-          originalMemberData as unknown as Record<string, unknown>,
-          body as Record<string, unknown>
-        ),
-        previousData: originalMemberData,
-        newData: member.toObject(),
-      },
-    }).catch(err => console.error('[Member PUT] Activity log failed:', err));
-
-    return NextResponse.json(member);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(functionName, 'PUT', '/api/members/[id]', errorMessage, user);
-    console.error(`[Member API PUT] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }
 
 /**
@@ -317,67 +312,91 @@ export async function DELETE(request: NextRequest) {
   const functionName = 'DELETE /api/members/[id]';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { pathname } = request.nextUrl;
-    const memberId = pathname.split('/').pop();
+  return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse route parameters
+      // ============================================================================
+      const { pathname } = request.nextUrl;
+      const memberId = pathname.split('/').pop();
 
-    // ============================================================================
-    // STEP 2: Validate member ID
-    // ============================================================================
-    if (!memberId) {
-      return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
-    }
-
-    // ============================================================================
-    // STEP 3: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 4: Soft delete member
-    // ============================================================================
-    const { success, member } = await softDeleteMember(memberId);
-
-    if (!success || !member) {
-      logRouteError(functionName, 'DELETE', '/api/members/[id]', `Member not found: ${memberId}`, user);
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-    }
-
-    // ============================================================================
-    // STEP 5: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const activityParams = buildDeleteActivityParams(
-          memberId,
-          member,
-          { _id: String(currentUser._id), emailAddress: currentUser.emailAddress as string },
-          request
-        );
-        activityParams.metadata.changes = mapDeletedFieldsToChanges(member);
-
-        await logActivity(activityParams);
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
+      // ============================================================================
+      // STEP 2: Validate member ID
+      // ============================================================================
+      if (!memberId) {
+        return NextResponse.json({ error: 'Member ID is required' }, { status: 400 });
       }
+
+      // ============================================================================
+      // STEP 3: Authorize caller (admin, developer, or owner)
+      // ============================================================================
+      const isAdminOrDeveloper = isAdminOrDev || userRoles.some(
+        role => role === 'admin' || role === 'developer' || role === 'owner'
+      );
+      if (!isAdminOrDeveloper) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/members/[id]',
+          'Forbidden - insufficient permissions',
+          user
+        );
+        return NextResponse.json(
+          {
+            error:
+              'Forbidden: Only administrators and developers can delete members',
+          },
+          { status: 403 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 4: Soft delete member
+      // ============================================================================
+      const { success, member } = await softDeleteMember(memberId);
+
+      if (!success || !member) {
+        logRouteError(functionName, 'DELETE', '/api/members/[id]', `Member not found: ${memberId}`, user);
+        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+
+      // ============================================================================
+      // STEP 5: Log activity
+      // ============================================================================
+      if (currentUser.emailAddress) {
+        try {
+          const activityParams = buildDeleteActivityParams(
+            memberId,
+            member,
+            {
+              _id: String(currentUser._id),
+              emailAddress: currentUser.emailAddress as string,
+            },
+            request
+          );
+          activityParams.metadata.changes = mapDeletedFieldsToChanges(member);
+
+          await logActivity(activityParams);
+        } catch (logError) {
+          console.error('Failed to log activity:', logError);
+        }
+      }
+
+      // ============================================================================
+      // STEP 6: Return success response
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteDelete(functionName, 'DELETE', '/api/members/[id]', 1, user, duration);
+
+      if (Date.now() - startTime > 1000) {
+        console.error(`[Member DELETE] Slow response: ${Date.now() - startTime}ms`);
+      }
+
+      return NextResponse.json({ message: 'Member deleted successfully' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'DELETE', '/api/members/[id]', errorMessage, user);
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    // ============================================================================
-    // STEP 6: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteDelete(functionName, 'DELETE', '/api/members/[id]', 1, user, duration);
-
-    return NextResponse.json({ message: 'Member deleted successfully' });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(functionName, 'DELETE', '/api/members/[id]', errorMessage, user);
-    console.error(`[Member API DELETE] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }

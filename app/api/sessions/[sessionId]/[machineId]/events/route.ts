@@ -1,4 +1,6 @@
 /**
+ * @module app/api/sessions/[sessionId]/[machineId]/events/route
+ *
  * Session Events API Route
  *
  * Fetches machine events scoped to a specific session and machine, with filtering,
@@ -16,7 +18,7 @@
  * 6. Return events + pagination + filter options
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import {
   logRouteFetch,
@@ -50,17 +52,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param endDate     {string} Optional. ISO datetime for custom range end.
  */
 export async function GET(request: NextRequest) {
+  return withApiAuth(request, async () => {
   const startTime = Date.now();
   const functionName = 'GET /api/sessions/[sessionId]/[machineId]/events';
   const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
-  const parts = pathname.split('/').filter(Boolean);
-  const machineId = parts[parts.length - 2];
-  const sessionId = parts[parts.length - 3];
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const machineId = pathSegments[pathSegments.length - 2];
+  const sessionId = pathSegments[pathSegments.length - 3];
 
   try {
-    // === STEP 1: Connect and parse params ===
-    await connectDB();
+    // === STEP 1: Parse params ===
 
     const { searchParams } = new URL(request.url);
     const pageParam = parseInt(searchParams.get('page') || '1');
@@ -230,6 +232,7 @@ export async function GET(request: NextRequest) {
 
     // === STEP 6: Return response ===
     const duration = Date.now() - startTime;
+    if (duration > 1000) console.warn(`[${functionName}] slow: ${duration}ms`);
     logRouteFetch(
       functionName,
       'GET',
@@ -268,7 +271,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
@@ -288,4 +291,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }

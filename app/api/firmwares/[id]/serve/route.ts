@@ -11,7 +11,7 @@
  */
 
 import { downloadFirmwareFromGridFS } from '@/app/api/lib/helpers/firmware';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Firmware } from '@/app/api/lib/models/firmware';
 import fs from 'fs';
 import { GridFSBucket } from 'mongodb';
@@ -36,110 +36,104 @@ import {
  * @param {string} id - Required (path). The MongoDB ID of the Firmware document to serve.
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'GET /api/firmwares/[id]/serve';
-  const user = extractUserFromRequest(request);
-  const { pathname } = request.nextUrl;
-  const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/serve
+  return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/firmwares/[id]/serve';
+    const user = extractUserFromRequest(request);
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/serve
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database and initialize GridFS bucket
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      throw new Error('Database connection failed');
-    }
-    // ============================================================================
-    // STEP 2: Parse and validate request parameters
-    // ============================================================================
+    try {
+      // ============================================================================
+      // STEP 1: Find firmware document
+      // ============================================================================
+      const firmwareDoc = await Firmware.findOne({
+        _id: id,
+      }).lean<FirmwareDocument>();
+      if (!firmwareDoc) {
+        return NextResponse.json(
+          { error: 'Firmware not found' },
+          { status: 404 }
+        );
+      }
 
-    // ============================================================================
-    // STEP 3: Find firmware document
-    // ============================================================================
-    const firmwareDoc = await Firmware.findOne({
-      _id: id,
-    }).lean<FirmwareDocument>();
-    if (!firmwareDoc) {
-      return NextResponse.json(
-        { error: 'Firmware not found' },
-        { status: 404 }
-      );
-    }
+      const firmware = {
+        fileId: firmwareDoc.fileId as Parameters<
+          GridFSBucket['openDownloadStream']
+        >[0],
+        fileName: firmwareDoc.fileName ?? '',
+      };
 
-    const firmware = {
-      fileId: firmwareDoc.fileId as Parameters<
-        GridFSBucket['openDownloadStream']
-      >[0],
-      fileName: firmwareDoc.fileName ?? '',
-    };
+      // ============================================================================
+      // STEP 2: Create /public/firmwares directory if needed
+      // ============================================================================
+      const firmwaresDir = path.join(process.cwd(), 'public', 'firmwares');
+      if (!fs.existsSync(firmwaresDir)) {
+        fs.mkdirSync(firmwaresDir, { recursive: true });
+      }
 
-    // ============================================================================
-    // STEP 4: Create /public/firmwares directory if needed
-    // ============================================================================
-    const firmwaresDir = path.join(process.cwd(), 'public', 'firmwares');
-    if (!fs.existsSync(firmwaresDir)) {
-      fs.mkdirSync(firmwaresDir, { recursive: true });
-    }
+      const filePath = path.join(firmwaresDir, firmware.fileName);
 
-    const filePath = path.join(firmwaresDir, firmware.fileName);
+      // ============================================================================
+      // STEP 3: Download firmware from GridFS
+      // ============================================================================
+      const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
 
-    // ============================================================================
-    // STEP 5: Download firmware from GridFS
-    // ============================================================================
-    const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
+      // ============================================================================
+      // STEP 4: Write file to /public/firmwares/
+      // ============================================================================
+      fs.writeFileSync(filePath, buffer);
 
-    // ============================================================================
-    // STEP 6: Write file to /public/firmwares/
-    // ============================================================================
-    fs.writeFileSync(filePath, buffer);
-
-    // ============================================================================
-    // STEP 7: Schedule auto-cleanup after 30 minutes
-    // ============================================================================
-    setTimeout(
-      () => {
-        try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+      // ============================================================================
+      // STEP 5: Schedule auto-cleanup after 30 minutes
+      // ============================================================================
+      setTimeout(
+        () => {
+          try {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (cleanupError) {
+            console.error('[GET /api/firmwares/[id]/serve] Firmware cleanup failed:', cleanupError instanceof Error ? cleanupError.message : 'Unknown error');
           }
-        } catch (cleanupError) {
-          console.error('Firmware cleanup failed:', cleanupError);
-        }
-      },
-      30 * 60 * 1000
-    );
+        },
+        30 * 60 * 1000
+      );
 
-    // ============================================================================
-    // STEP 8: Return static URL
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      `/api/firmwares/${id}/serve`,
-      1,
-      user,
-      duration
-    );
-    const staticUrl = `/firmwares/${firmware.fileName}`;
+      // ============================================================================
+      // STEP 6: Return static URL
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        `/api/firmwares/${id}/serve`,
+        1,
+        user,
+        duration
+      );
+      if (Date.now() - startTime > 1000)
+        console.warn(`[${functionName}] slow: ${Date.now() - startTime}ms`);
 
-    return NextResponse.json({
-      success: true,
-      fileName: firmware.fileName,
-      staticUrl,
-      size: buffer.length,
-    });
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to serve firmware';
-    logRouteError(
-      functionName,
-      'GET',
-      `/api/firmwares/${id}/serve`,
-      errorMessage,
-      user
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+      const staticUrl = `/firmwares/${firmware.fileName}`;
+
+      return NextResponse.json({
+        success: true,
+        fileName: firmware.fileName,
+        staticUrl,
+        size: buffer.length,
+      });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to serve firmware';
+      logRouteError(
+        functionName,
+        'GET',
+        `/api/firmwares/${id}/serve`,
+        errorMessage,
+        user
+      );
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
+    }
+  });
 }

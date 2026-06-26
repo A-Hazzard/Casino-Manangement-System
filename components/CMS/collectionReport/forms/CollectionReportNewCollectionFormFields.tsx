@@ -110,6 +110,9 @@ type NewCollectionFormFieldsProps = {
   onPrevOutChange: (val: string) => void;
   onViewMachine: () => void;
   isLoadingTime?: boolean;
+  isWow?: boolean;
+  includeJackpot?: boolean;
+  jackpot?: number;
 };
 
 export default function CollectionReportNewCollectionFormFields({
@@ -151,6 +154,9 @@ export default function CollectionReportNewCollectionFormFields({
   onPrevOutChange,
   onViewMachine,
   isLoadingTime = false,
+  isWow = false,
+  includeJackpot = false,
+  jackpot = 0,
 }: NewCollectionFormFieldsProps) {
   // ============================================================================
   // Render
@@ -245,7 +251,7 @@ export default function CollectionReportNewCollectionFormFields({
         {inputsEnabled &&
           sasStartTime &&
           sasEndTime &&
-          sasStartTime >= sasEndTime && (
+          sasStartTime > sasEndTime && (
             <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2">
               <p className="text-xs text-red-600">
                 ⚠️ Start time cannot be after end time. Start:{' '}
@@ -259,7 +265,80 @@ export default function CollectionReportNewCollectionFormFields({
         </p>
       </div>
 
-      {/* Meters In / Out Inputs with Previous Meter Reference */}
+      {/* Meters In / Out — read-only view for WOW machines (synced, not entered) */}
+      {isWow ? (
+        <div className="rounded-md border border-purple-200 bg-purple-50/60 p-3">
+          <p className="mb-2 text-xs font-medium italic text-purple-700">
+            WOW machine — meters are synced automatically and cannot be edited.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-sm font-medium text-grayHighlight">
+                Meter In:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {currentMetersIn !== '' && currentMetersIn != null
+                  ? Number(currentMetersIn).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-sm font-medium text-grayHighlight">
+                Meter Out:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {currentMetersOut !== '' && currentMetersOut != null
+                  ? Number(currentMetersOut).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-grayHighlight">
+                Prev In:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {prevIn !== '' && prevIn != null
+                  ? Number(prevIn).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-grayHighlight">
+                Prev Out:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {prevOut !== '' && prevOut != null
+                  ? Number(prevOut).toLocaleString()
+                  : '--'}
+              </span>
+            </div>
+          </div>
+          {includeJackpot && jackpot > 0 && (
+            <div className="mt-2 rounded border border-purple-100 bg-purple-50 p-2.5 text-[10px] leading-normal text-purple-700">
+              <p className="mb-0.5 font-bold">
+                ✨ Jackpot Included (+{Number(jackpot).toLocaleString()})
+              </p>
+              <p>
+                Base Meter Out:{' '}
+                <strong>
+                  {currentMetersOut && Number(currentMetersOut) > jackpot
+                    ? (Number(currentMetersOut) - jackpot).toLocaleString()
+                    : '--'}
+                </strong>
+                {' · '}Jackpot: <strong>+{Number(jackpot).toLocaleString()}</strong>
+                {' · '}Total:{' '}
+                <strong>
+                  {currentMetersOut
+                    ? Number(currentMetersOut).toLocaleString()
+                    : '--'}
+                </strong>
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
@@ -370,11 +449,25 @@ export default function CollectionReportNewCollectionFormFields({
                 </p>
               </div>
             )}
+          {includeJackpot && jackpot > 0 && (
+            <div className="mt-2 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-800 space-y-1 leading-normal">
+              <div className="flex items-center gap-1 font-bold">
+                <span>✨ Jackpot Included (+{Number(jackpot).toLocaleString()})</span>
+              </div>
+              <p className="text-[10px] text-purple-700 leading-normal">
+                Base Meter Out: <strong>{currentMetersOut && Number(currentMetersOut) > jackpot ? (Number(currentMetersOut) - jackpot).toLocaleString() : '--'}</strong><br />
+                Jackpot Amount: <strong>+{Number(jackpot).toLocaleString()}</strong><br />
+                Total (Included): <strong>{currentMetersOut ? Number(currentMetersOut).toLocaleString() : '--'}</strong>
+              </p>
+            </div>
+          )}
         </div>
       </div>
+      )}
 
-      {/* RAM Clear Pre-Reset Meters — only visible when RAM Clear is checked */}
-      {currentRamClear && (
+      {/* RAM Clear Pre-Reset Meters — only visible when RAM Clear is checked.
+          Hidden for WOW machines (no manual meter entry). */}
+      {!isWow && currentRamClear && (
         <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
           <h4 className="mb-3 text-sm font-medium text-blue-800">
             RAM Clear Meters (Before Rollover)
@@ -534,7 +627,7 @@ export default function CollectionReportNewCollectionFormFields({
                 (inputsEnabled &&
                   !!sasStartTime &&
                   !!sasEndTime &&
-                  sasStartTime >= sasEndTime)
+                  sasStartTime > sasEndTime)
               }
             >
               {isProcessing ? 'Processing...' : 'Update Entry in List'}
@@ -558,7 +651,7 @@ export default function CollectionReportNewCollectionFormFields({
                     (inputsEnabled &&
                       !!sasStartTime &&
                       !!sasEndTime &&
-                      sasStartTime >= sasEndTime)
+                      sasStartTime > sasEndTime)
                   }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}

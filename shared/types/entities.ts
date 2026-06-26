@@ -79,6 +79,7 @@ export type AggregatedLocation = {
   noSMIBLocation: boolean;
   fullSMIBs: boolean;
   semiSMIBs: boolean;
+  isWowLocation?: boolean;
   hasSmib: boolean;
   gamesPlayed?: number;
   rel?: { licencee?: string | null; [key: string]: unknown };
@@ -161,6 +162,7 @@ export type GamingMachine = {
   smbId?: string;
   smibBoard?: string;
   custom: { name: string };
+  meta?: { dataSync?: { source?: string; wowbettingshopid?: string } };
 
   game: string;
   installedGame?: string;

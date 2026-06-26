@@ -79,6 +79,7 @@ export default function TopPerformingLocationModal({
     activeMetricsFilter,
     customDateRange,
     selectedLicencee,
+    gameDayOffset,
   } = useDashBoardStore();
 
   // Chart granularity state - initialize after store values are available
@@ -115,7 +116,7 @@ export default function TopPerformingLocationModal({
       try {
         const range = getGamingDayRangeForPeriod(
           'Custom',
-          8, // Default gaming day start hour
+          gameDayOffset,
           customDateRange.startDate instanceof Date
             ? customDateRange.startDate
             : new Date(customDateRange.startDate),
@@ -133,7 +134,7 @@ export default function TopPerformingLocationModal({
       }
     }
     return false;
-  }, [effectiveTimePeriod, customDateRange]);
+  }, [effectiveTimePeriod, customDateRange, gameDayOffset]);
 
   // ============================================================================
   // Effects

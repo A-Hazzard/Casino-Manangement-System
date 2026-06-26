@@ -38,7 +38,7 @@ All contributors should adhere to the following rules, which are enforced throug
 - `GamingLocations` - Location management with `gameDayOffset` field
 - All dates stored in UTC, displayed in Trinidad time (UTC-4)
 
-**See `Documentation/PROJECT_GUIDE.md` for complete project documentation.**
+**See [`Documentation/PROJECT_GUIDE.md`](../../Documentation/PROJECT_GUIDE.md) for complete project documentation.**
 
 ---
 
@@ -702,7 +702,7 @@ const [selectedMachineId, setSelectedMachineId] = useState<
 
 ## 4.5. JSX Commenting & Spacing (Frontend)
 
-**CRITICAL**: JSX should be easy to navigate and understand. Use comments and spacing strategically (see `Documentation/frontend/FRONTEND_GUIDELINES.md` for full details).
+**CRITICAL**: JSX should be easy to navigate and understand. Use comments and spacing strategically (see [`Documentation/frontend/pages/frontend-standards.md`](../../Documentation/frontend/pages/frontend-standards.md) for full details).
 
 - **Use JSX comments to:**
   - Mark major UI sections (headers, filters, tables, forms, modals, pagination)
@@ -1139,7 +1139,7 @@ for await (const agg of aggregation) {
 - **No timeouts**: All queries should complete within maxTimeMS limits
 - **Memory efficiency**: Use cursors to prevent memory issues
 
-**See `Documentation/PERFORMANCE_OPTIMIZATION_GUIDE.md` for detailed optimization strategies.**
+**See [`Documentation/backend/api/calculation-engine.md`](../../Documentation/backend/api/calculation-engine.md) and the database query optimization skill for detailed optimization strategies.**
 
 ---
 
@@ -1218,7 +1218,7 @@ for await (const agg of aggregation) {
 
 ## 13. Backend Database Query Standards & Licencee Filtering
 
-These rules consolidate the backend guidelines in `Documentation/backend/BACKEND_GUIDELINES.md` and the licencee/location access rules.
+These rules consolidate the backend guidelines in [`Documentation/backend/README.md`](../../Documentation/backend/README.md) and the licencee/location access rules.
 
 ### 13.1. Use Mongoose Models, Never Direct Collection Access
 

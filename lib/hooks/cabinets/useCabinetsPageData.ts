@@ -13,18 +13,15 @@
 
 'use client';
 
-import { getMetrics } from '@/lib/helpers/metrics';
 import {
   useCabinetData,
   useCabinetSorting,
   useLocationMachineStats,
 } from '@/lib/hooks/data';
 import type { CabinetSortOption } from '@/lib/hooks/data/useCabinetSorting';
-import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import type { TimePeriod } from '@/lib/types';
-import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
@@ -38,8 +35,9 @@ export function useCabinetsPageData() {
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const customDateRange = useDashBoardStore(state => state.customDateRange);
   const displayCurrency = useDashBoardStore(state => state.displayCurrency);
-
-  const makeRequest = useAbortableRequest();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const isInitialPageLoad = useRef(true);
 
   // ============================================================================
   // Tab & Section State
@@ -68,7 +66,11 @@ export function useCabinetsPageData() {
   const isFirstMount = useRef(true);
   const [sortOption, setSortOption] = useState<CabinetSortOption>('gross');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const pageParam = searchParams.get('page');
+    const parsed = pageParam ? parseInt(pageParam, 10) : 0;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  });
   // Use ref instead of state for synchronous clearing when filters change
   // This prevents the race condition where the data fetch effect sees stale loadedBatches
   const loadedBatchesRef = useRef<Set<number>>(new Set());
@@ -136,11 +138,42 @@ export function useCabinetsPageData() {
 
   const effectiveTotalPages = useMemo(() => {
     if (hasMoreCabinets) {
-      const loadedBatchCount = Math.ceil(allCabinets.length / ITEMS_PER_BATCH) || 1;
+      const loadedBatchCount =
+        Math.ceil(allCabinets.length / ITEMS_PER_BATCH) || 1;
       return loadedBatchCount * PAGES_PER_BATCH;
     }
     return Math.max(1, Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE));
   }, [filteredCabinets.length, allCabinets.length, hasMoreCabinets]);
+
+  // ============================================================================
+  // URL Pagination Sync
+  // ============================================================================
+  const pushPageToUrl = useCallback(
+    (page: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (page > 0) {
+        params.set('page', String(page + 1));
+      } else {
+        params.delete('page');
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    if (isInitialPageLoad.current) {
+      isInitialPageLoad.current = false;
+    }
+  }, []);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      pushPageToUrl(page);
+    },
+    [pushPageToUrl]
+  );
 
   // Custom column sort handler that triggers fresh fetch
   const handleColumnSort = useCallback(
@@ -152,8 +185,9 @@ export function useCabinetsPageData() {
         setSortOrder('desc');
       }
       setCurrentPage(0);
+      pushPageToUrl(0);
     },
-    [sortOption]
+    [sortOption, pushPageToUrl]
   );
 
   // ============================================================================
@@ -171,7 +205,8 @@ export function useCabinetsPageData() {
     searchTerm,
     selectedGameType.length > 0 && !selectedGameType.includes('all')
       ? selectedGameType.join(',')
-      : undefined
+      : undefined,
+    selectedStatus
   );
 
   // Fallback machine stats logic if API returns zero
@@ -233,116 +268,6 @@ export function useCabinetsPageData() {
   }, [selectedLicencee]);
 
   // ============================================================================
-  // Chart Logic
-  // ============================================================================
-  const [chartGranularity, setChartGranularity] = useState<
-    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
-  >(() =>
-    getDefaultChartGranularity(
-      activeMetricsFilter || 'Today',
-      customDateRange?.startDate,
-      customDateRange?.endDate
-    )
-  );
-  type ChartDataPoint = {
-    xValue: string;
-    day: string;
-    time: string;
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-  };
-
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [loadingChart, setLoadingChart] = useState(false);
-
-  // Recalculate default granularity when date filters change
-  useEffect(() => {
-    if (!activeMetricsFilter) return;
-    const defaultGranularity = getDefaultChartGranularity(
-      activeMetricsFilter,
-      customDateRange?.startDate,
-      customDateRange?.endDate
-    );
-    setChartGranularity(defaultGranularity);
-  }, [
-    activeMetricsFilter,
-    customDateRange?.startDate,
-    customDateRange?.endDate,
-  ]);
-
-  const fetchChartData = useCallback(async () => {
-    if (!activeMetricsFilter) return;
-    setLoadingChart(true);
-    try {
-      await makeRequest(async signal => {
-        // Pass granularity to API for short periods and 30d daily/weekly
-        const apiGranularity:
-          | 'hourly'
-          | 'minute'
-          | 'daily'
-          | 'weekly'
-          | 'monthly'
-          | undefined =
-          chartGranularity === 'minute'
-            ? 'minute'
-            : chartGranularity === 'hourly'
-              ? 'hourly'
-              : chartGranularity === 'daily'
-                ? 'daily'
-                : chartGranularity === 'weekly'
-                  ? 'weekly'
-                  : chartGranularity === 'monthly'
-                    ? 'monthly'
-                    : undefined;
-        const data = await getMetrics(
-          activeMetricsFilter as TimePeriod,
-          customDateRange?.startDate,
-          customDateRange?.endDate,
-          selectedLicencee,
-          displayCurrency,
-          signal,
-          apiGranularity,
-          selectedLocation,
-          selectedGameType,
-          selectedStatus === 'All' || selectedStatus === 'all'
-            ? 'all'
-            : selectedStatus === 'Archived'
-              ? 'archived'
-              : selectedStatus,
-          debouncedSearchTerm
-        );
-        if (data) {
-          setChartData(
-            data.map(dataItem => ({
-              xValue: dataItem.time || dataItem.day,
-              day: dataItem.day,
-              time: dataItem.time ?? '',
-              moneyIn: dataItem.moneyIn,
-              moneyOut: dataItem.moneyOut,
-              gross: dataItem.gross,
-              netGross: dataItem.netGross,
-            }))
-          );
-        }
-      }, 'chart');
-    } finally {
-      setLoadingChart(false);
-    }
-  }, [
-    activeMetricsFilter,
-    customDateRange,
-    selectedLicencee,
-    displayCurrency,
-    chartGranularity,
-    selectedLocation,
-    selectedGameType,
-    selectedStatus,
-    debouncedSearchTerm,
-    makeRequest,
-  ]);
-
-  // ============================================================================
   // Handlers
   // ============================================================================
   const handleRefresh = async () => {
@@ -350,7 +275,6 @@ export function useCabinetsPageData() {
       setIsFilterResetting(true);
       await Promise.all([
         loadCabinets(currentPage + 1, ITEMS_PER_PAGE, sortOption, sortOrder),
-        fetchChartData(),
         refreshMachineStats(),
       ]);
       setIsFilterResetting(false);
@@ -371,16 +295,19 @@ export function useCabinetsPageData() {
       setSortOption('offlineTime');
       setSortOrder('desc');
       setCurrentPage(0);
+      pushPageToUrl(0);
     } else if (selectedStatus === 'OfflineShortest') {
       setSortOption('offlineTime');
       setSortOrder('asc');
       setCurrentPage(0);
+      pushPageToUrl(0);
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, pushPageToUrl]);
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
+    pushPageToUrl(0);
     // Clear synchronously via ref so the data fetch effect in the same render sees the empty set
     loadedBatchesRef.current = new Set();
     // Bump counter to trigger the data fetch effect
@@ -474,8 +401,6 @@ export function useCabinetsPageData() {
         loadedBatchesRef.current.add(currentBatch);
         void loadCabinets(currentBatch, ITEMS_PER_BATCH, sortOption, sortOrder);
       }
-
-      void fetchChartData();
     }
   }, [
     currentPage,
@@ -491,7 +416,6 @@ export function useCabinetsPageData() {
     customDateRange,
     selectedLicencee,
     loadCabinets,
-    fetchChartData,
     debouncedSearchTerm,
     batchResetCounter,
     calculateBatchNumber,
@@ -512,8 +436,7 @@ export function useCabinetsPageData() {
       isFilterResetting ||
       isDataMissingForPage ||
       searchTerm !== debouncedSearchTerm,
-    refreshing:
-      loading || machineStatsLoading || loadingChart || isFilterResetting,
+    refreshing: loading || machineStatsLoading || isFilterResetting,
     error,
     locations,
     gameTypes,
@@ -534,14 +457,11 @@ export function useCabinetsPageData() {
     selectedStatus,
     selectedMembership,
     selectedSmibStatus,
-    chartGranularity,
     isNewMovementOpen,
     isUploadSmibOpen,
     refreshTrigger,
     totalCount,
     hasMoreCabinets,
-    chartData,
-    loadingChart,
     totalPages: effectiveTotalPages,
     includeJackpot,
     // Setters & Handlers
@@ -552,8 +472,7 @@ export function useCabinetsPageData() {
     setSelectedStatus: handleSetSelectedStatus,
     setSelectedMembership: handleSetSelectedMembership,
     setSelectedSmibStatus: handleSetSelectedSmibStatus,
-    setChartGranularity,
-    setCurrentPage,
+    setCurrentPage: handlePageChange,
     handleColumnSort,
     handleRefresh,
     setIsNewMovementOpen,

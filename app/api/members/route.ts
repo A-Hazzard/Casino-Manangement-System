@@ -1,3 +1,13 @@
+/**
+ * Members API Route
+ *
+ * Handles listing and creation of casino members.
+ * - GET: paginated, searchable, filterable member list with currency conversion
+ * - POST: create a new member
+ *
+ * @module app/api/members/route
+ */
+
 import {
   calculateChanges,
   logActivity,
@@ -7,6 +17,10 @@ import {
   shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currency/helper';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  getUserAccessibleLicenceesFromToken,
+  getUserLocationFilter,
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { Member } from '@/app/api/lib/models/members';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -40,7 +54,7 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/members';
   const user = extractUserFromRequest(request);
 
-  return withApiAuth(request, async () => {
+  return withApiAuth(request, async ({ user: currentUser, userRoles }) => {
     try {
       // ============================================================================
       // STEP 1: Parse query parameters
@@ -59,7 +73,44 @@ export async function GET(request: NextRequest) {
       const licencee = searchParams.get('licencee') || null;
 
       // ============================================================================
-      // STEP 2: Build query filter
+      // STEP 2: Resolve multi-tenant location scope for the requesting user
+      // ============================================================================
+      const userAccessibleLicencees =
+        await getUserAccessibleLicenceesFromToken();
+      const userLocationPermissions = ((
+        currentUser?.resourcePermissions as
+          | Record<string, { resources?: Array<{ _id: string }> }>
+          | undefined
+      )?.['gaming-locations']?.resources?.map(resource => resource._id) ||
+        []) as string[];
+      const allowedLocationIds = await getUserLocationFilter(
+        userAccessibleLicencees,
+        licencee || undefined,
+        userLocationPermissions,
+        userRoles
+      );
+
+      // Non-admin users with no accessible locations see nothing
+      if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            members: [],
+            pagination: {
+              currentPage: page,
+              totalPages: 0,
+              totalMembers: 0,
+              hasNextPage: false,
+              hasPrevPage: false,
+            },
+          },
+          currency: displayCurrency,
+          converted: shouldApplyCurrencyConversion(licencee),
+        });
+      }
+
+      // ============================================================================
+      // STEP 3: Build query filter
       // ============================================================================
       const query: Record<string, unknown> = {
         $or: [
@@ -68,6 +119,11 @@ export async function GET(request: NextRequest) {
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       };
+
+      // Scope members to the user's accessible locations (multi-tenant isolation)
+      if (allowedLocationIds !== 'all') {
+        query.gamingLocation = { $in: allowedLocationIds };
+      }
 
       if (search) {
         query.$and = [
@@ -92,15 +148,22 @@ export async function GET(request: NextRequest) {
       }
 
       if (locationFilter && locationFilter !== 'all') {
-        if (locationFilter.includes(',')) {
-          query.gamingLocation = { $in: locationFilter.split(',') };
-        } else {
-          query.gamingLocation = locationFilter;
-        }
+        const requestedLocations = locationFilter.includes(',')
+          ? locationFilter.split(',')
+          : [locationFilter];
+        // Intersect requested locations with the user's allowed scope so a
+        // location filter can never widen access beyond assigned locations.
+        const scopedLocations =
+          allowedLocationIds === 'all'
+            ? requestedLocations
+            : requestedLocations.filter(locationId =>
+                allowedLocationIds.includes(locationId)
+              );
+        query.gamingLocation = { $in: scopedLocations };
       }
 
       // ============================================================================
-      // STEP 3: Build relevance and sort options
+      // STEP 4: Build relevance and sort options
       // ============================================================================
       let relevanceStage: PipelineStage | null = null;
       if (search) {
@@ -177,7 +240,7 @@ export async function GET(request: NextRequest) {
       }
 
       // ============================================================================
-      // STEP 4: Build aggregation pipeline
+      // STEP 5: Build aggregation pipeline
       // ============================================================================
       const pipeline: PipelineStage[] = [
         { $match: query },
@@ -258,7 +321,7 @@ export async function GET(request: NextRequest) {
       pipeline.push({ $sort: sortOptions as Record<string, 1 | -1> });
 
       // ============================================================================
-      // STEP 5: Execute aggregation and calculate pagination
+      // STEP 6: Execute aggregation and calculate pagination
       // ============================================================================
       const countResult = await Member.aggregate([
         ...pipeline,
@@ -272,7 +335,7 @@ export async function GET(request: NextRequest) {
       const members = await Member.aggregate(pipeline);
 
       // ============================================================================
-      // STEP 6: Apply currency conversion
+      // STEP 7: Apply currency conversion
       // ============================================================================
       const convertedMembers = await applyCurrencyConversionToMetrics(
         members,
@@ -291,7 +354,7 @@ export async function GET(request: NextRequest) {
       );
 
       // ============================================================================
-      // STEP 7: Return success response
+      // STEP 8: Return success response
       // ============================================================================
       return NextResponse.json({
         success: true,

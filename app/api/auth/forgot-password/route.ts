@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       message:
         'Password reset functionality via email is currently disabled. Please contact your administrator.',
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(

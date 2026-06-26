@@ -6,6 +6,7 @@ import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithO
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatCurrency } from '@/lib/utils';
 import {
   getGrossColorClass,
@@ -61,6 +62,10 @@ export default function LocationsCabinetCardMobile({
     Boolean(cabinet.deletedAt) &&
     new Date(cabinet.deletedAt!) >= new Date('2025-01-01');
 
+  // WOW machines have no SMIB/relay but are always treated as online.
+  const isWow = isWowMachine(cabinet);
+  const isOnline = cabinet.isOnline || isWow;
+
   // ============================================================================
   // Effects
   // ============================================================================
@@ -108,13 +113,14 @@ export default function LocationsCabinetCardMobile({
             </Badge>
           )}
         </div>
-        {!isArchived && (cabinet.relayId || cabinet.smbId || cabinet.smibBoard) && (
+        {!isArchived &&
+          (cabinet.relayId || cabinet.smbId || cabinet.smibBoard || isWow) && (
           <span
             ref={statusRef}
             className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
-              cabinet.isOnline ? 'bg-green-500' : 'bg-red-500'
+              isOnline ? 'bg-green-500' : 'bg-red-500'
             }`}
-            title={cabinet.isOnline ? 'Online' : 'Offline'}
+            title={isOnline ? 'Online' : 'Offline'}
           ></span>
         )}
       </div>
@@ -139,8 +145,8 @@ export default function LocationsCabinetCardMobile({
         </div>
       )}
 
-      {/* Offline Status - Show when offline and machine has a SMIB */}
-      {!cabinet.isOnline && !isArchived && (cabinet.relayId || cabinet.smbId || cabinet.smibBoard) && (
+      {/* Offline Status - Show when offline and machine has a SMIB (never for WOW) */}
+      {!isOnline && !isArchived && !isWow && (cabinet.relayId || cabinet.smbId || cabinet.smibBoard) && (
         <div className="mb-3 flex flex-col gap-1 text-xs font-medium text-red-600">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
@@ -201,9 +207,14 @@ export default function LocationsCabinetCardMobile({
           disabled={!cabinet.relayId && !cabinet.smibBoard && !cabinet.smbId}
         >
           <span>
-            {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || (
-              <span className="font-bold text-red-600">NO SMIB</span>
-            )}
+            {cabinet.relayId ||
+              cabinet.smibBoard ||
+              cabinet.smbId ||
+              (isWow ? (
+                <span className="text-gray-400">—</span>
+              ) : (
+                <span className="font-bold text-red-600">NO SMIB</span>
+              ))}
           </span>
           {/* Show copy icon only if SMIB ID exists */}
           {(cabinet.relayId || cabinet.smibBoard || cabinet.smbId) && (

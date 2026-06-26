@@ -16,9 +16,9 @@
 'use client';
 
 import {
-  createCollectionReport as createCollectionReportAPI,
   validateMachineEntry,
 } from '@/lib/helpers/collectionReport';
+import { createCollectionReportStreaming } from '@/lib/helpers/collectionReport/fetching';
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
 import { logActivity } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
@@ -28,8 +28,10 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import axios, { type AxiosError } from 'axios';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import type { SubStepProgress } from '@/components/shared/ui/ProcessingPhaseBar';
 
 type UseMobileCollectionModalProps = {
   show?: boolean;
@@ -181,6 +183,8 @@ export function useMobileCollectionModal({
     completed: number;
     total: number;
   } | null>(null);
+  const [currentCreatePhase, setCurrentCreatePhase] = useState<string | undefined>();
+  const [currentSubStep, setCurrentSubStep] = useState<SubStepProgress | null>(null);
 
   // ==========================================================================
   // Fetch rich metadata when modal opens
@@ -452,39 +456,65 @@ export function useMobileCollectionModal({
     };
   }, [selectedLocation, lockedLocationId, setStoreAvailableMachines]);
 
-  // Auto-populate prevIn/prevOut when a machine is selected
+  // Auto-populate prevIn/prevOut when a machine is selected.
+  // Only use the last completed collection meters — never sasMeters.drop/tcc.
+  // For online SMIB machines sasMeters.drop reflects the current absolute reading,
+  // so using it as prevIn would set prevIn = currentIn (zero movement).
   useEffect(() => {
-    if (selectedMachineData) {
-      const prevInValue = (() => {
-        const sasDrop = selectedMachineData.sasMeters?.drop ?? null;
-        const collectionIn = selectedMachineData.collectionMeters?.metersIn;
-        return collectionIn !== null &&
-          collectionIn !== undefined &&
-          collectionIn > 0
-          ? collectionIn.toString()
-          : sasDrop !== null && sasDrop > 0
-            ? sasDrop.toString()
-            : '';
-      })();
+    if (!selectedMachineData) return;
 
-      const prevOutValue = (() => {
-        const sasCancelled =
-          selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
-        const collectionOut = selectedMachineData.collectionMeters?.metersOut;
-        return collectionOut !== null &&
-          collectionOut !== undefined &&
-          collectionOut > 0
-          ? collectionOut.toString()
-          : sasCancelled !== null && sasCancelled > 0
-            ? sasCancelled.toString()
-            : '';
-      })();
-
-      setStoreFormData({
-        prevIn: prevInValue,
-        prevOut: prevOutValue,
-      });
+    // WOW machines: meters are synced (WOW_SYNC), not collector-entered. Pull the
+    // current reading + start-time-based prev so there is no false variation.
+    if (isWowMachine(selectedMachineData)) {
+      const machineId = String(selectedMachineData._id);
+      const startHint = selectedMachineData.collectionTime
+        ? new Date(selectedMachineData.collectionTime).toISOString()
+        : '';
+      const nowIso = new Date().toISOString();
+      axios
+        .get(
+          `/api/collection-reports/collections/wow-meters?machineId=${machineId}` +
+            (startHint ? `&startTime=${startHint}` : '') +
+            `&endTime=${nowIso}`
+        )
+        .then(res => {
+          const wow = res.data?.data;
+          if (wow) {
+            setStoreFormData({
+              metersIn: wow.metersIn != null ? String(wow.metersIn) : '',
+              metersOut: wow.metersOut != null ? String(wow.metersOut) : '',
+              prevIn: wow.prevIn != null ? String(wow.prevIn) : '',
+              prevOut: wow.prevOut != null ? String(wow.prevOut) : '',
+            });
+          }
+        })
+        .catch(wowErr => {
+          console.error(
+            '[useMobileCollectionModal] WOW meters fetch failed:',
+            wowErr instanceof Error ? wowErr.message : 'Unknown error'
+          );
+        });
+      return;
     }
+
+    const prevInValue = (() => {
+      const collectionIn = selectedMachineData.collectionMeters?.metersIn;
+      return collectionIn !== null && collectionIn !== undefined && collectionIn > 0
+        ? collectionIn.toString()
+        : '';
+    })();
+
+    const prevOutValue = (() => {
+      const collectionOut = selectedMachineData.collectionMeters?.metersOut;
+      return collectionOut !== null && collectionOut !== undefined && collectionOut > 0
+        ? collectionOut.toString()
+        : '';
+    })();
+
+    setStoreFormData({
+      prevIn: prevInValue,
+      prevOut: prevOutValue,
+    });
   }, [selectedMachineData, setStoreFormData]);
 
   // ============================================================================
@@ -703,22 +733,11 @@ export function useMobileCollectionModal({
     const validationPrevIn =
       modalState.formData.prevIn !== ''
         ? Number(modalState.formData.prevIn)
-        : (() => {
-            const sasDrop = selectedMachineData.sasMeters?.drop ?? null;
-            return sasDrop !== null && sasDrop > 0
-              ? sasDrop
-              : (selectedMachineData.collectionMeters?.metersIn ?? 0);
-          })();
+        : (selectedMachineData.collectionMeters?.metersIn ?? 0);
     const validationPrevOut =
       modalState.formData.prevOut !== ''
         ? Number(modalState.formData.prevOut)
-        : (() => {
-            const sasCancelled =
-              selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
-            return sasCancelled !== null && sasCancelled > 0
-              ? sasCancelled
-              : (selectedMachineData.collectionMeters?.metersOut ?? 0);
-          })();
+        : (selectedMachineData.collectionMeters?.metersOut ?? 0);
     const validation = validateMachineEntry(
       String(selectedMachineData._id),
       selectedMachineData,
@@ -1205,6 +1224,78 @@ export function useMobileCollectionModal({
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
+        // ============================================================================
+        // PHASE 0: Verbose per-machine validation
+        // ============================================================================
+        const progressTotal = machinesForReport.length;
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: 0,
+          total: progressTotal,
+          detail: 'Starting validation...',
+        });
+
+        for (let index = 0; index < machinesForReport.length; index++) {
+          const entry = machinesForReport[index];
+          const machineName =
+            (entry.machineName as string | undefined) ||
+            (entry.serialNumber as string | undefined) ||
+            entry.machineId ||
+            `Machine ${index + 1}`;
+          const detail = entry.ramClear
+            ? 'RAM clear & meters'
+            : 'meters, movement & SAS window';
+
+          setCurrentSubStep({
+            phaseKey: 'validating',
+            done: index + 1,
+            total: progressTotal,
+            machineName,
+            detail,
+          });
+
+          if (!entry.machineId) {
+            throw new Error(`${machineName} is missing a machine ID.`);
+          }
+          if (
+            typeof entry.metersIn !== 'number' ||
+            isNaN(entry.metersIn) ||
+            typeof entry.metersOut !== 'number' ||
+            isNaN(entry.metersOut)
+          ) {
+            throw new Error(`${machineName} has invalid meter values.`);
+          }
+
+          const movement = calculateCabinetMovement(
+            entry.metersIn || 0,
+            entry.metersOut || 0,
+            entry.prevIn || 0,
+            entry.prevOut || 0,
+            entry.ramClear || false,
+            undefined,
+            undefined,
+            entry.ramClearMetersIn,
+            entry.ramClearMetersOut
+          );
+          if (
+            !Number.isFinite(movement.metersIn) ||
+            !Number.isFinite(movement.metersOut) ||
+            !Number.isFinite(movement.gross)
+          ) {
+            throw new Error(`${machineName} produced an invalid movement calculation.`);
+          }
+
+          // Yield to React so the UI updates for each machine
+          await new Promise<void>(resolve => setTimeout(resolve, 5));
+        }
+
+        setCurrentSubStep({
+          phaseKey: 'validating',
+          done: progressTotal,
+          total: progressTotal,
+          detail: 'Validation complete',
+        });
+
         // Generate report ID
         const { v4: uuidv4 } = await import('uuid');
         const reportId = uuidv4();
@@ -1280,7 +1371,12 @@ export function useMobileCollectionModal({
           id: 'mobile-create-report-toast',
         });
 
-        await createCollectionReportAPI(payload);
+        await createCollectionReportStreaming(
+          payload,
+          setCurrentCreatePhase,
+          (phase, done, total, machineName) =>
+            setCurrentSubStep({ phaseKey: phase, done, total, machineName })
+        );
 
         // Step 2: Update collections
         const updatePromises = machinesForReport.map(async collection => {
@@ -1330,6 +1426,8 @@ export function useMobileCollectionModal({
         });
       } finally {
         setModalState(prev => ({ ...prev, isProcessing: false }));
+        setCurrentCreatePhase(undefined);
+        setCurrentSubStep(null);
       }
     },
     [
@@ -1603,5 +1701,7 @@ export function useMobileCollectionModal({
       }
     },
     sasUpdateProgress,
+    currentCreatePhase,
+    currentSubStep,
   };
 }

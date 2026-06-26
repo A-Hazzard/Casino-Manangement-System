@@ -13,6 +13,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Meters } from '@/app/api/lib/models/meters';
 import { generateMongoId } from '@/lib/utils/id';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import {
   ensureLocationFolder,
   ensureMachineDateFolder,
@@ -100,6 +101,7 @@ type CurrentMachineForSubmit = {
   gamingLocation?: string;
   collectionMeters?: { metersIn?: number; metersOut?: number };
   collectionMetersHistory?: CollectionMetersHistoryEntry[];
+  meta?: { dataSync?: { source?: string } };
 };
 
 type CollectionMetersHistoryEntry = {
@@ -434,6 +436,9 @@ export async function persistMachineMetersOnSubmit(
       }).lean<CurrentMachineForSubmit>();
 
       const machineHasRelay = !!currentMachine?.relayId;
+      // WOW machines never get manual meters — their readings are synced (WOW_SYNC).
+      // We still advance collectionMeters/history below for prev-tracking.
+      const isWow = isWowMachine(currentMachine);
 
       if (!machineHasRelay) {
         await ReportedMachine.findOneAndUpdate(
@@ -541,7 +546,10 @@ export async function persistMachineMetersOnSubmit(
         });
       }
 
-      if (!machineHasRelay || submittedMachine.isSupplemental === true) {
+      if (
+        !isWow &&
+        (!machineHasRelay || submittedMachine.isSupplemental === true)
+      ) {
         await createMeterDocuments(
           submittedMachine,
           meterLocationId,
@@ -617,31 +625,29 @@ export async function backfillSessionReportVersion(
     .map(reportedMachine => reportedMachine.machineId)
     .filter((id): id is string => !!id);
 
-  let machinesUpdated = 0;
-  for (const machineId of machineIds) {
-    const updateResult = await Machine.updateOne(
-      { _id: machineId },
-      {
-        $set: {
-          'collectionMetersHistory.$[entry].reportVersion': 2,
-          updatedAt: new Date(),
-        },
-      },
-      {
-        strict: false,
-        arrayFilters: [
-          {
-            'entry.locationReportId': sessionId,
-            'entry.reportVersion': { $exists: false },
+  const updateResults = await Promise.all(
+    machineIds.map(machineId =>
+      Machine.updateOne(
+        { _id: machineId },
+        {
+          $set: {
+            'collectionMetersHistory.$[entry].reportVersion': 2,
+            updatedAt: new Date(),
           },
-        ],
-      }
-    );
-
-    if (updateResult.modifiedCount > 0) {
-      machinesUpdated++;
-    }
-  }
+        },
+        {
+          strict: false,
+          arrayFilters: [
+            {
+              'entry.locationReportId': sessionId,
+              'entry.reportVersion': { $exists: false },
+            },
+          ],
+        }
+      ).then(result => result.modifiedCount)
+    )
+  );
+  const machinesUpdated = updateResults.reduce((sum, count) => sum + count, 0);
 
   console.log(
     `[backfillSessionReportVersion] session=${sessionId}: ${machinesUpdated}/${machineIds.length} machines updated`
@@ -706,15 +712,9 @@ async function createMeterDocuments(
   const prevOut =
     existingHistoryEntry?.prevMetersOut ?? machineData.prevSasMetersOut ?? 0;
 
-  await Meters.deleteMany({
-    machine: machineData.machineId,
-    locationSession: sessionId,
-  }).catch(deleteError => {
-    console.error(
-      `[submit] Failed to delete existing Meters for machine ${machineData.machineId} session ${sessionId}:`,
-      deleteError
-    );
-  });
+  // Use replaceOne with upsert instead of deleteMany+create for idempotency.
+  // Concurrent calls with the same machine+session target the same document
+  // atomically — no duplicate meters possible.
 
   const baseReadAt = machineData.sasEndTime ?? sessionEndTime;
   const isRamClear =
@@ -768,9 +768,12 @@ async function createMeterDocuments(
       : 0;
 
   if (isRamClear) {
-    const ramClearMeterId = await generateMongoId();
+    const ramClearFilter = {
+      machine: machineData.machineId,
+      locationSession: sessionId,
+      isRamClear: true as const,
+    };
     const ramClearMeterDoc = {
-      _id: ramClearMeterId,
       machine: machineData.machineId,
       location: meterLocationId,
       locationSession: sessionId,
@@ -809,16 +812,21 @@ async function createMeterDocuments(
       createdAt: new Date(),
     };
 
-    await Meters.create(ramClearMeterDoc).catch(meterCreateError => {
+    await Meters.replaceOne(ramClearFilter, ramClearMeterDoc, {
+      upsert: true,
+    }).catch(meterCreateError => {
       console.error(
-        `[submit] Failed to create RAM-clear Meter for machine ${machineData.machineId}:`,
+        `[submit] Failed to upsert RAM-clear Meter for machine ${machineData.machineId}:`,
         meterCreateError
       );
     });
 
-    const currentMeterId = await generateMongoId();
+    const currentFilter = {
+      machine: machineData.machineId,
+      locationSession: sessionId,
+      isRamClear: false as const,
+    };
     const currentMeterDoc = {
-      _id: currentMeterId,
       machine: machineData.machineId,
       location: meterLocationId,
       locationSession: sessionId,
@@ -851,16 +859,21 @@ async function createMeterDocuments(
       createdAt: new Date(new Date().getTime() + 1000),
     };
 
-    await Meters.create(currentMeterDoc).catch(meterCreateError => {
+    await Meters.replaceOne(currentFilter, currentMeterDoc, {
+      upsert: true,
+    }).catch(meterCreateError => {
       console.error(
-        `[submit] Failed to create post-RAM-clear Meter for machine ${machineData.machineId}:`,
+        `[submit] Failed to upsert post-RAM-clear Meter for machine ${machineData.machineId}:`,
         meterCreateError
       );
     });
   } else {
-    const meterId = await generateMongoId();
+    const meterFilter = {
+      machine: machineData.machineId,
+      locationSession: sessionId,
+      isRamClear: false as const,
+    };
     const meterDoc = {
-      _id: meterId,
       machine: machineData.machineId,
       location: meterLocationId,
       locationSession: sessionId,
@@ -892,9 +905,11 @@ async function createMeterDocuments(
       createdAt: new Date(),
     };
 
-    await Meters.create(meterDoc).catch(meterCreateError => {
+    await Meters.replaceOne(meterFilter, meterDoc, {
+      upsert: true,
+    }).catch(meterCreateError => {
       console.error(
-        `[submit] Failed to create Meter document for machine ${machineData.machineId}:`,
+        `[submit] Failed to upsert Meter document for machine ${machineData.machineId}:`,
         meterCreateError
       );
     });

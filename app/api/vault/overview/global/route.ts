@@ -80,10 +80,7 @@ export async function GET(request: NextRequest) {
         deletedAt: { $lt: new Date('2025-01-01') },
       };
       if (licenceeId && licenceeId !== 'all')
-        locationQuery.$or = [
-          { 'rel.licencee': licenceeId },
-          { 'rel.licencee': licenceeId },
-        ];
+        locationQuery['rel.licencee'] = licenceeId;
 
       // ============================================================================
       // STEP 3: Fetch locations
@@ -237,20 +234,27 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 7: Process machine meters and discrepancies
       // ============================================================================
-      const machineMeters = await Meters.aggregate([
-        {
-          $match: {
-            location: { $in: locationIds },
-            readAt: { $gte: rangeStart, $lte: rangeEnd },
+      const machineMetersCursor = Meters.aggregate<{ totalMoneyIn: number }>(
+        [
+          {
+            $match: {
+              location: { $in: locationIds },
+              readAt: { $gte: rangeStart, $lte: rangeEnd },
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          {
+            $group: {
+              _id: null,
+              totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            },
           },
-        },
-      ]);
+        ],
+        { allowDiskUse: true }
+      ).cursor({ batchSize: 1000 });
+      const machineMeters: { totalMoneyIn: number }[] = [];
+      for await (const doc of machineMetersCursor) {
+        machineMeters.push(doc);
+      }
       const totalMachineMoneyIn =
         machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
@@ -310,6 +314,16 @@ export async function GET(request: NextRequest) {
         return res;
       };
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/overview/global',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: {
@@ -359,16 +373,6 @@ export async function GET(request: NextRequest) {
           rangeEnd: rangeEnd.toISOString(),
         },
       });
-
-      const duration = Date.now() - startTime;
-      logRouteFetch(
-        functionName,
-        'GET',
-        '/api/vault/overview/global',
-        1,
-        user,
-        duration
-      );
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error

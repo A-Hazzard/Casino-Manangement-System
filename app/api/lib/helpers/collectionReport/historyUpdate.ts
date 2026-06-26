@@ -87,19 +87,34 @@ export async function updateReportMachineHistories(
     errors: [] as Array<{ machineId: string; error: string }>,
   };
 
-  // Process each machine change
-  for (const change of changes) {
-    try {
-      await processSingleMachineChange(reportId, change, results);
-    } catch (error) {
-      console.error(
-        '[updateReportMachineHistories] Error:',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
+  // Load helpers once and process all machine changes in parallel.
+  // Each change targets a different machine within the same report, so the
+  // per-machine recalculations and meter updates are independent.
+  const [{ recalculateMachineCollections }, { updateRegularAndRamClearMeters }] =
+    await Promise.all([
+      import('./recalculation'),
+      import('./reportCreation'),
+    ]);
+
+  const changeResults = await Promise.all(
+    changes.map(change =>
+      processSingleMachineChange(
+        reportId,
+        change,
+        recalculateMachineCollections,
+        updateRegularAndRamClearMeters
+      )
+    )
+  );
+
+  for (const changeResult of changeResults) {
+    if (changeResult.success) {
+      results.updated++;
+    } else {
       results.failed++;
       results.errors.push({
-        machineId: change.machineId,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        machineId: changeResult.machineId,
+        error: changeResult.error || 'Unknown error',
       });
     }
   }
@@ -111,33 +126,38 @@ export async function updateReportMachineHistories(
   return results;
 }
 
+type ChangeResult = {
+  machineId: string;
+  success: boolean;
+  error?: string;
+};
+
 /**
  * Process a single machine change: validate, update/create history, update meters
  *
  * @param reportId - Collection report ID
  * @param change - Machine change to process
- * @param results - Results object to update
+ * @param recalculateMachineCollections - Recalculation helper
+ * @param updateRegularAndRamClearMeters - Meter upsert helper
  */
 async function processSingleMachineChange(
   reportId: string,
   change: MachineChange,
-  results: {
-    updated: number;
-    failed: number;
-    errors: Array<{ machineId: string; error: string }>;
-  }
-): Promise<void> {
+  recalculateMachineCollections: (
+    machineId: string,
+    writeSasMeters?: boolean
+  ) => Promise<void>,
+  updateRegularAndRamClearMeters: (
+    collectionDocument: import('@/lib/types/collection').CollectionDocument
+  ) => Promise<{ success: boolean }>
+): Promise<ChangeResult> {
   if (!reportId) {
     console.error('[processSingleMachineChange] reportId is required');
-    return;
+    return { machineId: change?.machineId || '', success: false, error: 'reportId is required' };
   }
   if (!change) {
     console.error('[processSingleMachineChange] change is required');
-    return;
-  }
-  if (!results) {
-    console.error('[processSingleMachineChange] results is required');
-    return;
+    return { machineId: '', success: false, error: 'change is required' };
   }
   const { machineId, collectionId } = change;
 
@@ -170,12 +190,11 @@ async function processSingleMachineChange(
       reportIdMatch: collectionById?.locationReportId === reportId,
     });
 
-    results.failed++;
-    results.errors.push({
+    return {
       machineId,
+      success: false,
       error: `Collection not found or mismatch. Collection exists: ${!!collectionById}, ReportId match: ${collectionById?.locationReportId === reportId}, MachineId match: ${collectionById?.machineId === machineId}`,
-    });
-    return;
+    };
   }
 
   console.warn(`✅ Collection validated successfully for machine ${machineId}`);
@@ -235,6 +254,7 @@ async function processSingleMachineChange(
         ramClearMetersIn: change.ramClearMetersIn,
         ramClearMetersOut: change.ramClearMetersOut,
         movement: roundedMovement,
+        editedWhileOnline: !isActuallyOffline,
         ...(isActuallyOffline
           ? {
               'sasMeters.drop': roundedMovement.metersIn,
@@ -250,12 +270,11 @@ async function processSingleMachineChange(
 
   if (!syncedCollection) {
     console.error(`❌ Failed to sync collection ${collectionId}`);
-    results.failed++;
-    results.errors.push({
+    return {
       machineId,
+      success: false,
       error: 'Failed to synchronize collection data',
-    });
-    return;
+    };
   }
 
   // ============================================================================
@@ -266,7 +285,6 @@ async function processSingleMachineChange(
   // future collections of this machine. It also updates the Machine document's
   // current meters and its entire collectionMetersHistory array.
   try {
-    const { recalculateMachineCollections } = await import('./recalculation');
     // writeSasMeters=true: this is the finalising path (submit), so sasMeters
     // must be updated for noSMIB locations.
     await recalculateMachineCollections(machineId, true);
@@ -286,7 +304,6 @@ async function processSingleMachineChange(
   // been soft-deleted or hard-deleted. Call updateRegularAndRamClearMeters to
   // update existing meters or recreate them if they are missing from the DB.
   try {
-    const { updateRegularAndRamClearMeters } = await import('./reportCreation');
     await updateRegularAndRamClearMeters(syncedCollection);
     console.warn(
       `🔄 Meters recreated/updated for machine ${machineId} collection ${collectionId}`
@@ -330,5 +347,5 @@ async function processSingleMachineChange(
   console.warn(
     `✅ Successfully finalized machine ${machineId} and updated history chain`
   );
-  results.updated++;
+  return { machineId, success: true };
 }

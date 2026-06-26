@@ -1,5 +1,6 @@
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import type { LocationDocument } from '@/shared/types/models';
 import type { GamingMachine } from '@shared/types';
 
@@ -30,7 +31,8 @@ export async function classifyLocationSmibStatus(
   const locId = String(location._id);
   const machines = locationToMachines.get(locId) ?? [];
   const withRelay = machines.filter(
-    m => m.relayId && String(m.relayId).trim()
+    m =>
+      (m.relayId && String(m.relayId).trim()) || isWowMachine(m)
   ).length;
 
   const computedFull = machines.length > 0 && withRelay === machines.length;
@@ -55,7 +57,8 @@ export async function syncAllLocationSmibStatuses(
     const locName = item.location.name || locId;
     const machines = item.machines ?? [];
     const withRelay = machines.filter(
-      m => m.relayId && String(m.relayId).trim()
+      m =>
+        (m.relayId && String(m.relayId).trim()) || isWowMachine(m)
     ).length;
 
     const computedFull = machines.length > 0 && withRelay === machines.length;

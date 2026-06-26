@@ -157,20 +157,27 @@ export async function GET(request: NextRequest) {
         locationInfo?.gameDayOffset ?? 8
       );
 
-      const machineMeters = await Meters.aggregate([
-        {
-          $match: {
-            location: locationId,
-            readAt: { $gte: rangeStart, $lte: rangeEnd },
+      const machineMetersCursor = Meters.aggregate<{ totalMoneyIn: number }>(
+        [
+          {
+            $match: {
+              location: locationId,
+              readAt: { $gte: rangeStart, $lte: rangeEnd },
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          {
+            $group: {
+              _id: null,
+              totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            },
           },
-        },
-      ]);
+        ],
+        { allowDiskUse: true }
+      ).cursor({ batchSize: 1000 });
+      const machineMeters: { totalMoneyIn: number }[] = [];
+      for await (const doc of machineMetersCursor) {
+        machineMeters.push(doc);
+      }
       const totalMachineMoneyIn =
         machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 

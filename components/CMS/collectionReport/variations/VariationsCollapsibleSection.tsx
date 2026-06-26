@@ -18,7 +18,7 @@
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { VariationsListDisplay } from './VariationsListDisplay';
-import type { MachineVariationData } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import type { MachineVariationData } from '@/lib/types/api';
 
 type VariationsCollapsibleSectionProps = {
   machines: MachineVariationData[];
@@ -37,7 +37,7 @@ export function VariationsCollapsibleSection({
   // Computed
   // ============================================================================
   const variationCount = machines.filter(
-    m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+    m => m.variation !== null && m.variation !== 0
   ).length;
 
   if (variationCount === 0) {

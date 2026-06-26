@@ -17,7 +17,10 @@
 // ============================================================================
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
-import { fetchCollectionReportsByLicencee } from '@/lib/helpers/collectionReport/fetching';
+import {
+  fetchCollectionReportsByLicencee,
+  deleteCollectionReportStreaming,
+} from '@/lib/helpers/collectionReport/fetching';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -27,7 +30,6 @@ import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionView } from '@/lib/types/collection';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
-import axios from 'axios';
 import { parse } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -108,6 +110,7 @@ export function useCollectionReportPageData() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentDeletePhase, setCurrentDeletePhase] = useState<string | undefined>();
 
   // ==========================================================================
   // Debounced Values
@@ -377,6 +380,7 @@ export function useCollectionReportPageData() {
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
+      filters.selectedLocation,
     ]
   );
 
@@ -445,14 +449,14 @@ export function useCollectionReportPageData() {
     if (!reportToDelete) return;
     setIsDeleting(true);
     try {
-      const url = `/api/collection-reports/${reportToDelete}`;
-      await axios.delete(url);
+      await deleteCollectionReportStreaming(reportToDelete, setCurrentDeletePhase);
       toast.success('Report deleted');
       refreshReports();
     } catch {
       toast.error('Failed to delete report');
     } finally {
       setIsDeleting(false);
+      setCurrentDeletePhase(undefined);
       setShowDeleteConfirmation(false);
       setReportToDelete(null);
     }
@@ -617,6 +621,7 @@ export function useCollectionReportPageData() {
     showDeleteConfirmation,
     reportToDelete,
     isDeleting,
+    currentDeletePhase,
     editableReportIds,
     // Tab Handlers
     handleTabChange,

@@ -18,6 +18,8 @@ type UserForScale = {
   roles?: string[] | unknown[];
 };
 
+export type ReviewerScalableUser = UserForScale;
+
 // ============================================================================
 // Scale factors for dual multiplier system
 // ============================================================================
@@ -234,7 +236,9 @@ export function scaleMachineValues(
     meterGross: scaledMeterGross,
     jackpot: scaledJackpot,
     netGross: Math.round((scaledMeterGross - scaledJackpot) * 100) / 100,
-    sasGross: hasNoSasData ? 0 : Math.round(sasGross * moneyInScale * 100) / 100,
+    sasGross: hasNoSasData
+      ? 0
+      : Math.round(sasGross * moneyInScale * 100) / 100,
     variation: Math.round(variation * moneyInScale * 100) / 100,
   };
 }
@@ -287,18 +291,84 @@ export function scaleReportFinancials<T extends ReportFinancials>(
 
   return {
     ...report,
-    amountCollected: Math.round((report.amountCollected ?? 0) * moneyInScale * 100) / 100,
-    amountToCollect: Math.round((report.amountToCollect ?? 0) * moneyInScale * 100) / 100,
-    amountUncollected: Math.round((report.amountUncollected ?? 0) * moneyInScale * 100) / 100,
-    partnerProfit: Math.round((report.partnerProfit ?? 0) * moneyInScale * 100) / 100,
+    amountCollected:
+      Math.round((report.amountCollected ?? 0) * moneyInScale * 100) / 100,
+    amountToCollect:
+      Math.round((report.amountToCollect ?? 0) * moneyInScale * 100) / 100,
+    amountUncollected:
+      Math.round((report.amountUncollected ?? 0) * moneyInScale * 100) / 100,
+    partnerProfit:
+      Math.round((report.partnerProfit ?? 0) * moneyInScale * 100) / 100,
     taxes: Math.round((report.taxes ?? 0) * moneyOutScale * 100) / 100,
     advance: Math.round((report.advance ?? 0) * moneyOutScale * 100) / 100,
-    previousBalance: Math.round((report.previousBalance ?? 0) * moneyOutScale * 100) / 100,
-    balanceCorrection: Math.round((report.balanceCorrection ?? 0) * moneyOutScale * 100) / 100,
-    currentBalance: Math.round((report.currentBalance ?? 0) * moneyOutScale * 100) / 100,
+    previousBalance:
+      Math.round((report.previousBalance ?? 0) * moneyOutScale * 100) / 100,
+    balanceCorrection:
+      Math.round((report.balanceCorrection ?? 0) * moneyOutScale * 100) / 100,
+    currentBalance:
+      Math.round((report.currentBalance ?? 0) * moneyOutScale * 100) / 100,
     variance:
       typeof report.variance === 'number'
         ? Math.round(report.variance * moneyInScale * 100) / 100
         : report.variance,
   };
 }
+
+// ============================================================================
+// Meters report rows  (used by the meters report API)
+// ============================================================================
+
+/**
+ * Applies reviewer scale factors to a single meters-report row.
+ *
+ * Money-in fields (metersIn, billIn) use moneyInScale; money-out and jackpot
+ * fields (metersOut, jackpot, voucherOut, attPaidCredits) use moneyOutScale.
+ * netGross is recomputed from the scaled components. Values are intentionally
+ * left unrounded — currency rounding is applied at the display layer.
+ *
+ * Fast-paths when both scales === 1 so non-reviewer traffic is unchanged.
+ */
+export function scaleMeterReportRow<T extends MeterReportScalableRow>(
+  row: T,
+  moneyInScale: number,
+  moneyOutScale: number
+): T {
+  if (
+    !row ||
+    typeof row !== 'object' ||
+    typeof moneyInScale !== 'number' ||
+    typeof moneyOutScale !== 'number'
+  ) {
+    console.error(
+      '[scaleMeterReportRow] row (object), moneyInScale (number), and moneyOutScale (number) are required'
+    );
+    return row;
+  }
+
+  if (moneyInScale === 1 && moneyOutScale === 1) return row;
+
+  const scaledMetersIn = row.metersIn * moneyInScale;
+  const scaledMetersOut = row.metersOut * moneyOutScale;
+  const scaledJackpot = row.jackpot * moneyOutScale;
+
+  return {
+    ...row,
+    metersIn: scaledMetersIn,
+    metersOut: scaledMetersOut,
+    jackpot: scaledJackpot,
+    billIn: row.billIn * moneyInScale,
+    voucherOut: row.voucherOut * moneyOutScale,
+    attPaidCredits: row.attPaidCredits * moneyOutScale,
+    netGross: scaledMetersIn - scaledMetersOut - scaledJackpot,
+  };
+}
+
+type MeterReportScalableRow = {
+  metersIn: number;
+  metersOut: number;
+  jackpot: number;
+  billIn: number;
+  voucherOut: number;
+  attPaidCredits: number;
+  netGross: number;
+};

@@ -381,10 +381,10 @@ export default function ReportsLocationsSASEvaluation({
                   hasSasMachines: loc.hasSasMachines,
                   hasNonSasMachines: loc.hasNonSasMachines,
                   isLocalServer: loc.isLocalServer,
-                  noSMIBLocation: !loc.hasSasMachines,
-                  fullSMIBs: false,
+                  noSMIBLocation: loc.isWowLocation ? false : !loc.hasSasMachines,
+                  fullSMIBs: loc.isWowLocation ? true : false,
                   semiSMIBs: false,
-                  hasSmib: !!loc.hasSasMachines,
+                  hasSmib: loc.isWowLocation ? true : !!loc.hasSasMachines,
                   gamesPlayed: loc.gamesPlayed,
                 }))}
                 onLocationClick={locationId => {
@@ -600,7 +600,7 @@ export default function ReportsLocationsSASEvaluation({
                           '#f59e0b',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod
@@ -622,7 +622,7 @@ export default function ReportsLocationsSASEvaluation({
                           '#f59e0b',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod
@@ -644,7 +644,7 @@ export default function ReportsLocationsSASEvaluation({
                           '#3b82f6',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod

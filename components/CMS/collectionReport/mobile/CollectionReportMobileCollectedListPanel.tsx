@@ -4,7 +4,8 @@ import { ReactElement } from 'react';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal, X } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal, X, CheckSquare } from 'lucide-react';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 
 type MobileCollectedListPanelProps = {
   isVisible: boolean;
@@ -61,6 +62,9 @@ type MobileCollectedListPanelProps = {
   baseBalanceCorrection?: string;
   onBaseBalanceCorrectionChange?: (value: string) => void;
   variationMachineIds?: string[];
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onDeleteSelected?: () => void;
 };
 
 /**
@@ -130,6 +134,9 @@ export default function CollectionReportMobileCollectedListPanel({
   onCollectedAmountChange,
   onBaseBalanceCorrectionChange,
   variationMachineIds = [],
+  selectedIds = [],
+  onToggleSelect,
+  onDeleteSelected,
 }: MobileCollectedListPanelProps) {
   // ============================================================================
   // State & Variables
@@ -184,6 +191,24 @@ export default function CollectionReportMobileCollectedListPanel({
               <h3 className="text-lg font-bold text-gray-900">
                 Collected ({collectedMachines.length})
               </h3>
+              {onToggleSelect && collectedMachines.length > 0 && (
+                <button
+                  onClick={() => {
+                    const allSelected = collectedMachines.every(m => selectedIds.includes(String(m._id)));
+                    if (allSelected) {
+                      collectedMachines.forEach(m => onToggleSelect(String(m._id)) as unknown as void);
+                    } else {
+                      collectedMachines.forEach(m => {
+                        if (!selectedIds.includes(String(m._id))) onToggleSelect(String(m._id));
+                      });
+                    }
+                  }}
+                  className="ml-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-100"
+                >
+                  <CheckSquare className="h-3 w-3" />
+                  {collectedMachines.every(m => selectedIds.includes(String(m._id))) ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -219,6 +244,23 @@ export default function CollectionReportMobileCollectedListPanel({
             )}
             </div>
           </div>
+
+          {/* Bulk delete bar */}
+          {selectedIds.length > 0 && onDeleteSelected && (
+            <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-4 py-2">
+              <span className="text-sm font-semibold text-red-700">
+                {selectedIds.length} selected
+              </span>
+              <button
+                onClick={onDeleteSelected}
+                disabled={isProcessing}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete Selected
+              </button>
+            </div>
+          )}
 
           {/* Content Area - Show either machine list or financial form */}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -573,28 +615,35 @@ export default function CollectionReportMobileCollectedListPanel({
                           <div
                             key={machineKey}
                             className={`mb-3 rounded-xl border p-4 shadow-sm transition-colors ${
-                              hasVariation
-                                ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400'
-                                : isNewMachine
-                                  ? 'border-green-400 bg-green-50 shadow-green-100 ring-1 ring-green-400'
-                                  : 'border-gray-100 bg-white'
+                              selectedIds.includes(String(machine._id))
+                                ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400'
+                                : hasVariation
+                                  ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400'
+                                  : isNewMachine
+                                    ? 'border-green-400 bg-green-50 shadow-green-100 ring-1 ring-green-400'
+                                    : 'border-gray-100 bg-white'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 space-y-2">
                                 <div className="flex items-start justify-between">
-                                  <div>
-                                    <p
-                                      className={`mb-0.5 text-[10px] font-bold uppercase tracking-wider ${hasVariation ? 'text-amber-800' : isNewMachine ? 'text-green-700' : 'text-blue-600'}`}
-                                    >
-                                      {machine.serialNumber || 'No Serial'}
-                                    </p>
+                                  <div className="flex items-start gap-2">
+                                    {onToggleSelect && (
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedIds.includes(String(machine._id))}
+                                        onChange={() => onToggleSelect(String(machine._id))}
+                                        className="mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                      />
+                                    )}
                                     <h4
                                       className={`text-sm font-black leading-tight ${hasVariation ? 'text-amber-950' : isNewMachine ? 'text-green-900' : 'text-gray-900'}`}
                                     >
-                                      {machine.machineCustomName ||
-                                        machine.machineName ||
-                                        'Unknown Machine'}
+                                      {formatMachineDisplayNameWithBold({
+                                        serialNumber: machine.serialNumber,
+                                        custom: { name: machine.machineCustomName },
+                                        game: machine.game,
+                                      })}
                                     </h4>
                                   </div>
                                   {hasVariation && (
@@ -687,6 +736,20 @@ export default function CollectionReportMobileCollectedListPanel({
               sub-views so the create/update action is always reachable. */}
           {collectedMachines.length > 0 && (
             <div className="shrink-0 border-t bg-white p-4">
+              {isProcessing && (
+                <div className="mb-3 space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>{isEditing ? 'Updating report…' : 'Creating reports…'}</span>
+                    <span>
+                      {collectedMachines.length} machine
+                      {collectedMachines.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                    <div className="h-full w-full animate-pulse rounded-full bg-green-600" />
+                  </div>
+                </div>
+              )}
               <button
                 onClick={onCreateReport}
                 disabled={isProcessing || !isCreateReportsEnabled}

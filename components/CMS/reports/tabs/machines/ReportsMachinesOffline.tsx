@@ -42,6 +42,8 @@ import type {
   MachineSortKey,
 } from '@/shared/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -134,6 +136,9 @@ export const ReportsMachinesOffline = ({
   // State & Hooks
   // ============================================================================
   const router = useRouter();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value ?? 0, displayCurrency);
 
   // ============================================================================
   // Computed
@@ -521,14 +526,14 @@ export const ReportsMachinesOffline = ({
                             <span
                               className={getFinancialColorClass(machine.coinIn)}
                             >
-                              ${machine.coinIn.toLocaleString()}
+                              {formatCurrency(machine.coinIn)}
                             </span>
                           </td>
                           <td className="p-3 text-left">
                             <span
                               className={getFinancialColorClass(machine.netWin)}
                             >
-                              ${machine.netWin.toLocaleString()}
+                              {formatCurrency(machine.netWin)}
                             </span>
                           </td>
                           <td className="p-3 text-center">
@@ -665,7 +670,7 @@ export const ReportsMachinesOffline = ({
                           <p
                             className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.coinIn)}`}
                           >
-                            ${machine.coinIn.toLocaleString()}
+                            {formatCurrency(machine.coinIn)}
                           </p>
                         </div>
                         <div>
@@ -675,7 +680,7 @@ export const ReportsMachinesOffline = ({
                           <p
                             className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.netWin)}`}
                           >
-                            ${machine.netWin.toLocaleString()}
+                            {formatCurrency(machine.netWin)}
                           </p>
                         </div>
                         <div>

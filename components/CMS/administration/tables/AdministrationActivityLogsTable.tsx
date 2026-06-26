@@ -27,21 +27,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
-import ActivityLogDateFilter from '@/components/shared/ui/ActivityLogDateFilter';
 import type { TimePeriod } from '@/shared/types/common';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
 import {
   Table,
   TableBody,
@@ -64,6 +51,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogCard from '../cards/AdministrationActivityLogCard';
 import AdministrationActivityLogDescriptionDialog from '../modals/AdministrationActivityLogDescriptionDialog';
+import AdministrationDeleteActivityLogModal from '../modals/AdministrationDeleteActivityLogModal';
+import AdministrationClearActivityLogsModal from '../modals/AdministrationClearActivityLogsModal';
+import { AdministrationActivityLogsFilterBar } from '../AdministrationActivityLogsFilterBar';
 import AdministrationActivityLogCardSkeleton from '../skeletons/AdministrationActivityLogCardSkeleton';
 import AdministrationActivityLogTableSkeleton from '../skeletons/AdministrationActivityLogTableSkeleton';
 
@@ -119,8 +109,6 @@ function AdministrationActivityLogsTable({
   const isDeveloper = userRoles.includes('developer');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isClearLogsModalOpen, setIsClearLogsModalOpen] = useState(false);
-  const [isClearingLogs, setIsClearingLogs] = useState(false);
-
   // ObjectID resolution state (developer-only)
   const [resolveProgress, setResolveProgress] = useState<{
     updated: number;
@@ -129,8 +117,7 @@ function AdministrationActivityLogsTable({
   } | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
-  const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
-  const [isDeleting, setIsDeleting] = useState(false);
+
 
   // Copy to clipboard function
   const copyToClipboard = async (
@@ -523,59 +510,7 @@ function AdministrationActivityLogsTable({
   // Handle delete action
   const handleDeleteClick = (log: ActivityLog) => {
     setLogToDelete(log);
-    setDeleteType('soft');
     setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!logToDelete) return;
-    setIsDeleting(true);
-    try {
-      const response = await fetch(
-        `/api/activity-logs/${logToDelete._id}?deleteType=${deleteType}`,
-        {
-          method: 'DELETE',
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        toast.success(
-          `Activity log ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`
-        );
-        setIsDeleteModalOpen(false);
-        setLogToDelete(null);
-        fetchInitialBatch();
-      } else {
-        toast.error(data.message || 'Failed to delete activity log');
-      }
-    } catch (error) {
-      console.error('Error deleting activity log:', error);
-      toast.error('An error occurred while deleting');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleClearLogs = async () => {
-    setIsClearingLogs(true);
-    try {
-      const response = await fetch('/api/activity-logs', {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast.success(data.message || 'Successfully cleared all activity logs');
-        setIsClearLogsModalOpen(false);
-        fetchInitialBatch();
-      } else {
-        toast.error(data.message || 'Failed to clear activity logs');
-      }
-    } catch (error) {
-      console.error('Error clearing activity logs:', error);
-      toast.error('An error occurred while clearing activity logs');
-    } finally {
-      setIsClearingLogs(false);
-    }
   };
 
   // ============================================================================
@@ -656,137 +591,31 @@ function AdministrationActivityLogsTable({
           )}
         </CardHeader>
         <CardContent>
-          {/* Integrated Filters Panel */}
-          <div className="mb-6 mt-4 rounded-lg border border-gray-200 bg-container p-4 shadow-sm">
-            {/* Top Row: Search + Mode + Action */}
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-              {/* Search input */}
-              <div className="flex h-11 w-full rounded-md border border-gray-200 bg-white shadow-sm md:col-span-2">
-                <input
-                  type="text"
-                  placeholder="Search activity logs..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none ring-buttonActive focus:ring-1"
-                />
-                <span className="flex cursor-pointer items-center border-l border-gray-300 bg-white px-2 text-gray-400 transition-colors hover:text-gray-600">
-                  <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                  </svg>
-                </span>
-              </div>
-
-              {/* Mode selector */}
-              <div className="relative">
-                <button
-                  type="button"
-                  className={`flex h-11 w-full cursor-pointer items-center justify-center whitespace-nowrap rounded-md bg-button px-3 text-xs font-medium text-white transition-colors hover:bg-buttonActive md:px-4 md:text-sm`}
-                  onClick={() => setSearchDropdownOpen(!searchDropdownOpen)}
-                >
-                  {searchMode === 'username'
-                    ? 'Username'
-                    : searchMode === 'email'
-                      ? 'Email'
-                      : searchMode === 'description'
-                        ? 'Description'
-                        : 'ID'}
-                  <svg
-                    className={`ml-1 h-3 w-3 transition-transform md:ml-2 md:h-4 md:w-4 ${searchDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-                {searchDropdownOpen && (
-                  <div className="absolute left-0 top-full z-20 mt-1 w-auto min-w-[150px] rounded-md border border-gray-200 bg-white shadow-lg">
-                    {(['username', 'email', 'description', '_id'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        className={`block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100 ${searchMode === mode ? 'font-semibold text-buttonActive' : 'text-gray-700'}`}
-                        onClick={() => {
-                          setSearchMode(mode);
-                          setSearchDropdownOpen(false);
-                        }}
-                      >
-                        {mode === 'username' ? 'Username' : mode === 'email' ? 'Email' : mode === 'description' ? 'Description' : 'ID'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action filter */}
-              <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem value="create">Create</SelectItem>
-                  <SelectItem value="update">Update</SelectItem>
-                  <SelectItem value="delete">Delete</SelectItem>
-                  <SelectItem value="view">View</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Bottom Row: Resource + Date Presets + Custom */}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-              {/* Resource filter */}
-              <Select value={resourceFilter} onValueChange={setResourceFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Resource" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Resources</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="machine">Machine</SelectItem>
-                  <SelectItem value="location">Location</SelectItem>
-                  <SelectItem value="collection">Collection</SelectItem>
-                  <SelectItem value="collection-report">Collection Report</SelectItem>
-                  <SelectItem value="licencee">Licencee</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="session">Session</SelectItem>
-                  <SelectItem value="vault">Vault</SelectItem>
-                  <SelectItem value="cashier_shift">Cashier Shift</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Date filter presets */}
-              <div className="md:col-span-2">
-                <ActivityLogDateFilter
-                  timePeriod={timePeriod}
-                  onTimePeriodChange={setTimePeriod}
-                  onDateRangeChange={setDateRange}
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Clear Filters */}
-              <div className="flex items-end">
-                {(searchTerm || actionFilter !== 'all' || resourceFilter !== 'all' || timePeriod !== 'All Time' || dateRange) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSearchMode('username');
-                      setActionFilter('all');
-                      setResourceFilter('all');
-                      setTimePeriod('All Time');
-                      setDateRange(undefined);
-                    }}
-                    className="h-11 w-full border-buttonActive text-buttonActive hover:bg-buttonActive hover:text-container"
-                  >
-                    Clear All Filters
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
+          <AdministrationActivityLogsFilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchMode={searchMode}
+            onSearchModeChange={setSearchMode}
+            searchDropdownOpen={searchDropdownOpen}
+            onSearchDropdownToggle={() => setSearchDropdownOpen(prev => !prev)}
+            actionFilter={actionFilter}
+            onActionFilterChange={setActionFilter}
+            resourceFilter={resourceFilter}
+            onResourceFilterChange={setResourceFilter}
+            timePeriod={timePeriod}
+            onTimePeriodChange={setTimePeriod}
+            onDateRangeChange={setDateRange}
+            onClearFilters={() => {
+              setSearchTerm('');
+              setSearchMode('username');
+              setActionFilter('all');
+              setResourceFilter('all');
+              setTimePeriod('All Time');
+              setDateRange(undefined);
+            }}
+            hasActiveFilters={!!(searchTerm || actionFilter !== 'all' || resourceFilter !== 'all' || timePeriod !== 'All Time' || dateRange)}
+            disabled={loading}
+          />
 
           {/* Desktop Table View */}
           <div className="hidden rounded-lg border lg:block">
@@ -1084,174 +913,57 @@ function AdministrationActivityLogsTable({
         searchMode={searchMode}
       />
 
-      {/* Developer Delete Confirmation Modal */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="h-full gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-w-sm sm:rounded-xl">
-          <DialogTitle className="sr-only">Delete Activity Log</DialogTitle>
-          {/* Header */}
-          <div className="flex items-center gap-2.5 border-b bg-red-50 px-5 py-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-              <Trash2 className="h-4 w-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-red-700">
-                Delete Activity Log
-              </p>
-              <p className="text-xs text-red-500">
-                This action may be irreversible
-              </p>
-            </div>
-          </div>
+      <AdministrationDeleteActivityLogModal
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        log={logToDelete}
+        onDelete={async (deleteType) => {
+          if (!logToDelete) return;
+          try {
+            const response = await fetch(
+              `/api/activity-logs/${logToDelete._id}?deleteType=${deleteType}`,
+              { method: 'DELETE' }
+            );
+            const data = await response.json();
+            if (data.success) {
+              toast.success(
+                `Activity log ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`
+              );
+              setIsDeleteModalOpen(false);
+              setLogToDelete(null);
+              fetchInitialBatch();
+            } else {
+              toast.error(data.message || 'Failed to delete activity log');
+            }
+          } catch (error) {
+            console.error('Error deleting activity log:', error);
+            toast.error('An error occurred while deleting');
+          }
+        }}
+      />
 
-          {/* Body */}
-          <div className="space-y-4 px-5 py-4">
-            {/* Log summary */}
-            <div className="space-y-1 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 font-mono text-xs text-gray-500">
-              <p>
-                <span className="font-semibold text-gray-600">ID</span> &nbsp;
-                {logToDelete?._id}
-              </p>
-              <p>
-                <span className="font-semibold text-gray-600">Action</span>{' '}
-                &nbsp;{logToDelete?.action}
-              </p>
-              <p>
-                <span className="font-semibold text-gray-600">User</span> &nbsp;
-                {logToDelete?.username}
-              </p>
-              <p>
-                <span className="font-semibold text-gray-600">Time</span> &nbsp;
-                {logToDelete && safeFormatDate(logToDelete.timestamp)}
-              </p>
-            </div>
-
-            {/* Deletion mode */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                Deletion mode
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteType('soft')}
-                  className={`rounded-lg border py-2 text-xs font-semibold transition-colors ${
-                    deleteType === 'soft'
-                      ? 'border-amber-400 bg-amber-500 text-white'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300 hover:bg-amber-50'
-                  }`}
-                >
-                  Soft delete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteType('hard')}
-                  className={`rounded-lg border py-2 text-xs font-semibold transition-colors ${
-                    deleteType === 'hard'
-                      ? 'border-red-500 bg-red-600 text-white'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-red-300 hover:bg-red-50'
-                  }`}
-                >
-                  Hard delete
-                </button>
-              </div>
-              <p className="text-[11px] leading-relaxed text-gray-500">
-                {deleteType === 'soft'
-                  ? 'Hides the log from the UI but keeps it in the database for auditing.'
-                  : 'Permanently removes the log from the database. This cannot be undone.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-2 border-t bg-gray-50 px-5 py-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isDeleting}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={confirmDelete}
-              disabled={isDeleting}
-              className={`flex-1 ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} text-white`}
-            >
-              {isDeleting
-                ? 'Deleting…'
-                : deleteType === 'hard'
-                  ? 'Delete permanently'
-                  : 'Soft delete'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Clear Logs Confirmation Modal */}
-      <Dialog
+      <AdministrationClearActivityLogsModal
         open={isClearLogsModalOpen}
         onOpenChange={setIsClearLogsModalOpen}
-      >
-        <DialogContent className="h-full gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-w-md sm:rounded-xl">
-          <DialogTitle className="sr-only">Clear All Activity Logs</DialogTitle>
-          {/* Header */}
-          <div className="flex items-center gap-2.5 border-b bg-red-50 px-5 py-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-              <Trash2 className="h-4 w-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-red-700">
-                Clear All Activity Logs
-              </p>
-              <p className="text-xs text-red-500">
-                This action is extremely destructive and irreversible
-              </p>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="space-y-4 px-5 py-4">
-            <p className="text-sm leading-relaxed text-gray-600">
-              Are you sure you want to{' '}
-              <span className="font-semibold text-red-600">
-                permanently delete all activity logs
-              </span>{' '}
-              from the database? This will clear the entire history of actions,
-              edits, creations, and deletions.
-            </p>
-            <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50/50 p-3 text-xs leading-relaxed text-red-800">
-              <span className="shrink-0 font-bold">WARNING:</span>
-              <span>
-                This cannot be undone. All audit trails for compliance and
-                troubleshooting will be lost forever.
-              </span>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-2 border-t bg-gray-50 px-5 py-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsClearLogsModalOpen(false)}
-              disabled={isClearingLogs}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleClearLogs}
-              disabled={isClearingLogs}
-              className="flex-1 bg-red-600 font-semibold text-white hover:bg-red-700"
-            >
-              {isClearingLogs ? 'Clearing…' : 'Yes, clear all logs'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        onClear={async () => {
+          try {
+            const response = await fetch('/api/activity-logs', {
+              method: 'DELETE',
+            });
+            const data = await response.json();
+            if (data.success) {
+              toast.success(data.message || 'Successfully cleared all activity logs');
+              setIsClearLogsModalOpen(false);
+              fetchInitialBatch();
+            } else {
+              toast.error(data.message || 'Failed to clear activity logs');
+            }
+          } catch (error) {
+            console.error('Error clearing activity logs:', error);
+            toast.error('An error occurred while clearing activity logs');
+          }
+        }}
+      />
     </div>
   );
 }

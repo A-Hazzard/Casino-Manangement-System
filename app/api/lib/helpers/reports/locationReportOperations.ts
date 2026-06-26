@@ -21,6 +21,7 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CollectionReportDocument } from '@/shared/types';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { NextResponse } from 'next/server';
 
 // ============================================================================
@@ -185,8 +186,9 @@ export function buildLocationMatchStage(params: {
   searchTerm: string;
   machineTypeFilter: string | null;
   isAdminOrDev: boolean;
+  wowLocationIds?: string[] | null;
 }): Record<string, unknown> {
-  const { showArchived, allowedLocationIds, specificLocations, licencee, searchTerm, machineTypeFilter, isAdminOrDev } = params;
+  const { showArchived, allowedLocationIds, specificLocations, licencee, searchTerm, machineTypeFilter, isAdminOrDev, wowLocationIds } = params;
 
   const locationMatchStage: Record<string, unknown> = showArchived
     ? { deletedAt: { $gte: new Date('2025-01-01') } }
@@ -237,6 +239,15 @@ export function buildLocationMatchStage(params: {
     const filterConditions = buildMachineTypeFilterConditions(machineTypeFilter);
     const andArray = ensureAndArray(locationMatchStage);
     filterConditions.forEach(condition => andArray.push(condition));
+
+    // WOW filter: there is no persisted location flag, so restrict to the set of
+    // location IDs precomputed from WOW machines (empty set → no matches).
+    const hasWowFilter = machineTypeFilter
+      .split(',')
+      .some(type => type.trim() === 'WowOnly');
+    if (hasWowFilter) {
+      andArray.push({ _id: { $in: wowLocationIds ?? [] } });
+    }
   }
 
   return locationMatchStage;
@@ -415,7 +426,7 @@ export async function applySmibClassification(
     for (const item of locationsWithMachines) {
       const machines = item.machines ?? [];
       const withRelay = machines.filter(
-        m => m.relayId && String(m.relayId).trim()
+        m => (m.relayId && String(m.relayId).trim()) || isWowMachine(m)
       ).length;
       const computedFull =
         machines.length > 0 && withRelay === machines.length;
@@ -443,7 +454,7 @@ export async function applySmibClassification(
     for (const location of locations) {
       const machines = locationToMachines.get(String(location._id)) ?? [];
       const withRelay = machines.filter(
-        m => m.relayId && String(m.relayId).trim()
+        m => (m.relayId && String(m.relayId).trim()) || isWowMachine(m)
       ).length;
       const computedFull =
         machines.length > 0 && withRelay === machines.length;
@@ -471,7 +482,8 @@ export async function computeLocationMetrics(
   allLocationIds: string[],
   allMachineIds: string[],
   globalStart: Date,
-  globalEnd: Date
+  globalEnd: Date,
+  locationRanges?: Map<string, { rangeStart: Date; rangeEnd: Date }>
 ): Promise<MetricsMap> {
   const metricsMap: MetricsMap = new Map();
 
@@ -507,6 +519,23 @@ export async function computeLocationMetrics(
 
   for await (const doc of metersCursor) {
     const locId = String(doc._id.location);
+
+    // The aggregation matches the GLOBAL window (earliest start .. latest end)
+    // for index efficiency. When locations have different gameDayOffsets we must
+    // drop hour-buckets that fall outside this location's own gaming-day range,
+    // otherwise mixed-offset locations over-count at the window edges. Gaming-day
+    // boundaries are whole hours, so comparing the truncated hour bucket is exact.
+    const range = locationRanges?.get(locId);
+    if (range) {
+      const bucketHour = new Date(doc._id.hour).getTime();
+      if (
+        bucketHour < range.rangeStart.getTime() ||
+        bucketHour >= range.rangeEnd.getTime()
+      ) {
+        continue;
+      }
+    }
+
     if (!metricsMap.has(locId)) {
       metricsMap.set(locId, {
         totalDrop: 0,
@@ -598,23 +627,28 @@ export function buildLocationResults(
       ? licenceeIncludeJackpotMap.get(licenceeId) || false
       : false;
 
+    // WOW machines have no relay/activity but always count as online.
+    const wowMachineCount = machines.filter(m => isWowMachine(m)).length;
+    const isWowLocation = wowMachineCount > 0;
     const eligibleMachines = machines.filter(
       m => m.relayId && String(m.relayId).trim().length > 0
     );
-    const onlineMachines = loc.aceEnabled
-      ? eligibleMachines.length
-      : eligibleMachines.filter(m => {
-          if (!m.lastActivity) return false;
-          try {
-            const activityDate =
-              m.lastActivity instanceof Date
-                ? m.lastActivity
-                : new Date(String(m.lastActivity).replace(' ', 'T'));
-            return activityDate.getTime() >= onlineThreshold;
-          } catch {
-            return false;
-          }
-        }).length;
+    const onlineMachines =
+      wowMachineCount +
+      (loc.aceEnabled
+        ? eligibleMachines.length
+        : eligibleMachines.filter(m => {
+            if (!m.lastActivity) return false;
+            try {
+              const activityDate =
+                m.lastActivity instanceof Date
+                  ? m.lastActivity
+                  : new Date(String(m.lastActivity).replace(' ', 'T'));
+              return activityDate.getTime() >= onlineThreshold;
+            } catch {
+              return false;
+            }
+          }).length);
 
     return {
       _id: locId,
@@ -642,6 +676,7 @@ export function buildLocationResults(
       noSMIBLocation: Boolean(loc.noSMIBLocation),
       fullSMIBs: Boolean(loc.fullSMIBs),
       semiSMIBs: Boolean(loc.semiSMIBs),
+      isWowLocation,
       hasSmib: Boolean(loc.fullSMIBs) || Boolean(loc.semiSMIBs),
       rel: loc.rel,
       isLocalServer: Boolean(loc.isLocalServer),
@@ -682,8 +717,9 @@ export function buildLocationResults(
 export async function applyNonSmibOfflineOverride(
   locationResults: AggregatedLocation[]
 ): Promise<void> {
+  // WOW locations are always online — exclude them from the offline override.
   const nonSmibLocations = locationResults.filter(
-    loc => loc.sasMachines === 0 || loc.noSMIBLocation
+    loc => !loc.isWowLocation && (loc.sasMachines === 0 || loc.noSMIBLocation)
   );
 
   if (nonSmibLocations.length === 0) return;
@@ -708,6 +744,7 @@ export async function applyNonSmibOfflineOverride(
 
   locationResults.forEach(loc => {
     if (
+      !loc.isWowLocation &&
       (loc.sasMachines === 0 || loc.noSMIBLocation) &&
       !locationsWithRecentReports.has(loc._id || '')
     ) {

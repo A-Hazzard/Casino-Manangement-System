@@ -30,17 +30,33 @@ export type StatusCounts = {
  * Creates the base aggregation pipeline with machine-location lookup.
  * Filters out soft-deleted machines and locations.
  *
+ * @param {boolean} showArchived - When true, only returns archived (soft-deleted) machines
  * @returns {PipelineStage[]} Base pipeline stages
  */
-export function createBasePipeline(): PipelineStage[] {
-  return [
-    {
-      $match: {
+export function createBasePipeline(
+  showArchived: boolean = false
+): PipelineStage[] {
+  const machineDeletionFilter = showArchived
+    ? { deletedAt: { $gte: new Date('2025-01-01') } }
+    : {
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
-      },
+      };
+
+  const locationDeletionFilter = showArchived
+    ? { deletedAt: { $gte: new Date('2025-01-01') } }
+    : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
+  return [
+    {
+      $match: machineDeletionFilter,
     },
     {
       $lookup: {
@@ -55,10 +71,7 @@ export function createBasePipeline(): PipelineStage[] {
                   { $ifNull: [{ $toString: '$$locId' }, ''] },
                 ],
               },
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2025-01-01') } },
-              ],
+              ...locationDeletionFilter,
             },
           },
         ],
@@ -376,6 +389,7 @@ export function addOnlineStatusFilter(
       $match: {
         $or: [
           { 'locationDetails.aceEnabled': true },
+          { 'meta.dataSync.source': 'wow' },
           {
             $and: [
               { lastActivity: { $exists: true, $ne: null } },
@@ -402,6 +416,7 @@ export function addOnlineStatusFilter(
     pipeline.push({
       $match: {
         'locationDetails.aceEnabled': { $ne: true },
+        'meta.dataSync.source': { $ne: 'wow' },
         $or: [
           { lastActivity: { $exists: false } },
           { lastActivity: null },
@@ -429,6 +444,7 @@ export function addOnlineStatusFilter(
     pipeline.push({
       $match: {
         'locationDetails.aceEnabled': { $ne: true },
+        'meta.dataSync.source': { $ne: 'wow' },
         $or: [
           { lastActivity: { $exists: false } },
           { lastActivity: null },
@@ -436,6 +452,7 @@ export function addOnlineStatusFilter(
       },
     });
   }
+  // 'archived' is handled by createBasePipeline(showArchived=true) — no additional filter needed here
 }
 
 // ============================================================================
@@ -514,6 +531,7 @@ export async function runStatusAndLocationCounts(
             $match: {
               $or: [
                 { 'locationDetails.aceEnabled': true },
+                { 'meta.dataSync.source': 'wow' },
                 {
                   $and: [
                     { lastActivity: { $exists: true, $ne: null } },
@@ -542,6 +560,7 @@ export async function runStatusAndLocationCounts(
           {
             $match: {
               'locationDetails.aceEnabled': { $ne: true },
+              'meta.dataSync.source': { $ne: 'wow' },
               $or: [
                 { lastActivity: { $exists: false } },
                 { lastActivity: null },
@@ -568,6 +587,7 @@ export async function runStatusAndLocationCounts(
           {
             $match: {
               'locationDetails.aceEnabled': { $ne: true },
+              'meta.dataSync.source': { $ne: 'wow' },
               $and: [
                 { lastActivity: { $exists: true, $ne: null } },
                 {
@@ -615,6 +635,7 @@ export async function runStatusAndLocationCounts(
                     {
                       $or: [
                         { $eq: ['$locationDetails.aceEnabled', true] },
+                        { $eq: ['$meta.dataSync.source', 'wow'] },
                         {
                           $and: [
                             { $gt: ['$lastActivity', null] },
@@ -683,6 +704,7 @@ export async function runStatusAndLocationCounts(
  * @param {string | null} locationId - Specific location ID filter
  * @param {string[] | 'all'} allowedLocationIds - User's accessible location IDs
  * @param {string | null} machineTypeFilter - Machine type filter
+ * @param {boolean} showArchived - When true, count only archived locations
  * @returns {Record<string, unknown>[]} Array of match conditions
  */
 export function buildLocationCountFilter(
@@ -690,16 +712,19 @@ export function buildLocationCountFilter(
   effectiveLicencee: string | undefined,
   locationId: string | null,
   allowedLocationIds: string[] | 'all',
-  machineTypeFilter: string | null
+  machineTypeFilter: string | null,
+  showArchived: boolean = false
 ): Record<string, unknown>[] {
-  const filter: Record<string, unknown>[] = [
-    {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
-    },
-  ];
+  const deletionFilter = showArchived
+    ? { deletedAt: { $gte: new Date('2025-01-01') } }
+    : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
+  const filter: Record<string, unknown>[] = [deletionFilter];
 
   if (search) {
     filter.push({ name: { $regex: search, $options: 'i' } });

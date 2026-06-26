@@ -1,3 +1,12 @@
+/**
+ * Verify TOTP API Route
+ *
+ * Verifies a live TOTP code against the authenticated user's stored secret.
+ * Called at privileged action checkpoints where a second-factor challenge is required.
+ *
+ * @module app/api/auth/verify-totp/route
+ */
+
 import { verifyTOTPCode } from '@/app/api/lib/helpers/auth/totp';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';

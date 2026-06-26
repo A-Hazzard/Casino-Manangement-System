@@ -219,7 +219,7 @@ When a machine was reset during the collection period:
 | Collections API        | `app/api/collection-reports/collections/route.ts`      |
 | Collection by ID       | `app/api/collection-reports/collections/[id]/route.ts` |
 | Variation check        | `app/api/collection-reports/check-variations/route.ts` |
-| Financial formulas doc | `Documentation/collection-report-finances.md`          |
-| Page design doc        | `Documentation/pages/collection-report-page.md`        |
-| Critical guidelines    | `.instructions/collection-reports-guidelines.md`       |
-| Variation bug fixes    | `Documentation/collection-report-variation-fix.md`     |
+| Financial formulas doc | `Documentation/collection-reports/overview/collection-report-finances.md` |
+| Page design doc        | `Documentation/collection-reports/frontend/collection-report-page.md`     |
+| Critical guidelines    | `.instructions/collection-reports-guidelines.md`                          |
+| Variation bug fixes    | `Documentation/collection-reports/reference/collection-report-variation-fix.md` |

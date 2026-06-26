@@ -95,7 +95,7 @@ export default function AdministrationNavigation({
               aria-disabled={isLoading && isActive}
               type="button"
             >
-              <span className="text-sm">{tab.icon}</span>
+              <tab.icon className="h-5 w-5" />
               <span className="text-sm font-medium sm:text-base">
                 {tab.label}
               </span>

@@ -23,9 +23,12 @@
 import CollectionReportMobileCollectedListPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileCollectedListPanel';
 import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileFormPanel';
 import CollectionReportMobileMachineList from '@/components/CMS/collectionReport/mobile/CollectionReportMobileMachineList';
+import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
+import { ProcessingPhaseBar } from '@/components/shared/ui/ProcessingPhaseBar';
+import type { ProcessingPhase } from '@/components/shared/ui/ProcessingPhaseBar';
 import {
   Dialog,
   DialogClose,
@@ -36,6 +39,10 @@ import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machine
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
+import { useWowAutoReport } from '@/lib/hooks/collectionReport/useWowAutoReport';
+import { persistWowCollection } from '@/lib/helpers/collectionReport/wowAutoReportPersist';
+import { useUserStore } from '@/lib/store/userStore';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
@@ -48,18 +55,16 @@ import {
   SendHorizontal,
   X,
 } from 'lucide-react';
-import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
+import { VariationCheckPanel } from '@/components/CMS/collectionReport/variations/VariationCheckPanel';
 import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
 import {
-  useCollectionReportVariationCheck,
-  type CheckVariationsMachine,
-} from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+  useVariationStreamCheck,
+  type VariationCheckMachine,
+} from '@/lib/hooks/collectionReport/useVariationStreamCheck';
 import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { deleteMachineCollectionBatch } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/shared/ui/button';
 import { toast } from 'sonner';
 
 type CollectionReportMobileNewCollectionModalProps = {
@@ -69,6 +74,17 @@ type CollectionReportMobileNewCollectionModalProps = {
   onRefresh: () => void;
   onRefreshLocations?: () => void;
 };
+
+function buildCreatePhases(machineCount: number): ProcessingPhase[] {
+  return [
+    { key: 'validating',    label: 'Validating report data',     estimatedMs: 500 },
+    { key: 'saving',        label: 'Saving report',              estimatedMs: 600 },
+    { key: 'recalculating', label: 'Updating machine records',   estimatedMs: Math.max(600, machineCount * 30), detail: `${machineCount} machine${machineCount !== 1 ? 's' : ''}` },
+    { key: 'variation',     label: 'Calculating variation',      estimatedMs: 1200 },
+    { key: 'meters',        label: 'Creating meter records',     estimatedMs: Math.max(500, machineCount * 20), detail: `${machineCount} machine${machineCount !== 1 ? 's' : ''}` },
+    { key: 'activity',      label: 'Recording activity',         estimatedMs: 500 },
+  ];
+}
 
 export default function CollectionReportMobileNewCollectionModal({
   show,
@@ -124,6 +140,8 @@ export default function CollectionReportMobileNewCollectionModal({
     setUpdateAllSasEndDate,
     handleApplyAllDates,
     sasUpdateProgress,
+    currentCreatePhase,
+    currentSubStep,
   } = useMobileCollectionModal({
     show,
     locations: propLocations,
@@ -135,25 +153,42 @@ export default function CollectionReportMobileNewCollectionModal({
   const mobileMachineIds = availableMachines.map(machine => String(machine._id));
   const machineStatusMap = useMachineOnlineStatus(mobileMachineIds);
 
-  // Variation checking state
+  const createPhases = useMemo(
+    () => buildCreatePhases(collectedMachines.length),
+    [collectedMachines.length]
+  );
+
+  // Variation checking — streaming per-machine check (matches the report detail page).
   const {
-    isChecking,
-    hasVariations,
-    variationsData,
+    status: variationStatus,
+    done: checkDone,
+    total: checkTotal,
+    currentMachineName,
+    result: variationResult,
     error: variationError,
-    isPreCreating,
-    currentMeterMachineName,
-    meterCreationError,
-    isMinimized,
-    checkVariations,
-    toggleMinimize,
+    run: runVariationCheck,
+    cancel: cancelVariationCheck,
     reset: resetVariationCheck,
-  } = useCollectionReportVariationCheck();
+  } = useVariationStreamCheck();
+
+  // Adapters so the existing in-form consumers keep working unchanged.
+  const hasVariations =
+    variationStatus === 'done' ? (variationResult?.hasVariations ?? false) : null;
+  const variationsData = variationResult;
+
+  const lastCheckArgsRef = useRef<{
+    locationId: string;
+    machines: VariationCheckMachine[];
+  } | null>(null);
 
   const [showVariationCheckPopover, setShowVariationCheckPopover] =
     useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] =
     useState(false);
+  const [mobileNewSelectedIds, setMobileNewSelectedIds] = useState<string[]>([]);
+  const [showMobileNewBulkDeleteConfirmation, setShowMobileNewBulkDeleteConfirmation] =
+    useState(false);
+  const [isMobileNewBulkDeleting, setIsMobileNewBulkDeleting] = useState(false);
   const [isLoadingTime, setIsLoadingTime] = useState(false);
 
   // ============================================================================
@@ -193,6 +228,41 @@ export default function CollectionReportMobileNewCollectionModal({
   }, [selectedMachine, machineStatusMap, modalState.editingEntryId, selectedMachineData, storeFormData.notes, setStoreFormData]);
 
   // ============================================================================
+  // Selection State (Bulk Delete)
+  // ============================================================================
+  const handleMobileNewToggleSelect = useCallback((id: string) => {
+    setMobileNewSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleMobileNewBulkDelete = useCallback(async () => {
+    if (mobileNewSelectedIds.length === 0) return;
+    setIsMobileNewBulkDeleting(true);
+    try {
+      await deleteMachineCollectionBatch(mobileNewSelectedIds);
+      setModalState(prev => {
+        const newMachines = prev.collectedMachines.filter(
+          m => !mobileNewSelectedIds.includes(String(m._id))
+        );
+        return {
+          ...prev,
+          collectedMachines: newMachines,
+          lockedLocationId: newMachines.length === 0 ? undefined : prev.lockedLocationId,
+        };
+      });
+      setMobileNewSelectedIds([]);
+      setShowMobileNewBulkDeleteConfirmation(false);
+      toast.success(`${mobileNewSelectedIds.length} machine(s) deleted successfully`);
+    } catch (error) {
+      console.error('[MobileNewBulkDelete] Error:', error instanceof Error ? error.message : 'Unknown error');
+      toast.error('Failed to delete some machines. Please try again.');
+    } finally {
+      setIsMobileNewBulkDeleting(false);
+    }
+  }, [mobileNewSelectedIds, setModalState]);
+
+  // ============================================================================
   // Handlers
   // ============================================================================
   const handleStartSubmit = async () => {
@@ -218,10 +288,10 @@ export default function CollectionReportMobileNewCollectionModal({
         return;
       }
 
-      // Trigger variation check
+      // Trigger variation check for EVERY collected machine (WOW included).
       setShowVariationCheckPopover(true);
 
-      const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
+      const machinesForCheck: VariationCheckMachine[] = collectedMachines.map(
         entry => ({
           machineId: entry.machineId,
           machineName:
@@ -231,40 +301,121 @@ export default function CollectionReportMobileNewCollectionModal({
             entry.machineId,
           metersIn: entry.metersIn || 0,
           metersOut: entry.metersOut || 0,
-          sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-          sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-          prevMetersIn: entry.prevIn || 0,
-          prevMetersOut: entry.prevOut || 0,
+          prevIn: entry.prevIn || 0,
+          prevOut: entry.prevOut || 0,
           movementGross: (entry as { movement?: { gross?: number } }).movement
             ?.gross,
+          sasStartTime: entry.sasMeters?.sasStartTime
+            ? new Date(entry.sasMeters.sasStartTime).toISOString()
+            : undefined,
+          sasEndTime: entry.sasMeters?.sasEndTime
+            ? new Date(entry.sasMeters.sasEndTime).toISOString()
+            : undefined,
         })
       );
 
-      // Exclude offline/non-SMIB machines — no live SAS data to compare against
-      const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-      const offlineMachineIds = new Set(
-        availableMachines
-          .filter(machine => {
-            if (!machine.relayId) return true;
-            if (!machine.lastActivity) return true;
-            return (
-              Date.now() -
-                new Date(machine.lastActivity).getTime() >=
-              OFFLINE_THRESHOLD_MS
-            );
-          })
-          .map(machine => machine._id)
-      );
-      const onlineMachinesForCheck = machinesForCheck.filter(
-        m => !offlineMachineIds.has(m.machineId)
-      );
-
-      checkVariations(locationIdToUse, onlineMachinesForCheck);
+      lastCheckArgsRef.current = {
+        locationId: locationIdToUse,
+        machines: machinesForCheck,
+      };
+      runVariationCheck(locationIdToUse, machinesForCheck);
     } catch (e) {
       console.error('[handleStartSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       toast.error('Failed to submit. Please try again.');
     }
   };
+
+  // ============================================================================
+  // WOW Auto Report (developer-only, all-WOW locations)
+  // ============================================================================
+  const autoReportUser = useUserStore(state => state.user);
+  const isDeveloper = (autoReportUser?.roles ?? []).includes('developer');
+  const isAllWowLocation =
+    availableMachines.length > 0 &&
+    availableMachines.every(machine => isWowMachine(machine));
+  const uncollectedWowMachines = availableMachines
+    .filter(
+      machine =>
+        !collectedMachines.some(
+          entry => String(entry.machineId) === String(machine._id)
+        )
+    )
+    .map(machine => ({
+      id: String(machine._id),
+      name:
+        machine.custom?.name ||
+        machine.serialNumber ||
+        machine.name ||
+        String(machine._id),
+    }));
+
+  const selectedLoc = useMemo(() => {
+    return locations.find(l => String(l._id) === selectedLocation);
+  }, [locations, selectedLocation]);
+
+  const wowStartTimeIso = useMemo(() => {
+    if (!isAllWowLocation) return undefined;
+    const times = availableMachines
+      .map(m => (m.collectionTime ? new Date(m.collectionTime as string | Date).getTime() : null))
+      .filter((t): t is number => t !== null);
+    if (times.length > 0) {
+      return new Date(Math.min(...times)).toISOString();
+    }
+    if (selectedLoc?.previousCollectionTime) {
+      return new Date(selectedLoc.previousCollectionTime).toISOString();
+    }
+    const collectionTimeDate = storeFormData.collectionTime instanceof Date
+      ? storeFormData.collectionTime
+      : new Date();
+    return new Date(collectionTimeDate.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  }, [isAllWowLocation, availableMachines, selectedLoc, storeFormData.collectionTime]);
+
+  const [mobileCreateHighlightId, setMobileCreateHighlightId] = useState<
+    string | null
+  >(null);
+  const addMobileCreateCollected = useCollectionModalStore(
+    state => state.addCollectedMachine
+  );
+
+  // Keep the highlighted home-screen machine card in view as Auto Report scans.
+  const homeScrollContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!mobileCreateHighlightId || !homeScrollContainerRef.current) return;
+    const el = homeScrollContainerRef.current.querySelector<HTMLElement>(
+      `[data-machine-id="${mobileCreateHighlightId}"]`
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [mobileCreateHighlightId]);
+
+  const autoReport = useWowAutoReport({
+    enabled: isDeveloper && isAllWowLocation,
+    machines: uncollectedWowMachines,
+    startOffset: collectedMachines.length,
+    startTimeIso: wowStartTimeIso,
+    onHighlight: setMobileCreateHighlightId,
+    persist: (machine, meters, ctx) => {
+      const machineDoc = availableMachines.find(
+        m => String(m._id) === machine.id
+      );
+      return persistWowCollection(machine, meters, {
+        locationId: selectedLocation || lockedLocationId || '',
+        collector: autoReportUser?._id || '',
+        collectionTime: ctx?.collectionTime,
+        useMeterTimes: ctx?.useMeterTimes,
+        machineName: machineDoc?.name,
+        serialNumber: machineDoc?.serialNumber,
+        machineCustomName: machineDoc?.custom?.name,
+        previousCollectionTime: selectedLoc?.previousCollectionTime
+          ? new Date(selectedLoc.previousCollectionTime)
+          : undefined,
+        gameDayOffset: ctx?.gameDayOffset !== undefined ? ctx.gameDayOffset : selectedLoc?.gameDayOffset,
+      });
+    },
+    commit: entry => {
+      addMobileCreateCollected(entry);
+    },
+    openSubmit: handleStartSubmit,
+  });
 
   // ============================================================================
   // Render
@@ -276,6 +427,15 @@ export default function CollectionReportMobileNewCollectionModal({
         onOpenChange={isOpen => {
           // Prevent closing during processing
           if (!isOpen && modalState.isProcessing) return;
+
+          // Prevent closing while auto report is running
+          if (!isOpen && autoReport.isRunning) {
+            toast.error('Auto report is in progress. Use the Cancel button to stop it first.', {
+              position: 'top-center',
+              duration: 3000,
+            });
+            return;
+          }
 
           // Prevent closing if confirmation dialogs are open
           if (
@@ -321,7 +481,7 @@ export default function CollectionReportMobileNewCollectionModal({
                 <h2 className="text-xl font-bold tracking-tight text-gray-900">
                   New Collection Report
                 </h2>
-                {!modalState.isProcessing && (
+                {!modalState.isProcessing && !autoReport.isRunning && (
                   <DialogClose asChild>
                     <button
                       onClick={onClose}
@@ -339,7 +499,10 @@ export default function CollectionReportMobileNewCollectionModal({
           {modalState.navigationStack.length === 0 &&
           !modalState.isFormVisible &&
           !modalState.isCollectedListVisible ? (
-            <div className="mobile-collection-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-white">
+            <div
+              ref={homeScrollContainerRef}
+              className="mobile-collection-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-white"
+            >
               {/* Summary Info - Show when location is selected and we have machines */}
               {(lockedLocationId || selectedLocation) &&
                 collectedMachines.length > 0 && (
@@ -447,6 +610,11 @@ export default function CollectionReportMobileNewCollectionModal({
                         />
                       )}
                     </div>
+                    {autoReport.enabled && (
+                      <div className="mt-3">
+                        <WowAutoReportButton control={autoReport} />
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -566,15 +734,11 @@ export default function CollectionReportMobileNewCollectionModal({
                               if (!modalState.searchTerm.trim()) return true;
                               const searchTerm =
                                 modalState.searchTerm.toLowerCase();
-                              const machineName = (
-                                machine.name || ''
-                              ).toLowerCase();
-                              const serialNumber = (
-                                machine.serialNumber || ''
-                              ).toLowerCase();
                               return (
-                                machineName.includes(searchTerm) ||
-                                serialNumber.includes(searchTerm)
+                                (machine.name || '').toLowerCase().includes(searchTerm) ||
+                                (machine.serialNumber || '').toLowerCase().includes(searchTerm) ||
+                                (machine.custom?.name || '').toLowerCase().includes(searchTerm) ||
+                                (machine.game || '').toLowerCase().includes(searchTerm)
                               );
                             }
                           );
@@ -593,7 +757,12 @@ export default function CollectionReportMobileNewCollectionModal({
                             return (
                               <div
                                 key={String(machine._id)}
+                                data-machine-id={String(machine._id)}
                                 className={`rounded-2xl border p-4 transition-all duration-200 ${
+                                  mobileCreateHighlightId === String(machine._id)
+                                    ? 'ring-2 ring-purple-500 ring-offset-1'
+                                    : ''
+                                } ${
                                   isSelected
                                     ? 'border-blue-500 bg-blue-50/50 shadow-md ring-2 ring-blue-500/10'
                                     : isCollected
@@ -857,6 +1026,17 @@ export default function CollectionReportMobileNewCollectionModal({
                 {/* Home Screen Submit Button - Allow submission from machine list */}
                 {collectedMachines.length > 0 && (
                   <div className="sticky bottom-0 mt-4 border-t bg-white p-3">
+                    {modalState.isProcessing && (
+                      <div className="mb-3">
+                        <ProcessingPhaseBar
+                          phases={createPhases}
+                          isActive={modalState.isProcessing}
+                          color="green"
+                          serverPhase={currentCreatePhase}
+                          subStep={currentSubStep}
+                        />
+                      </div>
+                    )}
                     <button
                       onClick={handleStartSubmit}
                       disabled={
@@ -883,6 +1063,7 @@ export default function CollectionReportMobileNewCollectionModal({
               collectedMachines={collectedMachines}
               searchTerm={modalState.searchTerm}
               selectedMachine={selectedMachine ?? null}
+              autoHighlightId={mobileCreateHighlightId}
               isLoadingMachines={modalState.isLoadingMachines}
               machineStatusMap={machineStatusMap}
               onSearchChange={val =>
@@ -1006,7 +1187,7 @@ export default function CollectionReportMobileNewCollectionModal({
               onApplyAllDates={handleApplyAllDates}
               sasUpdateProgress={sasUpdateProgress}
               variationMachineIds={variationsData?.machines
-                .filter(machine => typeof machine.variation === 'number')
+                .filter(machine => machine.variation !== null)
                 .map(machine => machine.machineId)}
               formatMachineDisplay={machine => {
                 const doc = machine as unknown as CollectionDocument;
@@ -1039,200 +1220,60 @@ export default function CollectionReportMobileNewCollectionModal({
               baseBalanceCorrection={baseBalanceCorrection}
               onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
               onCreateReport={handleStartSubmit}
+              selectedIds={mobileNewSelectedIds}
+              onToggleSelect={handleMobileNewToggleSelect}
+              onDeleteSelected={() => setShowMobileNewBulkDeleteConfirmation(true)}
             />
           )}
 
-          {/* Variation Check Popover */}
-          <VariationCheckPopover
-            isOpen={showVariationCheckPopover && (!isMinimized || isPreCreating || !!meterCreationError)}
-            isChecking={isChecking}
-            hasVariations={hasVariations}
+          {/* Variation Check Panel — streaming per-machine check (matches detail page) */}
+          <VariationCheckPanel
+            isOpen={showVariationCheckPopover}
+            status={variationStatus}
+            done={checkDone}
+            total={checkTotal}
+            currentMachineName={currentMachineName}
+            result={variationResult}
             error={variationError}
-            variationsData={variationsData}
-            isPreCreating={isPreCreating}
-            currentMeterMachineName={currentMeterMachineName}
-            meterCreationError={meterCreationError}
-            onMinimize={toggleMinimize}
-            onSubmit={() => {
+            onConfirm={() => {
               setShowVariationCheckPopover(false);
-              // Filter out machines with "No SMIB" (no relayId)
-              const machinesWithSmib =
-                variationsData?.machines.filter(
-                  machine => typeof machine.variation === 'number'
-                ) || [];
-
-              // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
-              if (machinesWithSmib.length === 0 || !hasVariations) {
+              const hasSmibMachines =
+                (variationsData?.machines.filter(m => m.variation !== null) ||
+                  []).length > 0;
+              if (!hasSmibMachines || !hasVariations) {
                 setShowCreateReportConfirmation(true);
               } else {
-                // Show variations confirmation only if there are actual variations with SMIB machines
                 setShowVariationsConfirmation(true);
               }
             }}
-            onRetry={() => {
-              const machinesForCheck: CheckVariationsMachine[] =
-                collectedMachines.map(entry => ({
-                  machineId: entry.machineId,
-                  machineName:
-                    entry.machineCustomName ||
-                    entry.machineName ||
-                    entry.serialNumber ||
-                    entry.machineId,
-                  metersIn: entry.metersIn || 0,
-                  metersOut: entry.metersOut || 0,
-                  sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-                  sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-                  prevMetersIn: entry.prevIn || 0,
-                  prevMetersOut: entry.prevOut || 0,
-                  movementGross: entry.movement?.gross,
-                }));
-              const locationIdToUse =
-                lockedLocationId || selectedLocation || '';
-
-              // Exclude offline machines from retry check
-              const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000;
-              const offlineMachineIds = new Set(
-                availableMachines
-                  .filter(machine => {
-                    if (!machine.relayId) return true;
-                    if (!machine.lastActivity) return true;
-                    return (
-                      Date.now() -
-                        new Date(machine.lastActivity).getTime() >=
-                      OFFLINE_THRESHOLD_MS
-                    );
-                  })
-                  .map(machine => machine._id)
-              );
-              const onlineMachinesForCheck = machinesForCheck.filter(
-                m => !offlineMachineIds.has(m.machineId)
-              );
-
-              checkVariations(locationIdToUse, onlineMachinesForCheck);
-            }}
-            onClose={() => {
+            onCancel={() => {
+              cancelVariationCheck();
               setShowVariationCheckPopover(false);
-              if (!hasVariations || variationError) {
-                resetVariationCheck();
-              }
+            }}
+            onRetry={() => {
+              const args = lastCheckArgsRef.current;
+              if (args) runVariationCheck(args.locationId, args.machines);
             }}
           />
-
-          {/* Variations with Detail Display */}
-          {showVariationCheckPopover &&
-            !isChecking &&
-            hasVariations &&
-            variationsData &&
-            isMinimized &&
-            createPortal(
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="pointer-events-auto fixed inset-0 z-[100005] flex items-center justify-center bg-black/60 p-4"
-              >
-                <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border-t-8 border-amber-500 bg-white p-6 shadow-2xl">
-                  <div className="mb-6 flex items-center justify-between border-b pb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Machine Variation Analysis
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Detailed comparison between Sas data and manual meter
-                        entry
-                      </p>
-                    </div>
-                    <button
-                      title="close"
-                      onClick={toggleMinimize}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {variationsData.machines.map((machine, index) => (
-                      <div
-                        key={index}
-                        className={`rounded-xl border p-4 ${typeof machine.variation === 'number' ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
-                      >
-                        <p className="mb-1 text-xs font-bold uppercase text-gray-400">
-                          {machine.machineId}
-                        </p>
-                        <h4 className="mb-3 truncate font-bold text-gray-900">
-                          {machine.machineName}
-                        </h4>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold uppercase text-gray-400">
-                              Sas Movement
-                            </p>
-                            <p className="text-sm font-black text-blue-600">
-                              ${Number(machine.sasGross).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold uppercase text-gray-400">
-                              Manual Movement
-                            </p>
-                            <p className="text-sm font-black text-gray-900">
-                              ${Number(machine.meterGross).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {typeof machine.variation === 'number' && (
-                          <div className="mt-3 flex items-center justify-between border-t border-amber-200 pt-3">
-                            <p className="text-[10px] font-bold uppercase text-amber-800">
-                              Variation
-                            </p>
-                            <p
-                              className={`text-sm font-black ${machine.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
-                            >
-                              {machine.variation < 0 ? '-' : '+'}$
-                              {Math.abs(machine.variation).toFixed(2)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8">
-                    <Button
-                      className="w-full bg-blue-600 py-6 text-base font-bold shadow-lg hover:bg-blue-700"
-                      onClick={() => {
-                        setShowVariationCheckPopover(false);
-                        setShowVariationsConfirmation(true);
-                        toggleMinimize();
-                      }}
-                    >
-                      Continue to Submission
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>,
-              document.body
-            )}
 
           {/* Variations Confirmation Dialog */}
           <VariationsConfirmationDialog
             isOpen={showVariationsConfirmation}
             machineCount={
               variationsData?.machines.filter(
-                m => typeof m.variation === 'number'
+                m => m.variation !== null
               ).length || 0
             }
             totalVariation={variationsData?.totalVariation || 0}
             isLoading={modalState.isProcessing}
-            onConfirm={() => {
-              createCollectionReport(variationsData || undefined);
+            onConfirm={async () => {
+              await createCollectionReport(variationsData || undefined);
               setShowVariationsConfirmation(false);
             }}
             onCancel={() => setShowVariationsConfirmation(false)}
+            processingPhases={createPhases}
+            currentServerPhase={currentCreatePhase}
+            subStep={currentSubStep}
           />
         </DialogContent>
       </Dialog>
@@ -1262,6 +1303,19 @@ export default function CollectionReportMobileNewCollectionModal({
         confirmText="Yes, Delete"
         cancelText="Cancel"
         isLoading={modalState.isProcessing}
+      />
+
+      {/* Bulk Delete Confirmation Dialog (Mobile New) */}
+      <ConfirmationDialog
+        isOpen={showMobileNewBulkDeleteConfirmation}
+        onClose={() => { if (!isMobileNewBulkDeleting) setShowMobileNewBulkDeleteConfirmation(false); }}
+        onConfirm={handleMobileNewBulkDelete}
+        title={`Delete ${mobileNewSelectedIds.length} Machine(s)`}
+        message={`Are you sure you want to delete ${mobileNewSelectedIds.length} collection entries?`}
+        confirmText={`Yes, Delete ${mobileNewSelectedIds.length}`}
+        cancelText="Cancel"
+        isLoading={modalState.isProcessing || isMobileNewBulkDeleting}
+        confirmButtonVariant="destructive"
       />
 
       {/* Unsaved Changes Confirmation Dialog */}

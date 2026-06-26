@@ -23,6 +23,9 @@ type MachineMetersFormProps = {
   showValidation?: boolean;
   onDisabledClick?: () => void;
   className?: string;
+  isWow?: boolean;
+  includeJackpot?: boolean;
+  jackpot?: number;
 };
 
 /**
@@ -49,11 +52,78 @@ export default function CollectionReportFormMachineMeters({
   showValidation = true,
   onDisabledClick,
   className = '',
+  isWow = false,
+  includeJackpot = false,
+  jackpot = 0,
 }: MachineMetersFormProps) {
   // ============================================================================
   // Computed
   // ============================================================================
   const inputsEnabled = !disabled;
+
+  const formatMeterValue = (value: string | number | null | undefined) =>
+    value !== '' && value !== null && value !== undefined
+      ? Number(value).toLocaleString()
+      : '--';
+
+  // WOW machines: meters are synced automatically and shown read-only.
+  if (isWow) {
+    return (
+      <div className={`space-y-3 ${className}`}>
+        <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-3">
+          <p className="mb-2 text-[11px] font-medium italic text-purple-700">
+            WOW machine — meters are synced automatically and cannot be edited.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-gray-600">
+                Meter In:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {formatMeterValue(metersIn)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-gray-600">
+                Meter Out:
+              </span>
+              <span className="text-sm font-semibold text-gray-800">
+                {formatMeterValue(metersOut)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-gray-600">
+                Prev In:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {formatMeterValue(prevIn)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+              <span className="text-xs font-medium text-gray-600">
+                Prev Out:
+              </span>
+              <span className="text-xs font-semibold text-gray-600">
+                {formatMeterValue(prevOut)}
+              </span>
+            </div>
+          </div>
+          {includeJackpot && jackpot !== undefined && jackpot > 0 && (
+            <div className="mt-2 rounded border border-purple-100 bg-purple-50 p-2.5 text-[10px] text-purple-700 space-y-1 leading-normal">
+              <div className="flex items-center gap-1 font-bold">
+                <span>✨ Jackpot Included (+{Number(jackpot).toLocaleString()})</span>
+              </div>
+              <p>
+                Base Meter Out: <strong>{metersOut && Number(metersOut) > jackpot ? (Number(metersOut) - jackpot).toLocaleString() : '--'}</strong><br />
+                Jackpot Amount: <strong>+{Number(jackpot).toLocaleString()}</strong><br />
+                Total (Included): <strong>{metersOut ? Number(metersOut).toLocaleString() : '--'}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Validation checks
   // When RAM clear is checked the current meters are post-reset readings (expected to be lower)
@@ -193,6 +263,18 @@ export default function CollectionReportFormMachineMeters({
               <p className="text-xs text-red-600">
                 Warning: Meters Out ({metersOut}) should be greater than or
                 equal to Previous Meters Out ({prevOut})
+              </p>
+            </div>
+          )}
+          {includeJackpot && jackpot !== undefined && jackpot > 0 && (
+            <div className="mt-2 rounded-lg border border-purple-200 bg-purple-50 p-2.5 text-xs text-purple-800 space-y-1 leading-normal">
+              <div className="flex items-center gap-1 font-bold">
+                <span>✨ Jackpot Included (+{Number(jackpot).toLocaleString()})</span>
+              </div>
+              <p className="text-[10px] text-purple-700 leading-normal">
+                Base Meter Out: <strong>{metersOut && Number(metersOut) > jackpot ? (Number(metersOut) - jackpot).toLocaleString() : '--'}</strong><br />
+                Jackpot Amount: <strong>+{Number(jackpot).toLocaleString()}</strong><br />
+                Total (Included): <strong>{metersOut ? Number(metersOut).toLocaleString() : '--'}</strong>
               </p>
             </div>
           )}

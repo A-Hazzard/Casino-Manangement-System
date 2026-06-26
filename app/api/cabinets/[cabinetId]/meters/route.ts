@@ -13,6 +13,7 @@
  *   UI can hop straight to it (mirrors the activity-log cursor seek)
  * - Bypasses soft-delete to include archived meters
  * - Restricted to developer role only
+ * - Export mode (?export=true&format=csv|json) returns all matching documents as CSV or JSON
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
@@ -20,6 +21,68 @@ import { resolveMeterMatch, type MatchMode } from '@/app/api/lib/helpers/metersS
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Meters } from '@/app/api/lib/models/meters';
 import { NextRequest, NextResponse } from 'next/server';
+
+function escapeCsv(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+const PREFERRED_COL_ORDER = [
+  '_id',
+  'meterSource',
+  'isRamClear',
+  'isSupplemental',
+  'drop',
+  'totalCancelledCredits',
+  'coinIn',
+  'coinOut',
+  'jackpot',
+  'currentCredits',
+  'gamesPlayed',
+  'gamesWon',
+  'totalWonCredits',
+  'totalHandPaidCancelledCredits',
+  'locationSession',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+];
+
+function exportCsv(
+  allMeters: Record<string, unknown>[],
+  searchParams: URLSearchParams,
+  cabinetId: string
+): NextResponse {
+  const columnsParam = searchParams.get('columns');
+  const columns = columnsParam ? columnsParam.split(',') : PREFERRED_COL_ORDER;
+
+  const csvRows: string[] = [];
+  csvRows.push(columns.map(c => escapeCsv(c)).join(','));
+
+  for (const meter of allMeters) {
+    const row = columns.map(col => {
+      if (col.startsWith('movement.')) {
+        const sub = col.slice('movement.'.length);
+        return escapeCsv((meter.movement as Record<string, unknown> | undefined)?.[sub]);
+      }
+      return escapeCsv(meter[col]);
+    });
+    csvRows.push(row.join(','));
+  }
+
+  const csvContent = '\uFEFF' + csvRows.join('\r\n');
+
+  return new NextResponse(csvContent, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="meters-${cabinetId}-${new Date().toISOString().split('T')[0]}.csv"`,
+    },
+  });
+}
 
 /**
  * GET /api/cabinets/[cabinetId]/meters
@@ -66,11 +129,15 @@ export async function GET(
     const matchMode: MatchMode = matchModeParam === 'exact' ? 'exact' : 'contains';
     const requestedApiPage = Math.max(1, parseInt(searchParams.get('apiPage') || '1'));
 
+    const isExport = searchParams.get('export') === 'true';
+    const exportFormat = (searchParams.get('format') || 'csv') as 'csv' | 'json';
+
+    const dateField = searchParams.get('dateField') || 'readAt';
     const dateFilter: Record<string, unknown> = {};
     if (startDateParam || endDateParam) {
-      dateFilter.readAt = {};
-      if (startDateParam) (dateFilter.readAt as Record<string, unknown>).$gte = new Date(startDateParam);
-      if (endDateParam) (dateFilter.readAt as Record<string, unknown>).$lte = new Date(endDateParam);
+      dateFilter[dateField] = {};
+      if (startDateParam) (dateFilter[dateField] as Record<string, unknown>).$gte = new Date(startDateParam);
+      if (endDateParam) (dateFilter[dateField] as Record<string, unknown>).$lte = new Date(endDateParam);
     }
 
     const baseFilter = { machine: cabinetId, ...dateFilter };
@@ -79,10 +146,25 @@ export async function GET(
     // STEP 3: Connect — raw collection bypasses soft-delete pre-hook
     // ============================================================================
     await connectDB();
+
+    // ============================================================================
+    // STEP 4: Export mode — fetch ALL matching docs, return CSV or JSON
+    // ============================================================================
+    if (isExport) {
+      const allMeters = await Meters.collection
+        .find(baseFilter)
+        .sort({ readAt: -1, _id: -1 })
+        .toArray();
+
+      return exportFormat === 'json'
+        ? NextResponse.json({ success: true, total: allMeters.length, data: allMeters })
+        : exportCsv(allMeters, searchParams, cabinetId);
+    }
+
     const BATCH_SIZE = 100;
 
     // ============================================================================
-    // STEP 4: Resolve search seek — locate the Nth match, seek to its batch
+    // STEP 5: Resolve search seek — locate the Nth match, seek to its batch
     // ============================================================================
     let apiPage = requestedApiPage;
     let matchIndex = -1;
@@ -104,7 +186,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 5: Query the resolved batch + total
+    // STEP 6: Query the resolved batch + total
     //
     // All Time (no date filter): skip the expensive countDocuments scan.
     // Fetch BATCH_SIZE+1 rows and derive hasMore from the extra row.
@@ -149,7 +231,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 6: Return
+    // STEP 7: Return
     // ============================================================================
     return NextResponse.json({
       success: true,

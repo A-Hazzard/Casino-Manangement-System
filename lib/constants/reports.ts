@@ -9,6 +9,7 @@
  */
 import type { ReportTab } from '@/lib/types';
 import { isTabAvailable } from '@/lib/constants/maintenance';
+import { Building2, ChartNoAxesCombined, Gamepad2 } from 'lucide-react';
 
 /**
  * Configuration for reports tabs
@@ -18,21 +19,21 @@ export const REPORTS_TABS_CONFIG: ReportTab[] = [
   {
     id: 'meters',
     label: 'Meters',
-    icon: '📈',
+    icon: ChartNoAxesCombined,
     description: 'Meter readings and financial data by location',
     available: isTabAvailable('reports', 'meters'),
   },
   {
     id: 'locations',
     label: 'Locations',
-    icon: '🏢',
+    icon: Building2,
     description: 'Location performance analysis and comparisons',
     available: isTabAvailable('reports', 'locations'),
   },
   {
     id: 'machines',
     label: 'Cabinets',
-    icon: '🎰',
+    icon: Gamepad2,
     description: 'Individual cabinet performance and revenue tracking',
     available: isTabAvailable('reports', 'machines'),
   },

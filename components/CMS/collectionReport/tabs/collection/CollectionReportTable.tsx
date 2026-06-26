@@ -264,7 +264,7 @@ export default function CollectionReportTable({
                   ))}
               </div>
             </TableHead>
-            <TableHead className="font-semibold text-white" centered={true}>
+          <TableHead className="font-semibold text-white" centered={true}>
               DETAILS
             </TableHead>
           </TableRow>

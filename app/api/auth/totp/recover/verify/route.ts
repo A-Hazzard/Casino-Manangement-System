@@ -1,3 +1,12 @@
+/**
+ * TOTP Recovery Verify API Route
+ *
+ * Validates a time-limited recovery token and generates a new TOTP secret and QR code.
+ * Used during the VM 2FA recovery flow before confirming the new secret.
+ *
+ * @module app/api/auth/totp/recover/verify/route
+ */
+
 import {
   generateOTPAuthURI,
   generateTOTPSecret,
@@ -42,7 +51,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
-    console.log('[TOTP Verify] Checking token:', token);
     await connectDB();
     const foundUser = await UserModel.findOne({
       totpRecoveryToken: token,
@@ -50,21 +58,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (!foundUser) {
-      console.log('[TOTP Verify] No user found for token or token expired');
-      // Let's check if the token exists at all without the expiry filter for debugging
-      const userWithToken = await UserModel.findOne({
-        totpRecoveryToken: token,
-      });
-      if (userWithToken) {
-        console.log(
-          '[TOTP Verify] Found user but token EXPIRED. Expiry:',
-          userWithToken.totpRecoveryExpires,
-          'Current:',
-          new Date()
-        );
-      } else {
-        console.log('[TOTP Verify] Token not found in database at all');
-      }
       logRouteError(
         functionName,
         'POST',
@@ -77,8 +70,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log('[TOTP Verify] User found:', foundUser.username);
 
     // ============================================================================
     // STEP 1: Generate NEW secret
@@ -121,11 +112,6 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log(
-      '[TOTP Verify] Tokens cleared and new secret saved for:',
-      foundUser.username
-    );
 
     const duration = Date.now() - startTime;
     logRouteFetch(

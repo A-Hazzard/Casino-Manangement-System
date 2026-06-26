@@ -115,6 +115,7 @@ export function useLocationsTabData({
   const makeTrendDataRequest = useAbortableRequest();
   const makeGamingLocationsRequest = useAbortableRequest();
   const makeLocationAggregationRequest = useAbortableRequest();
+  const makeBatchLoadRequest = useAbortableRequest();
 
   // Ref to track latest metricsTotals for use in other callbacks without causing loops
   const metricsTotalsRef = useRef<DashboardTotals | null>(null);
@@ -189,8 +190,16 @@ export function useLocationsTabData({
           customDateRange.endDate instanceof Date
             ? customDateRange.endDate
             : new Date(customDateRange.endDate as string);
-        params.startDate = sd.toISOString().split('T')[0];
-        params.endDate = ed.toISOString().split('T')[0];
+        // Format from local date parts (not toISOString, which is UTC) so the
+        // selected day isn't shifted across the UTC boundary in Trinidad time.
+        const formatLocalDate = (date: Date) => {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        params.startDate = formatLocalDate(sd);
+        params.endDate = formatLocalDate(ed);
       } else {
         params.timePeriod = 'Today';
       }
@@ -314,21 +323,6 @@ export function useLocationsTabData({
           }
         );
 
-        // Log response structure for debugging
-        console.log('🔍 [useLocationsTabData] LocationAggregation response:', {
-          hasData: !!locationData.data,
-          isArray: Array.isArray(locationData.data),
-          dataLength: Array.isArray(locationData.data)
-            ? locationData.data.length
-            : 0,
-          totalCount: locationData.totalCount || 0,
-          responseKeys: Object.keys(locationData),
-          sampleItem:
-            Array.isArray(locationData.data) && locationData.data.length > 0
-              ? locationData.data[0]
-              : null,
-        });
-
         // API returns { data: [...], totalCount: ..., page: ..., limit: ... }
         // Same structure as dashboard uses
         setLocationAggregates(locationData.data || []);
@@ -413,6 +407,38 @@ export function useLocationsTabData({
       selectedRevenueLocations,
       getTimePeriod,
     ]
+  );
+
+  /**
+   * Load a subsequent batch of locations and append it to the accumulated list.
+   *
+   * The first batch is loaded by fetchLocationDataAsync; this handles batches
+   * 2..N as the user pages past the first batch so the table is never starved
+   * of rows the server says exist.
+   */
+  const loadLocationBatch = useCallback(
+    async (batch: number) => {
+      await makeBatchLoadRequest(async signal => {
+        const result = await fetchBatch(batch, itemsPerBatch, signal);
+        if (!result || !Array.isArray(result.data)) return;
+
+        setAccumulatedLocations(prev => {
+          const getId = (loc: AggregatedLocation) =>
+            String(
+              (loc as Record<string, unknown>).location ?? loc._id ?? ''
+            );
+          const existingIds = new Set(prev.map(getId));
+          const uniqueNew = (result.data as AggregatedLocation[]).filter(
+            loc => {
+              const id = getId(loc);
+              return id !== '' && !existingIds.has(id);
+            }
+          );
+          return [...prev, ...uniqueNew];
+        });
+      });
+    },
+    [fetchBatch, itemsPerBatch, makeBatchLoadRequest]
   );
 
   /**
@@ -664,6 +690,7 @@ export function useLocationsTabData({
             ? filteredData
             : normalizedLocations;
         const sorted = dataForTopLocations
+          .slice()
           .sort(
             (a: Record<string, unknown>, b: Record<string, unknown>) =>
               ((b.gross as number) || 0) - ((a.gross as number) || 0)
@@ -1053,6 +1080,40 @@ export function useLocationsTabData({
   // ============================================================================
   // Effects
   // ============================================================================
+  // Fetch the next batch of locations when the user pages past what is loaded.
+  // accumulatedLocations only holds batch 1 until this runs; without it any
+  // page beyond the first batch would render empty even though more rows exist.
+  useEffect(() => {
+    if (paginationLoading || accumulatedLocations.length === 0) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
+    const nextBatch = currentBatch + 1;
+    const hasBatch = (batch: number) => (batch - 1) * itemsPerBatch < totalCount;
+
+    if (!loadedBatches.has(currentBatch) && hasBatch(currentBatch)) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      void loadLocationBatch(currentBatch);
+    } else if (
+      isLastPageOfBatch &&
+      !loadedBatches.has(nextBatch) &&
+      hasBatch(nextBatch)
+    ) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      void loadLocationBatch(nextBatch);
+    }
+  }, [
+    currentPage,
+    paginationLoading,
+    accumulatedLocations.length,
+    loadedBatches,
+    totalCount,
+    itemsPerBatch,
+    pagesPerBatch,
+    calculateBatchNumber,
+    loadLocationBatch,
+  ]);
+
   // Track previous filter values to prevent infinite loops when callbacks change
   // Fetch location data and metrics totals when filters change
   useEffect(() => {

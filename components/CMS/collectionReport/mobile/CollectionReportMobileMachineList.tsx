@@ -21,6 +21,7 @@
 
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
@@ -33,6 +34,7 @@ type MobileMachineListProps = {
   collectedMachines: CollectionDocument[];
   searchTerm: string;
   selectedMachine: string | null;
+  autoHighlightId?: string | null;
   isLoadingMachines: boolean;
   machineStatusMap?: Record<string, boolean>;
   onSearchChange: (value: string) => void;
@@ -45,12 +47,26 @@ export default function CollectionReportMobileMachineList({
   collectedMachines,
   searchTerm,
   selectedMachine,
+  autoHighlightId,
   isLoadingMachines,
   machineStatusMap = {},
   onSearchChange,
   onMachineSelect,
   onBack,
 }: MobileMachineListProps) {
+  // ============================================================================
+  // Auto-scroll: keep the highlighted machine button in view during auto-report
+  // ============================================================================
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!autoHighlightId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector<HTMLElement>(
+      `[data-machine-id="${autoHighlightId}"]`
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [autoHighlightId]);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -71,7 +87,7 @@ export default function CollectionReportMobileMachineList({
           onChange={e => onSearchChange(e.target.value)}
         />
       </div>
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      <div ref={scrollContainerRef} className="flex-1 space-y-3 overflow-y-auto p-4">
         {isLoadingMachines ? (
           <Skeleton className="h-20 w-full" />
         ) : (
@@ -89,8 +105,9 @@ export default function CollectionReportMobileMachineList({
             .map(machine => (
               <button
                 key={String(machine._id)}
+                data-machine-id={String(machine._id)}
                 onClick={() => onMachineSelect(machine)}
-                className={`w-full rounded-lg border p-4 text-left ${selectedMachine === machine._id ? 'border-blue-600 bg-blue-50' : ''}`}
+                className={`w-full rounded-lg border p-4 text-left ${selectedMachine === machine._id ? 'border-blue-600 bg-blue-50' : ''} ${autoHighlightId === String(machine._id) ? 'ring-2 ring-purple-500 ring-offset-1' : ''}`}
               >
                 <span className="flex flex-col gap-1">
                   <span className="flex items-center gap-1.5">

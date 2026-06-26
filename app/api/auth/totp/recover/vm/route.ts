@@ -1,3 +1,12 @@
+/**
+ * TOTP VM Recovery API Route
+ *
+ * Initiates 2FA recovery for a Vault Manager or higher-privileged user by
+ * generating a one-hour recovery token and emailing a recovery link.
+ *
+ * @module app/api/auth/totp/recover/vm/route
+ */
+
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
@@ -95,13 +104,6 @@ export async function POST() {
     const token = nanoid(32);
     const expiry = new Date(Date.now() + 3600000); // 1 hour
 
-    console.log(
-      '[TOTP VM Recovery] Updating user:',
-      foundUser.username,
-      'with token:',
-      token
-    );
-
     // Use strict: false to ensure fields are saved even if the schema is cached by Mongoose
     const updatedUser = await UserModel.findOneAndUpdate(
       { _id: session._id },
@@ -115,10 +117,6 @@ export async function POST() {
     ).lean<LeanUserDocument & { totpRecoveryToken?: unknown }>();
 
     if (!updatedUser || updatedUser.totpRecoveryToken !== token) {
-      console.error(
-        '[TOTP VM Recovery] Update failed - token not reflected in DB. UpdatedUser:',
-        updatedUser
-      );
       logRouteError(
         functionName,
         'POST',
@@ -131,8 +129,6 @@ export async function POST() {
         { status: 500 }
       );
     }
-
-    console.log('[TOTP VM Recovery] Database updated successfully');
 
     // Send email
     const emailRes = await send2FARecoveryEmail(foundUser.emailAddress, token);

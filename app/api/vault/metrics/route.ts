@@ -1,5 +1,7 @@
 /**
  * Vault Metrics API
+ *
+ * @module app/api/vault/metrics/route
  */
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
@@ -30,6 +32,8 @@ import type {
  * @param {string} endDate - Manual ISO date end
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       // ============================================================================
@@ -85,6 +89,24 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 4: Fetch metrics data
       // ============================================================================
+      const machineMetersCursor = Meters.aggregate<{ totalMoneyIn: number }>(
+        [
+          {
+            $match: {
+              location: locationId,
+              readAt: { $gte: rangeStart, $lte: rangeEnd },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+            },
+          },
+        ],
+        { allowDiskUse: true }
+      ).cursor({ batchSize: 1000 });
+
       const [transactions, activeCashiersData, machineMeters] =
         await Promise.all([
           VaultTransactionModel.find({
@@ -95,20 +117,13 @@ export async function GET(request: NextRequest) {
             { locationId, status: { $in: ['active', 'pending_review'] } },
             { currentBalance: 1 }
           ).lean<CashierShiftDocument[]>(),
-          Meters.aggregate([
-            {
-              $match: {
-                location: locationId,
-                readAt: { $gte: rangeStart, $lte: rangeEnd },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              },
-            },
-          ]),
+          (async () => {
+            const docs: { totalMoneyIn: number }[] = [];
+            for await (const doc of machineMetersCursor) {
+              docs.push(doc);
+            }
+            return docs;
+          })(),
         ]);
 
       // ============================================================================
@@ -180,6 +195,11 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 7: Return metrics
       // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[Vault Metrics API] Slow request: ${duration}ms`);
+      }
+
       return NextResponse.json({
         success: true,
         metrics,

@@ -31,7 +31,10 @@ import {
   applyReviewerScale,
   sortCabinetMachines,
 } from '@/app/api/lib/helpers/cabinetAggregation';
-import type { CabinetMachineResponse, MachineMetrics } from '@/app/api/lib/helpers/cabinetAggregation';
+import type {
+  CabinetMachineResponse,
+  MachineMetrics,
+} from '@/app/api/lib/helpers/cabinetAggregation';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
@@ -334,10 +337,16 @@ export async function GET(req: NextRequest) {
         if (allLocationMachines.length > 0) {
           const machineToLocation = new Map<string, string>();
           allLocationMachines.forEach(machine => {
-            machineToLocation.set(String(machine._id), machine.gamingLocation ? String(machine.gamingLocation) : '');
+            machineToLocation.set(
+              String(machine._id),
+              machine.gamingLocation ? String(machine.gamingLocation) : ''
+            );
           });
 
-          const locationRanges = new Map<string, { rangeStart: Date; rangeEnd: Date }>();
+          const locationRanges = new Map<
+            string,
+            { rangeStart: Date; rangeEnd: Date }
+          >();
           locations.forEach(loc => {
             const locationId = String(loc._id);
             const gameDayRange = gamingDayRanges.get(locationId);
@@ -387,7 +396,10 @@ export async function GET(req: NextRequest) {
 
           const metricsMap = new Map<string, MachineMetrics>();
           allMetrics.forEach(metrics => {
-            metricsMap.set(String(metrics._id), metrics as unknown as MachineMetrics);
+            metricsMap.set(
+              String(metrics._id),
+              metrics as unknown as MachineMetrics
+            );
           });
 
           const locationMap = new Map<string, LocationDocument>();
@@ -398,12 +410,20 @@ export async function GET(req: NextRequest) {
           allLocationMachines.forEach(machine => {
             const machineId = String(machine._id);
             const locationId = machineToLocation.get(machineId);
-            const location = locationId ? locationMap.get(locationId) : undefined;
+            const location = locationId
+              ? locationMap.get(locationId)
+              : undefined;
             if (!location) return;
 
             const metrics = metricsMap.get(machineId) || getDefaultMetrics();
             allMachines.push(
-              buildMachineResponse(machine, metrics, location, licenceeIncludeJackpotMap, timePeriod)
+              buildMachineResponse(
+                machine,
+                metrics,
+                location,
+                licenceeIncludeJackpotMap,
+                timePeriod
+              )
             );
           });
         }
@@ -415,7 +435,10 @@ export async function GET(req: NextRequest) {
           locationIndex < locations.length;
           locationIndex += BATCH_SIZE
         ) {
-          const batch = locations.slice(locationIndex, locationIndex + BATCH_SIZE);
+          const batch = locations.slice(
+            locationIndex,
+            locationIndex + BATCH_SIZE
+          );
           const batchLocationIds = batch
             .map(loc => String(loc._id))
             .filter(id => gamingDayRanges.has(id));
@@ -437,7 +460,9 @@ export async function GET(req: NextRequest) {
 
           const batchMachinesByLocation = new Map<string, GamingMachine[]>();
           batchAllMachines.forEach(machine => {
-            const locationId = machine.gamingLocation ? String(machine.gamingLocation) : null;
+            const locationId = machine.gamingLocation
+              ? String(machine.gamingLocation)
+              : null;
             if (locationId && batchLocationIds.includes(locationId)) {
               if (!batchMachinesByLocation.has(locationId)) {
                 batchMachinesByLocation.set(locationId, []);
@@ -451,8 +476,10 @@ export async function GET(req: NextRequest) {
           batchLocationIds.forEach(locId => {
             const range = gamingDayRanges.get(locId);
             if (range) {
-              if (range.rangeStart < batchGlobalStart) batchGlobalStart = range.rangeStart;
-              if (range.rangeEnd > batchGlobalEnd) batchGlobalEnd = range.rangeEnd;
+              if (range.rangeStart < batchGlobalStart)
+                batchGlobalStart = range.rangeStart;
+              if (range.rangeEnd > batchGlobalEnd)
+                batchGlobalEnd = range.rangeEnd;
             }
           });
 
@@ -460,7 +487,9 @@ export async function GET(req: NextRequest) {
           const machineToLocationMap = new Map<string, string>();
           batchAllMachines.forEach(machine => {
             const machineId = String(machine._id);
-            const locId = machine.gamingLocation ? String(machine.gamingLocation) : null;
+            const locId = machine.gamingLocation
+              ? String(machine.gamingLocation)
+              : null;
             if (locId) machineToLocationMap.set(machineId, locId);
           });
 
@@ -471,16 +500,18 @@ export async function GET(req: NextRequest) {
             timePeriod
           );
 
-          const batchMetricsAggregation = await Meters.aggregate(
-            batchMetersPipeline,
-            { maxTimeMS: 90000 }
-          ).exec();
+          const batchMetricsCursor = Meters.aggregate(batchMetersPipeline, {
+            allowDiskUse: true,
+            maxTimeMS: 90000,
+          }).cursor({ batchSize: 1000 });
 
           const metricsByMachine = new Map<string, MachineMetrics>();
-          batchMetricsAggregation.forEach(agg => {
+          for await (const agg of batchMetricsCursor) {
             const machineId = String(agg._id);
             const locationId = machineToLocationMap.get(machineId);
-            const gameDayRange = locationId ? gamingDayRanges.get(locationId) : undefined;
+            const gameDayRange = locationId
+              ? gamingDayRanges.get(locationId)
+              : undefined;
             const aggRecord = agg as Record<string, unknown>;
 
             if (!gameDayRange || timePeriod === 'All Time') {
@@ -492,16 +523,20 @@ export async function GET(req: NextRequest) {
                 coinOut: (aggRecord.coinOut as number) || 0,
                 gamesPlayed: (aggRecord.gamesPlayed as number) || 0,
                 gamesWon: (aggRecord.gamesWon as number) || 0,
-                handPaidCancelledCredits: (aggRecord.handPaidCancelledCredits as number) || 0,
+                handPaidCancelledCredits:
+                  (aggRecord.handPaidCancelledCredits as number) || 0,
                 meterCount: (aggRecord.meterCount as number) || 0,
               });
             } else {
               const minReadAt = new Date(aggRecord.minReadAt as Date);
               const maxReadAt = new Date(aggRecord.maxReadAt as Date);
               const hasValidReadAt =
-                (minReadAt >= gameDayRange.rangeStart && minReadAt <= gameDayRange.rangeEnd) ||
-                (maxReadAt >= gameDayRange.rangeStart && maxReadAt <= gameDayRange.rangeEnd) ||
-                (minReadAt <= gameDayRange.rangeStart && maxReadAt >= gameDayRange.rangeEnd);
+                (minReadAt >= gameDayRange.rangeStart &&
+                  minReadAt <= gameDayRange.rangeEnd) ||
+                (maxReadAt >= gameDayRange.rangeStart &&
+                  maxReadAt <= gameDayRange.rangeEnd) ||
+                (minReadAt <= gameDayRange.rangeStart &&
+                  maxReadAt >= gameDayRange.rangeEnd);
 
               if (hasValidReadAt) {
                 const existing = metricsByMachine.get(machineId);
@@ -513,7 +548,8 @@ export async function GET(req: NextRequest) {
                   coinOut: (aggRecord.coinOut as number) || 0,
                   gamesPlayed: (aggRecord.gamesPlayed as number) || 0,
                   gamesWon: (aggRecord.gamesWon as number) || 0,
-                  handPaidCancelledCredits: (aggRecord.handPaidCancelledCredits as number) || 0,
+                  handPaidCancelledCredits:
+                    (aggRecord.handPaidCancelledCredits as number) || 0,
                   meterCount: (aggRecord.meterCount as number) || 0,
                 };
 
@@ -527,7 +563,7 @@ export async function GET(req: NextRequest) {
                 }
               }
             }
-          });
+          }
 
           const batchLocationMap = new Map<string, LocationDocument>();
           batch.forEach(loc => {
@@ -536,14 +572,22 @@ export async function GET(req: NextRequest) {
 
           batch.forEach(location => {
             const locationIdStr = String(location._id);
-            const locationMachines = batchMachinesByLocation.get(locationIdStr) || [];
+            const locationMachines =
+              batchMachinesByLocation.get(locationIdStr) || [];
             if (locationMachines.length === 0) return;
 
             locationMachines.forEach(machine => {
               const machineId = String(machine._id);
-              const metrics = metricsByMachine.get(machineId) || getDefaultMetrics();
+              const metrics =
+                metricsByMachine.get(machineId) || getDefaultMetrics();
               allMachines.push(
-                buildMachineResponse(machine, metrics, location, licenceeIncludeJackpotMap, timePeriod)
+                buildMachineResponse(
+                  machine,
+                  metrics,
+                  location,
+                  licenceeIncludeJackpotMap,
+                  timePeriod
+                )
               );
             });
           });
@@ -553,7 +597,12 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 8: Refine offline status and apply filtering
       // ============================================================================
-      allMachines = refineOfflineStatus(allMachines, onlineStatus, timePeriod, gamingDayRanges);
+      allMachines = refineOfflineStatus(
+        allMachines,
+        onlineStatus,
+        timePeriod,
+        gamingDayRanges
+      );
 
       let filteredMachines = allMachines;
 
@@ -563,7 +612,10 @@ export async function GET(req: NextRequest) {
       if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
         const db = await connectDB();
         if (!db) {
-          return NextResponse.json({ error: 'DB connection failed' }, { status: 500 });
+          return NextResponse.json(
+            { error: 'DB connection failed' },
+            { status: 500 }
+          );
         }
 
         const licenceesData = await Licencee.find(
@@ -580,12 +632,17 @@ export async function GET(req: NextRequest) {
         const licenceeIdToIncludeJackpot = new Map<string, boolean>();
         licenceesData.forEach(lic => {
           licenceeIdToName.set(String(lic._id), lic.name as string);
-          licenceeIdToIncludeJackpot.set(String(lic._id), Boolean(lic.includeJackpot));
+          licenceeIdToIncludeJackpot.set(
+            String(lic._id),
+            Boolean(lic.includeJackpot)
+          );
         });
 
         const { getCountryCurrency, getLicenceeCurrency, convertToUSD } =
           await import('@/lib/helpers/rates');
-        const countriesData = await Countries.find({}).lean<CountryDocument[]>();
+        const countriesData = await Countries.find({}).lean<
+          CountryDocument[]
+        >();
         const countryIdToName = new Map<string, string>();
         countriesData.forEach(country => {
           if (country._id && country.name) {
@@ -601,19 +658,24 @@ export async function GET(req: NextRequest) {
         filteredMachines = filteredMachines.map(machine => {
           const locationDetails = locationDetailsMap.get(machine.locationId);
           const machineLicenceeId = locationDetails?.rel?.licencee
-            ? (Array.isArray(locationDetails.rel.licencee)
+            ? ((Array.isArray(locationDetails.rel.licencee)
                 ? locationDetails.rel.licencee[0]
-                : locationDetails.rel.licencee) as string
+                : locationDetails.rel.licencee) as string)
             : undefined;
 
           let nativeCurrency: string = 'USD';
 
           if (!machineLicenceeId) {
             const countryId = locationDetails?.country as string | undefined;
-            const countryName = countryId ? countryIdToName.get(countryId.toString()) : undefined;
-            nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+            const countryName = countryId
+              ? countryIdToName.get(countryId.toString())
+              : undefined;
+            nativeCurrency = countryName
+              ? getCountryCurrency(countryName)
+              : 'USD';
           } else {
-            const licenceeName = licenceeIdToName.get(machineLicenceeId.toString()) || 'Unknown';
+            const licenceeName =
+              licenceeIdToName.get(machineLicenceeId.toString()) || 'Unknown';
             nativeCurrency = getLicenceeCurrency(licenceeName);
           }
 
@@ -624,7 +686,9 @@ export async function GET(req: NextRequest) {
             const baseMoneyOut = roundTwo(machine.cancelledCredits);
             const jackpot = roundTwo(machine.jackpot);
             const includeJackpot =
-              (machineLicenceeId && licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) || false;
+              (machineLicenceeId &&
+                licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) ||
+              false;
             const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
             const gross = roundTwo(moneyIn - moneyOut);
             const netGross = roundTwo(moneyIn - baseMoneyOut - jackpot);
@@ -644,16 +708,23 @@ export async function GET(req: NextRequest) {
           }
 
           const moneyInUSD = convertToUSD(machine.moneyIn, nativeCurrency);
-          const cancelledCreditsUSD = convertToUSD(machine.cancelledCredits, nativeCurrency);
+          const cancelledCreditsUSD = convertToUSD(
+            machine.cancelledCredits,
+            nativeCurrency
+          );
           const jackpotUSD = convertToUSD(machine.jackpot, nativeCurrency);
           const coinInUSD = convertToUSD(machine.coinIn, nativeCurrency);
           const coinOutUSD = convertToUSD(machine.coinOut, nativeCurrency);
 
           const moneyIn = roundTwo(convertFromUSD(moneyInUSD, displayCurrency));
-          const baseMoneyOut = roundTwo(convertFromUSD(cancelledCreditsUSD, displayCurrency));
+          const baseMoneyOut = roundTwo(
+            convertFromUSD(cancelledCreditsUSD, displayCurrency)
+          );
           const jackpot = roundTwo(convertFromUSD(jackpotUSD, displayCurrency));
           const includeJackpot =
-            (machineLicenceeId && licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) || false;
+            (machineLicenceeId &&
+              licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) ||
+            false;
           const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
           const gross = roundTwo(moneyIn - moneyOut);
           const netGross = roundTwo(moneyIn - baseMoneyOut - jackpot);
@@ -662,7 +733,9 @@ export async function GET(req: NextRequest) {
             ...machine,
             moneyIn,
             moneyOut,
-            cancelledCredits: roundTwo(convertFromUSD(cancelledCreditsUSD, displayCurrency)),
+            cancelledCredits: roundTwo(
+              convertFromUSD(cancelledCreditsUSD, displayCurrency)
+            ),
             jackpot,
             gross,
             netGross,
@@ -693,7 +766,11 @@ export async function GET(req: NextRequest) {
         },
         scaleReferenceDate
       );
-      filteredMachines = applyReviewerScale(filteredMachines, moneyInScale, moneyOutScale);
+      filteredMachines = applyReviewerScale(
+        filteredMachines,
+        moneyInScale,
+        moneyOutScale
+      );
 
       // ============================================================================
       // STEP 11: Sort and paginate

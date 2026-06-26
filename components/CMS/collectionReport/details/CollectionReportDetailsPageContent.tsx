@@ -21,9 +21,18 @@ import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionRep
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/shared/ui/dropdown-menu';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
+import NetworkError from '@/components/shared/ui/errors/NetworkError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import { CollectionReportSkeleton } from '@/components/shared/ui/skeletons/CollectionReportDetailSkeletons';
+import RetryLoadingBar from '@/components/shared/ui/RetryLoadingBar';
+import { downloadCollectionReport } from '@/lib/utils/export/collectionReportExport';
 import {
   animateDesktopTabTransition,
   calculateLocationTotal,
@@ -32,11 +41,57 @@ import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetchin
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
-import { formatCurrency } from '@/lib/utils/currency';
-import { ArrowLeft, Pencil, RefreshCw, Share2 } from 'lucide-react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
+import {
+  ArrowLeft,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Pencil,
+  RefreshCw,
+  Share2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+
+// ============================================================================
+// Tab navigation
+// ============================================================================
+type CollectionReportDetailsTabLabel =
+  | 'Machine Metrics'
+  | 'Location Metrics'
+  | 'SAS Metrics Compare';
+
+type CollectionReportDetailsTabButtonProps = {
+  label: CollectionReportDetailsTabLabel;
+  activeTab: string;
+  loading: boolean;
+  onSelect: (label: CollectionReportDetailsTabLabel) => void;
+};
+
+function CollectionReportDetailsTabButton({
+  label,
+  activeTab,
+  loading,
+  onSelect,
+}: CollectionReportDetailsTabButtonProps) {
+  return (
+    <button
+      onClick={() => !loading && onSelect(label)}
+      disabled={loading}
+      className={`w-full rounded-md px-4 py-3 text-left text-sm font-medium transition-colors ${
+        activeTab === label
+          ? 'bg-buttonActive text-white'
+          : 'text-gray-700 hover:bg-gray-100'
+      } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
+    >
+      {label}
+    </button>
+  );
+}
 
 export default function CollectionReportDetailsPageContent() {
   // ============================================================================
@@ -44,6 +99,7 @@ export default function CollectionReportDetailsPageContent() {
   // ============================================================================
   const hook = useCollectionReportDetailsData();
   const user = useUserStore(state => state.user);
+  const { displayCurrency } = useCurrencyFormat();
 
   // Only developer, owner and admin can edit
   const canEdit = !!(
@@ -108,6 +164,11 @@ export default function CollectionReportDetailsPageContent() {
     machinePage,
     tabContentRef,
     collections,
+    errorDetail,
+    isRetrying,
+    attempt,
+    maxRetries,
+    retryCountdown,
     setMachinePage,
     setSearchTerm,
     handleSort,
@@ -129,7 +190,22 @@ export default function CollectionReportDetailsPageContent() {
   const locationTotal = reportData ? calculateLocationTotal(collections) : 0;
   //red = negative values, green = positive values
   const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600';
-  if (loading) return <CollectionReportSkeleton />;
+  if (loading) {
+    return (
+      <div className="w-full">
+        <div className="px-2 pt-4 lg:px-6">
+          <RetryLoadingBar
+            isRetrying={isRetrying}
+            retryCountdown={retryCountdown}
+            attempt={attempt}
+            maxRetries={maxRetries}
+            expectedDurationMs={30000}
+          />
+        </div>
+        <CollectionReportSkeleton />
+      </div>
+    );
+  }
 
   // Handle error states
   if (error === 'UNAUTHORIZED') {
@@ -140,6 +216,18 @@ export default function CollectionReportDetailsPageContent() {
         resourceType="report"
         customBackText="Back to Collection Reports"
         customBackHref="/collection-report"
+      />
+    );
+  }
+
+  if (error === 'CONNECTION') {
+    return (
+      <NetworkError
+        title="Report is taking too long to load"
+        message="The request timed out before the report finished loading. This is usually a slow connection or an unusually heavy report — the report itself most likely exists. Please try again."
+        onRetry={handleRefresh}
+        showRetry={true}
+        errorDetails={errorDetail || undefined}
       />
     );
   }
@@ -160,24 +248,6 @@ export default function CollectionReportDetailsPageContent() {
       />
     );
   }
-
-  const TabButton = ({
-    label,
-  }: {
-    label: 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
-  }) => (
-    <button
-      onClick={() => !loading && handleTabChange(label)}
-      disabled={loading}
-      className={`w-full rounded-md px-4 py-3 text-left text-sm font-medium transition-colors ${
-        activeTab === label
-          ? 'bg-buttonActive text-white'
-          : 'text-gray-700 hover:bg-gray-100'
-      } ${loading ? 'cursor-not-allowed opacity-50' : ''}`}
-    >
-      {label}
-    </button>
-  );
 
   return (
     <>
@@ -209,6 +279,35 @@ export default function CollectionReportDetailsPageContent() {
             </div>
 
             <div className="flex items-center gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    title="Export report data"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Export</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => downloadCollectionReport(reportData, 'csv')}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => downloadCollectionReport(reportData, 'json')}
+                    className="cursor-pointer"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 variant="outline"
                 className="flex items-center gap-2"
@@ -259,6 +358,35 @@ export default function CollectionReportDetailsPageContent() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-9 p-0"
+                  title="Export report data"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => downloadCollectionReport(reportData, 'csv')}
+                  className="cursor-pointer"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => downloadCollectionReport(reportData, 'json')}
+                  className="cursor-pointer"
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Export as JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="outline"
               size="sm"
@@ -313,14 +441,34 @@ export default function CollectionReportDetailsPageContent() {
                 {/* TODO Change to Compound field later to a more understandable report ID rather than using _id*/}
                 Report ID: {reportData.reportId}
               </p>
-              <p className="mb-4 text-sm font-medium text-gray-600 lg:text-base">
-                Collector:{' '}
-                {reportData.collectorName || reportData.collector || '—'}
-              </p>
+              <div className="mb-4 space-y-1 text-sm font-medium text-gray-600 lg:text-base">
+                <p>
+                  Collector:{' '}
+                  {reportData.collectorName || reportData.collector || '—'}
+                </p>
+                <p>
+                  Created:{' '}
+                  {reportData.createdAt
+                    ? formatDateWithOrdinal(reportData.createdAt)
+                    : '—'}
+                </p>
+                {(reportData.timeframeStart || reportData.timeframeEnd) && (
+                  <p>
+                    Timeframe:{' '}
+                    {reportData.timeframeStart
+                      ? formatDateWithOrdinal(reportData.timeframeStart)
+                      : '—'}{' '}
+                    →{' '}
+                    {reportData.timeframeEnd
+                      ? formatDateWithOrdinal(reportData.timeframeEnd)
+                      : '—'}
+                  </p>
+                )}
+              </div>
               <p className={`text-lg font-semibold`}>
                 Collection Report Machine Total Gross:{' '}
                 <span className={textColorClass}>
-                  {formatCurrency(locationTotal)}
+                  {formatCurrencyWithCodeString(locationTotal, displayCurrency)}
                 </span>
               </p>
             </div>
@@ -336,9 +484,24 @@ export default function CollectionReportDetailsPageContent() {
                 Report Sections
               </h3>
               <div className="space-y-2">
-                <TabButton label="Machine Metrics" />
-                <TabButton label="Location Metrics" />
-                <TabButton label="SAS Metrics Compare" />
+                <CollectionReportDetailsTabButton
+                  label="Machine Metrics"
+                  activeTab={activeTab}
+                  loading={loading}
+                  onSelect={handleTabChange}
+                />
+                <CollectionReportDetailsTabButton
+                  label="Location Metrics"
+                  activeTab={activeTab}
+                  loading={loading}
+                  onSelect={handleTabChange}
+                />
+                <CollectionReportDetailsTabButton
+                  label="SAS Metrics Compare"
+                  activeTab={activeTab}
+                  loading={loading}
+                  onSelect={handleTabChange}
+                />
               </div>
             </div>
           </div>

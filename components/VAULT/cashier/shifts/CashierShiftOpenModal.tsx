@@ -83,12 +83,12 @@ export default function CashierShiftOpenModal({
   // Computed
   // ============================================================================
   const totalAmount = denominations.reduce(
-    (sum, d) => sum + d.denomination * d.quantity,
+    (sum, denom) => sum + denom.denomination * denom.quantity,
     0
   );
 
   const isAllTouched = useMemo(
-    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    () => denomsList.every(denomValue => touchedDenominations.has(Number(denomValue))),
     [denomsList, touchedDenominations]
   );
   const isValidCount = totalAmount > 0 || isAllTouched;
@@ -209,16 +209,16 @@ export default function CashierShiftOpenModal({
                   <tbody className="divide-y">
                     {denominations
                       .filter(denom => denom.quantity > 0)
-                      .map(d => (
-                        <tr key={d.denomination} className="bg-white">
+                      .map(denom => (
+                        <tr key={denom.denomination} className="bg-white">
                           <td className="px-4 py-3 font-semibold text-gray-700">
-                            ${d.denomination}
+                            ${denom.denomination}
                           </td>
                           <td className="px-4 py-3 text-center font-mono font-medium text-gray-600">
-                            {d.quantity}
+                            {denom.quantity}
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-gray-900">
-                            ${d.denomination * d.quantity}
+                            ${denom.denomination * denom.quantity}
                           </td>
                         </tr>
                       ))}

@@ -7,11 +7,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 // Layout components
 import ReportsDateFilters from '@/components/CMS/reports/ReportsDateFilters';
 import ReportsNavigation from '@/components/CMS/reports/ReportsNavigation';
-import {
-  ReportsPageAccessDeniedState,
-  ReportsPageAuthLoadingState,
-  ReportsPageLoadingOverlay,
-} from '@/components/CMS/reports/ReportsPageLoadingStates';
 import ReportsLocationsTabWithErrorHandling from '@/components/CMS/reports/tabs/locations/ReportsLocationsTabWithErrorHandling';
 import ReportsMachinesTab from '@/components/CMS/reports/tabs/machines/ReportsMachinesTab';
 import ReportsMetersTab from '@/components/CMS/reports/tabs/meters/ReportsMetersTab';
@@ -97,11 +92,18 @@ export default function ReportsPageContent() {
     );
   }, [isDeveloper, isAdmin, isLocationAdmin, isOwner]);
 
-  // All authenticated users have access to reports
-  const hasAccess = true;
-  const isLoading = false;
-
   const { activeView, handleTabChange } = useReportsNavigation(availableTabs);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Dispatch a custom event that tabs can listen to
+    window.dispatchEvent(new CustomEvent('refreshReports'));
+    // Simulate a brief loading state for the button animation
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setRefreshing(false);
+  }, []);
 
   // ============================================================================
   // Computed
@@ -169,33 +171,6 @@ export default function ReportsPageContent() {
   };
 
   // ============================================================================
-  // Computed (Auth & Loading Checks)
-  // ============================================================================
-  // Show loading state while authentication is loading
-  if (isLoading) {
-    return <ReportsPageAuthLoadingState />;
-  }
-
-  // Show access denied if user has no available tabs
-  if (!hasAccess) {
-    return <ReportsPageAccessDeniedState />;
-  }
-
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    // Dispatch a custom event that tabs can listen to
-    window.dispatchEvent(new CustomEvent('refreshReports'));
-    // Simulate a brief loading state for the button animation
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
-  }, []);
-
-  // ============================================================================
   // Render
   // ============================================================================
   return (
@@ -203,7 +178,7 @@ export default function ReportsPageContent() {
       headerProps={{
         selectedLicencee,
         setSelectedLicencee,
-        disabled: isLoading || refreshing,
+        disabled: refreshing,
       }}
       showToaster={true}
       toasterPosition="top-right"
@@ -234,9 +209,6 @@ export default function ReportsPageContent() {
         activeView={activeView}
         onTabChange={handleTabChange}
       />
-
-      {/* Loading Overlay */}
-      <ReportsPageLoadingOverlay isLoading={isLoading} />
 
       {/* Tab Content */}
       {renderTabContent()}

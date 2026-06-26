@@ -17,6 +17,8 @@ import { Button } from '@/components/shared/ui/button';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import { ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRef } from 'react';
+import { formatCurrency } from '@/lib/utils/formatting';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 export default function MembersMemberCard({
   member,
@@ -39,6 +41,7 @@ export default function MembersMemberCard({
   // State & Hooks
   // ============================================================================
   const cardRef = useRef<HTMLDivElement>(null);
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // Handlers
@@ -156,10 +159,9 @@ export default function MembersMemberCard({
           <span
             className={`truncate text-xs font-medium ${(member.winLoss || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
           >
-            {new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
-            }).format(member.winLoss || 0)}
+            {shouldShowCurrency()
+              ? formatAmount(member.winLoss || 0)
+              : formatCurrency(member.winLoss || 0)}
           </span>
         </div>
       </div>

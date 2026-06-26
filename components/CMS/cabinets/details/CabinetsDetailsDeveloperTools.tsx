@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
-import { Input } from '@/components/shared/ui/input';
 import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
 import {
   Popover,
@@ -49,25 +48,33 @@ const API_BATCH_SIZE = 100;
 
 type DateField = 'readAt' | 'createdAt' | 'updatedAt' | 'deletedAt';
 
+const HIDE_COLS = new Set(['machine', 'location', 'readAt']);
+
 const PREFERRED_COL_ORDER = [
   '_id',
-  'machine',
-  'drop',
-  'totalCancelledCredits',
-  'coinIn',
-  'coinOut',
-  'jackpot',
-  'currentCredits',
-  'gamesPlayed',
-  'gamesWon',
-  'totalWonCredits',
-  'totalHandPaidCancelledCredits',
-  'location',
-  'locationSession',
   'meterSource',
   'isRamClear',
   'isSupplemental',
-  'readAt',
+  'drop',
+  'movement.drop',
+  'totalCancelledCredits',
+  'movement.totalCancelledCredits',
+  'coinIn',
+  'movement.coinIn',
+  'coinOut',
+  'movement.coinOut',
+  'jackpot',
+  'movement.jackpot',
+  'currentCredits',
+  'gamesPlayed',
+  'movement.gamesPlayed',
+  'gamesWon',
+  'movement.gamesWon',
+  'totalWonCredits',
+  'movement.totalWonCredits',
+  'totalHandPaidCancelledCredits',
+  'movement.handPaidCancelledCredits',
+  'locationSession',
   'createdAt',
   'updatedAt',
   'deletedAt',
@@ -116,7 +123,7 @@ function formatCellValue(col: string, value: unknown): string {
 function deriveColumns(meters: RawMeterDoc[]): string[] {
   if (meters.length === 0) return PREFERRED_COL_ORDER;
 
-  const seen = new Set<string>(PREFERRED_COL_ORDER);
+  const seen = new Set<string>();
   const movCols = new Set<string>();
 
   for (const meter of meters) {
@@ -125,30 +132,30 @@ function deriveColumns(meters: RawMeterDoc[]): string[] {
     }
     const mov = meter.movement as Record<string, unknown> | undefined;
     if (mov) {
-      for (const sub of Object.keys(mov)) movCols.add(`movement.${sub}`);
+      for (const sub of Object.keys(mov)) movCols.add(sub);
     }
   }
 
   const result: string[] = [];
 
-  // Preferred columns up to and including lifetime values
-  const LIFETIME_END = 'totalHandPaidCancelledCredits';
-  const insertIdx = PREFERRED_COL_ORDER.indexOf(LIFETIME_END) + 1;
-  for (let index = 0; index < insertIdx; index++) {
-    result.push(PREFERRED_COL_ORDER[index]);
+  for (const col of PREFERRED_COL_ORDER) {
+    if (HIDE_COLS.has(col)) continue;
+    result.push(col);
   }
 
-  // Movement columns right after lifetime values
-  for (const col of movCols) result.push(col);
-
-  // Remaining preferred columns (location, dates, etc.)
-  for (let index = insertIdx; index < PREFERRED_COL_ORDER.length; index++) {
-    result.push(PREFERRED_COL_ORDER[index]);
+  // Movement columns not already listed by preferred order
+  for (const sub of movCols) {
+    const prefixed = `movement.${sub}`;
+    if (!HIDE_COLS.has(sub) && !result.includes(prefixed)) {
+      result.push(prefixed);
+    }
   }
 
-  // Any other columns not in preferred order
+  // Extra data columns not in preferred order
   for (const col of seen) {
-    if (!result.includes(col)) result.push(col);
+    if (!HIDE_COLS.has(col) && !result.includes(col) && !col.startsWith('movement.')) {
+      result.push(col);
+    }
   }
   return result;
 }
@@ -215,6 +222,9 @@ export default function CabinetsDetailsDeveloperTools({
 
   // Search inputs (typed/selected) vs. the applied search that is actually run.
   // Search only executes on Enter or the Search button — never while typing.
+  const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchColumn, setSearchColumn] = useState('');
   const [searchMatchMode, setSearchMatchMode] = useState<'contains' | 'exact'>('contains');
@@ -407,6 +417,62 @@ export default function CabinetsDetailsDeveloperTools({
   // Derived
   // ============================================================================
   const columns = deriveColumns(meters);
+
+  // ============================================================================
+  // Export handler — calls backend directly (no pagination limit)
+  // ============================================================================
+  const handleExport = useCallback(async (format: 'csv' | 'json') => {
+    setExportOpen(false);
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('export', 'true');
+      params.set('format', format);
+      if (dateField !== 'readAt') params.set('dateField', dateField);
+      let range: { startDate?: Date; endDate?: Date } = {};
+      if (timePeriod === 'Custom') {
+        if (customDateRange.from) range.startDate = customDateRange.from;
+        if (customDateRange.to) range.endDate = customDateRange.to;
+      } else {
+        range = getDateRange(timePeriod);
+      }
+      if (range.startDate) params.set('startDate', range.startDate.toISOString());
+      if (range.endDate) params.set('endDate', range.endDate.toISOString());
+
+      // Include current column set so CSV mirrors the table layout
+      params.set('columns', columns.join(','));
+
+      const url = `/api/cabinets/${cabinetId}/meters?${params.toString()}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Export failed: ${response.status}`);
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      const ext = format === 'csv' ? 'csv' : 'json';
+      a.download = `meters-${cabinetId}-${new Date().toISOString().split('T')[0]}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error('[handleExport] Error:', e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setExporting(false);
+    }
+  }, [cabinetId, timePeriod, customDateRange, dateField, columns]);
+
+  const movKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const meter of meters) {
+      const mov = meter.movement as Record<string, unknown> | undefined;
+      if (mov) {
+        for (const sub of Object.keys(mov)) keys.add(sub);
+      }
+    }
+    return keys;
+  }, [meters]);
   const localOffset = displayPage % (API_BATCH_SIZE / DISPLAY_PAGE_SIZE);
   const displayedMeters = meters.slice(
     localOffset * DISPLAY_PAGE_SIZE,
@@ -550,13 +616,41 @@ export default function CabinetsDetailsDeveloperTools({
             <option value="deletedAt">Deleted Time</option>
           </select>
         </div>
+
+        <Popover open={exportOpen} onOpenChange={setExportOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              disabled={exporting}
+              className="ml-auto flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700 disabled:opacity-50"
+              title={exporting ? 'Exporting...' : 'Export all matching meters (no pagination limit)'}
+            >
+              <Download className="h-4 w-4" />
+              {exporting ? 'Exporting...' : 'Export'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-36 p-1" align="end" side="bottom">
+            <button
+              onClick={() => handleExport('csv')}
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              JSON
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Search — runs only on Enter or the Search button */}
       <div className="my-3 flex flex-wrap items-center gap-2 pl-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
+        <div className="flex h-9 w-full max-w-xl items-center overflow-hidden rounded-md border border-gray-300 bg-white transition-shadow duration-300 focus-within:border-buttonActive focus-within:ring-1 focus-within:ring-buttonActive">
+          {/* Search Input */}
+          <input
+            type="text"
             placeholder={
               searchColumn ? `Search ${searchColumn}...` : 'Search all fields...'
             }
@@ -568,43 +662,45 @@ export default function CabinetsDetailsDeveloperTools({
                 runSearch();
               }
             }}
-            className="h-9 w-64 pl-8 text-sm"
+            className="h-full min-w-0 flex-1 bg-white px-3 py-1.5 text-xs focus:outline-none"
           />
+
+          {/* Column scope dropdown */}
+          <select
+            aria-label="Search column"
+            value={searchColumn}
+            onChange={e => setSearchColumn(e.target.value)}
+            className="h-full shrink-0 border-l border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 focus:outline-none cursor-pointer w-auto"
+          >
+            <option value="">All fields</option>
+            {columns.map(col => (
+              <option key={col} value={col}>
+                {col}
+              </option>
+            ))}
+          </select>
+
+          {/* Match mode */}
+          <select
+            aria-label="Match mode"
+            value={searchMatchMode}
+            onChange={e => setSearchMatchMode(e.target.value as 'contains' | 'exact')}
+            className="h-full shrink-0 border-l border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 focus:outline-none cursor-pointer w-auto"
+          >
+            <option value="contains">Contains</option>
+            <option value="exact">Exact</option>
+          </select>
+
+          {/* Search Action Button */}
+          <button
+            onClick={runSearch}
+            aria-label="Submit search"
+            title="Submit search"
+            className="flex h-full shrink-0 items-center justify-center border-l border-gray-200 px-3 py-1.5 text-gray-400 transition-colors hover:text-gray-700 hover:bg-gray-50"
+          >
+            <Search className="h-4 w-4 text-gray-500" />
+          </button>
         </div>
-
-        {/* Column scope */}
-        <select
-          aria-label="Search column"
-          value={searchColumn}
-          onChange={e => setSearchColumn(e.target.value)}
-          className="h-9 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-        >
-          <option value="">All fields</option>
-          {columns.map(col => (
-            <option key={col} value={col}>
-              {col}
-            </option>
-          ))}
-        </select>
-
-        {/* Match mode */}
-        <select
-          aria-label="Match mode"
-          value={searchMatchMode}
-          onChange={e => setSearchMatchMode(e.target.value as 'contains' | 'exact')}
-          className="h-9 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-        >
-          <option value="contains">Contains</option>
-          <option value="exact">Exact</option>
-        </select>
-
-        {/* Run search */}
-        <Button
-          onClick={runSearch}
-          className="h-9 rounded-md bg-buttonActive px-4 text-sm text-white hover:bg-buttonActive/90"
-        >
-          Search
-        </Button>
 
         {/* Match navigation */}
         {!loading && appliedTerm && matchCount > 0 && (
@@ -697,6 +793,25 @@ export default function CabinetsDetailsDeveloperTools({
                         const value = getCellValue(meter, col);
                         const display = formatCellValue(col, value);
                         const isCellMatch = matchedCols?.has(col) ?? false;
+
+                        if (col === '_id') {
+                          const readAtValue = getCellValue(meter, 'readAt');
+                          const readAtDisplay = readAtValue ? formatCellValue('readAt', readAtValue) : '—';
+                          return (
+                            <TableCell
+                              key={col}
+                              className={`whitespace-nowrap px-3 py-2 text-xs font-mono text-[10px] text-grayHighlight ${isCellMatch ? 'bg-amber-200/70 font-semibold' : ''}`}
+                            >
+                              <span>{display}</span>
+                              <br />
+                              <span className="text-[10px] text-gray-400">{readAtDisplay}</span>
+                            </TableCell>
+                          );
+                        }
+
+                        const isMovementCol = !col.startsWith('movement.') && movKeys.has(col);
+                        const movValue = isMovementCol ? getCellValue(meter, `movement.${col}`) : undefined;
+
                         return (
                           <TableCell
                             key={col}
@@ -711,6 +826,12 @@ export default function CabinetsDetailsDeveloperTools({
                             } ${isCellMatch ? 'bg-amber-200/70 font-semibold' : ''}`}
                           >
                             {display}
+                            {movValue != null && (
+                              <>
+                                <br />
+                                <span className="text-[10px] text-gray-400">{formatCellValue(col, movValue)}</span>
+                              </>
+                            )}
                           </TableCell>
                         );
                       })}

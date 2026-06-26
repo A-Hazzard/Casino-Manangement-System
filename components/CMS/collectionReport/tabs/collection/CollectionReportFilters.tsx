@@ -44,7 +44,7 @@ import { useRef, useEffect } from 'react';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
-import UnifiedSearchBar from './UnifiedSearchBar';
+import UnifiedSearchBar from '@/components/shared/ui/common/UnifiedSearchBar';
 
 import { gsap } from 'gsap';
 import type { CollectionReportFiltersProps } from '@/lib/types/components';
@@ -170,7 +170,6 @@ export default function CollectionReportFilters({
                 : [selectedLocation]
           }
           onSelectionChange={value => {
-            console.warn('[LOCATION SELECT] Value changed to:', value);
             onLocationChange(value.length === 0 ? 'all' : value);
           }}
           placeholder="Select Locations"
@@ -203,7 +202,6 @@ export default function CollectionReportFilters({
               </span>
             </label>
           </div>
-
         </div>
       </div>
 
@@ -227,70 +225,70 @@ export default function CollectionReportFilters({
             </label>
           </div>
 
-        {/* SMIB Filter Checkboxes - Better layout for md screens */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="smibFilter"
-              checked={selectedFilters.includes('SMIBLocationsOnly')}
-              onCheckedChange={checked =>
-                onFilterChange('SMIBLocationsOnly', !!checked)
-              }
-              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
-            />
-            <label
-              htmlFor="smibFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
-            >
-              SMIB
-            </label>
-          </div>
+          {/* SMIB Filter Checkboxes - Better layout for md screens */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="smibFilter"
+                checked={selectedFilters.includes('SMIBLocationsOnly')}
+                onCheckedChange={checked =>
+                  onFilterChange('SMIBLocationsOnly', !!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <label
+                htmlFor="smibFilter"
+                className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+              >
+                SMIB
+              </label>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="noSmibFilter"
-              checked={selectedFilters.includes('NoSMIBLocation')}
-              onCheckedChange={checked =>
-                onFilterChange('NoSMIBLocation', !!checked)
-              }
-              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
-            />
-            <label
-              htmlFor="noSmibFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
-            >
-              No SMIB
-            </label>
-          </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="noSmibFilter"
+                checked={selectedFilters.includes('NoSMIBLocation')}
+                onCheckedChange={checked =>
+                  onFilterChange('NoSMIBLocation', !!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <label
+                htmlFor="noSmibFilter"
+                className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+              >
+                No SMIB
+              </label>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="localServerFilter"
-              checked={selectedFilters.includes('LocalServersOnly')}
-              onCheckedChange={checked =>
-                onFilterChange('LocalServersOnly', !!checked)
-              }
-              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
-            />
-            <label
-              htmlFor="localServerFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
-            >
-              Local Server
-            </label>
-          </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="localServerFilter"
+                checked={selectedFilters.includes('LocalServersOnly')}
+                onCheckedChange={checked =>
+                  onFilterChange('LocalServersOnly', !!checked)
+                }
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
+              />
+              <label
+                htmlFor="localServerFilter"
+                className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+              >
+                Local Server
+              </label>
+            </div>
 
-          {/* Clear Filters Button - Better positioning on md */}
-          <div className="flex w-full items-center sm:ml-auto sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={onClearFilters}
-              className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
-            >
-              Clear Filters
-            </Button>
+            {/* Clear Filters Button - Better positioning on md */}
+            <div className="flex w-full items-center sm:ml-auto sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={onClearFilters}
+                className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
+              >
+                Clear Filters
+              </Button>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

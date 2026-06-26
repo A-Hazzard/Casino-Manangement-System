@@ -61,7 +61,7 @@ export function useMembersNavigation(
    */
   useEffect(() => {
     const tab = searchParams?.get('tab');
-    if (tab === 'summary-report' || tab === 'members') {
+    if (tab === 'summary-report' || tab === 'members' || tab === 'activity-log') {
       setActiveTab(tab as MembersView);
     } else {
       // If tab is missing or invalid, set default

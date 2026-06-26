@@ -1,3 +1,12 @@
+/**
+ * TOTP Cashier Recovery API Route
+ *
+ * Initiates 2FA recovery for a Cashier by notifying Vault Managers at their
+ * assigned location to manually approve the reset.
+ *
+ * @module app/api/auth/totp/recover/cashier/route
+ */
+
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';

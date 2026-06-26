@@ -1,26 +1,3 @@
-/**
- * New Collection Collected Machines Component
- *
- * Displays the list of machines that have already been collected in the current batch.
- *
- * Features:
- * - List of collected machines with key details
- * - Edit and delete actions for each entry
- * - Empty state display
- * - Update All SAS Times functionality (two date pickers for start and end)
- *
- * @param collectedMachineEntries - Array of machine collection documents currently in the batch
- * @param isProcessing - Loading state for async operations
- * @param onEditEntry - Callback to start editing a specific machine entry
- * @param onDeleteEntry - Callback to remove a machine entry from the batch
- * @param updateAllSasStartDate - Current value for the 'Apply All' start date picker
- * @param setUpdateAllSasStartDate - Function to update the 'Apply All' start date
- * @param updateAllSasEndDate - Current value for the 'Apply All' end date picker
- * @param setUpdateAllSasEndDate - Function to update the 'Apply All' end date
- * @param onApplyAllDates - Callback to trigger the batch update of SAS times
- * @param variationMachineIds - Array of machine IDs that have failed variation checks
- */
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -29,7 +6,8 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import { Edit3, Trash2, Search, Info } from 'lucide-react';
+import { Edit3, Trash2, Search, Info, CheckSquare } from 'lucide-react';
+import { CollectionReportDetailsJackpotIndicator } from '@/components/CMS/collectionReport/details/components/CollectionReportDetailsIndicators';
 
 type NewCollectionCollectedMachinesProps = {
   collectedMachineEntries: CollectionDocument[];
@@ -43,6 +21,10 @@ type NewCollectionCollectedMachinesProps = {
   onApplyAllDates?: () => void;
   variationMachineIds?: string[];
   sasUpdateProgress?: { completed: number; total: number } | null;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onDeleteSelected?: () => void;
+  includeJackpotMap?: Record<string, boolean>;
 };
 
 export default function CollectionReportNewCollectionCollectedMachines({
@@ -57,15 +39,13 @@ export default function CollectionReportNewCollectionCollectedMachines({
   onApplyAllDates,
   variationMachineIds = [],
   sasUpdateProgress,
+  selectedIds = [],
+  onToggleSelect,
+  onDeleteSelected,
+  includeJackpotMap = {},
 }: NewCollectionCollectedMachinesProps) {
-  // ============================================================================
-  // State & Hooks
-  // ============================================================================
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ============================================================================
-  // Computed
-  // ============================================================================
   const filteredEntries = useMemo(() => {
     const reversed = collectedMachineEntries.slice().reverse();
     if (!searchQuery.trim()) return reversed;
@@ -73,24 +53,62 @@ export default function CollectionReportNewCollectionCollectedMachines({
     return reversed.filter(
       entry =>
         (entry.serialNumber?.toLowerCase() || '').includes(searchTermLower) ||
-        (entry.machineCustomName?.toLowerCase() || '').includes(
-          searchTermLower
-        ) ||
+        (entry.machineCustomName?.toLowerCase() || '').includes(searchTermLower) ||
         (entry.machineId?.toLowerCase() || '').includes(searchTermLower) ||
         (entry.game?.toLowerCase() || '').includes(searchTermLower)
     );
   }, [collectedMachineEntries, searchQuery]);
 
-  // ============================================================================
-  // Render
-  // ============================================================================
+  const allVisibleSelected = useMemo(() => {
+    if (filteredEntries.length === 0 || !onToggleSelect) return false;
+    return filteredEntries.every(entry => selectedIds.includes(String(entry._id)));
+  }, [filteredEntries, selectedIds, onToggleSelect]);
+
+  const handleHeaderSelectAll = () => {
+    if (!onToggleSelect) return;
+    if (allVisibleSelected) {
+      filteredEntries.forEach(entry => onToggleSelect(String(entry._id)));
+    } else {
+      filteredEntries.forEach(entry => {
+        if (!selectedIds.includes(String(entry._id))) onToggleSelect(String(entry._id));
+      });
+    }
+  };
+
   return (
     <div className="flex min-h-0 w-full flex-col bg-gray-50">
-      <div className="border-b border-gray-300 bg-gray-100 p-3">
+      <div className="flex items-center justify-between border-b border-gray-300 bg-gray-100 p-3">
         <h3 className="text-sm font-bold text-gray-700">
           Collected Machines ({collectedMachineEntries.length})
         </h3>
+        {onToggleSelect && collectedMachineEntries.length > 0 && (
+          <button
+            onClick={handleHeaderSelectAll}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-200"
+            title={allVisibleSelected ? 'Deselect all' : 'Select all visible'}
+          >
+            <CheckSquare className="h-3 w-3" />
+            {allVisibleSelected ? 'Deselect All' : 'Select All'}
+          </button>
+        )}
       </div>
+
+      {/* Bulk delete bar */}
+      {selectedIds.length > 0 && onDeleteSelected && (
+        <div className="flex items-center justify-between border-b border-red-200 bg-red-50 px-3 py-1.5">
+          <span className="text-[11px] font-semibold text-red-700">
+            {selectedIds.length} selected
+          </span>
+          <button
+            onClick={onDeleteSelected}
+            disabled={isProcessing}
+            className="flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete Selected
+          </button>
+        </div>
+      )}
 
       {/* Update All SAS Times */}
       {collectedMachineEntries.length >= 1 &&
@@ -101,8 +119,6 @@ export default function CollectionReportNewCollectionCollectedMachines({
             <label className="block text-xs font-semibold text-gray-700">
               Update All SAS Times
             </label>
-
-            {/* SAS Start Time */}
             <div>
               <label className="mb-1 block text-[10px] font-medium text-gray-600">
                 Start Time
@@ -111,10 +127,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
                 <ModernCalendar
                   date={
                     updateAllSasStartDate
-                      ? {
-                          from: updateAllSasStartDate,
-                          to: updateAllSasStartDate,
-                        }
+                      ? { from: updateAllSasStartDate, to: updateAllSasStartDate }
                       : undefined
                   }
                   onSelect={range => {
@@ -130,8 +143,6 @@ export default function CollectionReportNewCollectionCollectedMachines({
                 />
               </div>
             </div>
-
-            {/* Start Time */}
             <div>
               <label className="mb-1 block text-[10px] font-medium text-gray-600">
                 End Time
@@ -156,38 +167,24 @@ export default function CollectionReportNewCollectionCollectedMachines({
                 />
               </div>
             </div>
-
             <Button
               onClick={onApplyAllDates}
-              disabled={
-                (!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing
-              }
+              disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
               className="mt-1 w-full bg-blue-600 text-xs hover:bg-blue-700"
               size="sm"
             >
               {isProcessing ? 'Updating...' : 'Update All Times'}
             </Button>
-
             {sasUpdateProgress && (
               <div className="mt-1 space-y-1">
                 <div className="flex items-center justify-between text-[9px] font-semibold text-blue-700">
-                  <span>
-                    {sasUpdateProgress.completed}/{sasUpdateProgress.total}
-                  </span>
-                  <span>
-                    {Math.round(
-                      (sasUpdateProgress.completed / sasUpdateProgress.total) *
-                        100
-                    )}
-                    %
-                  </span>
+                  <span>{sasUpdateProgress.completed}/{sasUpdateProgress.total}</span>
+                  <span>{Math.round((sasUpdateProgress.completed / sasUpdateProgress.total) * 100)}%</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-200">
                   <div
                     className="h-full rounded-full bg-blue-600 transition-all duration-200"
-                    style={{
-                      width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%`,
-                    }}
+                    style={{ width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%` }}
                   />
                 </div>
               </div>
@@ -213,103 +210,74 @@ export default function CollectionReportNewCollectionCollectedMachines({
 
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {collectedMachineEntries.length === 0 ? (
-          <p className="py-10 text-center text-xs text-gray-500">
-            No machines collected yet.
-          </p>
+          <p className="py-10 text-center text-xs text-gray-500">No machines collected yet.</p>
         ) : filteredEntries.length === 0 ? (
-          <p className="py-10 text-center text-xs text-gray-500">
-            No machines match your search.
-          </p>
+          <p className="py-10 text-center text-xs text-gray-500">No machines match your search.</p>
         ) : (
           filteredEntries.map((entry, index) => {
-            const hasVariation = variationMachineIds.some(
-              vid => String(vid) === String(entry.machineId)
-            );
+            const hasVariation = variationMachineIds.some(vid => String(vid) === String(entry.machineId));
+            const isSelected = selectedIds.includes(String(entry._id));
             return (
               <div
-                key={
-                  entry._id
-                    ? String(entry._id)
-                    : `entry-${index}-${
-                        entry.machineCustomName || entry.machineId || 'unknown'
-                      }`
-                }
+                key={entry._id ? String(entry._id) : `entry-${index}-${entry.machineCustomName || entry.machineId || 'unknown'}`}
                 className={`space-y-1 rounded-md border p-3 shadow transition-colors ${
-                  hasVariation
-                    ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400'
-                    : 'border-gray-200 bg-white'
+                  isSelected
+                    ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400'
+                    : hasVariation
+                      ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400'
+                      : 'border-gray-200 bg-white'
                 }`}
               >
                 <div className="flex items-start justify-between gap-1">
-                  <p
-                    className={`break-words text-sm font-bold ${hasVariation ? 'text-amber-900' : 'text-primary'}`}
-                  >
-                    {formatMachineDisplayNameWithBold({
-                      serialNumber: entry.serialNumber,
-                      custom: { name: entry.machineCustomName },
-                      game: entry.game,
-                    })}
-                  </p>
-                  {hasVariation && (
-                    <div className="flex shrink-0 items-center gap-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black uppercase text-white shadow-sm">
-                      <Info className="h-2 w-2" />
-                      Variation
-                    </div>
-                  )}
-                </div>
-                {entry.sasMeters?.sasStartTime &&
-                entry.sasMeters?.sasEndTime ? (
-                  <p
-                    className={`text-xs ${hasVariation ? 'font-medium text-amber-700' : 'text-gray-600'}`}
-                  >
-                    Time: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)}{' '}
-                    → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                  <div className="flex items-start gap-2">
+                    {onToggleSelect && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggleSelect(String(entry._id))}
+                        className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    )}
+                    <p className={`break-words text-sm font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-primary'}`}>
+                      {formatMachineDisplayNameWithBold({
+                        serialNumber: entry.serialNumber,
+                        custom: { name: entry.machineCustomName },
+                        game: entry.game,
+                      })}
+                    </p>
+                  </div>
+                    {hasVariation && (
+                      <div className="flex shrink-0 items-center gap-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black uppercase text-white shadow-sm">
+                        <Info className="h-2 w-2" />
+                        Variation
+                      </div>
+                    )}
+                    {includeJackpotMap[String(entry.machineId)] && (
+                      <CollectionReportDetailsJackpotIndicator />
+                    )}
+                  </div>
+                {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
+                  <p className={`text-xs ${hasVariation ? 'font-medium text-amber-700' : 'text-gray-600'}`}>
+                    Time: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
                   </p>
                 ) : (
                   <p className="text-xs italic text-gray-500">Time: Not Set</p>
                 )}
-                <p
-                  className={`text-xs ${hasVariation ? 'text-amber-800' : 'text-gray-600'}`}
-                >
-                  Meters In:{' '}
-                  {entry.ramClear
-                    ? entry.movement?.metersIn || entry.metersIn
-                    : entry.metersIn}{' '}
-                  | Meters Out:{' '}
-                  {entry.ramClear
-                    ? entry.movement?.metersOut || entry.metersOut
-                    : entry.metersOut}
+                <p className={`text-xs ${hasVariation ? 'text-amber-800' : 'text-gray-600'}`}>
+                  Meters In: {entry.ramClear ? entry.movement?.metersIn || entry.metersIn : entry.metersIn} | Meters Out: {entry.ramClear ? entry.movement?.metersOut || entry.metersOut : entry.metersOut}
                 </p>
-                {entry.notes && (
-                  <p
-                    className={`text-xs italic ${hasVariation ? 'text-amber-700' : 'text-gray-600'}`}
-                  >
-                    Notes: {entry.notes}
-                  </p>
-                )}
-                {entry.ramClear && (
-                  <p className="text-xs font-semibold text-red-600">
-                    RAM Clear: Enabled
-                  </p>
-                )}
+                {entry.notes && <p className={`text-xs italic ${hasVariation ? 'text-amber-700' : 'text-gray-600'}`}>Notes: {entry.notes}</p>}
+                {entry.ramClear && <p className="text-xs font-semibold text-red-600">RAM Clear: Enabled</p>}
                 <div className="flex justify-end gap-1 pt-1">
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
-                    onClick={() => onEditEntry(String(entry._id))}
-                    disabled={isProcessing}
+                    variant="ghost" size="icon" className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
+                    onClick={() => onEditEntry(String(entry._id))} disabled={isProcessing}
                   >
-                    <Edit3
-                      className={`h-3.5 w-3.5 ${hasVariation ? 'text-amber-700' : 'text-blue-600'}`}
-                    />
+                    <Edit3 className={`h-3.5 w-3.5 ${hasVariation ? 'text-amber-700' : 'text-blue-600'}`} />
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
-                    onClick={() => onDeleteEntry(String(entry._id))}
-                    disabled={isProcessing}
+                    variant="ghost" size="icon" className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
+                    onClick={() => onDeleteEntry(String(entry._id))} disabled={isProcessing}
                   >
                     <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   </Button>

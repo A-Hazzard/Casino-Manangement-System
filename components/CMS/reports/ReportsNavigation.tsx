@@ -44,7 +44,7 @@ export default function ReportsNavigation({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <span className="text-lg">{tab.icon}</span>
+            <tab.icon className="h-4 w-4" />
             <span>{tab.label}</span>
           </motion.button>
         ))}
@@ -59,7 +59,7 @@ export default function ReportsNavigation({
         >
           {visibleTabs.map(tab => (
             <option key={tab.id} value={tab.id}>
-              {tab.icon} {tab.label}
+              {tab.label}
             </option>
           ))}
         </select>

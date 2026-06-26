@@ -60,13 +60,13 @@ type Feedback = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  bug: '🐛 Bug Report',
-  suggestion: '💡 Suggestion',
-  'general-review': '⭐ General Review',
-  'feature-request': '✨ Feature Request',
-  performance: '⚡ Performance',
-  'ui-ux': '🎨 UI/UX',
-  other: '📝 Other',
+  bug: 'Bug Report',
+  suggestion: 'Suggestion',
+  'general-review': 'General Review',
+  'feature-request': 'Feature Request',
+  performance: 'Performance',
+  'ui-ux': 'UI/UX',
+  other: 'Other',
 };
 
 const STATUS_PILL: Record<string, string> = {

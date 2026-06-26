@@ -1,3 +1,12 @@
+/**
+ * TOTP Confirm API Route
+ *
+ * Verifies the first TOTP code from the authenticator app and activates 2FA
+ * for the user. Supports confirmation via session or recovery token.
+ *
+ * @module app/api/auth/totp/confirm/route
+ */
+
 import { verifyTOTPCode } from '@/app/api/lib/helpers/auth/totp';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -136,7 +145,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     logRouteError(

@@ -64,8 +64,8 @@ export default function VaultPayoutsPageContent() {
   const { formatAmount } = useCurrencyFormat();
 
   // Role detection
-  const isAdminOrDev = user?.roles?.some(r =>
-    ['admin', 'developer'].includes(r.toLowerCase())
+  const isAdminOrDev = user?.roles?.some(role =>
+    ['admin', 'developer'].includes(role.toLowerCase())
   );
 
   // -- State --
@@ -244,7 +244,7 @@ export default function VaultPayoutsPageContent() {
 
   // -- Computations --
   const totalAmount = useMemo(
-    () => payouts.reduce((sum, p) => sum + p.amount, 0),
+    () => payouts.reduce((sum, payout) => sum + payout.amount, 0),
     [payouts]
   );
   const averagePayout = useMemo(
@@ -470,14 +470,14 @@ export default function VaultPayoutsPageContent() {
                   <TicketRedemptionForm
                     currentBalance={currentBalance}
                     maxDate={shiftDate || new Date()}
-                    onSubmit={async (t: string, a: number, pAt?: Date) => {
+                    onSubmit={async (ticketNumber: string, amount: number, printedAt?: Date) => {
                       await handlePayout({
                         cashierShiftId: shift?._id || '',
                         type: 'ticket',
-                        amount: a,
-                        ticketNumber: t,
-                        printedAt: pAt?.toISOString(),
-                        notes: `Ticket ${t}`,
+                        amount: amount,
+                        ticketNumber: ticketNumber,
+                        printedAt: printedAt?.toISOString(),
+                        notes: `Ticket ${ticketNumber}`,
                       });
                     }}
                     onRequestCash={() => {
@@ -502,14 +502,14 @@ export default function VaultPayoutsPageContent() {
                   <HandPayForm
                     machines={machines || []}
                     currentBalance={currentBalance}
-                    onSubmit={async (a: number, mid: string, r?: string) => {
+                    onSubmit={async (amount: number, machineId: string, reason?: string) => {
                       await handlePayout({
                         cashierShiftId: shift?._id || '',
                         type: 'hand_pay',
-                        amount: a,
-                        machineId: mid,
-                        reason: r,
-                        notes: r || `Hand Pay - Machine ${mid}`,
+                        amount: amount,
+                        machineId: machineId,
+                        reason: reason,
+                        notes: reason || `Hand Pay - Machine ${machineId}`,
                       });
                     }}
                     onRequestCash={() => {

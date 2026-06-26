@@ -548,7 +548,7 @@ export default function ReportsLocationsRevenueAnalysis({
                           '#f59e0b',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod
@@ -570,7 +570,7 @@ export default function ReportsLocationsRevenueAnalysis({
                           '#f59e0b',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod
@@ -592,7 +592,7 @@ export default function ReportsLocationsRevenueAnalysis({
                           '#3b82f6',
                           '#8b5cf6',
                         ]}
-                        formatter={value => `$${value.toLocaleString()}`}
+                        formatter={value => formatCurrency(value)}
                         isHourly={locationTrendData.isHourly}
                         timePeriod={
                           (activeMetricsFilter || 'Today') as TimePeriod

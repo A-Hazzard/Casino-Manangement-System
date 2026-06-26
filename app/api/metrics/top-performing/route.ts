@@ -15,7 +15,7 @@ import { getTopPerformingMetrics } from '@/app/api/lib/helpers/reports/topPerfor
 import type { TopPerformingItem } from '@/app/api/lib/helpers/currency/topPerforming';
 import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/currency/topPerforming';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/metrics/top-performing';
   const user = extractUserFromRequest(req);
 
+  return withApiAuth(req, async () => {
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
@@ -100,25 +101,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/metrics/top-performing',
-        'Database connection failed',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Fetch top performing metrics
+    // STEP 2: Fetch top performing metrics
     // ============================================================================
     const data = await getTopPerformingMetrics(
       activeTab,
@@ -193,4 +176,5 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+  });
 }

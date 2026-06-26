@@ -19,12 +19,12 @@
 
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
+import { useRequestWithRetry } from '@/lib/hooks/data/useRequestWithRetry';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { validateCollectionReportData } from '@/lib/utils/validation';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 // ============================================================================
 // Type Definitions
@@ -37,6 +37,13 @@ type TabType = 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
 // ============================================================================
 
 const ITEMS_PER_PAGE = 20;
+
+/**
+ * Per-attempt request timeout before the request is aborted and retried.
+ * The report's meter aggregation can legitimately take ~30s, so allow generous headroom —
+ * a true timeout means a slow/hung connection, not a missing report.
+ */
+const ATTEMPT_TIMEOUT_MS = 60000;
 
 // ============================================================================
 // Helper Functions
@@ -89,14 +96,93 @@ export function useCollectionReportDetailsData() {
   const reportId = params.reportId as string;
 
   // ==========================================================================
-  // Local State - Data & Loading
+  // Data Loading — resilient fetch with retry, timeout, and countdown
   // ==========================================================================
-  const [reportData, setReportData] = useState<CollectionReportData | null>(
-    null
+  // Load the report (required) and its collections (best-effort) together so the
+  // page has a single retryable unit. A collections-only failure falls back to []
+  // and does NOT fail the whole load — only the report fetch drives error state.
+  const loadReportData = useCallback(
+    async (signal: AbortSignal) => {
+      const config = { signal, timeout: ATTEMPT_TIMEOUT_MS };
+      const [report, collectionsData] = await Promise.all([
+        fetchCollectionReportById(reportId, config),
+        fetchCollectionsByLocationReportId(reportId, config).catch(
+          () => [] as CollectionDocument[]
+        ),
+      ]);
+      return { report, collections: collectionsData };
+    },
+    [reportId]
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [collections, setCollections] = useState<CollectionDocument[]>([]);
+
+  const {
+    data: retryData,
+    error: retryError,
+    isLoading,
+    isRetrying,
+    attempt,
+    maxRetries,
+    retryCountdown,
+    execute: loadAll,
+  } = useRequestWithRetry(loadReportData, {
+    attemptTimeoutMs: ATTEMPT_TIMEOUT_MS,
+  });
+
+  const reportData = useMemo<CollectionReportData | null>(() => {
+    const report = retryData?.report;
+    if (!report) return null;
+    return validateCollectionReportData(report) ? report : null;
+  }, [retryData]);
+
+  const collections = useMemo<CollectionDocument[]>(
+    () => retryData?.collections ?? [],
+    [retryData]
+  );
+
+  // Map low-level retry errors / missing data to the page's error codes.
+  //   'UNAUTHORIZED' -> access denied screen
+  //   'CONNECTION'   -> timeout/connection screen (report likely exists; retry)
+  //   any other string -> genuine "not found" screen
+  const error = useMemo<string | null>(() => {
+    if (retryError) {
+      if (
+        retryError.status === 403 ||
+        retryError.message?.includes('Unauthorized')
+      ) {
+        return 'UNAUTHORIZED';
+      }
+      // Timeout / connection / network / server errors mean the request never finished —
+      // the report probably DOES exist, so surface a connection error (with retry), not 404.
+      if (
+        retryError.isTimeoutError ||
+        retryError.isConnectionError ||
+        retryError.isNetworkError ||
+        retryError.status === 500 ||
+        retryError.status === 502 ||
+        retryError.status === 503 ||
+        retryError.status === 504
+      ) {
+        return 'CONNECTION';
+      }
+      return 'Failed to fetch report data. Please try again.';
+    }
+    if (retryData && !retryData.report) {
+      return 'Report not found. Please use a valid report ID.';
+    }
+    if (
+      retryData?.report &&
+      !validateCollectionReportData(retryData.report)
+    ) {
+      return 'Invalid report data received from server.';
+    }
+    return null;
+  }, [retryError, retryData]);
+
+  // Raw message for the connection-error detail panel.
+  const errorDetail = retryError?.message ?? null;
+
+  // Keep the skeleton up until the first attempt resolves (avoids a NotFound flash).
+  const loading = isLoading || (!retryData && !retryError);
 
   // ==========================================================================
   // Local State - Table Controls
@@ -244,62 +330,23 @@ export function useCollectionReportDetailsData() {
   // ==========================================================================
 
   /**
-   * Refresh report and collections data
+   * Refresh report and collections data (re-runs the retryable load).
    */
-  const handleRefresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await fetchCollectionReportById(reportId);
-      if (data) {
-        setReportData(data);
-      }
-      const collectionsData =
-        await fetchCollectionsByLocationReportId(reportId);
-      setCollections(collectionsData);
-    } catch (error) {
-      console.error('Error refreshing report data:', error);
-      toast.error('Failed to refresh report data');
-    } finally {
-      setLoading(false);
-    }
-  }, [reportId]);
+  const handleRefresh = useCallback(() => {
+    loadAll();
+  }, [loadAll]);
 
   // ==========================================================================
   // Effects
   // ==========================================================================
 
   /**
-   * Initial data fetch on mount
+   * Initial data fetch on mount and whenever the report changes.
+   * `loadAll` is stable; `reportId` re-triggers the load (and aborts the prior one).
    */
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetchCollectionReportById(reportId)
-      .then(data => {
-        if (!data) {
-          setError('Report not found. Please use a valid report ID.');
-        } else if (!validateCollectionReportData(data)) {
-          setError('Invalid report data received from server.');
-        } else {
-          setReportData(data);
-        }
-      })
-      .catch(err => {
-        if (
-          err?.response?.status === 403 ||
-          err?.message?.includes('Unauthorized')
-        ) {
-          setError('UNAUTHORIZED');
-        } else {
-          setError('Failed to fetch report data. Please try again.');
-        }
-      })
-      .finally(() => setLoading(false));
-
-    fetchCollectionsByLocationReportId(reportId)
-      .then(setCollections)
-      .catch(() => setCollections([]));
-  }, [reportId]);
+    loadAll();
+  }, [reportId, loadAll]);
 
   /**
    * Reset pagination when search term changes
@@ -334,7 +381,13 @@ export function useCollectionReportDetailsData() {
     reportData,
     loading,
     error,
+    errorDetail,
     collections,
+    // Retry / progress state
+    isRetrying,
+    attempt,
+    maxRetries,
+    retryCountdown,
     machinePage,
     activeTab,
     searchTerm,

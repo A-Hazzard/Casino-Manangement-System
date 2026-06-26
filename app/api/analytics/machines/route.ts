@@ -17,7 +17,7 @@ import {
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   logRouteFetch,
@@ -48,113 +48,100 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/analytics/machines';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const limit = Number(searchParams.get('limit')) || 5;
-    const selectedLicencee = searchParams.get('licencee') || undefined;
-    const selectedLocation = searchParams.get('location') || undefined;
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      const { searchParams } = new URL(request.url);
+      const limit = Number(searchParams.get('limit')) || 5;
+      const selectedLicencee = searchParams.get('licencee') || undefined;
+      const selectedLocation = searchParams.get('location') || undefined;
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 3: Authenticate user and get accessible locations
-    // ============================================================================
-    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
-    }
-
-    const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicencees,
-      selectedLicencee || undefined,
-      userLocationPermissions,
-      userRoles
-    );
-
-    // ============================================================================
-    // STEP 4: Validate location access
-    // ============================================================================
-    if (allowedLocationIds !== 'all') {
+      // ============================================================================
+      // STEP 2: Authenticate user and get accessible locations
+      // ============================================================================
+      const userAccessibleLicencees =
+        await getUserAccessibleLicenceesFromToken();
+      const userPayload = await getUserFromServer();
+      const userRoles = (userPayload?.roles as string[]) || [];
+      let userLocationPermissions: string[] = [];
       if (
-        !Array.isArray(allowedLocationIds) ||
-        allowedLocationIds.length === 0
+        Array.isArray(
+          (userPayload as { assignedLocations?: string[] })?.assignedLocations
+        )
       ) {
-        const duration = Date.now() - startTime;
-        if (duration > 1000) {
-          console.warn(
-            `[Analytics Machines GET API] No access after ${duration}ms`
-          );
-        }
-        return NextResponse.json({ machines: [] });
+        userLocationPermissions = (
+          userPayload as { assignedLocations: string[] }
+        ).assignedLocations;
       }
 
-      if (selectedLocation && !allowedLocationIds.includes(selectedLocation)) {
-        const duration = Date.now() - startTime;
-        if (duration > 1000) {
-          console.warn(
-            `[Analytics Machines GET API] Location not accessible after ${duration}ms`
-          );
+      const allowedLocationIds = await getUserLocationFilter(
+        userAccessibleLicencees,
+        selectedLicencee || undefined,
+        userLocationPermissions,
+        userRoles
+      );
+
+      // ============================================================================
+      // STEP 3: Validate location access
+      // ============================================================================
+      if (allowedLocationIds !== 'all') {
+        if (
+          !Array.isArray(allowedLocationIds) ||
+          allowedLocationIds.length === 0
+        ) {
+          return NextResponse.json({ machines: [] });
         }
-        return NextResponse.json({ machines: [] });
+
+        if (
+          selectedLocation &&
+          !allowedLocationIds.includes(selectedLocation)
+        ) {
+          return NextResponse.json({ machines: [] });
+        }
       }
+
+      // ============================================================================
+      // STEP 4: Fetch machine analytics data
+      // ============================================================================
+      const machines = await getMachineAnalytics(
+        allowedLocationIds,
+        selectedLocation,
+        selectedLicencee,
+        limit
+      );
+
+      // ============================================================================
+      // STEP 5: Return machine analytics
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/analytics/machines',
+        Array.isArray(machines) ? machines.length : 1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json({ machines });
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal Server Error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/machines',
+        errorMessage,
+        user
+      );
+      console.error(`[${functionName}] Error:`, errorMessage);
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    // ============================================================================
-    // STEP 5: Fetch machine analytics data
-    // ============================================================================
-    const machines = await getMachineAnalytics(
-      allowedLocationIds,
-      selectedLocation,
-      selectedLicencee,
-      limit
-    );
-
-    // ============================================================================
-    // STEP 6: Return machine analytics
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/analytics/machines',
-      Array.isArray(machines) ? machines.length : 1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(`[Analytics Machines GET API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json({ machines });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal Server Error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/analytics/machines',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Machine Analytics GET API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }

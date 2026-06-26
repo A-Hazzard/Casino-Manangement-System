@@ -60,7 +60,7 @@ type VaultOverviewCollectionWizardModalProps = {
   machines: GamingMachine[];
   currentVaultShiftId?: string;
   currentLocationId?: string;
-}
+};
 
 export default function VaultOverviewCollectionWizardModal({
   open,
@@ -104,7 +104,9 @@ export default function VaultOverviewCollectionWizardModal({
   // ============================================================================
   // Computed
   // ============================================================================
-  const selectedMachine = machines.find(machine => machine._id === selectedMachineId);
+  const selectedMachine = machines.find(
+    machine => machine._id === selectedMachineId
+  );
   const collectedMachineIds = entries.map(e => e.machineId);
 
   // Mobile UI States
@@ -256,7 +258,7 @@ export default function VaultOverviewCollectionWizardModal({
       const data = await res.json();
 
       if (data.success) {
-        toast.success(`Collected $${entryData.totalAmount}`);
+        toast.success(`Collected ${formatAmount(entryData.totalAmount)}`);
         setEntries(data.session.entries);
         // Auto-advance? Maybe clear selection
         setSelectedMachineId(null);

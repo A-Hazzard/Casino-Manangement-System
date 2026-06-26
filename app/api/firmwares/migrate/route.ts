@@ -15,6 +15,7 @@ import {
   migrateFirmwareSchema,
   checkMigrationNeeded,
 } from '@/lib/utils/firmwareMigration';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   logRouteFetch,
   logRouteCreate,
@@ -32,71 +33,79 @@ import { NextRequest, NextResponse } from 'next/server';
  * 3. Return migration result
  */
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'POST /api/firmwares/migrate';
-  const user = extractUserFromRequest(request);
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    const startTime = Date.now();
+    const functionName = 'POST /api/firmwares/migrate';
+    const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Check if migration is needed
-    // ============================================================================
-    const needsMigration = await checkMigrationNeeded();
+    if (!isAdminOrDev) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    if (!needsMigration) {
+    try {
+      // ============================================================================
+      // STEP 1: Check if migration is needed
+      // ============================================================================
+      const needsMigration = await checkMigrationNeeded();
+
+      if (!needsMigration) {
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'POST',
+          '/api/firmwares/migrate',
+          0,
+          user,
+          duration
+        );
+        return NextResponse.json(
+          {
+            message: 'No migration needed - all firmware records are up to date',
+          },
+          { status: 200 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 2: Run migration if needed
+      // ============================================================================
+      await migrateFirmwareSchema();
+
+      // ============================================================================
+      // STEP 3: Return migration result
+      // ============================================================================
       const duration = Date.now() - startTime;
-      logRouteFetch(
+      logRouteCreate(
         functionName,
         'POST',
         '/api/firmwares/migrate',
-        0,
+        1,
         user,
         duration
       );
+      if (Date.now() - startTime > 1000)
+        console.warn(`[${functionName}] slow: ${Date.now() - startTime}ms`);
+
       return NextResponse.json(
-        {
-          message: 'No migration needed - all firmware records are up to date',
-        },
+        { message: 'Firmware migration completed successfully' },
         { status: 200 }
       );
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/firmwares/migrate',
+        errorMessage,
+        user
+      );
+      return NextResponse.json(
+        { error: 'Failed to migrate firmware records' },
+        { status: 500 }
+      );
     }
-
-    // ============================================================================
-    // STEP 2: Run migration if needed
-    // ============================================================================
-    await migrateFirmwareSchema();
-
-    // ============================================================================
-    // STEP 3: Return migration result
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/firmwares/migrate',
-      1,
-      user,
-      duration
-    );
-
-    return NextResponse.json(
-      { message: 'Firmware migration completed successfully' },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/firmwares/migrate',
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { error: 'Failed to migrate firmware records' },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 /**
@@ -107,51 +116,59 @@ export async function POST(request: NextRequest) {
  * 2. Return migration status
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  const functionName = 'GET /api/firmwares/migrate';
-  const user = extractUserFromRequest(request);
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/firmwares/migrate';
+    const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Check if migration is needed
-    // ============================================================================
-    const needsMigration = await checkMigrationNeeded();
+    if (!isAdminOrDev) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    // ============================================================================
-    // STEP 2: Return migration status
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteFetch(
-      functionName,
-      'GET',
-      '/api/firmwares/migrate',
-      1,
-      user,
-      duration
-    );
+    try {
+      // ============================================================================
+      // STEP 1: Check if migration is needed
+      // ============================================================================
+      const needsMigration = await checkMigrationNeeded();
 
-    return NextResponse.json(
-      {
-        needsMigration,
-        message: needsMigration
-          ? 'Migration is needed for existing firmware records'
-          : 'No migration needed',
-      },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
-    logRouteError(
-      functionName,
-      'GET',
-      '/api/firmwares/migrate',
-      errorMessage,
-      user
-    );
-    return NextResponse.json(
-      { error: 'Failed to check migration status' },
-      { status: 500 }
-    );
-  }
+      // ============================================================================
+      // STEP 2: Return migration status
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/firmwares/migrate',
+        1,
+        user,
+        duration
+      );
+      if (Date.now() - startTime > 1000)
+        console.warn(`[${functionName}] slow: ${Date.now() - startTime}ms`);
+
+      return NextResponse.json(
+        {
+          needsMigration,
+          message: needsMigration
+            ? 'Migration is needed for existing firmware records'
+            : 'No migration needed',
+        },
+        { status: 200 }
+      );
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error ? e.message : 'Internal server error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/firmwares/migrate',
+        errorMessage,
+        user
+      );
+      return NextResponse.json(
+        { error: 'Failed to check migration status' },
+        { status: 500 }
+      );
+    }
+  });
 }

@@ -10,6 +10,7 @@ import type {
   LicenceeDocument,
 } from '@/shared/types';
 import type { PipelineStage } from 'mongoose';
+import { isWowMachine } from '@/shared/utils/wowMachine';
 import { getMemberCountsPerLocation } from './membershipAggregation';
 
 /**
@@ -123,6 +124,40 @@ export const getLocationsWithMetrics = async (
   if (machineTypeFilter) {
     const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
 
+    // WOW filter needs a per-location flag derived from machines. Unlike the SMIB
+    // tags (persisted on the location doc), there is no stored isWowLocation, so we
+    // compute it on demand with a lookup — only when the WOW filter is active.
+    if (filters.includes('WowOnly')) {
+      basePipeline.push(
+        {
+          $lookup: {
+            from: 'machines',
+            let: { locId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$gamingLocation', '$$locId'] },
+                      { $eq: ['$meta.dataSync.source', 'wow'] },
+                    ],
+                  },
+                },
+              },
+              { $limit: 1 },
+              { $project: { _id: 1 } },
+            ],
+            as: 'wowMachines',
+          },
+        },
+        {
+          $addFields: {
+            isWowLocation: { $gt: [{ $size: '$wowMachines' }, 0] },
+          },
+        }
+      );
+    }
+
     // Group filters by logical categories to allow OR within category and AND across
     const connectionFilters: Record<string, unknown>[] = [];
     const featureFilters: Record<string, unknown>[] = [];
@@ -134,6 +169,9 @@ export const getLocationsWithMetrics = async (
         // --- Connection Category ---
         case 'LocalServersOnly':
           connectionFilters.push({ isLocalServer: true });
+          break;
+        case 'WowOnly':
+          connectionFilters.push({ isWowLocation: true });
           break;
         case 'SMIBLocationsOnly':
           connectionFilters.push({ noSMIBLocation: { $ne: true } });
@@ -336,6 +374,7 @@ export const getLocationsWithMetrics = async (
           isSasMachine: 1,
           collectorDenomination: 1,
           'gameConfig.accountingDenomination': 1,
+          'meta.dataSync.source': 1,
         }
       )
         .lean<GamingMachine[]>()
@@ -486,23 +525,27 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine status metrics
           const totalMachines = machines.length;
+          // WOW machines have no relay but always count as online.
+          const wowMachineCount = machines.filter(m => isWowMachine(m)).length;
           const eligibleMachines = machines.filter(
             m => m.relayId && String(m.relayId).trim().length > 0
           );
-          const onlineMachines = location.aceEnabled
-            ? eligibleMachines.length
-            : eligibleMachines.filter(m => {
-                if (!m.lastActivity) return false;
-                try {
-                  const activityDate =
-                    m.lastActivity instanceof Date
-                      ? m.lastActivity
-                      : new Date(String(m.lastActivity).replace(' ', 'T'));
-                  return activityDate.getTime() >= onlineThreshold.getTime();
-                } catch {
-                  return false;
-                }
-              }).length;
+          const onlineMachines =
+            wowMachineCount +
+            (location.aceEnabled
+              ? eligibleMachines.length
+              : eligibleMachines.filter(m => {
+                  if (!m.lastActivity) return false;
+                  try {
+                    const activityDate =
+                      m.lastActivity instanceof Date
+                        ? m.lastActivity
+                        : new Date(String(m.lastActivity).replace(' ', 'T'));
+                    return activityDate.getTime() >= onlineThreshold.getTime();
+                  } catch {
+                    return false;
+                  }
+                }).length);
           const isNeverOnline =
             eligibleMachines.length > 0 &&
             eligibleMachines.every(m => !m.lastActivity);
@@ -558,6 +601,7 @@ export const getLocationsWithMetrics = async (
             isLocalServer: location.isLocalServer || false,
             noSMIBLocation: sasMachines === 0,
             hasSmib: sasMachines > 0,
+            isWowLocation: wowMachineCount > 0,
             gamesPlayed: metrics.gamesPlayed,
             rel: location.rel,
             country: location.country,
@@ -680,6 +724,7 @@ export const getLocationsWithMetrics = async (
             isSasMachine: 1,
             collectorDenomination: 1,
             'gameConfig.accountingDenomination': 1,
+            'meta.dataSync.source': 1,
           }
         )
           .lean<GamingMachine[]>()
@@ -696,6 +741,7 @@ export const getLocationsWithMetrics = async (
             _id: string;
             lastActivity?: Date;
             isSasMachine?: boolean;
+            meta?: { dataSync?: { source?: string } };
           }>
         >();
         const batchMachineIds: string[] = [];
@@ -721,6 +767,7 @@ export const getLocationsWithMetrics = async (
               _id: machineId,
               lastActivity: machine.lastActivity as Date | undefined,
               isSasMachine: machine.isSasMachine as boolean | undefined,
+              meta: machine.meta,
             });
           }
         });
@@ -842,9 +889,11 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine metrics
           const totalMachines = machines.length;
+          // WOW machines have no relay/activity but always count as online.
           const onlineMachines = location.aceEnabled
             ? totalMachines
             : machines.filter(m => {
+                if (isWowMachine(m)) return true;
                 if (!m.lastActivity) return false;
                 try {
                   const activityDate =
@@ -873,6 +922,7 @@ export const getLocationsWithMetrics = async (
               : 0;
           const sasMachines = machines.filter(mach => mach.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
+          const wowMachineCount = machines.filter(mach => isWowMachine(mach)).length;
 
           const licenceeId = location.rel?.licencee
             ? String(location.rel.licencee)
@@ -907,6 +957,7 @@ export const getLocationsWithMetrics = async (
             isLocalServer: location.isLocalServer || false,
             noSMIBLocation: sasMachines === 0,
             hasSmib: sasMachines > 0,
+            isWowLocation: wowMachineCount > 0,
             gamesPlayed: meterMetrics.totalGamesPlayed,
             rel: location.rel,
             country: location.country,
@@ -943,9 +994,13 @@ export const getLocationsWithMetrics = async (
 
     // ============================================================================
     // Mark NON-SMIB locations as offline if no collection report in past 3 months
+    // WOW locations are always online — exclude them from this override.
     // ============================================================================
     const nonSmibLocations = locationsWithMetrics.filter(
-      loc => loc.sasMachines === 0 || loc.noSMIBLocation
+      loc =>
+        !(loc as AggregatedLocation & { isWowLocation?: boolean })
+          .isWowLocation &&
+        (loc.sasMachines === 0 || loc.noSMIBLocation)
     );
 
     if (nonSmibLocations.length > 0) {
@@ -976,7 +1031,11 @@ export const getLocationsWithMetrics = async (
       // Mark locations without recent collection reports as offline
       // Also add flag to indicate missing collection report
       locationsWithMetrics.forEach(locationMetric => {
+        const isWow = (
+          locationMetric as AggregatedLocation & { isWowLocation?: boolean }
+        ).isWowLocation;
         if (
+          !isWow &&
           (locationMetric.sasMachines === 0 || locationMetric.noSMIBLocation) &&
           !locationsWithRecentReports.has(locationMetric.location)
         ) {
@@ -1109,20 +1168,30 @@ export const getLocationsWithMetrics = async (
                     $sum: {
                       $cond: [
                         {
-                          $gte: [
+                          $or: [
+                            { $eq: ['$meta.dataSync.source', 'wow'] },
                             {
-                              $convert: {
-                                input: '$lastActivity',
-                                to: 'date',
-                                onError: new Date(0),
-                              },
+                              $gte: [
+                                {
+                                  $convert: {
+                                    input: '$lastActivity',
+                                    to: 'date',
+                                    onError: new Date(0),
+                                  },
+                                },
+                                onlineThreshold,
+                              ],
                             },
-                            onlineThreshold,
                           ],
                         },
                         1,
                         0,
                       ],
+                    },
+                  },
+                  wowMachines: {
+                    $sum: {
+                      $cond: [{ $eq: ['$meta.dataSync.source', 'wow'] }, 1, 0],
                     },
                   },
                   sasMachines: { $sum: { $cond: ['$isSasMachine', 1, 0] } },
@@ -1169,6 +1238,15 @@ export const getLocationsWithMetrics = async (
             latestActivity: {
               $ifNull: [
                 { $arrayElemAt: ['$machineData.latestActivity', 0] },
+                0,
+              ],
+            },
+            wowMachines: {
+              $ifNull: [{ $arrayElemAt: ['$machineData.wowMachines', 0] }, 0],
+            },
+            isWowLocation: {
+              $gt: [
+                { $ifNull: [{ $arrayElemAt: ['$machineData.wowMachines', 0] }, 0] },
                 0,
               ],
             },
@@ -1237,9 +1315,9 @@ export const getLocationsWithMetrics = async (
         hasSasMachines,
         hasNonSasMachines,
         isLocalServer: location.isLocalServer || false,
-        // For backward compatibility
         noSMIBLocation: !hasSasMachines,
         hasSmib: hasSasMachines,
+        isWowLocation: (location.wowMachines || 0) > 0,
         gamesPlayed,
         isNeverOnline:
           totalMachines > 0 && (location.hasActivityCount || 0) === 0,
@@ -1251,9 +1329,13 @@ export const getLocationsWithMetrics = async (
 
     // ============================================================================
     // Mark NON-SMIB locations as offline if no collection report in past 3 months
+    // WOW locations are always online — exclude them from this override.
     // ============================================================================
     const nonSmibLocations = enhancedMetrics.filter(
-      loc => loc.sasMachines === 0 || loc.noSMIBLocation
+      loc =>
+        !(loc as AggregatedLocation & { isWowLocation?: boolean })
+          .isWowLocation &&
+        (loc.sasMachines === 0 || loc.noSMIBLocation)
     );
 
     if (nonSmibLocations.length > 0) {
@@ -1284,7 +1366,11 @@ export const getLocationsWithMetrics = async (
       // Mark locations without recent collection reports as offline
       // Also add flag to indicate missing collection report
       enhancedMetrics.forEach(locationMetric => {
+        const isWow = (
+          locationMetric as AggregatedLocation & { isWowLocation?: boolean }
+        ).isWowLocation;
         if (
+          !isWow &&
           (locationMetric.sasMachines === 0 || locationMetric.noSMIBLocation) &&
           !locationsWithRecentReports.has(locationMetric.location)
         ) {

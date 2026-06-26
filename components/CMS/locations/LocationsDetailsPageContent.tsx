@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import CabinetsNewCabinetModal from '@/components/CMS/cabinets/modals/CabinetsNewCabinetModal';
+import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import LocationsDetailsCabinetsSection from '@/components/CMS/locations/sections/LocationsDetailsCabinetsSection';
 import { useLocationCabinetsData } from '@/lib/hooks/locations/useLocationCabinetsData';
 import { useLocationChartData } from '@/lib/hooks/locations/useLocationChartData';
@@ -48,6 +49,7 @@ import { useMembersNavigation } from '@/lib/hooks/navigation';
 import type { AggregatedLocation } from '@/shared/types';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
+import { toast } from 'sonner';
 import LocationsDetailsHeader from './details/LocationsDetailsHeader';
 import LocationsDetailsViewToggle from './details/LocationsDetailsViewToggle';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
@@ -76,6 +78,12 @@ export default function LocationsDetailsPageContent() {
 
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
+
+  // Confirmation dialog state for restore and permanent delete
+  const [restoreTarget, setRestoreTarget] = useState<Cabinet | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Cabinet | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // View Toggle State - checks URL param first, defaults to machines
   const [activeView, setActiveView] = useState<'machines' | 'members'>(
@@ -279,43 +287,33 @@ export default function LocationsDetailsPageContent() {
   /**
    * Restores a soft-deleted cabinet by clearing its deletedAt field.
    */
-  const handleRestoreCabinet = async (cabinet: Cabinet) => {
-    if (
-      !confirm(
-        `Are you sure you want to restore machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}?`
-      )
-    ) {
-      return;
-    }
+  const handleRestoreCabinet = (cabinet: Cabinet) => {
+    setRestoreTarget(cabinet);
+  };
 
+  const handleConfirmRestore = async () => {
+    if (!restoreTarget) return;
+
+    setIsRestoring(true);
     try {
-      const response = await fetch(
-        `/api/locations/${locationId}/cabinets/${cabinet._id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action: 'restore' }),
-        }
-      );
+      const response = await fetch(`/api/cabinets/${restoreTarget._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      });
 
       const result = await response.json();
       if (result.success) {
-        import('sonner').then(({ toast }) =>
-          toast.success('Machine restored successfully')
-        );
+        toast.success('Machine restored successfully');
+        setRestoreTarget(null);
         handleRefresh();
       } else {
-        import('sonner').then(({ toast }) =>
-          toast.error(result.error || 'Failed to restore machine')
-        );
+        toast.error(result.error || 'Failed to restore machine');
       }
-    } catch (error) {
-      console.error('Error restoring cabinet:', error);
-      import('sonner').then(({ toast }) =>
-        toast.error('An error occurred during restoration')
-      );
+    } catch {
+      toast.error('An error occurred during restoration');
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -323,18 +321,17 @@ export default function LocationsDetailsPageContent() {
    * Permanently deletes a cabinet from the database.
    * This action is restricted to admins and developers.
    */
-  const handlePermanentDeleteCabinet = async (cabinet: Cabinet) => {
-    if (
-      !confirm(
-        `CRITICAL: Are you sure you want to PERMANENTLY delete machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
+  const handlePermanentDeleteCabinet = (cabinet: Cabinet) => {
+    setDeleteTarget(cabinet);
+  };
 
+  const handleConfirmPermanentDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
     try {
       const response = await fetch(
-        `/api/locations/${locationId}/cabinets/${cabinet._id}?hardDelete=true`,
+        `/api/cabinets/${deleteTarget._id}?hardDelete=true`,
         {
           method: 'DELETE',
         }
@@ -342,20 +339,16 @@ export default function LocationsDetailsPageContent() {
 
       const result = await response.json();
       if (result.success) {
-        import('sonner').then(({ toast }) =>
-          toast.success('Machine permanently deleted')
-        );
+        toast.success('Machine permanently deleted');
+        setDeleteTarget(null);
         handleRefresh();
       } else {
-        import('sonner').then(({ toast }) =>
-          toast.error(result.error || 'Failed to delete machine permanently')
-        );
+        toast.error(result.error || 'Failed to delete machine permanently');
       }
-    } catch (error) {
-      console.error('Error permanently deleting cabinet:', error);
-      import('sonner').then(({ toast }) =>
-        toast.error('An error occurred during permanent deletion')
-      );
+    } catch {
+      toast.error('An error occurred during permanent deletion');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -491,6 +484,32 @@ export default function LocationsDetailsPageContent() {
 
       {/* Location Action Modals */}
       <LocationsEditLocationModal onLocationUpdated={handleRefresh} />
+
+      {/* Confirmation Dialogs */}
+      <InfoConfirmationDialog
+        isOpen={!!restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        onConfirm={handleConfirmRestore}
+        title="Restore Machine"
+        message={`Are you sure you want to restore ${
+          restoreTarget?.serialNumber || restoreTarget?.custom?.name || 'this machine'
+        }? It will become active again.`}
+        confirmText="Restore"
+        cancelText="Cancel"
+        isLoading={isRestoring}
+      />
+      <InfoConfirmationDialog
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmPermanentDelete}
+        title="Permanently Delete Machine"
+        message={`CRITICAL: Are you sure you want to PERMANENTLY delete ${
+          deleteTarget?.serialNumber || deleteTarget?.custom?.name || 'this machine'
+        }? This action cannot be undone.`}
+        confirmText="Delete Permanently"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
     </>
   );
 }

@@ -12,7 +12,7 @@
  */
 
 import { getTopMachinesDetailed } from '@/app/api/lib/helpers/reports/topMachines';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { TimePeriod } from '@/app/api/lib/types';
 import {
   logRouteFetch,
@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/metrics/top-machines';
   const user = extractUserFromRequest(req);
 
+  return withApiAuth(req, async () => {
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
@@ -52,25 +53,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '5');
 
     // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/metrics/top-machines',
-        'Database connection not established',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Database connection not established' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Fetch top machines data
+    // STEP 2: Fetch top machines data
     // ============================================================================
     const topMachines = await getTopMachinesDetailed(
       timePeriod,
@@ -80,7 +63,7 @@ export async function GET(req: NextRequest) {
     );
 
     // ============================================================================
-    // STEP 4: Return top machines
+    // STEP 3: Return top machines
     // ============================================================================
     const duration = Date.now() - startTime;
     logRouteFetch(
@@ -118,4 +101,5 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
+  });
 }

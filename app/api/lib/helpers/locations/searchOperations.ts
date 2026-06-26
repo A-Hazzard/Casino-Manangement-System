@@ -101,6 +101,7 @@ export function buildLocationSearchFilter(params: {
   licencee: string;
   allowedLocationIds: string[] | 'all';
   machineTypeFilter: string | null;
+  wowLocationIds?: string[] | null;
 }): { $and: Array<Record<string, unknown>> } {
   const deletionFilter = params.showArchived
     ? { deletedAt: { $gte: DELETION_SOFT_CUTOFF } }
@@ -151,6 +152,14 @@ export function buildLocationSearchFilter(params: {
       filterConditions.forEach(filterCondition => {
         locationMatch.$and.push(filterCondition);
       });
+    }
+
+    // WOW filter has no persisted location flag — restrict to precomputed IDs.
+    const hasWowFilter = params.machineTypeFilter
+      .split(',')
+      .some(type => type.trim() === 'WowOnly');
+    if (hasWowFilter) {
+      locationMatch.$and.push({ _id: { $in: params.wowLocationIds ?? [] } });
     }
   }
 
@@ -364,9 +373,14 @@ export async function fetchMachineStats(
                 $sum: {
                   $cond: [
                     {
-                      $and: [
-                        { $ifNull: ['$relayId', false] },
-                        { $ne: [{ $trim: { input: { $toString: { $ifNull: ['$relayId', ''] } } } }, ''] },
+                      $or: [
+                        {
+                          $and: [
+                            { $ifNull: ['$relayId', false] },
+                            { $ne: [{ $trim: { input: { $toString: { $ifNull: ['$relayId', ''] } } } }, ''] },
+                          ],
+                        },
+                        { $eq: ['$meta.dataSync.source', 'wow'] },
                       ],
                     },
                     1,
@@ -378,9 +392,15 @@ export async function fetchMachineStats(
                 $sum: {
                   $cond: [
                     {
-                      $gte: [
-                        { $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } },
-                        new Date(Date.now() - 3 * 60 * 1000),
+                      // WOW machines have no relay/activity but always count as online.
+                      $or: [
+                        {
+                          $gte: [
+                            { $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } },
+                            new Date(Date.now() - 3 * 60 * 1000),
+                          ],
+                        },
+                        { $eq: ['$meta.dataSync.source', 'wow'] },
                       ],
                     },
                     1,

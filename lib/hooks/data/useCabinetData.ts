@@ -57,13 +57,6 @@ type UseCabinetDataReturn = {
     sortOrder?: 'asc' | 'desc'
   ) => Promise<void>;
   loadLocations: () => Promise<void>;
-  filterCabinets: (
-    cabinets: Cabinet[],
-    searchTerm: string,
-    selectedLocation: string[],
-    selectedGameType: string[],
-    selectedStatus: string
-  ) => void;
   setError: (error: string | null) => void;
 };
 
@@ -238,9 +231,6 @@ export const useCabinetData = ({
     selectedGameType,
     selectedStatus,
   ]);
-
-  // Legacy filterCabinets function for backward compatibility (now just updates state)
-  const filterCabinets = useCallback(() => {}, []);
 
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
@@ -483,72 +473,15 @@ export const useCabinetData = ({
   // Effects
   // ============================================================================
 
-  // Ref to store the latest loadCabinets function to avoid dependency issues in useEffect
-  const loadCabinetsRef = useRef(loadCabinets);
-
-  // Update ref whenever loadCabinets changes
-  useEffect(() => {
-    loadCabinetsRef.current = loadCabinets;
-  }, [loadCabinets]);
-
   // Effect hooks for data loading
   useEffect(() => {
     loadLocations();
   }, [loadLocations]);
 
   // Note: loadCabinets is called explicitly by the page component
-  // This ensures proper control over when data is fetched
+  // This ensures proper control over when data is fetched.
+  // Filter-change refetches are handled by the parent (useCabinetsPageData).
 
-  // DISABLED: This effect was causing duplicate API calls
-  // The parent component (useCabinetsPageData) already handles filter change refetches
-  // Keeping this code commented for reference but it should NOT be re-enabled
-  //
-  // Trigger refetch when status or location filter changes (filtering is now done at API level)
-  // Note: This replaces the old frontend-first filtering approach since status filtering
-  // is now handled at the database query level for better performance
-  /*
-  useEffect(() => {
-    // Only trigger if we have the necessary filters initialized
-    if (!activeMetricsFilter) {
-      return;
-    }
-
-    // Skip initial load (handled by page component)
-    if (!hasReceivedFirstResponseRef.current) {
-      return;
-    }
-
-    // Create a unique key for this filter combination (only status and location since they're API-level)
-    // Normalize status to handle both 'All'/'all' and 'Online'/'Offline'
-    const filterKey = `${selectedLocation}|${selectedStatus}`;
-
-    // Skip if this is the same filter combination we just loaded
-    if (filterKey === lastFilterBackendKey) {
-      return;
-    }
-
-    // Trigger refetch when status or location changes (these are now API-level filters)
-    // We trigger even when going back to "All" or "all" to ensure we get the full dataset
-    console.warn('[useCabinetData] Status/Location filter changed, triggering refetch:', {
-      selectedStatus,
-      selectedLocation,
-      filterKey,
-      lastFilterBackendKey,
-    });
-    setLastFilterBackendKey(filterKey);
-    if (loadCabinetsRef.current) {
-      void loadCabinetsRef.current(1, 50);
-    }
-  }, [
-    selectedLocation,
-    selectedStatus,
-    activeMetricsFilter,
-    lastFilterBackendKey,
-    loadCabinetsRef,
-  ]);
-  */
-
-  // Removed useEffect for filtering - now handled by memoized filteredCabinets
   // Dedicated effect to fetch metrics totals reliably when filters change
   // Track if this is the initial mount to prevent aborting on first load
   const isInitialMountRef = useRef(true);
@@ -663,7 +596,6 @@ export const useCabinetData = ({
     // Actions
     loadCabinets,
     loadLocations,
-    filterCabinets,
     setError,
   };
 };

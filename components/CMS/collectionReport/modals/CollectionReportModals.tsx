@@ -51,6 +51,7 @@ type CollectionReportModalsProps = {
   onConfirmDelete: () => Promise<void>;
   onRefresh: () => void;
   onRefreshLocations: () => void;
+  currentDeletePhase?: string;
 };
 
 export default function CollectionReportModals({
@@ -70,6 +71,7 @@ export default function CollectionReportModals({
   onConfirmDelete,
   onRefresh,
   onRefreshLocations,
+  currentDeletePhase,
 }: CollectionReportModalsProps) {
   // ============================================================================
   // Computed
@@ -84,6 +86,11 @@ export default function CollectionReportModals({
     r => r.locationReportId === reportToDelete || r._id === reportToDelete
   );
   const locationName = report ? report.location : 'Report';
+  const deleteMachineCount = (() => {
+    if (!report?.machines) return 0;
+    const total = parseInt(report.machines.split('/').pop() ?? '0', 10);
+    return isNaN(total) ? 0 : total;
+  })();
 
   // ============================================================================
   // Render
@@ -126,8 +133,10 @@ export default function CollectionReportModals({
         isOpen={showDeleteConfirm}
         reportId={reportToDelete || ''}
         locationName={locationName}
+        machineCount={deleteMachineCount}
         onClose={onCloseDelete}
         onDelete={onConfirmDelete}
+        currentServerPhase={currentDeletePhase}
       />
     </>
   );

@@ -52,6 +52,9 @@ type MachineDataEntryFormProps = {
   sasEndTime?: Date | string | null;
   onSasEndTimeChange?: (date: Date | null) => void;
   isLoadingTime?: boolean;
+  isWow?: boolean;
+  includeJackpot?: boolean;
+  jackpot?: number;
 };
 
 /**
@@ -93,6 +96,9 @@ export default function CollectionReportFormMachineDataEntry({
   onPrevInChange,
   onPrevOutChange,
   isLoadingTime = false,
+  isWow = false,
+  includeJackpot = false,
+  jackpot = 0,
 }: MachineDataEntryFormProps) {
   // ============================================================================
   // Computed
@@ -182,6 +188,9 @@ export default function CollectionReportFormMachineDataEntry({
         onPrevInChange={onPrevInChange}
         onPrevOutChange={onPrevOutChange}
         disabled={!inputsEnabled}
+        isWow={isWow}
+        includeJackpot={includeJackpot}
+        jackpot={jackpot}
       />
 
       {/* Notes */}

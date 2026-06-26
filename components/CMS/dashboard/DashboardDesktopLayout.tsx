@@ -141,7 +141,7 @@ export default function DashboardDesktopLayout(
           title="Total for all Locations and Cabinets"
           locationFiltered={false}
           includeJackpot={props.gamingLocations?.some(
-            (loc: Record<string, unknown>) => loc.includeJackpot
+            (loc) => loc.includeJackpot
           )}
         />
 

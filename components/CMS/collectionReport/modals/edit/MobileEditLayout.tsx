@@ -7,12 +7,14 @@ import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { Calculator, ClipboardList } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
-import {
+import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
+import type {
   MachineVariationData,
   VariationsCheckResponse,
-} from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+} from '@/lib/types/api';
 import { toast } from 'sonner';
 
 type MobileEditLayoutProps = {
@@ -55,8 +57,12 @@ type MobileEditLayoutProps = {
   isAddMachineEnabled: boolean;
   hasChanges?: boolean;
   newMachineIds?: string[];
-  gameDayOffset?: number;
   machineStatusMap?: Record<string, boolean>;
+  autoReport?: WowAutoReportControl;
+  autoHighlightId?: string | null;
+  selectedIds?: string[];
+  onToggleSelect?: (id: string) => void;
+  onDeleteSelected?: () => void;
 };
 
 export default function MobileEditLayout(props: MobileEditLayoutProps) {
@@ -94,8 +100,24 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     deleteMachineFromList,
     addMachineToList,
     variationsData,
+    selectedIds,
+    onToggleSelect,
+    onDeleteSelected,
   } = props;
   const machineStatusMap = props.machineStatusMap ?? {};
+
+  // ============================================================================
+  // Auto-scroll: keep the highlighted machine button in view during auto-report
+  // ============================================================================
+  const mobileScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!props.autoHighlightId || !mobileScrollContainerRef.current) return;
+    const el = mobileScrollContainerRef.current.querySelector<HTMLElement>(
+      `[data-machine-id="${props.autoHighlightId}"]`
+    );
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [props.autoHighlightId]);
 
   // ============================================================================
   // Handlers
@@ -151,6 +173,10 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
             </p>
           </div>
 
+          {props.autoReport?.enabled && (
+            <WowAutoReportButton control={props.autoReport} />
+          )}
+
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -185,7 +211,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
 
       {/* Machine Selection Grid */}
       {!modalState.isFormVisible && !modalState.isCollectedListVisible && (
-        <div className="flex-1 overflow-y-auto px-4 pb-20">
+        <div ref={mobileScrollContainerRef} className="flex-1 overflow-y-auto px-4 pb-20">
           {availableMachines.length === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center text-center">
               <div className="mb-2 rounded-full bg-gray-100 p-3">
@@ -206,8 +232,13 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
                   return (
                     <button
                       key={String(machine._id)}
+                      data-machine-id={String(machine._id)}
                       onClick={() => handleMachineSelect(machine)}
                       className={`relative flex items-center justify-between rounded-xl border p-4 text-left transition-all active:scale-[0.98] ${
+                        props.autoHighlightId === String(machine._id)
+                          ? 'ring-2 ring-purple-500 ring-offset-1'
+                          : ''
+                      } ${
                         isCollected
                           ? 'border-green-200 bg-green-50/50 shadow-sm shadow-green-100/50'
                           : 'border-gray-200 bg-white shadow-sm hover:border-blue-300 active:bg-gray-50'
@@ -359,7 +390,7 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           variationMachineIds={variationsData?.machines
             .filter(
               (variation: MachineVariationData) =>
-                typeof variation.variation === 'number' && Math.abs(variation.variation) > 0.1
+                variation.variation !== null && variation.variation !== 0
             )
             .map((variation: MachineVariationData) => variation.machineId)}
           formatMachineDisplay={machine => {
@@ -389,6 +420,9 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           onCreateReport={handleStartSubmit}
           hasChanges={hasChanges}
           newMachineIds={newMachineIds}
+          selectedIds={selectedIds}
+          onToggleSelect={onToggleSelect}
+          onDeleteSelected={onDeleteSelected}
         />
       )}
     </div>

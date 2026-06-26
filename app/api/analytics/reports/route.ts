@@ -12,6 +12,7 @@
 
 import type { ReportConfig } from '@/shared/types/reports';
 import { generateReportData } from '@/app/api/lib/helpers/reports/general';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -96,91 +97,90 @@ export async function POST(request: NextRequest) {
   const functionName = 'POST /api/analytics/reports';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request body
-    // ============================================================================
-    const body = await request.json();
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse and validate request body
+      // ============================================================================
+      const body = await request.json();
 
-    // ============================================================================
-    // STEP 2: Validate report configuration
-    // ============================================================================
-    const validationResult = reportConfigSchema.safeParse(body);
-    if (!validationResult.success) {
+      // ============================================================================
+      // STEP 2: Validate report configuration
+      // ============================================================================
+      const validationResult = reportConfigSchema.safeParse(body);
+      if (!validationResult.success) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/analytics/reports',
+          'Invalid report configuration',
+          user
+        );
+        return NextResponse.json(
+          {
+            error: 'Invalid report configuration',
+            details: validationResult.error.flatten(),
+          },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Build report configuration
+      // ============================================================================
+      const config = buildReportConfig(validationResult.data);
+
+      // ============================================================================
+      // STEP 4: Generate report data
+      // ============================================================================
+      const reportData = generateReportData(config);
+
+      if (!reportData) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/analytics/reports',
+          'Failed to generate report data',
+          user
+        );
+        return NextResponse.json(
+          { error: 'Failed to generate report data' },
+          { status: 500 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 5: Return report data
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/analytics/reports',
+        1,
+        user,
+        duration
+      );
+
+      if (duration > 1000) {
+        console.warn(`[${functionName}] Slow response — ${duration}ms`);
+      }
+
+      return NextResponse.json(reportData);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error
+          ? e.message
+          : 'An internal error occurred while generating the report';
       logRouteError(
         functionName,
         'POST',
         '/api/analytics/reports',
-        'Invalid report configuration',
+        errorMessage,
         user
       );
-      return NextResponse.json(
-        {
-          error: 'Invalid report configuration',
-          details: validationResult.error.flatten(),
-        },
-        { status: 400 }
-      );
+      console.error(`[${functionName}] Error:`, errorMessage);
+      return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
-
-    // ============================================================================
-    // STEP 3: Build report configuration
-    // ============================================================================
-    const config = buildReportConfig(validationResult.data);
-
-    // ============================================================================
-    // STEP 4: Generate report data
-    // ============================================================================
-    const reportData = generateReportData(config);
-
-    if (!reportData) {
-      logRouteError(
-        functionName,
-        'POST',
-        '/api/analytics/reports',
-        'Failed to generate report data',
-        user
-      );
-      return NextResponse.json(
-        { error: 'Failed to generate report data' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 5: Return report data
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/analytics/reports',
-      1,
-      user,
-      duration
-    );
-
-    if (duration > 1000) {
-      console.warn(`[Analytics Reports POST API] Completed in ${duration}ms`);
-    }
-    return NextResponse.json(reportData);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'An internal error occurred while generating the report';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/analytics/reports',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[Analytics Reports POST API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+  });
 }

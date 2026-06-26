@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard — Senior Software Engineer  
 **Document Version:** 4.4.0  
-**Last Updated:** June 5, 2026  
+**Last Updated:** June 25, 2026  
 **Classification:\*\* Internal Engineering Document
 
 ---

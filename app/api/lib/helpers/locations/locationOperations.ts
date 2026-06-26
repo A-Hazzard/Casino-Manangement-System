@@ -596,7 +596,7 @@ export async function findLocationById(
   if (!includeDeleted) {
     filter.$or = [
       { deletedAt: null },
-      { deletedAt: { $lt: new Date('2026-01-01') } },
+      { deletedAt: { $lt: new Date('2025-01-01') } },
     ];
   }
   return GamingLocations.findOne(filter).lean<LocationDocument>();

@@ -125,7 +125,7 @@ export default function DashboardMobileLayout(
         title="Total for all Locations and Machines"
         locationFiltered={false}
         includeJackpot={props.gamingLocations?.some(
-          (loc: Record<string, unknown>) => loc.includeJackpot
+          (loc) => loc.includeJackpot
         )}
       />
 

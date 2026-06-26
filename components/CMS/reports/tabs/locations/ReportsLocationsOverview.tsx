@@ -300,37 +300,6 @@ export default function ReportsLocationsOverview({
                     loc => String(loc._id) === locationId
                   );
                 }
-
-                // Debug log for D'Fastlime to verify matching
-                if (location.name === "D'Fastlime") {
-                  console.log("🔍 [Map] D'Fastlime matching:", {
-                    locationId,
-                    locationAggregatesCount: locationAggregates.length,
-                    foundStats: stats,
-                    statsMoneyIn: stats?.moneyIn,
-                    statsGross: stats?.gross,
-                    sampleAggregateLocation: locationAggregates[0]?.location,
-                    sampleAggregateId: locationAggregates[0]?._id,
-                    allLocationIds: locationAggregates
-                      .slice(0, 5)
-                      .map(loc => ({
-                        location: loc.location,
-                        _id: loc._id,
-                        name: loc.locationName,
-                      })),
-                  });
-                }
-              } else if (location.name === "D'Fastlime") {
-                console.warn(
-                  "⚠️ [Map] D'Fastlime: locationAggregates is empty or not an array",
-                  {
-                    locationAggregates,
-                    isArray: Array.isArray(locationAggregates),
-                    length: Array.isArray(locationAggregates)
-                      ? locationAggregates.length
-                      : 'N/A',
-                  }
-                );
               }
 
               // Calculate performance based on revenue percentage

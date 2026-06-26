@@ -58,6 +58,18 @@ export async function deleteMachineCollection(
 }
 
 /**
+ * Delete multiple machine collections in a single request
+ */
+export async function deleteMachineCollectionBatch(
+  ids: string[]
+): Promise<{ success: boolean; deleted: number }> {
+  const res = await axios.delete('/api/collection-reports/collections/batch', {
+    data: { ids },
+  });
+  return res.data;
+}
+
+/**
  * Update multiple collections with a report ID
  */
 export async function updateCollectionsWithReportId(

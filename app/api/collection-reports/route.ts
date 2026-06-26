@@ -36,11 +36,13 @@ import {
   logRouteFetch,
   logRouteCreate,
   logRouteError,
+  logRoutePhase,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
+import { createSseResponse } from '@/app/api/lib/utils/sseStream';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
@@ -360,6 +362,7 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 3.5: Per-Machine Chronological creation check
     // ============================================================================
+    logRoutePhase(functionName, 'chronological check', Date.now() - startTime);
     let isInsertingFirstReport = false;
     if (
       sanitizedBody.location &&
@@ -388,83 +391,88 @@ export async function POST(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Create collection report using helper
+    // STEP 4–6: Stream SSE phases while creating the report
+    // Auth, DB, and validation are done above — only the work portion streams.
     // ============================================================================
-    const result = await createCollectionReport(sanitizedBody);
+    const ipAddress = getClientIP(req) || undefined;
+    const userAgent = req.headers.get('user-agent') || null;
 
-    if (!result.success) {
-      const duration = Date.now() - startTime;
-      console.error(
-        `[Collection Reports POST API] Failed to create report after ${duration}ms: ${result.error}`
-      );
-      return NextResponse.json(
-        {
-          success: false,
-          error: result.error || 'Failed to create collection report',
-        },
-        { status: 500 }
-      );
-    }
+    return createSseResponse(async send => {
+      send({ type: 'phase', phase: 'validating' });
 
-    // ============================================================================
-    // STEP 4.5: Propagate meters if we inserted before the oldest report
-    // ============================================================================
-    if (
-      isInsertingFirstReport &&
-      sanitizedBody.machines &&
-      sanitizedBody.location &&
-      sanitizedBody.timestamp
-    ) {
-      console.log(
-        `[Collection Reports POST API] Inserted a first report. Propagating meters to the next report...`
-      );
-      for (const machine of sanitizedBody.machines) {
-        await propagateMetersToNextReport(
-          machine.machineId,
-          sanitizedBody.location,
-          new Date(sanitizedBody.timestamp),
-          machine.metersIn ?? 0,
-          machine.metersOut ?? 0
-        );
-      }
-    }
-
-    // ============================================================================
-    // STEP 5: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      await logCRCreateActivity({
-        body,
-        result,
+      // Create report — helper emits saving / recalculating / variation / meters
+      const result = await createCollectionReport(
         sanitizedBody,
-        ipAddress: getClientIP(req) || undefined,
-        userAgent: req.headers.get('user-agent') || null,
-        currentUser: currentUser as {
-          _id?: unknown;
-          id?: unknown;
-          sub?: unknown;
-          emailAddress?: unknown;
-          username?: unknown;
-          roles?: unknown;
-        },
-      });
-    }
+        phase => send({ type: 'phase', phase }),
+        (phase, done, total, machineName) =>
+          send({ type: 'progress', phase, done, total, machineName })
+      );
 
-    // ============================================================================
-    // STEP 6: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/collection-reports',
-      1,
-      user,
-      duration
-    );
+      if (!result.success) {
+        const duration = Date.now() - startTime;
+        console.error(
+          `[Collection Reports POST API] Failed to create report after ${duration}ms: ${result.error}`
+        );
+        send({ type: 'error', message: result.error || 'Failed to create collection report' });
+        return;
+      }
 
-    return NextResponse.json({ success: true, report: result.report });
+      // Propagate meters if we inserted before the oldest report
+      if (
+        isInsertingFirstReport &&
+        sanitizedBody.machines &&
+        sanitizedBody.location &&
+        sanitizedBody.timestamp
+      ) {
+        send({ type: 'phase', phase: 'propagating' });
+        logRoutePhase(functionName, 'updating linked reports — start', Date.now() - startTime);
+        await Promise.all(
+          sanitizedBody.machines.map(machine =>
+            propagateMetersToNextReport(
+              machine.machineId,
+              sanitizedBody.location,
+              new Date(sanitizedBody.timestamp),
+              machine.metersIn ?? 0,
+              machine.metersOut ?? 0
+            )
+          )
+        );
+        logRoutePhase(functionName, 'updating linked reports — done', Date.now() - startTime);
+      }
+
+      // Log activity
+      send({ type: 'phase', phase: 'activity' });
+      const currentUser = await getUserFromServer();
+      if (currentUser && currentUser.emailAddress) {
+        await logCRCreateActivity({
+          body,
+          result,
+          sanitizedBody,
+          ipAddress,
+          userAgent,
+          currentUser: currentUser as {
+            _id?: unknown;
+            id?: unknown;
+            sub?: unknown;
+            emailAddress?: unknown;
+            username?: unknown;
+            roles?: unknown;
+          },
+        });
+      }
+
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/collection-reports',
+        1,
+        user,
+        duration
+      );
+
+      send({ type: 'done', data: { success: true, report: result.report } });
+    });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =

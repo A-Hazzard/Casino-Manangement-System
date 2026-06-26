@@ -51,7 +51,7 @@ export default function CashierCreationModal({
   assignedLocations = [],
 }: CashierCreationModalProps) {
   // ============================================================================
-  // State & Hooks
+  // Form State & Loading
   // ============================================================================
   const [formData, setFormData] = useState({
     username: '',
@@ -144,8 +144,8 @@ export default function CashierCreationModal({
       } else {
         setErrors({ submit: result.error || 'Failed to create cashier' });
       }
-    } catch (error) {
-      console.error('Error creating cashier:', error);
+    } catch (e) {
+      console.error('[handleSubmit] Error:', e instanceof Error ? e.message : 'Unknown error');
       setErrors({ submit: 'An unexpected error occurred' });
     } finally {
       setIsLoading(false);

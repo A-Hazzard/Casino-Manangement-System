@@ -1,7 +1,7 @@
 # Financial System Guide
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** May 4, 2026  
+**Last Updated:** June 25, 2026  
 **Version:** 4.3.0
 
 ---

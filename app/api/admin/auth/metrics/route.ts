@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(metrics);
-  } catch (error: unknown) {
+  } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
     logRouteError(

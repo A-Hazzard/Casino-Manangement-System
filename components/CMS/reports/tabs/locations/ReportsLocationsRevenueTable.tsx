@@ -20,7 +20,6 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
-import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
   Table,
@@ -36,13 +35,9 @@ import {
   getGrossColorClass,
   getMoneyInColorClass,
 } from '@/lib/utils/financial';
-import {
-  ArrowUpDown,
-  ExternalLink,
-  MapPin,
-  Monitor,
-  Search,
-} from 'lucide-react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import { ArrowUpDown, ExternalLink, MapPin, Monitor } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 /**
@@ -61,11 +56,13 @@ export default function ReportsLocationsRevenueTable({
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof AggregatedLocation | 'name'>(
     'name'
   );
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value ?? 0, displayCurrency);
 
   // ============================================================================
   // Computed
@@ -75,28 +72,10 @@ export default function ReportsLocationsRevenueTable({
     return locations.reduce((sum, loc) => sum + (loc.totalMachines || 0), 0);
   }, [locations]);
 
-  // Filter locations based on search term
-  const filteredLocations = useMemo(() => {
-    if (!searchTerm?.trim()) return locations;
-    const searchQuery = (searchTerm || '').toLowerCase().trim();
-    return locations.filter(location => {
-      const name = String(
-        location.name ||
-          location.locationName ||
-          ''
-      ).toLowerCase();
-      const id = String(
-        location._id ||
-          location.location ||
-          ''
-      ).toLowerCase();
-      return name.includes(searchQuery) || id.includes(searchQuery);
-    });
-  }, [locations, searchTerm]);
-
-  // Sort locations
+  // Sort locations (pagination is handled by the parent; the table renders the
+  // page slice it is given)
   const sortedLocations = useMemo(() => {
-    return [...filteredLocations].sort((a, b) => {
+    return [...locations].sort((a, b) => {
       const aVal = a[sortField as keyof AggregatedLocation];
       const bVal = b[sortField as keyof AggregatedLocation];
 
@@ -133,7 +112,7 @@ export default function ReportsLocationsRevenueTable({
 
       return 0;
     });
-  }, [filteredLocations, sortField, sortDirection]);
+  }, [locations, sortField, sortDirection]);
 
   // Use sorted locations - sorting is applied here, pagination is handled by parent
   const paginatedLocations = sortedLocations;
@@ -298,7 +277,7 @@ export default function ReportsLocationsRevenueTable({
           <div className="space-y-1">
             <p className="text-xs text-gray-500">Drop</p>
             <p className={`text-sm font-medium ${getMoneyInColorClass()}`}>
-              ${location.moneyIn.toLocaleString()}
+              {formatCurrency(location.moneyIn)}
             </p>
           </div>
           <div className="space-y-1">
@@ -307,7 +286,7 @@ export default function ReportsLocationsRevenueTable({
               moneyOut={location.moneyOut || 0}
               moneyIn={location.moneyIn || 0}
               jackpot={location.jackpot || 0}
-              displayValue={`$${location.moneyOut.toLocaleString()}`}
+              displayValue={formatCurrency(location.moneyOut)}
               includeJackpot={!!location.includeJackpot}
               showInfoIcon={true}
             />
@@ -317,7 +296,7 @@ export default function ReportsLocationsRevenueTable({
             <p
               className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}
             >
-              ${location.gross.toLocaleString()}
+              {formatCurrency(location.gross)}
             </p>
           </div>
         </div>
@@ -372,20 +351,11 @@ export default function ReportsLocationsRevenueTable({
   return (
     <Card>
       <CardContent className="p-6">
-        {/* Search and Controls */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
-            <Input
-              placeholder="Search locations..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        {/* Controls */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-end">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Monitor className="h-4 w-4" />
-            <span>{filteredLocations.length} locations</span>
+            <span>{locations.length} locations</span>
           </div>
         </div>
 
@@ -436,9 +406,7 @@ export default function ReportsLocationsRevenueTable({
                       colSpan={10}
                       className="py-8 text-center text-gray-500"
                     >
-                      {searchTerm
-                        ? 'No locations found matching your search'
-                        : 'No locations available'}
+                      No locations available
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -509,35 +477,35 @@ export default function ReportsLocationsRevenueTable({
                         <TableCell
                           className={`text-right font-mono ${getMoneyInColorClass()}`}
                         >
-                          ${location.moneyIn.toLocaleString()}
+                          {formatCurrency(location.moneyIn)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           <MoneyOutCell
                             moneyOut={location.moneyOut || 0}
                             moneyIn={location.moneyIn || 0}
                             jackpot={location.jackpot || 0}
-                            displayValue={`$${location.moneyOut.toLocaleString()}`}
+                            displayValue={formatCurrency(location.moneyOut)}
                             includeJackpot={!!location.includeJackpot}
                           />
                         </TableCell>
                         <TableCell
                           className={`text-right font-mono font-semibold ${getGrossColorClass(location.gross)}`}
                         >
-                          ${location.gross.toLocaleString()}
+                          {formatCurrency(location.gross)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           {floorPosition.toFixed(2)}%
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          ${(location.coinIn || 0).toLocaleString()}
+                          {formatCurrency(location.coinIn || 0)}
                         </TableCell>
                         <TableCell
                           className={`text-right font-mono ${getGrossColorClass(netWin)}`}
                         >
-                          ${netWin.toLocaleString()}
+                          {formatCurrency(netWin)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          ${(location.jackpot || 0).toLocaleString()}
+                          {formatCurrency(location.jackpot || 0)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           {(location.gamesPlayed || 0).toLocaleString()}
@@ -555,9 +523,7 @@ export default function ReportsLocationsRevenueTable({
         <div className="space-y-4 lg:hidden">
           {paginatedLocations.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
-              {searchTerm
-                ? 'No locations found matching your search'
-                : 'No locations available'}
+              No locations available
             </div>
           ) : (
             paginatedLocations.map(location => (
