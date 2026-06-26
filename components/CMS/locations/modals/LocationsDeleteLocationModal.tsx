@@ -34,6 +34,7 @@ export default function LocationsDeleteLocationModal({
   const { user } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<ModalStep>('choose');
+  const [fromChoose, setFromChoose] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +59,8 @@ export default function LocationsDeleteLocationModal({
     const location = selectedLocation as Record<string, unknown>;
     if (!location?.location) return;
 
-    const isArchived = Boolean(location.deletedAt);
+    const deletedAt = location.deletedAt as string | Date | null | undefined;
+    const isArchived = Boolean(deletedAt) && new Date(deletedAt as string | Date) >= new Date('2025-01-01');
     setLoading(true);
     try {
       if (isArchived) {
@@ -112,9 +114,8 @@ export default function LocationsDeleteLocationModal({
       );
       setLoading(false);
 
-      const isArchived = Boolean(
-        (selectedLocation as { deletedAt?: string | Date })?.deletedAt
-      );
+      const deletedAt = (selectedLocation as { deletedAt?: string | Date | null })?.deletedAt;
+      const isArchived = Boolean(deletedAt) && new Date(deletedAt as string | Date) >= new Date('2025-01-01');
       if (isArchived) {
         setStep('confirmDelete');
       } else if (canPermanentlyDelete) {
@@ -122,6 +123,7 @@ export default function LocationsDeleteLocationModal({
       } else {
         setStep('confirmArchive');
       }
+      setFromChoose(false);
     }
   }, [isDeleteModalOpen, canPermanentlyDelete, selectedLocation]);
 
@@ -197,6 +199,24 @@ export default function LocationsDeleteLocationModal({
                       </p>
                     </div>
                   </button>
+
+                  {/* Permanent Delete option (admin/developer only) */}
+                  {canPermanentlyDelete && (
+                    <button
+                      onClick={() => { setFromChoose(true); setStep('confirmDelete'); }}
+                      className="group flex items-center gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-4 text-left transition-all hover:border-red-400 hover:bg-red-100"
+                    >
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-200 text-red-700 transition-colors group-hover:bg-red-300">
+                        <Trash2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-red-800">Permanently Delete</p>
+                        <p className="text-xs text-red-700/80">
+                          Irreversible. Deletes the location and all its machines.
+                        </p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -315,13 +335,23 @@ export default function LocationsDeleteLocationModal({
                       </>
                     )}
                   </Button>
-                  <Button
-                    onClick={handleClose}
-                    className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
+                  {fromChoose ? (
+                    <Button
+                      onClick={() => setStep('choose')}
+                      className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                      disabled={loading}
+                    >
+                      Back
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleClose}
+                      className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </>
               )}
             </div>

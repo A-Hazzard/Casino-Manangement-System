@@ -199,7 +199,7 @@ export function buildLocationMatchStage(params: {
         ],
       };
 
-  if (allowedLocationIds !== 'all') {
+  if (!showArchived && allowedLocationIds !== 'all') {
     let intersection = allowedLocationIds;
     if (specificLocations.length > 0) {
       intersection = allowedLocationIds.filter(id =>
@@ -207,7 +207,7 @@ export function buildLocationMatchStage(params: {
       );
     }
     locationMatchStage._id = { $in: intersection };
-  } else if (specificLocations.length > 0) {
+  } else if (!showArchived && specificLocations.length > 0) {
     locationMatchStage._id = { $in: specificLocations };
   }
 
