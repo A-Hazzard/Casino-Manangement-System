@@ -122,19 +122,19 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Determine location filter based on user role and selected licencee
     // ============================================================================
+    const isArchivedRequest = onlineStatus === 'archived';
+
     const allowedLocationIds = await getUserLocationFilter(
       userAccessibleLicencees,
       effectiveLicencee,
       userLocationPermissions,
-      userRoles
+      userRoles,
+      isArchivedRequest
     );
 
     // ============================================================================
     // STEP 5: Query machines and calculate online/offline status with filters
     // ============================================================================
-
-    // Build base aggregation pipeline with location join
-    const isArchivedRequest = onlineStatus === 'archived';
     const aggregationPipeline = createBasePipeline(isArchivedRequest);
 
     // Apply search filter

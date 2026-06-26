@@ -162,7 +162,8 @@ export async function GET(req: NextRequest) {
         userAccessibleLicencees,
         licencee || undefined,
         userLocationPermissions,
-        userRoles
+        userRoles,
+        onlineStatus === 'archived'
       );
 
       const isAdmin = userRoles

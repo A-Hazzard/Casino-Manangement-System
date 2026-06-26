@@ -90,7 +90,8 @@ export async function GET(req: NextRequest) {
           userAccessibleLicencees,
           params.licencee || undefined,
           userLocationPermissions,
-          userRoles
+          userRoles,
+          params.showArchived
         );
 
         // ============================================================================

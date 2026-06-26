@@ -108,7 +108,8 @@ export async function GET(request: NextRequest) {
         userAccessibleLicencees,
         licencee || undefined,
         userLocationPermissions,
-        userRoles
+        userRoles,
+        showArchived
       );
 
       if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {

@@ -149,7 +149,8 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
  * Use this when you need to filter by location IDs
  */
 async function getLicenceeLocationFilter(
-  userAccessibleLicencees: string[] | 'all'
+  userAccessibleLicencees: string[] | 'all',
+  showArchived = false
 ): Promise<string[] | 'all'> {
   if (userAccessibleLicencees === 'all') {
     return 'all';
@@ -164,18 +165,22 @@ async function getLicenceeLocationFilter(
     throw new Error('Database connection failed');
   }
 
+  const deletionFilter = showArchived
+    ? { deletedAt: { $gte: new Date('2025-01-01') } }
+    : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
   const locations = await GamingLocations.find(
     {
       $and: [
         {
           'rel.licencee': { $in: userAccessibleLicencees },
         },
-        {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        },
+        deletionFilter,
       ],
     },
     { _id: 1 }
@@ -198,13 +203,15 @@ async function getLicenceeLocationFilter(
  * @param {string} [selectedLicenceeFilter] - The licencee filter selected in the UI (optional)
  * @param {string[]} userLocationPermissions - Specific locations the user can access
  * @param {User['roles']} [userRoles] - User's roles (to determine if they're a manager)
+ * @param {boolean} [showArchived=false] - Include archived (soft-deleted) locations in results
  * @returns {Promise<string[] | 'all'>} Array of location IDs or 'all' for admins with no restrictions
  */
 export async function getUserLocationFilter(
   userAccessibleLicencees: 'all' | string[],
   selectedLicenceeFilter: string | undefined,
   userLocationPermissions: string[],
-  userRoles: User['roles'] = []
+  userRoles: User['roles'] = [],
+  showArchived = false
 ): Promise<string[] | 'all'> {
   if (!userAccessibleLicencees) {
     console.error(
@@ -283,18 +290,22 @@ export async function getUserLocationFilter(
 
     // Now query locations by licencee ID
     // rel.licencee is stored as a String, so we can query directly
+    const specificLicenceeDeletionFilter = showArchived
+      ? { deletedAt: { $gte: new Date('2025-01-01') } }
+      : {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        };
+
     const locations = await GamingLocations.find(
       {
         $and: [
           {
             'rel.licencee': licenceeId,
           },
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
+          specificLicenceeDeletionFilter,
         ],
       },
       { _id: 1 }
@@ -303,7 +314,8 @@ export async function getUserLocationFilter(
   } else {
     // Get all locations from user's licencees
     licenceeLocations = await getLicenceeLocationFilter(
-      userAccessibleLicencees
+      userAccessibleLicencees,
+      showArchived
     );
   }
 
