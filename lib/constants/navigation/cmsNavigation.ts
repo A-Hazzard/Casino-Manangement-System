@@ -13,6 +13,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Clock,
+  Database,
   DollarSign,
   FileText,
   History,
@@ -108,6 +109,13 @@ const baseCmsNavigationItems: NavigationItem[] = [
     label: 'Administration',
     href: '/administration',
     icon: UserCog,
+  },
+  {
+    label: 'Developer',
+    href: '/developer',
+    icon: Database,
+    // Developer-only — hidden from every other role, including owner/admin.
+    permissionCheck: (roles: string[]) => roles.includes('developer'),
   },
 ];
 

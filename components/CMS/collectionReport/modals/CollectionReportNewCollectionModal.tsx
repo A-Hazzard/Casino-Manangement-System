@@ -51,7 +51,6 @@ import {
 import { useNewCollectionModal } from '@/lib/hooks/collectionReport/useNewCollectionModal';
 import { useWowAutoReport } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import { persistWowCollection } from '@/lib/helpers/collectionReport/wowAutoReportPersist';
-import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
 import {
   useVariationStreamCheck,
   type VariationCheckMachine,
@@ -377,12 +376,6 @@ export default function CollectionReportNewCollectionModal({
       lockedLocationId ||
       collectedMachineEntries[0]?.location ||
       '';
-
-    const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
-    if (isNoSmib) {
-      setShowCreateReportConfirmation(true);
-      return;
-    }
 
     // Check EVERY collected machine (WOW included). Offline non-SMIB machines have
     // no SAS data until finalization, so they surface as "no SAS data" (variation null),

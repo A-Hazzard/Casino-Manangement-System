@@ -330,9 +330,6 @@ export async function computeTotalVariation(
     .map(c => c.machineId)
     .filter((id): id is string => Boolean(id));
 
-  // Determine if location is no-SMIB (all machines are WOW-synced)
-  let isNoSMIBLocation = false;
-
   // Parallelize: machine lookup + optional licencee lookup
   let smibMap = new Map<string, boolean>();
   let wowMap = new Map<string, boolean>();
@@ -363,17 +360,15 @@ export async function computeTotalVariation(
     );
   }
 
-  // Fetch location details (noSMIBLocation + licencee for includeJackpot)
+  // Fetch location details (licencee for includeJackpot)
   if (locationId) {
     parallelPromises.push(
       (async () => {
         const location = await GamingLocations.findOne(
           { _id: locationId },
-          { 'rel.licencee': 1, noSMIBLocation: 1 }
-        ).lean<{ rel?: { licencee?: string }; noSMIBLocation?: boolean } | null>();
+          { 'rel.licencee': 1 }
+        ).lean<{ rel?: { licencee?: string } } | null>();
         if (location) {
-          isNoSMIBLocation = location.noSMIBLocation === true;
-
           if (includeJackpotOverride === undefined && location.rel?.licencee) {
             const { Licencee } = await import('@/app/api/lib/models/licencee');
             const licencee = await Licencee.findOne(
@@ -391,12 +386,12 @@ export async function computeTotalVariation(
     await Promise.all(parallelPromises);
   }
 
-  // Helper: a machine has SMIB capability if it has a relay, is a WOW machine,
-  // or is at a no-SMIB location (where WOW sync provides the meter data).
+  // Helper: a machine has SMIB capability if it has a relay or is a WOW machine.
+  // noSMIBLocation does NOT make individual machines appear SMIB-equipped —
+  // those machines have no SAS data, so variation is not applicable (0).
   const machineHasSmib = (machineId: string): boolean =>
     (smibMap.get(machineId) ?? false) ||
-    (wowMap.get(machineId) ?? false) ||
-    isNoSMIBLocation;
+    (wowMap.get(machineId) ?? false);
 
   // Use the SAME windowed aggregation the detail page and variation checker use.
   // This guarantees the stored totalVariation matches the displayed value.

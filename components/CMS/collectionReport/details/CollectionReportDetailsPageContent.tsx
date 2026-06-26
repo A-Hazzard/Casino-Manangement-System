@@ -41,8 +41,6 @@ import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetchin
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import {
   ArrowLeft,
@@ -99,7 +97,6 @@ export default function CollectionReportDetailsPageContent() {
   // ============================================================================
   const hook = useCollectionReportDetailsData();
   const user = useUserStore(state => state.user);
-  const { displayCurrency } = useCurrencyFormat();
 
   // Only developer, owner and admin can edit
   const canEdit = !!(
@@ -258,6 +255,7 @@ export default function CollectionReportDetailsPageContent() {
         }}
         hideOptions={true}
         hideLicenceeFilter={true}
+        hideCurrencyFilter={true}
         mainClassName="flex flex-col flex-1 w-full max-w-full"
         showToaster={false}
         onRefresh={handleRefresh}
@@ -468,7 +466,7 @@ export default function CollectionReportDetailsPageContent() {
               <p className={`text-lg font-semibold`}>
                 Collection Report Machine Total Gross:{' '}
                 <span className={textColorClass}>
-                  {formatCurrencyWithCodeString(locationTotal, displayCurrency)}
+                  ${locationTotal?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
                 </span>
               </p>
             </div>

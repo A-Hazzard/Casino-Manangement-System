@@ -543,12 +543,12 @@ export async function getCollectionReportById(
 
   // Compute location total variation by summing per-machine variations.
   // This must use the same logic as the machine metrics loop below (hasSmib, hasNoSasData, includeJackpot).
+  // noSMIBLocation does NOT make individual machines appear SMIB-equipped.
   let computedTotalVariation = 0;
   for (const collection of collections) {
     const machineHasSmib =
       (hasRelayMap.get(String(collection.machineId)) ?? false) ||
-      (isWowMap.get(String(collection.machineId)) ?? false) ||
-      isNoSMIBLocation;
+      (isWowMap.get(String(collection.machineId)) ?? false);
     if (!machineHasSmib) continue;
 
     const machineMeterGross = collection.movement?.gross ?? 0;
@@ -773,9 +773,14 @@ export async function getCollectionReportById(
 
       const hasRelay = hasRelayMap.get(String(collection.machineId)) ?? false;
       const isWow = isWowMap.get(String(collection.machineId)) ?? false;
-      const hasSmib = hasRelay || isWow || isNoSMIBLocation;
+      const hasIndividualSmib = hasRelay || isWow;
 
-      const variation = hasSmib
+      // For variation calculation: treat noSMIBLocation machines as having SAS data
+      // (variation = machineGross since SAS gross is 0).
+      // For display: only show numeric values when machine has an actual SMIB.
+      const hasSmibForVariation = hasIndividualSmib || isNoSMIBLocation;
+
+      const variation = hasSmibForVariation
         ? meterGross - (hasNoSasData ? 0 : adjustedSasGross)
         : 0;
 
@@ -807,13 +812,13 @@ export async function getCollectionReportById(
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
         sasGross:
-          !hasSmib
+          !hasIndividualSmib
             ? 'No SMIB for this Machine'
             : hasNoSasData
               ? 'No SAS Data'
               : scaled.sasGross,
         variation:
-          !hasSmib
+          !hasIndividualSmib
             ? 'No SMIB for this Machine'
             : scaled.variation,
         sasStartTime: collection.sasMeters?.sasStartTime || null,

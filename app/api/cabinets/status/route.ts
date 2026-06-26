@@ -19,6 +19,7 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Machine } from '@/app/api/lib/models/machines';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   logRouteFetch,
@@ -157,7 +158,35 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Apply machine type filters
+    // WOW filter has no persisted location flag — derive IDs from WOW machines.
+    let wowLocationIds: string[] | null = null;
+    if (
+      machineTypeFilter?.split(',').some(type => type.trim() === 'WowOnly')
+    ) {
+      const wowLocs = await Machine.distinct('gamingLocation', {
+        'meta.dataSync.source': 'wow',
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      });
+      wowLocationIds = wowLocs.map(id => String(id));
+      if (wowLocationIds.length === 0) {
+        return NextResponse.json({
+          totalMachines: 0,
+          onlineMachines: 0,
+          offlineMachines: 0,
+          totalLocations: 0,
+          onlineLocations: 0,
+          offlineLocations: 0,
+        });
+      }
+      aggregationPipeline.push({
+        $match: { gamingLocation: { $in: wowLocationIds } },
+      });
+    }
+
+    // Apply machine type filters (non-WOW conditions)
     addMachineTypeFilter(aggregationPipeline, machineTypeFilter);
 
     // Apply online/offline status filter
@@ -184,7 +213,8 @@ export async function GET(req: NextRequest) {
       locationId,
       allowedLocationIds,
       machineTypeFilter,
-      isArchivedRequest
+      isArchivedRequest,
+      wowLocationIds
     );
     const totalLocations = await GamingLocations.countDocuments({
       $and: locationCountFilter,

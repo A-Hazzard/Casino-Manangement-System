@@ -33,7 +33,7 @@ import {
 import CabinetsDetailsUnifiedBillValidator from './CabinetsDetailsUnifiedBillValidator';
 import { CollectionSettingsContent } from './CollectionSettingsContent';
 import { ConfigurationCard } from './ConfigurationCard';
-import CabinetsDetailsDeveloperTools from './CabinetsDetailsDeveloperTools';
+import DevCollectionExplorer from './developer/DevCollectionExplorer';
 
 // Hooks & Store
 import { containerVariants, itemVariants } from '@/lib/constants';
@@ -776,7 +776,10 @@ const CabinetsDetailsAccountingDetails = ({
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <CabinetsDetailsDeveloperTools cabinetId={cabinet._id} refreshTrigger={refreshTrigger} />
+                    <DevCollectionExplorer
+                      defaultCabinetId={cabinet._id}
+                      refreshTrigger={refreshTrigger}
+                    />
                   </motion.div>
                 ) : (
                   <motion.div

@@ -1790,15 +1790,15 @@ export function useMobileEditCollectionModal({
     }
   }, [collectedMachines, modalState.originalCollections]);
 
-  // Reset modal state when modal opens - home screen shows machine cards grid directly
+  // Reset modal state when modal opens — edit modal starts on collected list
   useEffect(() => {
     if (show) {
       setModalState(prev => ({
         ...prev,
         isMachineListVisible: false,
         isFormVisible: false,
-        isCollectedListVisible: false,
-        navigationStack: [],
+        isCollectedListVisible: true,
+        navigationStack: ['list'],
       }));
     }
   }, [show]);

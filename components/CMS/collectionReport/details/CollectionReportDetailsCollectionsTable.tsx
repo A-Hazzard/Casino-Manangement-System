@@ -9,7 +9,6 @@ import {
 } from '@/components/shared/ui/table';
 import type { MachineMetric } from '@/lib/types/api';
 import { formatSasTime } from '@/lib/utils/collection';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { Zap } from 'lucide-react';
@@ -85,7 +84,6 @@ export function CollectionReportDetailsCollectionsTable({
   // State & Hooks
   // ============================================================================
   const router = useRouter();
-  const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // Helpers
@@ -102,13 +100,13 @@ export function CollectionReportDetailsCollectionsTable({
         : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
-  // Universal format: [Sign][CurrencyCode] [Amount]. Collection reports are
-  // single-licencee, so amounts are already in the licencee's native currency.
+  // Universal format: $[Amount]. Collection reports are single-licencee,
+  // so amounts are already in the licencee's native currency.
   const smartCurrency = (value: number | string): string => {
     const numericValue = Number(value);
-    if (isNaN(numericValue)) return `${displayCurrency} ${smartNum(value)}`;
+    if (isNaN(numericValue)) return `$${smartNum(value)}`;
     const sign = numericValue < 0 ? '-' : '';
-    return `${sign}${displayCurrency} ${smartNum(Math.abs(numericValue))}`;
+    return `${sign}$${smartNum(Math.abs(numericValue))}`;
   };
 
   // Online/offline status — collect actualMachineId for each metric that has one

@@ -32,7 +32,6 @@ import {
 } from '@/components/shared/ui/dialog';
 import { Button } from '@/components/shared/ui/button';
 import { useEditCollectionModal } from '@/lib/hooks/collectionReport/useEditCollectionModal';
-import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
 import { deleteMachineCollectionBatch } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
 import {
   useMobileEditCollectionModal,
@@ -340,12 +339,6 @@ function DesktopEditWrapper({
       initialCheckPerformedRef.current = true;
 
       const runAutoCheck = async () => {
-        // Query gaminglocations to check noSMIBLocation; skip the variation check if true.
-        const isNoSmib = await checkLocationNoSMIB(
-          desktopHook.selectedLocationId ?? ''
-        );
-        if (isNoSmib) return;
-
         // Pass storedSasGross from each collection's sasMeters.gross.
         // This lets the check-variations route use the stored value instead of
         // re-querying live Meters, which correctly handles offline SMIB machines
@@ -414,15 +407,6 @@ function DesktopEditWrapper({
         desktopHook.selectedLocationId ||
         desktopHook.collectedMachineEntries[0]?.location ||
         '';
-
-      // Query gaminglocations directly to check noSMIBLocation flag.
-      // If true, skip the /api/collection-reports/check-variations request entirely
-      // and show the standard "Are you sure?" update confirmation instead.
-      const isNoSmib = await checkLocationNoSMIB(locationId);
-      if (isNoSmib) {
-        setShowUpdateReportConfirmation(true);
-        return;
-      }
 
       setShowVariationPopover(true);
 
@@ -1001,15 +985,6 @@ function MobileEditWrapper({
       const locationId =
         mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
 
-      // Query gaminglocations directly to check noSMIBLocation flag.
-      // If true, skip the /api/collection-reports/check-variations request entirely
-      // and show the standard "Are you sure?" update confirmation instead.
-      const isNoSmib = await checkLocationNoSMIB(locationId);
-      if (isNoSmib) {
-        setShowUpdateReportConfirmation(true);
-        return;
-      }
-
       setShowVariationPopover(true);
 
       // ── Build pre-create payloads ──
@@ -1229,9 +1204,6 @@ function MobileEditWrapper({
       const runAutoCheck = async () => {
         const locationId =
           mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
-        // Query gaminglocations to check noSMIBLocation; skip the variation check if true.
-        const isNoSmib = await checkLocationNoSMIB(locationId);
-        if (isNoSmib) return;
 
         const machinesForCheck = mobileHook.collectedMachines
           .filter(

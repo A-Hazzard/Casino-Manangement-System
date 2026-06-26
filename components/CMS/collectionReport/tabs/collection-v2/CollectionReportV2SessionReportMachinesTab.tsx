@@ -1,5 +1,7 @@
 'use client';
 
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -80,6 +82,13 @@ export default function CollectionReportV2SessionReportMachinesTab({
   const [photoPreviewName, setPhotoPreviewName] = useState('');
   const [photoPreviewFailed, setPhotoPreviewFailed] = useState(false);
   const [photoPreviewDriveId, setPhotoPreviewDriveId] = useState<string | null>(null);
+
+  // Online/offline status for machines with SMIB
+  const machineIds = useMemo(
+    () => machines.map(m => m.machineId).filter(Boolean),
+    [machines]
+  );
+  const machineStatusMap = useMachineOnlineStatus(machineIds);
 
   // ============================================================================
   // Handlers
@@ -543,6 +552,11 @@ export default function CollectionReportV2SessionReportMachinesTab({
                                   machine.machineName}
                               </button>
                               {machine.isSupplemental && <SupplementalBadge />}
+                              {!isMachineNoSMIB && (
+                                <MachineOnlineStatusDot
+                                  isOnline={machineStatusMap[machine.machineId]}
+                                />
+                              )}
                             </div>
                             <MachineSubtext machine={machine} />
                           </div>
@@ -653,15 +667,22 @@ export default function CollectionReportV2SessionReportMachinesTab({
                     <div className="flex min-w-0 flex-1 items-start gap-2">
                       <MatchIcon machine={machine} />
                       <div className="min-w-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(`/cabinets/${machine.machineId}`)
-                          }
-                          className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
-                        >
-                          {machine.machineCustomName || machine.machineName}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(`/cabinets/${machine.machineId}`)
+                            }
+                            className="cursor-pointer font-medium text-gray-900 decoration-gray-300 transition-colors hover:text-black hover:underline"
+                          >
+                            {machine.machineCustomName || machine.machineName}
+                          </button>
+                          {!isMachineNoSMIB && (
+                            <MachineOnlineStatusDot
+                              isOnline={machineStatusMap[machine.machineId]}
+                            />
+                          )}
+                        </div>
                         {machine.isSupplemental && (
                           <div className="mt-1">
                             <SupplementalBadge />

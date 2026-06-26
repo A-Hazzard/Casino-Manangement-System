@@ -221,7 +221,12 @@ export function computeMachineVariation(
   meterSums: MeterWindowSums | undefined,
   flags: MachineVariationFlags
 ): MachineVariationResult {
-  const hasSmib = flags.hasRelay || flags.isWow || (flags.isNoSMIBLocation ?? false);
+  const hasIndividualSmib = flags.hasRelay || flags.isWow;
+
+  // For variation calculation: treat noSMIBLocation machines as having SAS data
+  // (variation = machineGross since SAS gross is 0).
+  // For display: only show numeric values when machine has an actual SMIB.
+  const hasSmibForVariation = hasIndividualSmib || (flags.isNoSMIBLocation ?? false);
 
   const meterGross =
     entry.movementGross !== undefined && entry.movementGross !== null
@@ -239,15 +244,15 @@ export function computeMachineVariation(
     ? rawSasGross - jackpot
     : rawSasGross;
 
-  const variation = hasSmib
+  const variation = hasSmibForVariation
     ? meterGross - (hasNoSasData ? 0 : adjustedSasGross)
     : 0;
 
   return {
     meterGross,
-    sasGross: hasSmib && !hasNoSasData ? adjustedSasGross : null,
-    variation: hasSmib ? variation : null,
+    sasGross: hasIndividualSmib && !hasNoSasData ? adjustedSasGross : null,
+    variation: hasIndividualSmib ? variation : null,
     hasNoSasData,
-    hasSmib,
+    hasSmib: hasIndividualSmib,
   };
 }

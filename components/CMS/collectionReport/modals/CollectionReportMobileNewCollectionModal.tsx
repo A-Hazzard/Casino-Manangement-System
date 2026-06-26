@@ -61,7 +61,6 @@ import {
   useVariationStreamCheck,
   type VariationCheckMachine,
 } from '@/lib/hooks/collectionReport/useVariationStreamCheck';
-import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
 import { deleteMachineCollectionBatch } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
@@ -277,14 +276,6 @@ export default function CollectionReportMobileNewCollectionModal({
         toast.error(
           'No location is selected for this collection. Please reopen the report and try again.'
         );
-        return;
-      }
-
-      // Query gaminglocations directly to check noSMIBLocation flag.
-      // If true, skip the /api/collection-reports/check-variations request entirely.
-      const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
-      if (isNoSmib) {
-        setShowCreateReportConfirmation(true);
         return;
       }
 

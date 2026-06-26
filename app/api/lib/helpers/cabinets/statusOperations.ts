@@ -713,7 +713,8 @@ export function buildLocationCountFilter(
   locationId: string | null,
   allowedLocationIds: string[] | 'all',
   machineTypeFilter: string | null,
-  showArchived: boolean = false
+  showArchived: boolean = false,
+  wowLocationIds: string[] | null = null
 ): Record<string, unknown>[] {
   const deletionFilter = showArchived
     ? { deletedAt: { $gte: new Date('2025-01-01') } }
@@ -744,6 +745,11 @@ export function buildLocationCountFilter(
     Array.isArray(allowedLocationIds)
   ) {
     filter.push({ _id: { $in: allowedLocationIds } });
+  }
+
+  // WOW filter: restrict to locations with WOW machines
+  if (wowLocationIds && wowLocationIds.length > 0) {
+    filter.push({ _id: { $in: wowLocationIds } });
   }
 
   if (machineTypeFilter) {

@@ -7,10 +7,12 @@
 
 'use client';
 
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import axios from 'axios';
 import { readSseStream } from '@/lib/utils/sseReader';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -433,6 +435,13 @@ export default function CollectionReportV2SessionDetail({
 
   // Reset capture state when current index changes
   const currentMachine = session?.machines[currentIndex];
+
+  // Online/offline status for all machines in session
+  const allMachineIds = useMemo(
+    () => (session?.machines ?? []).map(m => m.machineId).filter(Boolean),
+    [session?.machines]
+  );
+  const machineStatusMap = useMachineOnlineStatus(allMachineIds);
 
   const getInitialCaptureStateForMachine = useCallback(
     (
@@ -1635,10 +1644,17 @@ export default function CollectionReportV2SessionDetail({
                 <h2 className="text-xl font-bold text-gray-900">
                   Machine {currentIndex + 1} of {totalCount}
                 </h2>
-                <p className="text-lg font-semibold text-gray-800">
-                  {currentMachine.machineCustomName ||
-                    currentMachine.machineName}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-lg font-semibold text-gray-800">
+                    {currentMachine.machineCustomName ||
+                      currentMachine.machineName}
+                  </p>
+                  {currentMachine.hasRelay !== false && (
+                    <MachineOnlineStatusDot
+                      isOnline={machineStatusMap[currentMachine.machineId]}
+                    />
+                  )}
+                </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 text-sm text-gray-500">
                   {currentMachine.serialNumber && (
                     <span>SN: {currentMachine.serialNumber}</span>

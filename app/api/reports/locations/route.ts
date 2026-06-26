@@ -40,6 +40,7 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import {
   logRouteFetch,
   logRouteError,
+  logRouteRequest,
   extractUserFromRequest,
 } from '@/app/api/lib/utils/routeLogger';
 import {
@@ -55,6 +56,26 @@ export async function GET(req: NextRequest) {
       const startTime = Date.now();
       const functionName = 'GET /api/reports/locations';
       const user = extractUserFromRequest(req);
+      logRouteRequest(functionName, 'GET', '/api/reports/locations', user);
+
+      // Formats a location list as "name (id)" lines for diagnostic logging.
+      const formatLocations = (
+        locs: Array<{
+          _id?: unknown;
+          id?: unknown;
+          name?: unknown;
+          locationName?: unknown;
+        }>,
+        wowIds?: Set<string> | null
+      ): string =>
+        locs
+          .map(loc => {
+            const id = String(loc._id ?? loc.id ?? '');
+            const name = String(loc.name ?? loc.locationName ?? '(no name)');
+            const flag = wowIds ? (wowIds.has(id) ? ' [WOW]' : ' [NON-WOW]') : '';
+            return `  • ${name} (${id})${flag}`;
+          })
+          .join('\n');
 
       try {
         // ============================================================================
@@ -62,6 +83,10 @@ export async function GET(req: NextRequest) {
         // ============================================================================
         const { searchParams } = new URL(req.url);
         const params = parseReportLocationsParams(searchParams);
+
+        console.log(
+          `[${functionName}] PARAMS | machineTypeFilter=${JSON.stringify(params.machineTypeFilter)} | licencee=${JSON.stringify(params.licencee)} | timePeriod=${params.timePeriod} | onlineStatus=${params.onlineStatus} | showArchived=${params.showArchived} | search=${JSON.stringify(params.searchTerm)} | page=${params.page} limit=${params.limit}`
+        );
 
         if (params.timePeriod === 'Custom' && !params.customStartDate) {
           return NextResponse.json(
@@ -102,11 +127,12 @@ export async function GET(req: NextRequest) {
 
         // WOW filter needs location IDs derived from WOW machines (no persisted flag).
         let wowLocationIds: string[] | null = null;
-        if (
+        const wowFilterActive = Boolean(
           params.machineTypeFilter
             ?.split(',')
             .some(type => type.trim() === 'WowOnly')
-        ) {
+        );
+        if (wowFilterActive) {
           const wowLocs = await Machine.distinct('gamingLocation', {
             'meta.dataSync.source': 'wow',
             $or: [
@@ -115,7 +141,12 @@ export async function GET(req: NextRequest) {
             ],
           });
           wowLocationIds = wowLocs.map(id => String(id));
+          console.log(
+            `[${functionName}] WOW FILTER ACTIVE | wow machines→${wowLocs.length} distinct location(s)=${wowLocationIds.length} | allowedLocationIds=${allowedLocationIds === 'all' ? 'all' : `${allowedLocationIds.length} ids`}`
+          );
         }
+
+        const wowIdSet = wowLocationIds ? new Set(wowLocationIds) : null;
 
         const locationMatchStage = buildLocationMatchStage({
           showArchived: params.showArchived,
@@ -128,10 +159,25 @@ export async function GET(req: NextRequest) {
           wowLocationIds,
         });
 
+        if (wowFilterActive) {
+          console.log(
+            `[${functionName}] MATCH STAGE | ${JSON.stringify(locationMatchStage)}`
+          );
+        }
+
         const locations =
           await GamingLocations.find(locationMatchStage).lean<
             LocationDocument[]
           >();
+
+        if (wowFilterActive) {
+          const leaks = locations.filter(
+            loc => !wowIdSet?.has(String(loc._id))
+          );
+          console.log(
+            `[${functionName}] LOCATIONS FOUND | ${locations.length} total | ${leaks.length} NON-WOW leak(s)\n${formatLocations(locations, wowIdSet)}`
+          );
+        }
 
         if (searchParams.get('summary') === 'true') {
           return await handleSummaryMode(locations, displayCurrency, startTime);
@@ -246,6 +292,16 @@ export async function GET(req: NextRequest) {
         );
 
         const paginated = sortedResults.slice(params.skip, params.skip + params.limit);
+
+        if (wowFilterActive) {
+          const returnedLeaks = paginated.filter(
+            loc => !wowIdSet?.has(String((loc as { id?: unknown; _id?: unknown }).id ?? (loc as { _id?: unknown })._id))
+          );
+          console.log(
+            `[${functionName}] LOCATIONS RETURNED | ${paginated.length} of ${sortedResults.length} after sort/paginate | ${returnedLeaks.length} NON-WOW leak(s)\n${formatLocations(paginated as Array<{ _id?: unknown; locationName?: unknown }>, wowIdSet)}`
+          );
+        }
+
         const converted = await applyLocationsCurrencyConversion(
           paginated,
           params.licencee,

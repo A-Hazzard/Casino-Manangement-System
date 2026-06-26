@@ -180,18 +180,55 @@ export default function CollectionReportMobileCollectedListPanel({
       {isVisible && (
         <div className="flex h-full w-full flex-col overflow-hidden bg-white">
           {/* List Header */}
-          <div className="sticky top-0 z-[100] flex items-center justify-between border-b bg-white px-2 py-3 shadow-sm">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onBack}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 active:scale-95"
-              >
-                <ArrowLeft className="h-6 w-6" />
-              </button>
-              <h3 className="text-lg font-bold text-gray-900">
-                Collected ({collectedMachines.length})
-              </h3>
-              {onToggleSelect && collectedMachines.length > 0 && (
+          <div className="sticky top-0 z-[100] border-b bg-white shadow-sm">
+            <div className="flex items-center justify-between px-2 py-3">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={onBack}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 active:scale-95"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </button>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Collected ({collectedMachines.length})
+                </h3>
+              </div>
+              <div className="flex items-center gap-1">
+                {collectedMachines.length > 0 && (
+                  <div className="flex rounded-full bg-gray-100 p-1">
+                    <button
+                      onClick={() => onToggleView(false)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                        !isViewingFinancialForm
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      List
+                    </button>
+                    <button
+                      onClick={() => onToggleView(true)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                        isViewingFinancialForm
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Financial
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            {onToggleSelect && collectedMachines.length > 0 && (
+              <div className="flex items-center justify-end border-t border-gray-50 px-4 py-1.5">
                 <button
                   onClick={() => {
                     const allSelected = collectedMachines.every(m => selectedIds.includes(String(m._id)));
@@ -203,46 +240,13 @@ export default function CollectionReportMobileCollectedListPanel({
                       });
                     }
                   }}
-                  className="ml-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 hover:bg-gray-100"
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
                 >
-                  <CheckSquare className="h-3 w-3" />
+                  <CheckSquare className="h-3.5 w-3.5" />
                   {collectedMachines.every(m => selectedIds.includes(String(m._id))) ? 'Deselect All' : 'Select All'}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              {collectedMachines.length > 0 && (
-              <div className="flex rounded-full bg-gray-100 p-1">
-                <button
-                  onClick={() => onToggleView(false)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                    !isViewingFinancialForm
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  List
-                </button>
-                <button
-                  onClick={() => onToggleView(true)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
-                    isViewingFinancialForm
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Financial
                 </button>
               </div>
             )}
-            </div>
           </div>
 
           {/* Bulk delete bar */}
