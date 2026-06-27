@@ -64,15 +64,21 @@ export async function queryBatch(
   entry: DevModelEntry,
   filter: Record<string, unknown>,
   apiPage: number,
-  hasDateRange: boolean
+  hasDateRange: boolean,
+  effectiveSort?: Record<string, 1 | -1>,
+  effectiveLimit?: number
 ): Promise<CollectionBatch> {
   const skip = (apiPage - 1) * BATCH_SIZE;
   const collection = entry.model.collection;
+  const sortOption = effectiveSort || entry.defaultSort;
 
-  if (!hasDateRange) {
+  // If a custom limit is set, we need exact count to page correctly, so treat it similarly to having a date range
+  const forceCount = hasDateRange || effectiveLimit !== undefined;
+
+  if (!forceCount) {
     const rows = await collection
       .find(filter)
-      .sort(entry.defaultSort)
+      .sort(sortOption)
       .skip(skip)
       .limit(BATCH_SIZE + 1)
       .toArray();
@@ -84,16 +90,28 @@ export async function queryBatch(
     };
   }
 
-  const [rows, total] = await Promise.all([
+  const queryLimit = effectiveLimit !== undefined ? Math.min(effectiveLimit - skip, BATCH_SIZE) : BATCH_SIZE;
+  
+  if (effectiveLimit !== undefined && skip >= effectiveLimit) {
+    return { data: [], total: effectiveLimit, hasMore: false };
+  }
+
+  const [rows, totalCount] = await Promise.all([
     collection
       .find(filter)
-      .sort(entry.defaultSort)
+      .sort(sortOption)
       .skip(skip)
-      .limit(BATCH_SIZE)
+      .limit(queryLimit > 0 ? queryLimit : 0)
       .toArray(),
     collection.countDocuments(filter),
   ]);
-  return { data: rows, total, hasMore: skip + rows.length < total };
+
+  const total = effectiveLimit !== undefined ? Math.min(totalCount, effectiveLimit) : totalCount;
+  const hasMore = effectiveLimit !== undefined 
+    ? (skip + rows.length < total && skip + rows.length < effectiveLimit)
+    : (skip + rows.length < total);
+
+  return { data: rows, total, hasMore };
 }
 
 // ============================================================================

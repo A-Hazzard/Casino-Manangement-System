@@ -9,6 +9,7 @@
  */
 
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   logRouteFetch,
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/test-current-user';
   const user = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
     // ============================================================================
     // STEP 1: Get user ID from authentication token cookie
@@ -86,10 +88,10 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (e) {
     const duration = Date.now() - startTime;
     const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+      e instanceof Error ? e.message : 'Unknown error';
     console.error(
       `[TEST-CURRENT-USER] Token verification error after ${duration}ms:`,
       errorMessage
@@ -111,4 +113,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, { bypassDb: true, optionalAuth: true });
 }

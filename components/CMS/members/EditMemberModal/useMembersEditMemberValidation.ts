@@ -13,14 +13,16 @@
 import { useDebounce } from '@/lib/utils/hooks';
 import {
   containsEmailPattern,
-  containsPhonePattern,
   isPlaceholderEmail,
   validateEmail,
+} from '@/lib/utils/validation/email';
+import {
+  containsPhonePattern,
   validateNameField,
   validatePhoneNumber,
   validateStreetAddress,
   validateUsername,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/members';
 import { useEffect, useState } from 'react';
 
 type FormData = {

@@ -71,7 +71,7 @@ import {
   handleFeedbackDelete,
 } from '@/app/api/lib/helpers/feedbackHandlers';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
 import {
   logRouteFetch,
@@ -100,14 +100,10 @@ export async function POST(request: NextRequest) {
   const functionName = 'POST /api/feedback';
   const logUser = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
     // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse and validate request body
+    // STEP 1: Parse and validate request body
     // ============================================================================
     const body = await request.json();
     const validationResult = feedbackSchema.safeParse(body);
@@ -215,6 +211,9 @@ export async function POST(request: NextRequest) {
     // STEP 7: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[POST /api/feedback] slow: ${duration}ms`);
+    }
     logRouteCreate(functionName, 'POST', '/api/feedback', 1, logUser, duration);
 
     return NextResponse.json(
@@ -225,10 +224,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (e) {
     const errorMessage =
-      error instanceof Error
-        ? error.message
+      e instanceof Error
+        ? e.message
         : 'Failed to submit feedback. Please try again later.';
     logRouteError(functionName, 'POST', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
@@ -236,6 +235,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  }, { optionalAuth: true });
 }
 
 /**
@@ -253,12 +253,8 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/feedback';
   const logUser = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
     // ============================================================================
     // STEP 2: Authenticate user and check admin role
     // ============================================================================
@@ -311,16 +307,16 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (e) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch feedback';
-    console.error('Error fetching feedback:', error);
+      e instanceof Error ? e.message : 'Failed to fetch feedback';
     logRouteError(functionName, 'GET', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch feedback. Please try again later.' },
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -340,12 +336,8 @@ export async function PATCH(request: NextRequest) {
   const functionName = 'PATCH /api/feedback';
   const logUser = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
     // ============================================================================
     // STEP 2: Authenticate user and check admin role
     // ============================================================================
@@ -359,15 +351,15 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
 
     return await handleFeedbackPatch(body, currentUser, userRoles, request, functionName, logUser, startTime);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update feedback';
-    console.error('Error updating feedback:', error);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Failed to update feedback';
     logRouteError(functionName, 'PATCH', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       { success: false, error: 'Failed to update feedback. Please try again later.' },
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -383,15 +375,12 @@ export async function PATCH(request: NextRequest) {
  * 7. Return success response
  */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
   const functionName = 'PUT /api/feedback';
   const logUser = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
     // ============================================================================
     // STEP 2: Authenticate user and check admin role
     // ============================================================================
@@ -415,14 +404,20 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     // STEP 4: Delegate to handler
     // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[PUT /api/feedback] slow: ${duration}ms`);
+    }
     return await handleFeedbackPut(validationResult.data, currentUser, userRoles, request, functionName, logUser);
-  } catch (error) {
-    console.error('Error updating feedback:', error);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Failed to update feedback';
+    console.error(`[PUT /api/feedback] Error:`, errorMessage);
     return NextResponse.json(
       { success: false, error: 'Failed to update feedback. Please try again later.' },
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -442,12 +437,8 @@ export async function DELETE(request: NextRequest) {
   const functionName = 'DELETE /api/feedback';
   const logUser = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
     // ============================================================================
     // STEP 2: Authenticate user and check admin/developer role
     // ============================================================================
@@ -472,13 +463,13 @@ export async function DELETE(request: NextRequest) {
     // STEP 4: Delegate to handler
     // ============================================================================
     return await handleFeedbackDelete(validationResult.data, currentUser, userRoles, request, functionName, logUser, startTime);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Failed to delete feedback';
-    console.error('Error deleting feedback:', error);
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Failed to delete feedback';
     logRouteError(functionName, 'DELETE', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       { success: false, error: 'Failed to delete feedback. Please try again later.' },
       { status: 500 }
     );
   }
+  });
 }

@@ -40,8 +40,8 @@ const RevenueAnalysisChartsSkeleton = () => (
 
     {/* Charts Grid Skeleton - 3 columns */}
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <ChartSkeleton key={i} />
+      {Array.from({ length: 3 }).map((_, index) => (
+        <ChartSkeleton key={index} />
       ))}
     </div>
   </>
@@ -70,18 +70,18 @@ export const LocationsSASEvaluationSkeleton = () => (
           <table className="w-full">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <th key={i} className="px-4 py-3">
+                {Array.from({ length: 9 }).map((_, index) => (
+                  <th key={index} className="px-4 py-3">
                     <Skeleton className="mx-auto h-4 w-24" />
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  {Array.from({ length: 9 }).map((_, j) => (
-                    <td key={j} className="px-4 py-3">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  {Array.from({ length: 9 }).map((_, index) => (
+                    <td key={index} className="px-4 py-3">
                       <Skeleton className="mx-auto h-4 w-20" />
                     </td>
                   ))}
@@ -92,8 +92,8 @@ export const LocationsSASEvaluationSkeleton = () => (
         </div>
         {/* Mobile cards skeleton - EnhancedLocationTable has mobile view */}
         <div className="space-y-3 md:hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-lg border p-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="rounded-lg border p-4">
               <Skeleton className="mb-2 h-4 w-3/4" />
               <div className="space-y-2">
                 <Skeleton className="h-3 w-1/2" />
@@ -107,8 +107,8 @@ export const LocationsSASEvaluationSkeleton = () => (
 
     {/* Summary Cards (when multiple locations selected) */}
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
           <CardContent className="p-4">
             <Skeleton className="mb-2 h-8 w-24" />
             <Skeleton className="h-4 w-32" />
@@ -148,18 +148,18 @@ export const LocationsRevenueAnalysisSkeleton = () => (
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <th key={i} className="p-3">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <th key={index} className="p-3">
                       <Skeleton className="mx-auto h-4 w-24" />
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <td key={j} className="p-3">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <td key={index} className="p-3">
                         <Skeleton className="mx-auto h-4 w-20" />
                       </td>
                     ))}
@@ -171,9 +171,9 @@ export const LocationsRevenueAnalysisSkeleton = () => (
         </div>
         {/* Mobile cards skeleton */}
         <div className="space-y-4 lg:hidden">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, index) => (
             <div
-              key={i}
+              key={index}
               className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
             >
               <div className="flex items-start justify-between">
@@ -184,8 +184,8 @@ export const LocationsRevenueAnalysisSkeleton = () => (
                 <Skeleton className="h-6 w-20" />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {Array.from({ length: 4 }).map((_, j) => (
-                  <div key={j} className="space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
                     <Skeleton className="h-4 w-16" />
                     <Skeleton className="h-4 w-20" />
                   </div>
@@ -199,8 +199,8 @@ export const LocationsRevenueAnalysisSkeleton = () => (
 
     {/* Summary Cards (when multiple locations selected) */}
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
           <CardContent className="p-4">
             <Skeleton className="mb-2 h-8 w-24" />
             <Skeleton className="h-4 w-32" />
@@ -229,18 +229,18 @@ export const LocationsRevenueAnalysisSkeleton = () => (
           <table className="w-full">
             <thead>
               <tr className="border-b bg-gray-50">
-                {Array.from({ length: 11 }).map((_, i) => (
-                  <th key={i} className="p-3">
+                {Array.from({ length: 11 }).map((_, index) => (
+                  <th key={index} className="p-3">
                     <Skeleton className="mx-auto h-4 w-20" />
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b hover:bg-gray-50">
-                  {Array.from({ length: 11 }).map((_, j) => (
-                    <td key={j} className="p-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
+                  {Array.from({ length: 11 }).map((_, index) => (
+                    <td key={index} className="p-3">
                       <Skeleton className="mx-auto h-4 w-16" />
                     </td>
                   ))}
@@ -251,8 +251,8 @@ export const LocationsRevenueAnalysisSkeleton = () => (
         </div>
         {/* Mobile cards skeleton */}
         <div className="space-y-3 md:hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-lg border p-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="rounded-lg border p-4">
               <Skeleton className="mb-2 h-4 w-3/4" />
               <div className="space-y-2">
                 <Skeleton className="h-3 w-1/2" />

@@ -55,10 +55,8 @@ import {
   DEFAULT_VAULT_BALANCE,
   DEFAULT_VAULT_METRICS,
 } from '@/components/VAULT/overview/data/defaults';
-import {
-  calculateEndOfDayMetrics,
-  fetchEndOfDayReportData,
-} from '@/lib/helpers/vaultHelpers';
+import { calculateEndOfDayMetrics } from '@/lib/helpers/vault/vaultCalculationHelpers';
+import { fetchEndOfDayReportData } from '@/lib/helpers/vault/vaultDataFetching';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';

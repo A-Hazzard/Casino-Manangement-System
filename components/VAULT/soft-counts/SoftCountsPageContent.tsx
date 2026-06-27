@@ -3,6 +3,7 @@
 // ============================================================================
 // External Dependencies
 // ============================================================================
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,9 +17,10 @@ import type { Denomination } from '@/shared/types/vault';
 
 export default function SoftCountsPageContent() {
   // ============================================================================
-  // State
+  // State & Hooks
   // ============================================================================
   const [loading, setLoading] = useState(false);
+  const { formatAmount } = useCurrencyFormat();
 
   // ============================================================================
   // Handlers
@@ -47,7 +49,7 @@ export default function SoftCountsPageContent() {
       const responseData = await response.json();
 
       if (responseData.success) {
-        toast.success(`Soft count recorded: $${amount}`);
+        toast.success(`Soft count recorded: ${formatAmount(amount)}`);
       } else {
         toast.error(responseData.error || 'Failed to record soft count');
       }

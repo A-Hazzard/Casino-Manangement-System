@@ -8,6 +8,7 @@
  * @module app/api/mqtt/config/subscribe/route
  */
 
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import {
   logRouteFetch,
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/mqtt/config/subscribe';
   const user = extractUserFromRequest(request);
 
+  return withApiAuth(request, async () => {
   try {
     // ============================================================================
     // STEP 1: Parse and validate relayId parameter
@@ -42,7 +44,6 @@ export async function GET(request: NextRequest) {
     const relayId = searchParams.get('relayId');
 
     if (!relayId) {
-      const duration = Date.now() - startTime;
       logRouteError(
         functionName,
         'GET',
@@ -50,16 +51,13 @@ export async function GET(request: NextRequest) {
         'relayId query parameter is required',
         user
       );
-      console.error(
-        `[MQTT Config Subscribe GET API] Missing relayId parameter after ${duration}ms.`
-      );
       return new Response(
         JSON.stringify({ error: 'relayId query parameter is required' }),
         {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         }
-      );
+      ) as unknown as import('next/server').NextResponse;
     }
 
     // ============================================================================
@@ -222,7 +220,7 @@ export async function GET(request: NextRequest) {
       user,
       duration
     );
-    return new Response(stream, { headers });
+    return new Response(stream, { headers }) as unknown as import('next/server').NextResponse;
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
@@ -244,6 +242,8 @@ export async function GET(request: NextRequest) {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       }
-    );
+    ) as unknown as import('next/server').NextResponse;
   }
+  }, { optionalAuth: true });
 }
+

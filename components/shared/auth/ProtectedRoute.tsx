@@ -29,7 +29,7 @@ import {
 import {
   isCashierOnly,
   isVaultManagerOnly,
-} from '@/lib/utils/permissions/client';
+} from '@/lib/utils/permissions/roleChecks';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 

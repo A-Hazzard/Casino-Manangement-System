@@ -37,8 +37,8 @@ export const MachineHourlyChartsSkeleton = () => (
 
     {/* Charts Grid Skeleton */}
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <ChartSkeleton key={i} />
+      {Array.from({ length: 4 }).map((_, index) => (
+        <ChartSkeleton key={index} />
       ))}
     </div>
   </>
@@ -102,8 +102,8 @@ export const TopMachinesTableSkeleton = () => (
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b hover:bg-gray-50">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <tr key={index} className="border-b hover:bg-gray-50">
                 {/* Location column - with link icon */}
                 <td className="p-3 text-center">
                   <div className="mx-auto flex items-center justify-center gap-1.5">
@@ -162,8 +162,8 @@ export const TopMachinesTableSkeleton = () => (
 
       {/* Mobile Card View Skeleton */}
       <div className="space-y-4 md:hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Card key={i} className="p-4">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Card key={index} className="p-4">
             {/* Card Header - Machine name and location/game */}
             <div className="mb-3">
               <Skeleton className="mb-2 h-4 w-3/4" />
@@ -176,8 +176,8 @@ export const TopMachinesTableSkeleton = () => (
 
             {/* Tiny screen layout (< 425px) - Single column with flex justify-between */}
             <div className="block space-y-2 text-xs sm:hidden">
-              {Array.from({ length: 7 }).map((_, j) => (
-                <div key={j} className="flex justify-between">
+              {Array.from({ length: 7 }).map((_, index) => (
+                <div key={index} className="flex justify-between">
                   <Skeleton className="h-3 w-24" />
                   <Skeleton className="h-3 w-16" />
                 </div>
@@ -186,8 +186,8 @@ export const TopMachinesTableSkeleton = () => (
 
             {/* Small screen layout (425px+) - Two columns grid */}
             <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
-              {Array.from({ length: 7 }).map((_, j) => (
-                <div key={j} className={j === 6 ? 'col-span-2' : ''}>
+              {Array.from({ length: 7 }).map((_, index) => (
+                <div key={index} className={index === 6 ? 'col-span-2' : ''}>
                   <Skeleton className="mb-1 h-3 w-24" />
                   <Skeleton className="h-4 w-20" />
                 </div>
@@ -208,8 +208,8 @@ export const MachinesOverviewSkeleton = () => (
   <div className="space-y-4">
     {/* Statistics Cards */}
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-4 w-4" />
@@ -283,8 +283,8 @@ export const MachinesOverviewSkeleton = () => (
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <tr key={i} className="border-b hover:bg-muted/30">
+                    {Array.from({ length: 10 }).map((_, index) => (
+                      <tr key={index} className="border-b hover:bg-muted/30">
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <Skeleton className="h-4 w-4 rounded-full" />
@@ -321,8 +321,8 @@ export const MachinesOverviewSkeleton = () => (
           </div>
           {/* Mobile cards skeleton - matches actual mobile card structure */}
           <div className="space-y-4 md:hidden">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Card key={i} className="p-4">
+            {Array.from({ length: 10 }).map((_, index) => (
+              <Card key={index} className="p-4">
                 <div className="mb-3 flex min-w-0 items-start justify-between">
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <Skeleton className="h-4 w-4 rounded-full" />
@@ -438,8 +438,8 @@ const ChartWithSidebarSkeleton = ({
       {/* Metric selection checkboxes */}
       <div className="mb-4 overflow-x-auto border-b pb-3 md:mb-6 md:pb-4">
         <div className="flex min-w-max flex-wrap items-center justify-center gap-x-4 gap-y-2 md:gap-x-6">
-          {Array.from({ length: metricCount }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1.5 md:gap-2">
+          {Array.from({ length: metricCount }).map((_, index) => (
+            <div key={index} className="flex items-center gap-1.5 md:gap-2">
               <Skeleton className="h-3.5 w-3.5 rounded md:h-4 md:w-4" />
               <Skeleton className="h-3 w-20 md:h-3 md:w-24" />
             </div>
@@ -489,8 +489,8 @@ const ChartWithSidebarSkeleton = ({
               </div>
             </div>
             <div className="flex max-h-[450px] flex-col gap-3 overflow-y-auto pr-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-2">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="flex items-center space-x-2">
                   <Skeleton className="h-4 w-4" />
                   <Skeleton className="h-4 w-full" />
                 </div>
@@ -641,8 +641,8 @@ export const MachinesEvaluationSkeleton = () => (
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b hover:bg-gray-50">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <tr key={index} className="border-b hover:bg-gray-50">
                   <td className="p-3 text-center">
                     <div className="mx-auto flex items-center justify-center gap-1.5">
                       <Skeleton className="h-4 w-20" />
@@ -675,8 +675,8 @@ export const MachinesEvaluationSkeleton = () => (
 
         {/* Mobile Card View Skeleton */}
         <div className="space-y-4 md:hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Card key={i} className="p-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Card key={index} className="p-4">
               <div className="mb-3">
                 <Skeleton className="mb-2 h-4 w-3/4" />
                 <div className="flex items-center gap-1">
@@ -686,16 +686,16 @@ export const MachinesEvaluationSkeleton = () => (
                 </div>
               </div>
               <div className="block space-y-2 text-xs sm:hidden">
-                {Array.from({ length: 6 }).map((_, j) => (
-                  <div key={j} className="flex justify-between">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="flex justify-between">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-3 w-16" />
                   </div>
                 ))}
               </div>
               <div className="hidden gap-4 text-sm sm:grid sm:grid-cols-2">
-                {Array.from({ length: 6 }).map((_, j) => (
-                  <div key={j} className={j === 5 ? 'col-span-2' : ''}>
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className={index === 5 ? 'col-span-2' : ''}>
                     <Skeleton className="mb-1 h-3 w-24" />
                     <Skeleton className="h-4 w-20" />
                   </div>
@@ -717,8 +717,8 @@ export const MachinesOfflineSkeleton = () => (
   <div className="space-y-4">
     {/* Offline Summary Cards */}
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i}>
+      {Array.from({ length: 3 }).map((_, index) => (
+        <Card key={index}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-4 w-4" />
@@ -778,8 +778,8 @@ export const MachinesOfflineSkeleton = () => (
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <tr key={i} className="border-b hover:bg-muted/30">
+                  {Array.from({ length: 10 }).map((_, index) => (
+                    <tr key={index} className="border-b hover:bg-muted/30">
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           <Skeleton className="h-4 w-4 rounded-full" />
@@ -807,8 +807,8 @@ export const MachinesOfflineSkeleton = () => (
 
           {/* Mobile Card View */}
           <div className="space-y-4 md:hidden">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Card key={i} className="p-4">
+            {Array.from({ length: 10 }).map((_, index) => (
+              <Card key={index} className="p-4">
                 <div className="mb-3">
                   <div className="flex items-start justify-between">
                     <div>

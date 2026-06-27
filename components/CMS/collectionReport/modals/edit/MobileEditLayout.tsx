@@ -252,11 +252,10 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
                           })}
                         </p>
                         <span className="flex items-center gap-2">
-                          {machine.relayId && (
-                            <MachineOnlineStatusDot
-                              isOnline={machineStatusMap[String(machine._id)]}
-                            />
-                          )}
+                          <MachineOnlineStatusDot
+                            isOnline={machineStatusMap[String(machine._id)]}
+                            hasRelay={!!machine.relayId}
+                          />
                           <span className="text-xs text-gray-500">
                             Prev In: {machine.collectionMeters?.metersIn ?? 0} | Prev Out: {machine.collectionMeters?.metersOut ?? 0}
                           </span>
@@ -299,8 +298,17 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           onViewCollectedList={handleViewCollectedMachines}
           selectedMachineData={modalState.selectedMachineData}
           editingEntryId={modalState.editingEntryId}
-          formData={modalState.formData}
-          financials={modalState.financials}
+          formData={{
+            ...modalState.formData,
+            sasStartTime: modalState.formData.sasStartTime ? new Date(modalState.formData.sasStartTime) : null,
+            sasEndTime: modalState.formData.sasEndTime ? new Date(modalState.formData.sasEndTime) : null,
+          }}
+          financials={{
+            ...modalState.financials,
+            varianceReason: modalState.financials.varianceReason ?? '',
+            balanceCorrectionReason: modalState.financials.balanceCorrectionReason ?? '',
+            reasonForShortagePayment: modalState.financials.reasonForShortagePayment ?? '',
+          }}
           collectedMachinesCount={collectedMachines.length}
           isProcessing={modalState.isProcessing}
           inputsEnabled={inputsEnabled}
@@ -348,6 +356,11 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
           onCollectedAmountChange={onCollectedAmountChange}
           baseBalanceCorrection={baseBalanceCorrection}
           onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
+          machineIsOnline={
+            modalState.selectedMachineData
+              ? machineStatusMap[String(modalState.selectedMachineData._id)]
+              : undefined
+          }
         />
       )}
 

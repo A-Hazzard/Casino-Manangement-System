@@ -466,7 +466,7 @@ export default function CollectionReportDetailsPageContent() {
               <p className={`text-lg font-semibold`}>
                 Collection Report Machine Total Gross:{' '}
                 <span className={textColorClass}>
-                  ${locationTotal?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
+                  {locationTotal?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
                 </span>
               </p>
             </div>

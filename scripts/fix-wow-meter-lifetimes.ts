@@ -25,7 +25,7 @@
 import mongoose from 'mongoose';
 
 const MONGODB_URI = 
-  'mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-prod?authSource=admin';
+  'mongodb://sunny1:87ydaiuhdsia2e@147.182.133.136:27017/sas-tunapuna?authSource=admin';
 
 // ============================================================================
 // Types
@@ -196,7 +196,9 @@ async function applyFix(
       setDoc[field] = entry.after[field];
     }
   }
-  await metersCol.updateOne({ _id: entry.meterId }, { $set: setDoc });
+  // Ensure the _id is an ObjectId when querying the Mongo collection
+  const id = typeof entry.meterId === 'string' ? new mongoose.Types.ObjectId(entry.meterId) : entry.meterId;
+  await metersCol.updateOne({ _id: id }, { $set: setDoc });
 }
 
 // ============================================================================

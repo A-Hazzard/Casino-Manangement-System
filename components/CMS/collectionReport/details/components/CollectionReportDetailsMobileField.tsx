@@ -8,6 +8,8 @@
 'use client';
 
 import { FC, ReactNode } from 'react';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 
 type CollectionReportDetailsMobileFieldProps = {
   label: string;
@@ -21,6 +23,11 @@ export const CollectionReportDetailsMobileField: FC<
   CollectionReportDetailsMobileFieldProps
 > = ({ label, value, isCurrency = false, isBold = false, className = '' }) => {
   // ============================================================================
+  // Currency
+  // ============================================================================
+  const { displayCurrency } = useCurrencyFormat();
+
+  // ============================================================================
   // Render
   // ============================================================================
   return (
@@ -32,7 +39,7 @@ export const CollectionReportDetailsMobileField: FC<
         className={`mt-0.5 font-medium ${isBold ? 'font-bold' : ''} ${className}`}
       >
         {isCurrency
-          ? `$${(value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+          ? formatCurrencyWithCodeString(value as number ?? 0, displayCurrency)
           : value || '-'}
       </p>
     </div>

@@ -54,8 +54,8 @@ export default function CashierDashboardSkeleton() {
 
           {/* Quick Actions Grid Skeleton */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-24 w-full rounded-lg" />
+            {[1, 2, 3].map(index => (
+              <Skeleton key={index} className="h-24 w-full rounded-lg" />
             ))}
           </div>
         </div>
@@ -68,8 +68,8 @@ export default function CashierDashboardSkeleton() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex items-center gap-3">
+                {[1, 2, 3, 4, 5].map(index => (
+                  <div key={index} className="flex items-center gap-3">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div className="flex-1">
                       <Skeleton className="h-4 w-32" />

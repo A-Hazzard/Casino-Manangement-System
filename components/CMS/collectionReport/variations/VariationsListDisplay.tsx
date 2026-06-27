@@ -17,6 +17,8 @@
 
 import { format } from 'date-fns';
 import type { MachineVariationData } from '@/lib/types/api';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 
 type VariationsListDisplayProps = {
   machines: MachineVariationData[];
@@ -29,6 +31,11 @@ export function VariationsListDisplay({
   onMachineClick,
   isCompact = false,
 }: VariationsListDisplayProps) {
+  // ============================================================================
+  // Currency
+  // ============================================================================
+  const { displayCurrency } = useCurrencyFormat();
+
   // ============================================================================
   // Computed
   // ============================================================================
@@ -128,7 +135,7 @@ export function VariationsListDisplay({
                 Meter Gross
               </p>
               <p className="text-sm font-black text-gray-900">
-                ${formatNumber(machine.meterGross)}
+                {formatCurrencyWithCodeString(machine.meterGross ?? 0, displayCurrency)}
               </p>
             </div>
             <div className="space-y-0.5">
@@ -138,7 +145,7 @@ export function VariationsListDisplay({
               <p className="text-sm font-black text-gray-900">
                 {machine.sasGross === null
                   ? 'No SAS Data'
-                  : `$${formatNumber(machine.sasGross)}`}
+                  : formatCurrencyWithCodeString(machine.sasGross as number, displayCurrency)}
               </p>
             </div>
           </div>
@@ -207,12 +214,12 @@ export function VariationsListDisplay({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-gray-600">
-                    ${formatNumber(machine.meterGross)}
+                    {formatCurrencyWithCodeString(machine.meterGross ?? 0, displayCurrency)}
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-gray-600">
                     {machine.sasGross === null
                       ? 'No SAS Data'
-                      : `$${formatNumber(machine.sasGross)}`}
+                      : formatCurrencyWithCodeString(machine.sasGross as number, displayCurrency)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span

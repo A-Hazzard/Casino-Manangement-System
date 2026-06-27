@@ -167,16 +167,15 @@ export default function CabinetsDetailsSMIBManagementSection({
       transition={{ duration: 0.5, delay: 0.1 }}
     >
       {/* Header */}
-      <div className="flex w-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex w-full min-w-0 max-w-full flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
           <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
             SMIB Configuration
           </h2>
 
-          {/* Connection Status - Show only after config has been fetched */}
+          {/* Connection Status */}
           {hasConfigBeenFetched && (
             <>
-              {/* Show loading skeleton while fetching config */}
               {isManuallyFetching ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-20 animate-pulse rounded bg-gray-200"></div>
@@ -202,7 +201,7 @@ export default function CabinetsDetailsSMIBManagementSection({
             </>
           )}
 
-          {/* Edit Mode Buttons - Show only when section is expanded and in edit mode */}
+          {/* Edit Mode Buttons */}
           {smibConfigExpanded && isEditMode && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -230,8 +229,8 @@ export default function CabinetsDetailsSMIBManagementSection({
           )}
         </div>
 
-        {/* Right Side: Update Meters Button + Get Config Button + Toggle */}
-        <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+        {/* Action Buttons + Expand Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {canAccessSmibConfig && cabinet?.relayId && (
             <Button
               onClick={async () => {
@@ -239,53 +238,37 @@ export default function CabinetsDetailsSMIBManagementSection({
                 if (success) onRefresh?.();
               }}
               disabled={isUpdatingMeters}
-              className="w-full rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+              className="flex-1 sm:flex-none rounded-md bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
             >
               {isUpdatingMeters ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                  Updating...
-                </>
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
               ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Update Meters</span>
-                  <span className="sm:hidden">Update Meters</span>
-                </>
+                <RefreshCw className="h-4 w-4" />
               )}
+              <span className="ml-1.5 sm:hidden">Update</span>
+              <span className="ml-1.5 hidden sm:inline">Update Meters</span>
             </Button>
           )}
           {canAccessSmibConfig && (
             <Button
               onClick={() => cabinet && onFetchConfig(cabinet.relayId!)}
               disabled={isManuallyFetching}
-              className="w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-4 sm:text-sm"
+              className="flex-1 sm:flex-none rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
             >
               {isManuallyFetching ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                  Fetching...
-                </>
-              ) : hasConfigBeenFetched ? (
-                <>
-                  <span className="hidden sm:inline">
-                    Get New Configuration
-                  </span>
-                  <span className="sm:hidden">Get New Config</span>
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">
-                    Get SMIB Configuration
-                  </span>
-                  <span className="sm:hidden">Get SMIB Config</span>
-                </>
-              )}
+                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+              ) : null}
+              <span className="sm:hidden">
+                {isManuallyFetching ? 'Fetching...' : hasConfigBeenFetched ? 'New Config' : 'Get Config'}
+              </span>
+              <span className="hidden sm:inline">
+                {isManuallyFetching ? 'Fetching...' : hasConfigBeenFetched ? 'Get New Configuration' : 'Get SMIB Configuration'}
+              </span>
             </Button>
           )}
           {hasConfigBeenFetched && (
             <motion.div
-              className="cursor-pointer"
+              className="cursor-pointer flex-shrink-0"
               animate={{ rotate: smibConfigExpanded ? 180 : 0 }}
               transition={{ duration: 0.3 }}
               onClick={onToggleExpand}

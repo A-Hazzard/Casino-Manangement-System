@@ -211,10 +211,10 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
                     }
                     data-machine-id={String(machine._id)}
                     variant={
-                      selectedMachineId === machine._id
+                      selectedMachineId === String(machine._id)
                         ? 'secondary'
                         : collectedMachineEntries.find(
-                              e => e.machineId === machine._id
+                              e => e.machineId === String(machine._id)
                             )
                           ? 'default'
                           : 'outline'
@@ -271,11 +271,10 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
                     <span className="flex min-w-0 flex-col gap-1">
                       {formatMachineDisplayNameWithBold(machine)}
                       <span className="flex items-center gap-1.5">
-                        {machine.relayId && (
-                          <MachineOnlineStatusDot
-                            isOnline={machineStatusMap[String(machine._id)]}
-                          />
-                        )}
+                        <MachineOnlineStatusDot
+                          isOnline={machineStatusMap[String(machine._id)]}
+                          hasRelay={!!machine.relayId}
+                        />
                         {collectedMachineEntries.find(
                           e => e.machineId === machine._id
                         ) &&

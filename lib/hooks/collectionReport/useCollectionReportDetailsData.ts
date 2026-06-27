@@ -22,7 +22,7 @@ import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import { useRequestWithRetry } from '@/lib/hooks/data/useRequestWithRetry';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { validateCollectionReportData } from '@/lib/utils/validation';
+import { validateCollectionReportData } from '@/lib/utils/validation/collectionReports';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -56,9 +56,9 @@ const ATTEMPT_TIMEOUT_MS = 60000;
 function sortMachinesAlphabetically(
   machines: MachineMetric[]
 ): MachineMetric[] {
-  return [...machines].sort((a, b) => {
-    const nameA = (a.machineId || '').toString();
-    const nameB = (b.machineId || '').toString();
+  return [...machines].sort((machineA, machineB) => {
+    const nameA = (machineA.machineId || '').toString();
+    const nameB = (machineB.machineId || '').toString();
 
     const matchA = nameA.match(/^(.+?)(\d+)?$/);
     const matchB = nameB.match(/^(.+?)(\d+)?$/);
@@ -225,9 +225,9 @@ export function useCollectionReportDetailsData() {
         sorted = sorted.reverse();
       }
     } else {
-      sorted = [...metricsData].sort((a, b) => {
-        const aValue = a[sortField];
-        const bValue = b[sortField];
+      sorted = [...metricsData].sort((metricA, metricB) => {
+        const aValue = metricA[sortField];
+        const bValue = metricB[sortField];
 
         if (typeof aValue === 'number' && typeof bValue === 'number') {
           return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;

@@ -88,16 +88,16 @@ const CabinetDetailPageSkeleton = () => (
 
       {/* Desktop time period filters skeleton */}
       <div className="mb-4 hidden flex-wrap justify-center gap-2 lg:justify-end xl:flex">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-20 rounded-full" />
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-8 w-20 rounded-full" />
         ))}
       </div>
 
       {/* Mobile horizontal slider skeleton */}
       <div className="w-full touch-pan-x overflow-x-auto rounded-md p-2 pb-4 lg:hidden">
         <div className="flex min-w-max space-x-2 px-1 pb-1">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-24 rounded" />
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-8 w-24 rounded" />
           ))}
         </div>
       </div>
@@ -152,8 +152,8 @@ const CabinetDetailPageSkeleton = () => (
             <CardContent>
               {/* Metrics cards skeleton */}
               <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Card key={i}>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Card key={index}>
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         <Skeleton className="h-4 w-20" />
@@ -171,9 +171,9 @@ const CabinetDetailPageSkeleton = () => (
               {/* Table skeleton */}
               <div className="space-y-3">
                 <div className="h-12 animate-pulse rounded bg-gray-200" />
-                {Array.from({ length: 8 }).map((_, i) => (
+                {Array.from({ length: 8 }).map((_, index) => (
                   <div
-                    key={i}
+                    key={index}
                     className="h-14 animate-pulse rounded bg-gray-100"
                   />
                 ))}
@@ -226,9 +226,9 @@ export const MetricsSkeleton = () => (
     className="flex w-full max-w-full flex-wrap gap-3 md:gap-4"
     style={{ rowGap: '1rem' }}
   >
-    {[1, 2, 3, 4, 5].map(i => (
+    {[1, 2, 3, 4, 5].map(index => (
       <div
-        key={i}
+        key={index}
         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
       >
         <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
@@ -243,8 +243,8 @@ export const MetricsSkeleton = () => (
 
 export const LiveMetricsSkeleton = () => (
   <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
-    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-      <div key={i} className="rounded-lg bg-container p-4 shadow md:p-6">
+    {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
+      <div key={index} className="rounded-lg bg-container p-4 shadow md:p-6">
         <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
         <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>
         <div className="flex h-6 items-center justify-center">
@@ -257,9 +257,9 @@ export const LiveMetricsSkeleton = () => (
 
 export const ConfigurationsSkeleton = () => (
   <div className="flex w-full flex-col flex-wrap items-center gap-4 sm:flex-row sm:items-stretch sm:justify-start">
-    {[1, 2].map(i => (
+    {[1, 2].map(index => (
       <div
-        key={i}
+        key={index}
         className="flex w-64 max-w-full flex-col overflow-hidden rounded-lg shadow"
       >
         <div className="flex items-center justify-center bg-gray-400 p-3">
@@ -279,8 +279,8 @@ export const MetersTableSkeleton = () => (
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border bg-buttonInactive/50">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <th key={i} className="px-3 py-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <th key={index} className="px-3 py-2">
                 <Skeleton className="h-3 w-16" />
               </th>
             ))}

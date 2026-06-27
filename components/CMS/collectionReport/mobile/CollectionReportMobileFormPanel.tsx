@@ -72,6 +72,7 @@ type MobileFormPanelProps = {
   onBaseBalanceCorrectionChange: (value: string) => void;
   isManager?: boolean;
   isLoadingTime?: boolean;
+  machineIsOnline?: boolean;
 };
 
 /**
@@ -123,6 +124,7 @@ export default function CollectionReportMobileFormPanel({
   autoFillRamClearMeters,
   isManager = false,
   isLoadingTime = false,
+  machineIsOnline,
 }: MobileFormPanelProps) {
   // ============================================================================
   // Render
@@ -194,6 +196,8 @@ export default function CollectionReportMobileFormPanel({
                   selectedMachineData?.collectionMeters?.metersOut
                 }
                 onViewMachine={onViewMachine}
+                isOnline={machineIsOnline}
+                hasRelay={selectedMachineData?.relayId ? true : false}
                 metersIn={formData.metersIn}
                 metersOut={formData.metersOut}
                 ramClear={formData.ramClear}

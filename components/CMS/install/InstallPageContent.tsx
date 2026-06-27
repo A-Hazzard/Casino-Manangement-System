@@ -90,7 +90,7 @@ export default function InstallPageContent() {
         setStatus('error');
         setMessage(response.data.error || 'Installation failed.');
       }
-    } catch (error: unknown) {
+    } catch (error) {
       const err = error as {
         response?: { data?: { error?: string } };
         message?: string;

@@ -100,14 +100,6 @@ export function CollectionReportDetailsCollectionsTable({
         : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
-  // Universal format: $[Amount]. Collection reports are single-licencee,
-  // so amounts are already in the licencee's native currency.
-  const smartCurrency = (value: number | string): string => {
-    const numericValue = Number(value);
-    if (isNaN(numericValue)) return `$${smartNum(value)}`;
-    const sign = numericValue < 0 ? '-' : '';
-    return `${sign}$${smartNum(Math.abs(numericValue))}`;
-  };
 
   // Online/offline status — collect actualMachineId for each metric that has one
   const detailsMachineIds = useMemo(
@@ -286,7 +278,7 @@ export function CollectionReportDetailsCollectionsTable({
                 <TableCell
                   className={`px-4 py-4 font-medium ${Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}`}
                 >
-                  {smartCurrency(metric.metersGross ?? 0)}
+                  {smartNum(metric.metersGross ?? 0)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4">
@@ -309,7 +301,7 @@ export function CollectionReportDetailsCollectionsTable({
                           : 'text-green-600'
                       }`}
                     >
-                      {smartCurrency(metric.variation ?? 0)}
+                      {smartNum(metric.variation ?? 0)}
                     </span>
                   )}
                 </TableCell>
@@ -380,7 +372,7 @@ export function CollectionReportDetailsCollectionsTable({
                 />
                 <CollectionReportDetailsMobileField
                   label="Machine Gross"
-                  value={smartCurrency(metric.metersGross ?? 0)}
+                  value={smartNum(metric.metersGross ?? 0)}
                   className={
                     Number(metric.metersGross ?? 0) < 0
                       ? 'text-red-600'
@@ -408,13 +400,13 @@ export function CollectionReportDetailsCollectionsTable({
                     ) : metric.sasGross === 'No SAS Data' ? (
                       <span className="italic text-gray-500">No SAS Data</span>
                     ) : (
-                      smartCurrency(displaySasGross)
+                      smartNum(displaySasGross)
                     )}
                   </p>
                   {hasJackpotDeduction &&
                     metric.sasGross !== 'No SMIB for this Machine' && (
                       <p className="mt-0.5 text-[10px] text-amber-600">
-                        Jackpot: -{smartCurrency(jackpot)}
+                        Jackpot: -{smartNum(jackpot)}
                       </p>
                     )}
                 </div>
@@ -426,7 +418,7 @@ export function CollectionReportDetailsCollectionsTable({
                         No SMIB for this Machine
                       </span>
                     ) : (
-                      smartCurrency(metric.variation ?? 0)
+                      smartNum(metric.variation ?? 0)
                     )
                   }
                   isBold

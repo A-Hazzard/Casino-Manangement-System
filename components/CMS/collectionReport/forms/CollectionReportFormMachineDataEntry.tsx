@@ -55,6 +55,8 @@ type MachineDataEntryFormProps = {
   isWow?: boolean;
   includeJackpot?: boolean;
   jackpot?: number;
+  isOnline?: boolean;
+  hasRelay?: boolean;
 };
 
 /**
@@ -99,6 +101,8 @@ export default function CollectionReportFormMachineDataEntry({
   isWow = false,
   includeJackpot = false,
   jackpot = 0,
+  isOnline,
+  hasRelay,
 }: MachineDataEntryFormProps) {
   // ============================================================================
   // Computed
@@ -131,6 +135,8 @@ export default function CollectionReportFormMachineDataEntry({
         currentMetersIn={currentMetersIn}
         currentMetersOut={currentMetersOut}
         onViewMachine={onViewMachine}
+        isOnline={isOnline}
+        hasRelay={hasRelay}
       />
 
       {/* Collection Time */}

@@ -631,7 +631,8 @@ export default function ReportsMachinesTab() {
             : null,
           activeMetricsFilter || 'Today',
           format,
-          toast
+          toast,
+          displayCurrency
         );
       } else {
         await handleExportMetersHelper(
@@ -641,7 +642,8 @@ export default function ReportsMachinesTab() {
           activeMetricsFilter,
           customDateRange,
           format,
-          toast
+          toast,
+          displayCurrency
         );
       }
     },

@@ -20,7 +20,7 @@ import type { Country, Licencee } from '@/lib/types/common';
 import {
   validatePasswordStrength,
   getPasswordStrengthLabel,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/password';
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
 

@@ -11,7 +11,10 @@
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Meters } from '@/app/api/lib/models/meters';
+import {
+  loadSupplementalMeterFields,
+  upsertCollectionReportMeters,
+} from '@/app/api/lib/helpers/collectionReportV2/meterDocuments';
 import { generateMongoId } from '@/lib/utils/id';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import {
@@ -25,7 +28,6 @@ import {
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type { NextRequest } from 'next/server';
-import type { MeterDocument } from '@/shared/types';
 
 // ============================================================================
 // Types
@@ -707,213 +709,33 @@ async function createMeterDocuments(
   sessionEndTime: Date,
   existingHistoryEntry: CollectionMetersHistoryEntry | undefined
 ): Promise<void> {
-  const prevIn =
-    existingHistoryEntry?.prevMetersIn ?? machineData.prevSasMetersIn ?? 0;
-  const prevOut =
-    existingHistoryEntry?.prevMetersOut ?? machineData.prevSasMetersOut ?? 0;
-
-  // Use replaceOne with upsert instead of deleteMany+create for idempotency.
-  // Concurrent calls with the same machine+session target the same document
-  // atomically — no duplicate meters possible.
-
   const baseReadAt = machineData.sasEndTime ?? sessionEndTime;
-  const isRamClear =
-    machineData.ramClear === true &&
-    machineData.ramClearMetersIn !== undefined &&
-    machineData.ramClearMetersOut !== undefined;
+  const supplementalFields =
+    machineData.isSupplemental === true
+      ? await loadSupplementalMeterFields(
+          machineData.machineId,
+          sessionId,
+          baseReadAt
+        )
+      : undefined;
 
-  let prevMeterDoc: MeterDocument | null = null;
-  if (machineData.isSupplemental === true) {
-    prevMeterDoc = await Meters.findOne({
-      machine: machineData.machineId,
-      locationSession: { $ne: sessionId },
-      readAt: { $lt: baseReadAt },
-      $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-    })
-      .sort({ readAt: -1 })
-      .lean<MeterDocument>();
-  }
-
-  const supplementalCoinIn =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.coinIn || 0
-      : 0;
-  const supplementalCoinOut =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.coinOut || 0
-      : 0;
-  const supplementalHandPaid =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.totalHandPaidCancelledCredits || 0
-      : 0;
-  const supplementalWonCredits =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.totalWonCredits || 0
-      : 0;
-  const supplementalJackpot =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.jackpot || 0
-      : 0;
-  const supplementalCurrentCredits =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.currentCredits || 0
-      : 0;
-  const supplementalGamesPlayed =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.gamesPlayed || 0
-      : 0;
-  const supplementalGamesWon =
-    machineData.isSupplemental === true && prevMeterDoc
-      ? prevMeterDoc.gamesWon || 0
-      : 0;
-
-  if (isRamClear) {
-    const ramClearFilter = {
-      machine: machineData.machineId,
-      locationSession: sessionId,
-      isRamClear: true as const,
-    };
-    const ramClearMeterDoc = {
-      machine: machineData.machineId,
-      location: meterLocationId,
-      locationSession: sessionId,
-      isRamClear: true,
-      movement: {
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits:
-          (machineData.ramClearMetersOut as number) - prevOut,
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: (machineData.ramClearMetersIn as number) - prevIn,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-      },
-      coinIn: supplementalCoinIn,
-      coinOut: supplementalCoinOut,
-      totalCancelledCredits: machineData.ramClearMetersOut as number,
-      totalHandPaidCancelledCredits: supplementalHandPaid,
-      totalWonCredits: supplementalWonCredits,
-      drop: machineData.ramClearMetersIn as number,
-      jackpot: supplementalJackpot,
-      currentCredits: supplementalCurrentCredits,
-      gamesPlayed: supplementalGamesPlayed,
-      gamesWon: supplementalGamesWon,
-      meterSource: 'COLLECTION_REPORT' as const,
-      isSupplemental: machineData.isSupplemental === true,
-      readAt: new Date(
-        (baseReadAt instanceof Date
-          ? baseReadAt
-          : new Date(baseReadAt)
-        ).getTime() - 1000
-      ),
-      createdAt: new Date(),
-    };
-
-    await Meters.replaceOne(ramClearFilter, ramClearMeterDoc, {
-      upsert: true,
-    }).catch(meterCreateError => {
-      console.error(
-        `[submit] Failed to upsert RAM-clear Meter for machine ${machineData.machineId}:`,
-        meterCreateError
-      );
-    });
-
-    const currentFilter = {
-      machine: machineData.machineId,
-      locationSession: sessionId,
-      isRamClear: false as const,
-    };
-    const currentMeterDoc = {
-      machine: machineData.machineId,
-      location: meterLocationId,
-      locationSession: sessionId,
-      isRamClear: false,
-      movement: {
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits: machineData.manualMetersOut ?? 0,
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: machineData.manualMetersIn ?? 0,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-      },
-      coinIn: 0,
-      coinOut: 0,
-      totalCancelledCredits: machineData.manualMetersOut ?? null,
-      totalHandPaidCancelledCredits: 0,
-      totalWonCredits: 0,
-      drop: machineData.manualMetersIn ?? null,
-      jackpot: 0,
-      currentCredits: 0,
-      gamesPlayed: 0,
-      gamesWon: 0,
-      meterSource: 'COLLECTION_REPORT' as const,
-      isSupplemental: machineData.isSupplemental === true,
-      readAt: baseReadAt,
-      createdAt: new Date(new Date().getTime() + 1000),
-    };
-
-    await Meters.replaceOne(currentFilter, currentMeterDoc, {
-      upsert: true,
-    }).catch(meterCreateError => {
-      console.error(
-        `[submit] Failed to upsert post-RAM-clear Meter for machine ${machineData.machineId}:`,
-        meterCreateError
-      );
-    });
-  } else {
-    const meterFilter = {
-      machine: machineData.machineId,
-      locationSession: sessionId,
-      isRamClear: false as const,
-    };
-    const meterDoc = {
-      machine: machineData.machineId,
-      location: meterLocationId,
-      locationSession: sessionId,
-      movement: {
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits: (machineData.manualMetersOut ?? 0) - prevOut,
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: (machineData.manualMetersIn ?? 0) - prevIn,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-      },
-      coinIn: supplementalCoinIn,
-      coinOut: supplementalCoinOut,
-      totalCancelledCredits: machineData.manualMetersOut ?? null,
-      totalHandPaidCancelledCredits: supplementalHandPaid,
-      totalWonCredits: supplementalWonCredits,
-      drop: machineData.manualMetersIn ?? null,
-      jackpot: supplementalJackpot,
-      currentCredits: supplementalCurrentCredits,
-      gamesPlayed: supplementalGamesPlayed,
-      gamesWon: supplementalGamesWon,
-      meterSource: 'COLLECTION_REPORT' as const,
-      isSupplemental: machineData.isSupplemental === true,
-      readAt: baseReadAt,
-      createdAt: new Date(),
-    };
-
-    await Meters.replaceOne(meterFilter, meterDoc, {
-      upsert: true,
-    }).catch(meterCreateError => {
-      console.error(
-        `[submit] Failed to upsert Meter document for machine ${machineData.machineId}:`,
-        meterCreateError
-      );
-    });
-  }
+  await upsertCollectionReportMeters({
+    machineId: machineData.machineId,
+    locationId: meterLocationId,
+    sessionId,
+    readAt: baseReadAt,
+    manualMetersIn: machineData.manualMetersIn,
+    manualMetersOut: machineData.manualMetersOut,
+    historyEntry: existingHistoryEntry,
+    prevSasMetersIn: machineData.prevSasMetersIn,
+    prevSasMetersOut: machineData.prevSasMetersOut,
+    ramClear: machineData.ramClear,
+    ramClearMetersIn: machineData.ramClearMetersIn,
+    ramClearMetersOut: machineData.ramClearMetersOut,
+    isSupplemental: machineData.isSupplemental,
+    supplementalFields,
+    logContext: 'submit',
+  });
 }
 
 // ============================================================================

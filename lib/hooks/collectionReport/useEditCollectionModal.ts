@@ -2129,15 +2129,15 @@ export function useEditCollectionModal({
     };
     const starts = collectedMachineEntries
       .map(entry => toDate(entry.sasMeters?.sasStartTime))
-      .filter((t): t is Date => t !== null);
+      .filter((date): date is Date => date !== null);
     const ends = collectedMachineEntries
       .map(entry => toDate(entry.sasMeters?.sasEndTime))
-      .filter((t): t is Date => t !== null);
+      .filter((date): date is Date => date !== null);
     if (starts.length > 0) {
-      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(t => t.getTime()))));
+      setUpdateAllSasStartDate(new Date(Math.min(...starts.map(date => date.getTime()))));
     }
     if (ends.length > 0) {
-      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(t => t.getTime()))));
+      setUpdateAllSasEndDate(new Date(Math.max(...ends.map(date => date.getTime()))));
     }
   }, [collectedMachineEntries]);
 

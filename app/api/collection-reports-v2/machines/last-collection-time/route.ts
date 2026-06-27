@@ -117,6 +117,9 @@ export async function GET(request: NextRequest) {
     // STEP 5: Return response
     // ============================================================================
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[GET /api/collection-reports-v2/machines/last-collection-time] slow: ${duration}ms`);
+    }
     logRouteFetch(
       functionName,
       'GET',
@@ -138,17 +141,17 @@ export async function GET(request: NextRequest) {
         ? 'Last collection time found (V2)'
         : 'No previous submitted V2 collection found for this machine'
     );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Internal server error';
-      logRouteError(
-        functionName,
-        'GET',
-        '/api/collection-reports-v2/machines/last-collection-time',
-        message,
-        user
-      );
-      return createErrorResponse(message, 500);
-    }
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports-v2/machines/last-collection-time',
+      message,
+      user
+    );
+    return createErrorResponse(message, 500);
+  }
   });
 }

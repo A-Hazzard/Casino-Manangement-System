@@ -38,10 +38,10 @@ const eslintConfig = [
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
-          argsIgnorePattern: '^_id$',
-          varsIgnorePattern: '^_id$',
-          caughtErrorsIgnorePattern: '^_id$',
-          destructuredArrayIgnorePattern: '^_id$',
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
         },
       ],
       'prefer-const': 'error',

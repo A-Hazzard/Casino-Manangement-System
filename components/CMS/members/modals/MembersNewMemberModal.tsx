@@ -28,14 +28,16 @@ import { Label } from '@/components/shared/ui/label';
 import { useDebounce } from '@/lib/utils/hooks';
 import {
   containsEmailPattern,
-  containsPhonePattern,
   isPlaceholderEmail,
   validateEmail,
+} from '@/lib/utils/validation/email';
+import {
+  containsPhonePattern,
   validateNameField,
   validatePhoneNumber,
   validateStreetAddress,
   validateUsername,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/members';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import axios from 'axios';
 import { gsap } from 'gsap';

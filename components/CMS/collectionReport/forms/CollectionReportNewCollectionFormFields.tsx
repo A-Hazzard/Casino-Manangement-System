@@ -55,6 +55,7 @@ import { Button } from '@/components/shared/ui/button';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
@@ -113,6 +114,8 @@ type NewCollectionFormFieldsProps = {
   isWow?: boolean;
   includeJackpot?: boolean;
   jackpot?: number;
+  machineIsOnline?: boolean;
+  machineHasRelay?: boolean;
 };
 
 export default function CollectionReportNewCollectionFormFields({
@@ -157,6 +160,8 @@ export default function CollectionReportNewCollectionFormFields({
   isWow = false,
   includeJackpot = false,
   jackpot = 0,
+  machineIsOnline,
+  machineHasRelay,
 }: NewCollectionFormFieldsProps) {
   // ============================================================================
   // Render
@@ -173,11 +178,19 @@ export default function CollectionReportNewCollectionFormFields({
 
       {/* Selected Machine Display & Quick-View Link */}
       <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
-        <span className="text-sm font-medium">
-          {machineForDataEntry
-            ? formatMachineDisplayNameWithBold(machineForDataEntry)
-            : 'Select a machine to edit'}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium">
+            {machineForDataEntry
+              ? formatMachineDisplayNameWithBold(machineForDataEntry)
+              : 'Select a machine to edit'}
+          </span>
+          {machineForDataEntry && (
+            <MachineOnlineStatusDot
+              isOnline={machineIsOnline}
+              hasRelay={machineHasRelay}
+            />
+          )}
+        </div>
         {machineForDataEntry && (
           <button
             type="button"

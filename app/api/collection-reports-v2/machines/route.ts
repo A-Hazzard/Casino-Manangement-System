@@ -25,7 +25,7 @@
  * @module app/api/collection-reports-v2/machines/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import {
   extractUserFromRequest,
@@ -33,7 +33,6 @@ import {
   logRouteUpdate,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { generateMongoId } from '@/lib/utils/id';
 import { computeMovement } from '@/app/api/lib/helpers/collectionReportV2/movement';
@@ -61,25 +60,10 @@ export async function POST(req: NextRequest) {
   const functionName = 'POST /api/collection-reports-v2/machines';
   const user = extractUserFromRequest(req);
 
-  try {
+  return withApiAuth(req, async ({ user: userPayload }) => {
+    try {
     // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Parse and validate request body
+    // STEP 1: Parse and validate request body
     // ============================================================================
     const body = (await req.json()) as CaptureMachinePayload;
     const parsed = validateCapturePayload(body);
@@ -175,18 +159,22 @@ export async function POST(req: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[POST /api/collection-reports-v2/machines] slow: ${duration}ms`);
+    }
     logRouteCreate(functionName, 'POST', '/api/collection-reports-v2/machines', 1, user, duration);
 
     return NextResponse.json({ success: true, data: doc });
-  } catch (error) {
+  } catch (e) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
+      e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'POST', '/api/collection-reports-v2/machines', errorMessage, user);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
     );
   }
+  });
 }
 
 // ============================================================================
@@ -198,22 +186,8 @@ export async function PATCH(req: NextRequest) {
   const functionName = 'PATCH /api/collection-reports-v2/machines';
   const user = extractUserFromRequest(req);
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  return withApiAuth(req, async ({ user: userPayload }) => {
+    try {
 
     // ============================================================================
     // STEP 3: Parse ID and request body
@@ -351,6 +325,9 @@ export async function PATCH(req: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[PATCH /api/collection-reports-v2/machines] slow: ${duration}ms`);
+    }
     logRouteUpdate(
       functionName,
       'PATCH',
@@ -361,13 +338,14 @@ export async function PATCH(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true, data: result });
-  } catch (error) {
+  } catch (e) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
+      e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'PATCH', '/api/collection-reports-v2/machines', errorMessage, user);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
     );
   }
+  });
 }

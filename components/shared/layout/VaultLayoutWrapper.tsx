@@ -33,7 +33,7 @@ import {
   hasCmsAccess,
   isCashierOnly,
   isVaultManagerOnly,
-} from '@/lib/utils/permissions/client';
+} from '@/lib/utils/permissions/roleChecks';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
 

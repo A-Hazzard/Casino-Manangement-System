@@ -6,6 +6,8 @@
  *
  * Used by Playwright's auth fixture so tests receive a properly signed
  * token that the Next.js middleware (proxy.ts) will accept.
+ *
+ * @module app/api/e2e/auth/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -122,9 +122,9 @@ export function useAdministrationLicencees({
       (licencee.name || '').toLowerCase().includes(searchLower)
     );
 
-    return filtered.sort((a, b) => {
-      const aName = (a.name || '').toLowerCase();
-      const bName = (b.name || '').toLowerCase();
+    return filtered.sort((licenceeA, licenceeB) => {
+      const aName = (licenceeA.name || '').toLowerCase();
+      const bName = (licenceeB.name || '').toLowerCase();
 
       const aStarts = aName.startsWith(searchLower) ? 1 : 0;
       const bStarts = bName.startsWith(searchLower) ? 1 : 0;

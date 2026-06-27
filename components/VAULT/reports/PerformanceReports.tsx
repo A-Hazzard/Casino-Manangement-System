@@ -28,6 +28,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { TrendingUp, Users, Clock, DollarSign } from 'lucide-react';
 
 // Mock performance data
@@ -85,6 +86,7 @@ export default function PerformanceReports() {
   const [selectedMetric, setSelectedMetric] = useState<
     'cashier' | 'vault' | 'monthly'
   >('cashier');
+  const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // Render
@@ -200,7 +202,7 @@ export default function PerformanceReports() {
                       <YAxis />
                       <Tooltip
                         formatter={value => [
-                          `$${Number(value).toLocaleString()}`,
+                          `${displayCurrency} ${Number(value).toLocaleString('en-US')}`,
                           '',
                         ]}
                       />
@@ -242,21 +244,21 @@ export default function PerformanceReports() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Total Revenue</span>
-                <span className="text-sm font-semibold text-green-600">
-                  $490,000
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Payouts</span>
-                <span className="text-sm font-semibold text-red-600">
-                  $420,000
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Net Profit</span>
-                <span className="text-sm font-semibold text-blue-600">
-                  $70,000
-                </span>
+                  <span className="text-sm font-semibold text-green-600">
+                    {displayCurrency} 490,000
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Total Payouts</span>
+                  <span className="text-sm font-semibold text-red-600">
+                    {displayCurrency} 420,000
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Net Profit</span>
+                  <span className="text-sm font-semibold text-blue-600">
+                    {displayCurrency} 70,000
+                  </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Profit Margin</span>

@@ -270,6 +270,11 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
               onCancelEdit={handleCancelEdit}
               onDisabledFieldClick={() => handleDisabledFieldClick()}
               onViewMachine={() => setShowViewMachineConfirmation(true)}
+              machineIsOnline={
+                machineForDataEntry
+                  ? desktopMachineStatusMap[String(machineForDataEntry._id)]
+                  : undefined
+              }
             />
 
             <CollectionReportEditFinancials

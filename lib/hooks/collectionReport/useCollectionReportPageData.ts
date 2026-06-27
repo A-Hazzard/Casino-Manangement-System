@@ -245,14 +245,14 @@ export function useCollectionReportPageData() {
       const editableIds = new Set<string>();
 
       Object.keys(reportsByLocation).forEach(loc => {
-        const sorted = [...reportsByLocation[loc]].sort((a, b) => {
+        const sorted = [...reportsByLocation[loc]].sort((reportA, reportB) => {
           const aTime = parse(
-            a.time || '',
+            reportA.time || '',
             'dd LLL yyyy, hh:mm:ss a',
             new Date()
           ).getTime();
           const bTime = parse(
-            b.time || '',
+            reportB.time || '',
             'dd LLL yyyy, hh:mm:ss a',
             new Date()
           ).getTime();

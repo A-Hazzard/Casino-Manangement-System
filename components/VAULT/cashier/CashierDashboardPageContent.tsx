@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/cabinetList';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';

@@ -6,7 +6,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import { Edit3, Trash2, Search, Info, CheckSquare } from 'lucide-react';
+import { Edit3, Trash2, Search, Info, CheckSquare, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { CollectionReportDetailsJackpotIndicator } from '@/components/CMS/collectionReport/details/components/CollectionReportDetailsIndicators';
 
 type NewCollectionCollectedMachinesProps = {
@@ -45,6 +45,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
   includeJackpotMap = {},
 }: NewCollectionCollectedMachinesProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [sasExpanded, setSasExpanded] = useState(false);
 
   const filteredEntries = useMemo(() => {
     const reversed = collectedMachineEntries.slice().reverse();
@@ -110,83 +111,65 @@ export default function CollectionReportNewCollectionCollectedMachines({
         </div>
       )}
 
-      {/* Update All SAS Times */}
+      {/* Update All SAS Times — collapsible to keep list visible */}
       {collectedMachineEntries.length >= 1 &&
         setUpdateAllSasStartDate &&
         setUpdateAllSasEndDate &&
         onApplyAllDates && (
-          <div className="space-y-2 border-b border-gray-300 bg-blue-50 p-3">
-            <label className="block text-xs font-semibold text-gray-700">
-              Update All SAS Times
-            </label>
-            <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-600">
-                Start Time
-              </label>
-              <div className="w-full min-w-0">
-                <ModernCalendar
-                  date={
-                    updateAllSasStartDate
-                      ? { from: updateAllSasStartDate, to: updateAllSasStartDate }
-                      : undefined
-                  }
-                  onSelect={range => {
-                    if (range?.from) {
-                      setUpdateAllSasStartDate(range.from);
-                    } else {
-                      setUpdateAllSasStartDate(undefined);
-                    }
-                  }}
-                  enableTimeInputs={true}
-                  mode="single"
-                  className="w-full min-w-0"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-medium text-gray-600">
-                End Time
-              </label>
-              <div className="w-full min-w-0">
-                <ModernCalendar
-                  date={
-                    updateAllSasEndDate
-                      ? { from: updateAllSasEndDate, to: updateAllSasEndDate }
-                      : undefined
-                  }
-                  onSelect={range => {
-                    if (range?.from) {
-                      setUpdateAllSasEndDate(range.from);
-                    } else {
-                      setUpdateAllSasEndDate(undefined);
-                    }
-                  }}
-                  enableTimeInputs={true}
-                  mode="single"
-                  className="w-full min-w-0"
-                />
-              </div>
-            </div>
-            <Button
-              onClick={onApplyAllDates}
-              disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
-              className="mt-1 w-full bg-blue-600 text-xs hover:bg-blue-700"
-              size="sm"
+          <div className="border-b border-gray-200">
+            <button
+              onClick={() => setSasExpanded(prev => !prev)}
+              className="flex w-full items-center gap-2 bg-blue-50 px-3 py-2 text-left transition-colors hover:bg-blue-100"
             >
-              {isProcessing ? 'Updating...' : 'Update All Times'}
-            </Button>
-            {sasUpdateProgress && (
-              <div className="mt-1 space-y-1">
-                <div className="flex items-center justify-between text-[9px] font-semibold text-blue-700">
-                  <span>{sasUpdateProgress.completed}/{sasUpdateProgress.total}</span>
-                  <span>{Math.round((sasUpdateProgress.completed / sasUpdateProgress.total) * 100)}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-200">
-                  <div
-                    className="h-full rounded-full bg-blue-600 transition-all duration-200"
-                    style={{ width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%` }}
+              <Clock className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+              <span className="flex-1 text-[11px] font-semibold text-blue-700">Update All SAS Times</span>
+              {sasUpdateProgress && (
+                <span className="text-[10px] font-bold text-blue-600">
+                  {sasUpdateProgress.completed}/{sasUpdateProgress.total}
+                </span>
+              )}
+              {sasExpanded
+                ? <ChevronDown className="h-3.5 w-3.5 text-blue-500" />
+                : <ChevronRight className="h-3.5 w-3.5 text-blue-400" />
+              }
+            </button>
+
+            {sasExpanded && (
+              <div className="space-y-2 bg-blue-50/60 p-3">
+                <div>
+                  <label className="mb-0.5 block text-[9px] font-medium text-gray-500">Start Time</label>
+                  <ModernCalendar
+                    date={updateAllSasStartDate ? { from: updateAllSasStartDate, to: updateAllSasStartDate } : undefined}
+                    onSelect={range => { if (range?.from) setUpdateAllSasStartDate(range.from); else setUpdateAllSasStartDate(undefined); }}
+                    enableTimeInputs={true} mode="single" className="w-full min-w-0"
                   />
                 </div>
+                <div>
+                  <label className="mb-0.5 block text-[9px] font-medium text-gray-500">End Time</label>
+                  <ModernCalendar
+                    date={updateAllSasEndDate ? { from: updateAllSasEndDate, to: updateAllSasEndDate } : undefined}
+                    onSelect={range => { if (range?.from) setUpdateAllSasEndDate(range.from); else setUpdateAllSasEndDate(undefined); }}
+                    enableTimeInputs={true} mode="single" className="w-full min-w-0"
+                  />
+                </div>
+                <Button
+                  onClick={onApplyAllDates}
+                  disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
+                  className="h-8 w-full bg-blue-600 text-[10px] font-bold hover:bg-blue-700" size="sm"
+                >
+                  {isProcessing ? 'Updating...' : 'APPLY TIMES TO ALL'}
+                </Button>
+                {sasUpdateProgress && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[9px] font-semibold text-blue-700">
+                      <span>{sasUpdateProgress.completed}/{sasUpdateProgress.total}</span>
+                      <span>{Math.round((sasUpdateProgress.completed / sasUpdateProgress.total) * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-200">
+                      <div className="h-full rounded-full bg-blue-600 transition-all duration-200" style={{ width: `${(sasUpdateProgress.completed / sasUpdateProgress.total) * 100}%` }} />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -208,7 +191,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
         </div>
       )}
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {collectedMachineEntries.length === 0 ? (
           <p className="py-10 text-center text-xs text-gray-500">No machines collected yet.</p>
         ) : filteredEntries.length === 0 ? (
@@ -217,71 +200,100 @@ export default function CollectionReportNewCollectionCollectedMachines({
           filteredEntries.map((entry, index) => {
             const hasVariation = variationMachineIds.some(vid => String(vid) === String(entry.machineId));
             const isSelected = selectedIds.includes(String(entry._id));
+            const displayIn = entry.ramClear ? (entry.movement?.metersIn ?? entry.metersIn) : entry.metersIn;
+            const displayOut = entry.ramClear ? (entry.movement?.metersOut ?? entry.metersOut) : entry.metersOut;
             return (
               <div
                 key={entry._id ? String(entry._id) : `entry-${index}-${entry.machineCustomName || entry.machineId || 'unknown'}`}
-                className={`space-y-1 rounded-md border p-3 shadow transition-colors ${
+                className={`rounded-lg border transition-colors ${
                   isSelected
-                    ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-400'
+                    ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-300'
                     : hasVariation
-                      ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400'
+                      ? 'border-amber-300 bg-amber-50 ring-1 ring-amber-300'
                       : 'border-gray-200 bg-white'
                 }`}
               >
-                <div className="flex items-start justify-between gap-1">
-                  <div className="flex items-start gap-2">
-                    {onToggleSelect && (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => onToggleSelect(String(entry._id))}
-                        className="mt-0.5 h-3.5 w-3.5 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    )}
-                    <p className={`break-words text-sm font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-primary'}`}>
-                      {formatMachineDisplayNameWithBold({
-                        serialNumber: entry.serialNumber,
-                        custom: { name: entry.machineCustomName },
-                        game: entry.game,
-                      })}
-                    </p>
-                  </div>
+                {/* Header: checkbox · name · badges · actions */}
+                <div className="flex items-center gap-2 px-3 py-2">
+                  {onToggleSelect && (
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onToggleSelect(String(entry._id))}
+                      className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  )}
+                  <p className={`min-w-0 flex-1 truncate text-xs font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
+                    {formatMachineDisplayNameWithBold({
+                      serialNumber: entry.serialNumber,
+                      custom: { name: entry.machineCustomName },
+                      game: entry.game,
+                    })}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1">
                     {hasVariation && (
-                      <div className="flex shrink-0 items-center gap-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black uppercase text-white shadow-sm">
-                        <Info className="h-2 w-2" />
-                        Variation
-                      </div>
+                      <span className="flex items-center gap-0.5 rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">
+                        <Info className="h-2.5 w-2.5" />
+                        Var
+                      </span>
                     )}
                     {includeJackpotMap[String(entry.machineId)] && (
                       <CollectionReportDetailsJackpotIndicator />
                     )}
+                    {entry.ramClear && (
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-red-700">
+                        RAM
+                      </span>
+                    )}
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={() => onEditEntry(String(entry._id))}
+                      disabled={isProcessing}
+                    >
+                      <Edit3 className="h-3.5 w-3.5 text-blue-500" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon"
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                      onClick={() => onDeleteEntry(String(entry._id))}
+                      disabled={isProcessing}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    </Button>
                   </div>
-                {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
-                  <p className={`text-xs ${hasVariation ? 'font-medium text-amber-700' : 'text-gray-600'}`}>
-                    Time: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
-                  </p>
-                ) : (
-                  <p className="text-xs italic text-gray-500">Time: Not Set</p>
-                )}
-                <p className={`text-xs ${hasVariation ? 'text-amber-800' : 'text-gray-600'}`}>
-                  Meters In: {entry.ramClear ? entry.movement?.metersIn || entry.metersIn : entry.metersIn} | Meters Out: {entry.ramClear ? entry.movement?.metersOut || entry.metersOut : entry.metersOut}
-                </p>
-                {entry.notes && <p className={`text-xs italic ${hasVariation ? 'text-amber-700' : 'text-gray-600'}`}>Notes: {entry.notes}</p>}
-                {entry.ramClear && <p className="text-xs font-semibold text-red-600">RAM Clear: Enabled</p>}
-                <div className="flex justify-end gap-1 pt-1">
-                  <Button
-                    variant="ghost" size="icon" className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
-                    onClick={() => onEditEntry(String(entry._id))} disabled={isProcessing}
-                  >
-                    <Edit3 className={`h-3.5 w-3.5 ${hasVariation ? 'text-amber-700' : 'text-blue-600'}`} />
-                  </Button>
-                  <Button
-                    variant="ghost" size="icon" className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
-                    onClick={() => onDeleteEntry(String(entry._id))} disabled={isProcessing}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                  </Button>
                 </div>
+
+                {/* Stats row */}
+                <div className={`flex items-center gap-3 border-t px-3 py-1.5 text-[11px] ${hasVariation ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 bg-gray-50'}`}>
+                  <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
+                    In: <span className="text-green-700">{displayIn?.toLocaleString()}</span>
+                  </span>
+                  <span className="text-gray-300">|</span>
+                  <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
+                    Out: <span className="text-red-600">{displayOut?.toLocaleString()}</span>
+                  </span>
+                  {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <span className={`truncate ${hasVariation ? 'text-amber-700' : 'text-gray-500'}`}>
+                        {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <span className="italic text-gray-400">No time set</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Notes (only if present) */}
+                {entry.notes && (
+                  <div className={`border-t px-3 py-1 text-[11px] italic ${hasVariation ? 'border-amber-200 text-amber-700' : 'border-gray-100 text-gray-500'}`}>
+                    {entry.notes}
+                  </div>
+                )}
               </div>
             );
           })

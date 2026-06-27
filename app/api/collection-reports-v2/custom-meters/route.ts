@@ -13,6 +13,8 @@ import { Meters } from '@/app/api/lib/models/meters';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+
   return withApiAuth(req, async () => {
     try {
       // ============================================================================
@@ -54,6 +56,10 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 3: Return data
       // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[GET /api/collection-reports-v2/custom-meters] slow: ${duration}ms`);
+      }
       return NextResponse.json({ success: true, data });
     } catch (error) {
       const errorMessage =

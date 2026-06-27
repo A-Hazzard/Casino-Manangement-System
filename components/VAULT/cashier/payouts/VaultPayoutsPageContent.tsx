@@ -21,7 +21,7 @@ import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactio
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/cabinetList';
 import { useCashierShift } from '@/lib/hooks/useCashierShift';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';

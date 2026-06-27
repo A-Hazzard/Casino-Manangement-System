@@ -24,7 +24,7 @@ import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSele
 import { SMIBManagementSkeleton } from '@/components/shared/ui/skeletons/SMIBManagementSkeleton';
 import { SMIBSearchSelect } from '@/components/shared/ui/smib/SMIBSearchSelect';
 import { useSMIBDiscovery } from '@/lib/hooks/data/useSMIBDiscovery';
-import { useSmibConfiguration } from '@/lib/hooks/data/useSmibConfiguration';
+import { useSmibConfiguration } from '@/lib/hooks/cabinets/useSmibConfiguration';
 import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
 import { AlertTriangle, RefreshCw, Server } from 'lucide-react';

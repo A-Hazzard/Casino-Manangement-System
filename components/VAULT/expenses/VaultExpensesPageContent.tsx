@@ -61,6 +61,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -96,6 +98,7 @@ export default function VaultExpensesPageContent() {
     useUserStore();
   const locationId = user?.assignedLocations?.[0] || '';
   const { vaultBalance } = useVaultShift();
+  const { displayCurrency } = useCurrencyFormat();
 
   const [expenses, setExpenses] = useState<VaultTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,7 +241,7 @@ export default function VaultExpensesPageContent() {
       const response = await axios.post('/api/vault/expense', formData);
 
       if (response.data.success) {
-        toast.success(`Expense recorded: $${data.amount.toFixed(2)}`);
+        toast.success(`Expense recorded: ${formatCurrencyWithCodeString(data.amount, displayCurrency)}`);
         fetchExpenses();
       }
     } catch (error) {
@@ -335,7 +338,7 @@ export default function VaultExpensesPageContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${summary.today.toFixed(2)}
+                    {formatCurrencyWithCodeString(summary.today, displayCurrency)}
                   </div>
                 </CardContent>
               </Card>
@@ -348,7 +351,7 @@ export default function VaultExpensesPageContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${summary.thisWeek.toFixed(2)}
+                    {formatCurrencyWithCodeString(summary.thisWeek, displayCurrency)}
                   </div>
                 </CardContent>
               </Card>
@@ -361,7 +364,7 @@ export default function VaultExpensesPageContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${summary.thisMonth.toFixed(2)}
+                    {formatCurrencyWithCodeString(summary.thisMonth, displayCurrency)}
                   </div>
                 </CardContent>
               </Card>
@@ -474,7 +477,7 @@ export default function VaultExpensesPageContent() {
                                 </div>
                               </TableCell>
                               <TableCell className="text-right font-medium text-red-600">
-                                -${expense.amount.toFixed(2)}
+                                {formatCurrencyWithCodeString(-Math.abs(expense.amount), displayCurrency)}
                               </TableCell>
                               <TableCell>
                                 {format(
@@ -522,7 +525,7 @@ export default function VaultExpensesPageContent() {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <span className="text-lg font-bold text-red-600">
-                                -${expense.amount.toFixed(2)}
+                                {formatCurrencyWithCodeString(-Math.abs(expense.amount), displayCurrency)}
                               </span>
                               <Button
                                 variant="ghost"

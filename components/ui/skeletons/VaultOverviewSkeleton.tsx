@@ -64,9 +64,9 @@ export default function VaultOverviewSkeleton() {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map(index => (
           <div
-            key={i}
+            key={index}
             className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
           >
             <div className="mb-4 flex items-center justify-between">
@@ -124,9 +124,9 @@ export default function VaultOverviewSkeleton() {
           <Skeleton className="h-4 w-32" />
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
             <div
-              key={i}
+              key={index}
               className="flex flex-col items-center justify-center space-y-2 rounded-lg border border-gray-100 p-3"
             >
               <Skeleton className="h-3 w-16" />
@@ -143,9 +143,9 @@ export default function VaultOverviewSkeleton() {
           <Skeleton className="h-7 w-40" />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
+          {[1, 2, 3, 4].map(index => (
             <div
-              key={i}
+              key={index}
               className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
             >
               <div className="mb-4 flex flex-row items-center justify-between">
@@ -171,8 +171,8 @@ export default function VaultOverviewSkeleton() {
       <div className="space-y-4">
         <Skeleton className="h-7 w-32" />
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Skeleton key={i} className="h-[70px] w-full" />
+          {[1, 2, 3, 4, 5, 6].map(index => (
+            <Skeleton key={index} className="h-[70px] w-full" />
           ))}
         </div>
       </div>
@@ -185,17 +185,17 @@ export default function VaultOverviewSkeleton() {
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 bg-gray-50/50 p-4">
             <div className="grid grid-cols-8 gap-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                <Skeleton key={i} className="h-4 w-full" />
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
+                <Skeleton key={index} className="h-4 w-full" />
               ))}
             </div>
           </div>
           <div className="divide-y divide-gray-200">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="p-4">
+            {[1, 2, 3, 4, 5].map(index => (
+              <div key={index} className="p-4">
                 <div className="grid grid-cols-8 gap-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(j => (
-                    <Skeleton key={j} className="h-4 w-full" />
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
+                    <Skeleton key={index} className="h-4 w-full" />
                   ))}
                 </div>
               </div>

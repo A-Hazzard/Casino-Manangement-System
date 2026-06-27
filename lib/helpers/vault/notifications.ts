@@ -6,6 +6,7 @@
  * @module lib/helpers/vault/notifications
  */
 
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import VaultNotificationModel, {
   type IVaultNotification,
   type NotificationStatus,
@@ -45,7 +46,7 @@ export async function createFloatRequestNotification(
     recipientId: vaultManagerId,
     recipientRole: 'vault-manager',
     title,
-    message: `${cashierName} has requested a ${floatRequest.type || 'float'} of TT$${floatRequest.requestedAmount.toFixed(2)}`,
+    message: `${cashierName} has requested a ${floatRequest.type || 'float'} of ${formatCurrencyWithCodeString(floatRequest.requestedAmount, 'TTD')}`,
     urgent: floatRequest.requestedAmount > 5000, // Mark large requests as urgent
     relatedEntityType: 'float_request',
     relatedEntityId: floatRequest._id,

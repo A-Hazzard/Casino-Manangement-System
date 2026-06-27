@@ -61,6 +61,9 @@ export async function GET(req: NextRequest) {
       // STEP 3: Return success response
       // ============================================================================
       const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[GET /api/manufacturers] slow: ${duration}ms`);
+      }
       logRouteFetch(
         functionName,
         'GET',

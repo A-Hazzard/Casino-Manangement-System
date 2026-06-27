@@ -99,13 +99,13 @@ export function useCollectionReportFilters({
       });
     }
 
-    return [...result].sort((a, b) => {
+    return [...result].sort((reportA, reportB) => {
       if (searchTerm.trim()) {
         const lowerSearch = searchTerm.trim().toLowerCase();
-        const aId = String(a.locationReportId || '').toLowerCase();
-        const bId = String(b.locationReportId || '').toLowerCase();
-        const aCollector = String(a.collector || '').toLowerCase();
-        const bCollector = String(b.collector || '').toLowerCase();
+        const aId = String(reportA.locationReportId || '').toLowerCase();
+        const bId = String(reportB.locationReportId || '').toLowerCase();
+        const aCollector = String(reportA.collector || '').toLowerCase();
+        const bCollector = String(reportB.collector || '').toLowerCase();
 
         const aStarts =
           aId.startsWith(lowerSearch) || aCollector.startsWith(lowerSearch);
@@ -116,8 +116,8 @@ export function useCollectionReportFilters({
         if (!aStarts && bStarts) return 1;
       }
 
-      const aValue = a[sortField];
-      const bValue = b[sortField];
+      const aValue = reportA[sortField];
+      const bValue = reportB[sortField];
 
       if (sortField === 'time') {
         const aTime = new Date(aValue as string).getTime();

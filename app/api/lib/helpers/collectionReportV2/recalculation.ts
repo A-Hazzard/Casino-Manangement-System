@@ -10,8 +10,10 @@
  */
 
 import { Machine } from '@/app/api/lib/models/machines';
-
-import { Meters } from '@/app/api/lib/models/meters';
+import {
+  resolvePrevMeters,
+  upsertCollectionReportMeters,
+} from '@/app/api/lib/helpers/collectionReportV2/meterDocuments';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import type { ReportedMachineDocument } from '@/app/api/lib/models/reportedMachines';
 
@@ -48,10 +50,18 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
   // If the machine has a relayId it has a SAS relay and manual meters should
   // NOT be written to Meter documents. Non-relay machines behave like noSMIB.
   // Offline SMIB machines (relay present but stale lastActivity) also get updated.
-  const machineDoc = await Machine.findOne({ _id: machineId }, 'relayId lastActivity gamingLocation').lean<{
+  const machineDoc = await Machine.findOne(
+    { _id: machineId },
+    'relayId lastActivity gamingLocation collectionMetersHistory'
+  ).lean<{
     relayId?: string | null;
     lastActivity?: Date;
     gamingLocation?: string;
+    collectionMetersHistory?: Array<{
+      locationReportId?: string;
+      prevMetersIn?: number;
+      prevMetersOut?: number;
+    }>;
   }>();
   const isNoSMIBLocation = !machineDoc?.relayId;
   const OFFLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes for testing (TODO: restore 72h)
@@ -70,163 +80,32 @@ export async function cascadeMachineEdit(input: CascadeInput): Promise<void> {
 
   const now = new Date();
   const timestamp = sasEndTime ?? now;
-  const prevIn = prevSasMetersIn ?? 0;
-  const prevOut = prevSasMetersOut ?? 0;
+  const existingSessionHistory = machineDoc?.collectionMetersHistory?.find(
+    entry => entry.locationReportId === sessionId
+  );
+  const { prevIn, prevOut } = resolvePrevMeters(
+    existingSessionHistory,
+    prevSasMetersIn,
+    prevSasMetersOut
+  );
 
   if (isNoSMIBLocation || isOffline) {
-    // Use replaceOne with upsert instead of deleteMany+create for idempotency.
-    // Concurrent calls with the same machine+session target the same document
-    // atomically — no duplicate meters possible.
-
-    const baseReadAt = timestamp;
-    const isRamClear =
-      input.ramClear === true &&
-      input.ramClearMetersIn !== undefined &&
-      input.ramClearMetersIn !== null &&
-      input.ramClearMetersOut !== undefined &&
-      input.ramClearMetersOut !== null;
-
-    if (isRamClear) {
-      // 1. RAM clear meter - captures drop up to reset point
-      const ramClearFilter = {
-        machine: machineId,
-        locationSession: sessionId,
-        isRamClear: true as const,
-      };
-      const ramClearMeterDoc = {
-        machine: machineId,
-        location: String(machineDoc?.gamingLocation || locationId || ''),
-        locationSession: sessionId,
-        isRamClear: true,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          totalCancelledCredits: Number(input.ramClearMetersOut) - prevOut,
-          totalHandPaidCancelledCredits: 0,
-          totalWonCredits: 0,
-          drop: Number(input.ramClearMetersIn) - prevIn,
-          jackpot: 0,
-          currentCredits: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits: Number(input.ramClearMetersOut),
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: Number(input.ramClearMetersIn),
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        meterSource: 'COLLECTION_REPORT' as const,
-        readAt: new Date(baseReadAt.getTime() - 1000), // 1 second behind
-        createdAt: new Date(),
-      };
-
-      await Meters.replaceOne(ramClearFilter, ramClearMeterDoc, {
-        upsert: true,
-      }).catch(meterCreateError => {
-        console.error(
-          `[cascadeMachineEdit] Failed to upsert RAM-clear Meter for machine ${machineId}:`,
-          meterCreateError
-        );
-      });
-
-      // 2. Current meter - captures drop from 0 after reset
-      const currentFilter = {
-        machine: machineId,
-        locationSession: sessionId,
-        isRamClear: false as const,
-      };
-      const currentMeterDoc = {
-        machine: machineId,
-        location: String(machineDoc?.gamingLocation || locationId || ''),
-        locationSession: sessionId,
-        isRamClear: false,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          totalCancelledCredits: manualMetersOut ?? 0,
-          totalHandPaidCancelledCredits: 0,
-          totalWonCredits: 0,
-          drop: manualMetersIn ?? 0,
-          jackpot: 0,
-          currentCredits: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits: manualMetersOut ?? null,
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: manualMetersIn ?? null,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        meterSource: 'COLLECTION_REPORT' as const,
-        readAt: baseReadAt, // exactly at collection time
-        createdAt: new Date(new Date().getTime() + 1000),
-      };
-
-      await Meters.replaceOne(currentFilter, currentMeterDoc, {
-        upsert: true,
-      }).catch(meterCreateError => {
-        console.error(
-          `[cascadeMachineEdit] Failed to upsert post-RAM-clear Meter for machine ${machineId}:`,
-          meterCreateError
-        );
-      });
-    } else {
-      // Non-RAM-clear path: single Meter doc with the normal delta
-      const meterFilter = {
-        machine: machineId,
-        locationSession: sessionId,
-        isRamClear: false as const,
-      };
-      const meterDoc = {
-        machine: machineId,
-        location: String(machineDoc?.gamingLocation || locationId || ''),
-        locationSession: sessionId,
-        movement: {
-          coinIn: 0,
-          coinOut: 0,
-          totalCancelledCredits: (manualMetersOut ?? 0) - prevOut,
-          totalHandPaidCancelledCredits: 0,
-          totalWonCredits: 0,
-          drop: (manualMetersIn ?? 0) - prevIn,
-          jackpot: 0,
-          currentCredits: 0,
-          gamesPlayed: 0,
-          gamesWon: 0,
-        },
-        coinIn: 0,
-        coinOut: 0,
-        totalCancelledCredits: manualMetersOut ?? null,
-        totalHandPaidCancelledCredits: 0,
-        totalWonCredits: 0,
-        drop: manualMetersIn ?? null,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        meterSource: 'COLLECTION_REPORT' as const,
-        readAt: baseReadAt,
-        createdAt: new Date(),
-      };
-
-      await Meters.replaceOne(meterFilter, meterDoc, {
-        upsert: true,
-      }).catch(meterCreateError => {
-        console.error(
-          `[cascadeMachineEdit] Failed to upsert Meter document for machine ${machineId}:`,
-          meterCreateError
-        );
-      });
-    }
+    await upsertCollectionReportMeters({
+      machineId,
+      locationId: String(machineDoc?.gamingLocation || locationId || ''),
+      sessionId,
+      readAt: timestamp,
+      manualMetersIn,
+      manualMetersOut,
+      historyEntry: existingSessionHistory,
+      prevSasMetersIn,
+      prevSasMetersOut,
+      ramClear: input.ramClear,
+      ramClearMetersIn: input.ramClearMetersIn,
+      ramClearMetersOut: input.ramClearMetersOut,
+      isSupplemental: isOffline,
+      logContext: 'cascadeMachineEdit',
+    });
   }
 
   // ============================================================================

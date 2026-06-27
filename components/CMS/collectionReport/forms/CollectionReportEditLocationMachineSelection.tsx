@@ -212,11 +212,10 @@ export default function CollectionReportEditLocationMachineSelection({
                 <span className="flex min-w-0 flex-col gap-1">
                   {formatMachineDisplayNameWithBold(machine)}
                   <span className="flex items-center gap-1.5">
-                    {machine.relayId && (
-                      <MachineOnlineStatusDot
-                        isOnline={machineStatusMap[String(machine._id)]}
-                      />
-                    )}
+                    <MachineOnlineStatusDot
+                      isOnline={machineStatusMap[String(machine._id)]}
+                      hasRelay={!!machine.relayId}
+                    />
                     {collectedMachineEntries.find(
                       e => e.machineId === String(machine._id)
                     ) &&

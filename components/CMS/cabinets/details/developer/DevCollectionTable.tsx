@@ -141,13 +141,13 @@ const DevCollectionTable = forwardRef<HTMLDivElement, DevCollectionTableProps>(
                       return (
                         <TableCell
                           key={col}
-                          className={`whitespace-nowrap px-3 py-2 text-xs text-gray-700 ${
+                          className={`px-3 py-2 text-xs text-gray-700 ${
                             col === 'deletedAt' && value != null
                               ? 'font-medium text-red-600'
                               : ''
                           } ${isCellMatch ? 'bg-amber-200/70 font-semibold' : ''}`}
                         >
-                          {display}
+                          <span className="whitespace-pre-line">{display}</span>
                           {movValue != null && (
                             <>
                               <br />

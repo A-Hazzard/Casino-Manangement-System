@@ -13,6 +13,7 @@ import { handleExportSASEvaluation as handleExportSASEvaluationHelper } from '@/
 import { LocationExportData, TopLocationData } from '@/lib/types';
 import { AggregatedLocation } from '@/lib/types/location';
 import { DateRange } from '@/lib/utils/date';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { ExportUtils, type ExtendedLegacyExportData } from '@/lib/utils/export';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 
@@ -23,6 +24,7 @@ type ExportLocationOverviewParams = {
   format: 'pdf' | 'excel';
   formatAmount: (amount: number) => string;
   shouldShowCurrency: () => boolean;
+  displayCurrency?: string;
   toast: {
     success: (message: string, options?: { duration?: number }) => void;
     error: (message: string, options?: { duration?: number }) => void;
@@ -36,6 +38,7 @@ type ExportSASEvaluationParams = {
   selectedDateRange: DateRange | null;
   activeMetricsFilter: string;
   format: 'pdf' | 'excel';
+  displayCurrency?: string;
   toast: {
     success: (message: string, options?: { duration?: number }) => void;
     error: (message: string, options?: { duration?: number }) => void;
@@ -50,6 +53,7 @@ type ExportRevenueAnalysisParams = {
   format: 'pdf' | 'excel';
   formatAmount: (amount: number) => string;
   shouldShowCurrency: () => boolean;
+  displayCurrency?: string;
   toast: {
     success: (message: string, options?: { duration?: number }) => void;
     error: (message: string, options?: { duration?: number }) => void;
@@ -66,6 +70,7 @@ export async function handleExportLocationOverview({
   format,
   formatAmount,
   shouldShowCurrency,
+  displayCurrency,
   toast,
 }: ExportLocationOverviewParams): Promise<void> {
   if (locations.length === 0) {
@@ -117,13 +122,13 @@ export async function handleExportLocationOverview({
       (loc.onlineMachines || 0).toString(),
       shouldShowCurrency()
         ? formatAmount(loc.moneyIn || 0)
-        : `$${((loc.moneyIn as number) || 0).toLocaleString()}`,
+        : formatCurrencyWithCodeString((loc.moneyIn as number) || 0, displayCurrency),
       shouldShowCurrency()
         ? formatAmount(loc.moneyOut || 0)
-        : `$${((loc.moneyOut as number) || 0).toLocaleString()}`,
+        : formatCurrencyWithCodeString((loc.moneyOut as number) || 0, displayCurrency),
       shouldShowCurrency()
         ? formatAmount(loc.gross || 0)
-        : `$${((loc.gross as number) || 0).toLocaleString()}`,
+        : formatCurrencyWithCodeString((loc.gross as number) || 0, displayCurrency),
       ((loc.moneyIn as number) || 0) > 0
         ? `${((((loc.gross as number) || 0) / ((loc.moneyIn as number) || 1)) * 100).toFixed(2)}%`
         : '0%',
@@ -136,13 +141,13 @@ export async function handleExportLocationOverview({
       finalTotals.onlineMachines.toString(),
       shouldShowCurrency()
         ? formatAmount(finalTotals.totalDrop)
-        : `$${finalTotals.totalDrop.toLocaleString()}`,
+        : formatCurrencyWithCodeString(finalTotals.totalDrop, displayCurrency),
       shouldShowCurrency()
         ? formatAmount(finalTotals.totalCancelledCredits)
-        : `$${finalTotals.totalCancelledCredits.toLocaleString()}`,
+        : formatCurrencyWithCodeString(finalTotals.totalCancelledCredits, displayCurrency),
       shouldShowCurrency()
         ? formatAmount(finalTotals.totalGross)
-        : `$${finalTotals.totalGross.toLocaleString()}`,
+        : formatCurrencyWithCodeString(finalTotals.totalGross, displayCurrency),
       `${overallHoldPercentage}%`,
     ];
 
@@ -161,19 +166,19 @@ export async function handleExportLocationOverview({
           label: 'Total Gross Revenue',
           value: shouldShowCurrency()
             ? formatAmount(finalTotals.totalGross)
-            : `$${finalTotals.totalGross.toLocaleString()}`,
+            : formatCurrencyWithCodeString(finalTotals.totalGross, displayCurrency),
         },
         {
           label: 'Money In',
           value: shouldShowCurrency()
             ? formatAmount(finalTotals.totalDrop)
-            : `$${finalTotals.totalDrop.toLocaleString()}`,
+            : formatCurrencyWithCodeString(finalTotals.totalDrop, displayCurrency),
         },
         {
           label: 'Money Out',
           value: shouldShowCurrency()
             ? formatAmount(finalTotals.totalCancelledCredits)
-            : `$${finalTotals.totalCancelledCredits.toLocaleString()}`,
+            : formatCurrencyWithCodeString(finalTotals.totalCancelledCredits, displayCurrency),
         },
         {
           label: 'Online Machines',
@@ -228,6 +233,7 @@ export async function handleExportSASEvaluation({
   selectedDateRange,
   activeMetricsFilter,
   format,
+  displayCurrency,
   toast,
 }: ExportSASEvaluationParams): Promise<void> {
   // Convert AggregatedLocation[] to LocationExportData[]
@@ -268,7 +274,8 @@ export async function handleExportSASEvaluation({
     selectedDateRange,
     activeMetricsFilter,
     format,
-    toast
+    toast,
+    displayCurrency
   );
 }
 
@@ -282,6 +289,7 @@ export async function handleExportRevenueAnalysis({
   format,
   formatAmount,
   shouldShowCurrency,
+  displayCurrency,
   toast,
 }: ExportRevenueAnalysisParams): Promise<void> {
   try {
@@ -322,13 +330,13 @@ export async function handleExportRevenueAnalysis({
         (loc.onlineMachines || 0).toString(),
         shouldShowCurrency()
           ? formatAmount(loc.moneyIn || 0)
-          : `$${((loc.moneyIn as number) || 0).toLocaleString()}`,
+          : formatCurrencyWithCodeString((loc.moneyIn as number) || 0, displayCurrency),
         shouldShowCurrency()
           ? formatAmount(loc.moneyOut || 0)
-          : `$${((loc.moneyOut as number) || 0).toLocaleString()}`,
+          : formatCurrencyWithCodeString((loc.moneyOut as number) || 0, displayCurrency),
         shouldShowCurrency()
           ? formatAmount(loc.gross || 0)
-          : `$${((loc.gross as number) || 0).toLocaleString()}`,
+          : formatCurrencyWithCodeString((loc.gross as number) || 0, displayCurrency),
         ((loc.moneyIn as number) || 0) > 0
           ? `${((((loc.gross as number) || 0) / ((loc.moneyIn as number) || 1)) * 100).toFixed(2)}%`
           : '0%',

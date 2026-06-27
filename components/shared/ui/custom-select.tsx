@@ -77,17 +77,6 @@ export function CustomSelect({
   // Find selected option
   const selectedOption = options.find(option => option.value === value);
 
-  // Debug logging for location select
-  if (options.length > 0 && options[0]?.value === 'all') {
-    console.warn('[CUSTOM SELECT - LOCATION] Debug info:');
-    console.warn(`  - Received value: "${value}"`);
-    console.warn(
-      `  - Selected option: ${selectedOption ? `"${selectedOption.label}"` : 'null'}`
-    );
-    console.warn(`  - Options count: ${options.length}`);
-    console.warn(`  - First option: ${JSON.stringify(options[0])}`);
-  }
-
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

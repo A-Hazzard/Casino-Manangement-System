@@ -126,9 +126,9 @@ export const SessionEventsTableSkeleton = () => (
               </tr>
             </thead>
             <tbody className="[&_tr:last-child]:border-0">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, index) => (
                 <tr
-                  key={i}
+                  key={index}
                   className="border-b transition-colors hover:bg-muted/50"
                 >
                   <td className="p-4 align-middle">
@@ -156,9 +156,9 @@ export const SessionEventsTableSkeleton = () => (
 
     {/* Mobile Card Skeleton */}
     <div className="space-y-4 lg:hidden">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: 5 }).map((_, index) => (
         <div
-          key={i}
+          key={index}
           className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
         >
           <div className="flex items-center justify-between p-4">
@@ -184,8 +184,8 @@ const SessionEventsContentSkeleton = () => (
       </div>
       <div className="p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="flex flex-col">
               <Skeleton className="mb-2 h-3 w-32" />
               <Skeleton className="h-4 w-24" />
             </div>

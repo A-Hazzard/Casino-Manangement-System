@@ -27,14 +27,8 @@ import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_VAULT_BALANCE } from '@/components/VAULT/overview/data/defaults';
-import {
-  fetchVaultBalance,
-  fetchVaultTransfers,
-  handleApproveTransfer,
-  handleRejectTransfer,
-  handleTransferSubmit,
-  sortTransfers,
-} from '@/lib/helpers/vaultHelpers';
+import { fetchVaultBalance, fetchVaultTransfers } from '@/lib/helpers/vault/vaultDataFetching';
+import { handleApproveTransfer, handleRejectTransfer, handleTransferSubmit, sortTransfers } from '@/lib/helpers/vault/vaultTransfers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
@@ -192,7 +186,7 @@ export default function VaultTransfersPageContent() {
 
       if (result.success) {
         toast.success(
-          `Transfer request submitted: $${amount.toLocaleString()}`
+          `Transfer request submitted: ${formatAmount(amount)}`
         );
         setIsTransferModalOpen(false);
         fetchData(); // Refresh list

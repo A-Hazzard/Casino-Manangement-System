@@ -31,8 +31,8 @@ export default function VaultEndOfDayReportsSkeleton() {
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <Skeleton className="h-6 w-56" />
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i}>
+          {[1, 2, 3, 4, 5].map(index => (
+            <div key={index}>
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-1 h-6 w-16" />
             </div>
@@ -62,8 +62,8 @@ export default function VaultEndOfDayReportsSkeleton() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <tr key={i} className="border-b border-gray-100">
+              {[1, 2, 3, 4, 5, 6].map(index => (
+                <tr key={index} className="border-b border-gray-100">
                   <td className="py-3">
                     <Skeleton className="h-4 w-16" />
                   </td>
@@ -113,8 +113,8 @@ export default function VaultEndOfDayReportsSkeleton() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4, 5].map(i => (
-                <tr key={i} className="border-b border-gray-100">
+              {[1, 2, 3, 4, 5].map(index => (
+                <tr key={index} className="border-b border-gray-100">
                   <td className="py-3">
                     <Skeleton className="h-4 w-20" />
                   </td>
@@ -165,8 +165,8 @@ export default function VaultEndOfDayReportsSkeleton() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4].map(i => (
-                <tr key={i} className="border-b border-gray-100">
+              {[1, 2, 3, 4].map(index => (
+                <tr key={index} className="border-b border-gray-100">
                   <td className="py-3">
                     <Skeleton className="h-4 w-24" />
                   </td>
@@ -202,8 +202,8 @@ export default function VaultEndOfDayReportsSkeleton() {
         <div className="mt-4 space-y-6">
           {/* Summary Metrics */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {[1, 2, 3].map(i => (
-              <div key={i}>
+            {[1, 2, 3].map(index => (
+              <div key={index}>
                 <Skeleton className="h-4 w-28" />
                 <Skeleton className="mt-1 h-8 w-24" />
               </div>
@@ -223,8 +223,8 @@ export default function VaultEndOfDayReportsSkeleton() {
 
           {/* Balance Breakdown */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i}>
+            {[1, 2, 3, 4].map(index => (
+              <div key={index}>
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="mt-1 h-6 w-24" />
               </div>

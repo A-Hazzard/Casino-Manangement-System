@@ -8,7 +8,7 @@
 'use client';
 
 import { Dispatch, SetStateAction } from 'react';
-import { administrationUtils, fetchUsers } from '@/lib/helpers/administration';
+import { createSortHandler, fetchUsers, processUsers } from '@/lib/helpers/administration';
 import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SortKey, User } from '@/lib/types/administration';
@@ -127,7 +127,7 @@ export function useAdministrationUsers({
 
   const processedUsers = useMemo(() => {
     const effectiveSearchValue = usingBackendSearch ? '' : searchValue;
-    return administrationUtils.processUsers(
+    return processUsers(
       paginatedUsers,
       effectiveSearchValue,
       'username',
@@ -143,7 +143,7 @@ export function useAdministrationUsers({
     isDeveloper,
   ]);
 
-  const requestSort = administrationUtils.createSortHandler(
+  const requestSort = createSortHandler(
     sortConfig,
     setSortConfig
   );
@@ -256,7 +256,7 @@ export function useAdministrationUsers({
           fullName.includes(lowerSearchValue)
         );
       })
-      .sort((a, b) => {
+      .sort((userA, userB) => {
         const getRelevance = (u: User) => {
           let score = 0;
           const username = (u.username || '').toLowerCase();
@@ -275,7 +275,7 @@ export function useAdministrationUsers({
           if (userId.startsWith(lowerSearchValue)) score += 5;
           return score;
         };
-        return getRelevance(b) - getRelevance(a);
+        return getRelevance(userB) - getRelevance(userA);
       });
 
     if (frontendResults.length > 0) {

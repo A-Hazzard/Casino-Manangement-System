@@ -74,8 +74,33 @@ export function formatCellValue(col: string, value: unknown): string {
     if (!Number.isNaN(date.getTime())) return date.toLocaleString();
   }
   if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '—';
+    // Arrays of primitives → comma-joined; arrays of objects → count label
+    const allPrimitive = value.every(
+      v => v === null || typeof v !== 'object'
+    );
+    if (allPrimitive) {
+      const joined = value.map(v => (v === null ? 'null' : String(v))).join(', ');
+      return joined.length > 120 ? joined.slice(0, 117) + '…' : joined;
+    }
+    return `[${value.length} item${value.length !== 1 ? 's' : ''}]`;
+  }
+  if (typeof value === 'object' && value !== null) {
+    // Render as "key: value" lines, one per entry, max ~6 entries shown
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return '{}';
+    const lines = entries.slice(0, 6).map(([k, v]) => {
+      if (v === null || v === undefined) return `${k}: —`;
+      if (typeof v === 'object') return `${k}: {…}`;
+      const s = String(v);
+      return `${k}: ${s.length > 40 ? s.slice(0, 37) + '…' : s}`;
+    });
+    if (entries.length > 6) lines.push(`…+${entries.length - 6} more`);
+    return lines.join('\n');
+  }
   return String(value);
+
 }
 
 /** The set of `movement` sub-keys present across the records. */

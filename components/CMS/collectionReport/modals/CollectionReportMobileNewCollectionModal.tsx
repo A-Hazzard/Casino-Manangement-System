@@ -1051,7 +1051,7 @@ export default function CollectionReportMobileNewCollectionModal({
             ] === 'machine-list' ? (
             <CollectionReportMobileMachineList
               machines={availableMachines}
-              collectedMachines={collectedMachines}
+              collectedMachines={collectedMachines as unknown as CollectionDocument[]}
               searchTerm={modalState.searchTerm}
               selectedMachine={selectedMachine ?? null}
               autoHighlightId={mobileCreateHighlightId}
@@ -1088,8 +1088,8 @@ export default function CollectionReportMobileNewCollectionModal({
                 notes: modalState.formData.notes,
                 prevIn: modalState.formData.prevIn,
                 prevOut: modalState.formData.prevOut,
-                sasStartTime: modalState.formData.sasStartTime,
-                sasEndTime: modalState.formData.sasEndTime,
+                sasStartTime: modalState.formData.sasStartTime ? new Date(modalState.formData.sasStartTime) : null,
+                sasEndTime: modalState.formData.sasEndTime ? new Date(modalState.formData.sasEndTime) : null,
                 showAdvancedSas: modalState.formData.showAdvancedSas,
               }}
               financials={financials}
@@ -1142,6 +1142,11 @@ export default function CollectionReportMobileNewCollectionModal({
               baseBalanceCorrection={baseBalanceCorrection}
               onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
               isLoadingTime={isLoadingTime}
+              machineIsOnline={
+                selectedMachineData
+                  ? machineStatusMap[String(selectedMachineData._id)]
+                  : undefined
+              }
             />
           )}
 
@@ -1153,7 +1158,7 @@ export default function CollectionReportMobileNewCollectionModal({
                 popNavigation();
               }}
               onClose={onClose}
-              collectedMachines={collectedMachines}
+              collectedMachines={collectedMachines as unknown as CollectionDocument[]}
               searchTerm={modalState.collectedMachinesSearchTerm}
               onSearchChange={term => {
                 setModalState(prev => ({
@@ -1175,7 +1180,12 @@ export default function CollectionReportMobileNewCollectionModal({
               onUpdateAllSasStartDate={setUpdateAllSasStartDate}
               updateAllSasEndDate={updateAllSasEndDate}
               onUpdateAllSasEndDate={setUpdateAllSasEndDate}
-              onApplyAllDates={handleApplyAllDates}
+              onApplyAllDates={() => {
+                handleApplyAllDates(
+                  collectedMachines as unknown as Parameters<typeof handleApplyAllDates>[0],
+                  useCollectionModalStore.getState().setCollectedMachines as unknown as Parameters<typeof handleApplyAllDates>[1]
+                );
+              }}
               sasUpdateProgress={sasUpdateProgress}
               variationMachineIds={variationsData?.machines
                 .filter(machine => machine.variation !== null)
@@ -1324,11 +1334,10 @@ export default function CollectionReportMobileNewCollectionModal({
       />
 
       {/* Create Report Confirmation Dialog */}
-      <ConfirmationDialog
+      <InfoConfirmationDialog
         isOpen={showCreateReportConfirmation}
         onClose={() => setShowCreateReportConfirmation(false)}
         onConfirm={() => {
-          setShowCreateReportConfirmation(false);
           createCollectionReport();
         }}
         title="Confirm Collection Report"
@@ -1336,8 +1345,9 @@ export default function CollectionReportMobileNewCollectionModal({
         confirmText="Yes, Create Report"
         cancelText="Cancel"
         isLoading={modalState.isProcessing}
-        confirmButtonVariant="default"
-        showFooterWarning={false}
+        processingPhases={createPhases}
+        currentServerPhase={currentCreatePhase}
+        subStep={currentSubStep}
       />
 
       {/* View Machine Confirmation Dialog */}

@@ -4,6 +4,11 @@
  * This module provides utility functions for checking user permissions
  * based on their roles in the Evolution One Casino Management System.
  *
+ * Features:
+ * - Page access checks (hasPageAccess, hasTabAccess)
+ * - Navigation link visibility (shouldShowNavigationLink)
+ * - Re-exports all role check utilities from roleChecks.ts
+ *
  * Role Hierarchy (Highest to Lowest Priority):
  * 1. Developer - Full platform access
  * 2. Admin - High-level administrative functions
@@ -15,12 +20,15 @@
  * 8. Collector - Collection operations
  */
 
-import {
-  CMS_ACCESS_ROLES,
-  HIGH_PRIORITY_ROLES,
-  ROLE_PRIORITY,
-  UserRole,
-} from '@/lib/constants';
+import { UserRole } from '@/lib/constants';
+
+export { hasAdminAccess, hasManagerAccess } from './roleChecks';
+export { getRoleDisplayName, getUserPrimaryRole } from './roleChecks';
+export { isCashierOnly, isVaultManagerOnly, hasCmsAccess } from './roleChecks';
+export { hasCashierRole, hasVaultManagerRole } from './roleChecks';
+export { shouldShowCmsSidebar, shouldShowVaultSidebar, shouldShowCashierSidebar } from './roleChecks';
+export { canEditMachines, canDeleteMachines, canManageLocations } from './roleChecks';
+export { canViewArchivedMachines, canPermanentlyDeleteMachines, canPermanentlyDeleteLocations } from './roleChecks';
 
 export type PageName =
   | 'dashboard'
@@ -41,12 +49,6 @@ export type PageName =
 // Page & Tab Access Checks
 // ============================================================================
 
-/**
- * Check if user has access to a specific page
- * @param userRoles - Array of user's roles
- * @param page - Page name to check access for
- * @returns boolean indicating if user has access
- */
 export const hasPageAccess = (
   userRoles: UserRole[],
   page: PageName
@@ -141,13 +143,6 @@ export const hasPageAccess = (
   return requiredRoles.some(role => userRoles.includes(role));
 };
 
-/**
- * Check if user has access to a specific tab within a page
- * @param userRoles - Array of user's roles
- * @param page - Page name
- * @param tab - Tab name
- * @returns boolean indicating if user has access
- */
 export const hasTabAccess = (
   userRoles: UserRole[],
   page: string,
@@ -211,49 +206,9 @@ export const hasTabAccess = (
 };
 
 // ============================================================================
-// Role Level Checks
-// ============================================================================
-
-/**
- * Check if user has admin-level access (Developer or Admin)
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has admin access
- */
-export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
-  if (!Array.isArray(userRoles)) {
-    console.error('[hasAdminAccess] userRoles is required');
-    return false;
-  }
-  return (
-    userRoles.includes('developer') ||
-    userRoles.includes('owner') ||
-    userRoles.includes('admin')
-  );
-};
-
-/**
- * Check if user has manager-level access or higher
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has manager access
- */
-export const hasManagerAccess = (userRoles: UserRole[]): boolean => {
-  if (!Array.isArray(userRoles)) {
-    console.error('[hasManagerAccess] userRoles is required');
-    return false;
-  }
-  return HIGH_PRIORITY_ROLES.some((role: UserRole) => userRoles.includes(role));
-};
-
-// ============================================================================
 // Navigation Link Visibility
 // ============================================================================
 
-/**
- * Check if user should see navigation link for a page
- * @param userRoles - Array of user's roles
- * @param page - Page name
- * @returns boolean indicating if navigation link should be shown
- */
 export const shouldShowNavigationLink = (
   userRoles: UserRole[],
   page: PageName
@@ -266,14 +221,10 @@ export const shouldShowNavigationLink = (
     console.error('[shouldShowNavigationLink] page is required');
     return false;
   }
-  // Special cases for direct link access
   if (page === 'location-details' || page === 'member-details') {
-    return false; // These are accessed via direct links only
+    return false;
   }
 
-  // Hide certain links (sessions, members) unless the user has
-  // the highest-level role. This affects NAV/Sidebar visibility only and
-  // does not change actual route access rules handled by hasPageAccess.
   if (page === 'sessions') {
     return userRoles.includes('developer');
   }
@@ -286,7 +237,6 @@ export const shouldShowNavigationLink = (
     );
   }
 
-  // Hide vault links unless the user has authorized roles
   if (page === 'vault-management') {
     return (
       userRoles.includes('developer') ||
@@ -310,289 +260,8 @@ export const shouldShowNavigationLink = (
   }
 
   if (page === 'vault-role-selection') {
-    return false; // Accessed via role selection logic
+    return false;
   }
 
   return hasPageAccess(userRoles, page);
-};
-
-// ============================================================================
-// Role Display & Identification
-// ============================================================================
-
-/**
- * Get user's role display name
- * @param userRoles - Array of user's roles
- * @returns string representing the user's primary role for display
- */
-export const getRoleDisplayName = (userRoles: UserRole[]): string => {
-  const roleDisplayNames: Record<string, string> = {
-    developer: 'Developer',
-    owner: 'Owner',
-    admin: 'Administrator',
-    manager: 'Manager',
-    'location admin': 'Location Admin',
-    'vault-manager': 'Vault Manager',
-    cashier: 'Cashier',
-    technician: 'Technician',
-    collector: 'Collector',
-  };
-
-  for (const role of ROLE_PRIORITY) {
-    if (userRoles.includes(role)) {
-      return roleDisplayNames[role] || 'User';
-    }
-  }
-
-  return 'User';
-};
-
-/**
- * Get user's primary role based on priority
- * @param userRoles - Array of user's roles
- * @returns Highest priority role or undefined if no roles
- */
-export function getUserPrimaryRole(
-  userRoles: UserRole[] | undefined
-): UserRole | undefined {
-  if (!userRoles || userRoles.length === 0) return undefined;
-
-  // Find the highest priority role
-  for (const role of ROLE_PRIORITY) if (userRoles.includes(role)) return role;
-
-  return undefined;
-}
-
-/**
- * Check if user has only cashier role
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has only cashier role
- */
-export function isCashierOnly(userRoles: string[] | undefined): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-  return userRoles.length === 1 && userRoles.includes('cashier');
-}
-
-/**
- * Check if user has only vault-manager role
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has only vault-manager role
- */
-export function isVaultManagerOnly(userRoles: string[] | undefined): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-  return userRoles.length === 1 && userRoles.includes('vault-manager');
-}
-
-/**
- * Check if user has CMS access roles
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has CMS access
- */
-export function hasCmsAccess(userRoles: string[] | undefined): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-  const normalizedUserRoles = userRoles.filter(
-    (role): role is string => typeof role === 'string'
-  );
-  return CMS_ACCESS_ROLES.some(role => normalizedUserRoles.includes(role));
-}
-
-/**
- * Check if user has cashier role (regardless of other roles)
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has cashier role
- */
-export function hasCashierRole(userRoles: UserRole[] | undefined): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-  return userRoles.includes('cashier');
-}
-
-/**
- * Check if user has vault-manager role (regardless of other roles)
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user has vault-manager role
- */
-export function hasVaultManagerRole(
-  userRoles: UserRole[] | undefined
-): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-  return userRoles.includes('vault-manager');
-}
-
-// ============================================================================
-// Sidebar Visibility
-// ============================================================================
-
-/**
- * Determine if CMS sidebar should be shown
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if CMS sidebar should show
- */
-export function shouldShowCmsSidebar(
-  userRoles: UserRole[] | undefined
-): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  const primaryRole = getUserPrimaryRole(userRoles);
-
-  // CMS roles should show CMS sidebar
-  if (primaryRole && CMS_ACCESS_ROLES.includes(primaryRole)) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Determine if Vault sidebar should be shown
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if Vault sidebar should show
- */
-export function shouldShowVaultSidebar(
-  userRoles: UserRole[] | undefined
-): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  const primaryRole = getUserPrimaryRole(userRoles);
-
-  // Vault manager should show vault sidebar
-  if (primaryRole === 'vault-manager') {
-    return true;
-  }
-
-  // CMS roles can also access vault (for Cash Desk and Vault Manager links)
-  if (primaryRole && CMS_ACCESS_ROLES.includes(primaryRole)) {
-    return false; // They use CMS sidebar with vault links
-  }
-
-  return false;
-}
-
-/**
- * Determine if Cashier sidebar should be shown
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if Cashier sidebar should show
- */
-export function shouldShowCashierSidebar(
-  userRoles: UserRole[] | undefined
-): boolean {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  const primaryRole = getUserPrimaryRole(userRoles);
-
-  // Cashier should show cashier sidebar (or empty sidebar)
-  if (primaryRole === 'cashier') {
-    return true;
-  }
-
-  return false;
-}
-
-// ============================================================================
-// Machine & Location Permissions
-// ============================================================================
-
-/**
- * Check if user can edit machines/cabinets
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can edit
- */
-export const canEditMachines = (userRoles: UserRole[] | undefined): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  // Collectors cannot edit machines
-  if (userRoles.includes('collector')) {
-    return false;
-  }
-
-  // Check if user has a role that allows editing
-  return [
-    'developer',
-    'owner',
-    'admin',
-    'manager',
-    'location admin',
-    'technician',
-  ].some(role => userRoles.includes(role as UserRole));
-};
-
-/**
- * Check if user can delete machines/cabinets
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can delete
- */
-export const canDeleteMachines = (
-  userRoles: UserRole[] | undefined
-): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  // Collectors and technicians cannot delete machines
-  if (userRoles.includes('collector') || userRoles.includes('technician')) {
-    return false;
-  }
-
-  // Check if user has a role that allows deletion
-  return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(
-    role => userRoles.includes(role as UserRole)
-  );
-};
-
-/**
- * Check if user can manage (create/edit/delete) locations
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can manage locations
- */
-export const canManageLocations = (
-  userRoles: UserRole[] | undefined
-): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(
-    role => userRoles.includes(role as UserRole)
-  );
-};
-
-/**
- * Check if user can view archived (soft-deleted) machines
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can view archived
- */
-export const canViewArchivedMachines = (
-  userRoles: UserRole[] | undefined
-): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  // Admins, developers, and technicians can view archived machines
-  return ['developer', 'owner', 'admin', 'technician'].some(role =>
-    userRoles.includes(role as UserRole)
-  );
-};
-
-/**
- * Check if user can permanently delete machines
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can permanently delete
- */
-export const canPermanentlyDeleteMachines = (
-  userRoles: UserRole[] | undefined
-): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  // Only developers and admins can permanently delete
-  return ['developer', 'owner', 'admin'].some(role =>
-    userRoles.includes(role as UserRole)
-  );
-};
-
-/**
- * Check if user can permanently delete locations
- * @param userRoles - Array of user's roles
- * @returns boolean indicating if user can permanently delete locations
- */
-export const canPermanentlyDeleteLocations = (
-  userRoles: UserRole[] | undefined
-): boolean => {
-  if (!userRoles || userRoles.length === 0) return false;
-
-  // Only developers can permanently delete locations
-  return ['developer'].some(role => userRoles.includes(role as UserRole));
 };

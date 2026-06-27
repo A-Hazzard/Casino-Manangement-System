@@ -640,6 +640,12 @@ export default function CollectionReportNewCollectionModal({
                     onCancelEdit={handleCancelEdit}
                     onAddOrUpdateEntry={handleAddOrUpdateEntry}
                     onViewMachine={() => setShowViewMachineConfirmation(true)}
+                    machineIsOnline={
+                      machineForDataEntry
+                        ? machineStatusMap[String(machineForDataEntry._id)]
+                        : undefined
+                    }
+                    machineHasRelay={!!machineForDataEntry?.relayId}
                   />
 
                   {/* Variations/Reconciliation section when minimized - Centered between form and financials */}

@@ -28,7 +28,7 @@ import type {
   ProfileValidationFormData,
   ProfileValidationModalData,
 } from '@/lib/types/auth';
-import { validatePasswordStrength } from '@/lib/utils/validation';
+import { validatePasswordStrength } from '@/lib/utils/validation/password';
 import type {
   InvalidProfileFields,
   ProfileValidationReasons,

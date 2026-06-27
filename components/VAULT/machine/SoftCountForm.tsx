@@ -147,7 +147,7 @@ export default function SoftCountForm({
   // Computed
   // ============================================================================
   const totalPhysical = denominations.reduce(
-    (sum, d) => sum + d.denomination * d.quantity,
+    (total, denom) => total + denom.denomination * denom.quantity,
     0
   );
 

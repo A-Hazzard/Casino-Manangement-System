@@ -38,9 +38,9 @@ export function SMIBManagementSkeleton() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-3 w-32" />
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, index) => (
                 <div
-                  key={i}
+                  key={index}
                   className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2"
                 >
                   <Skeleton className="h-4 w-20" />
@@ -61,9 +61,9 @@ export function SMIBManagementSkeleton() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-3 w-32" />
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, index) => (
                 <div
-                  key={i}
+                  key={index}
                   className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2"
                 >
                   <Skeleton className="h-4 w-20" />
@@ -92,16 +92,16 @@ export function SMIBManagementSkeleton() {
               <div className="rounded-md bg-gray-50 p-3">
                 <Skeleton className="mb-2 h-4 w-24" />
                 <div className="space-y-1">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-3 w-40" />
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-3 w-40" />
                   ))}
                 </div>
               </div>
 
               {/* Topics */}
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, index) => (
                 <div
-                  key={i}
+                  key={index}
                   className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2"
                 >
                   <Skeleton className="h-4 w-24" />
@@ -193,8 +193,8 @@ export function SMIBManagementSkeleton() {
                 <div className="rounded-md bg-purple-50 p-3">
                   <Skeleton className="mb-2 h-4 w-20" />
                   <div className="ml-4 mt-1 space-y-1">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className="h-3 w-full" />
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <Skeleton key={index} className="h-3 w-full" />
                     ))}
                   </div>
                 </div>

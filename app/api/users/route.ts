@@ -8,10 +8,8 @@ import {
   updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users/users';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
-import {
-  validateEmail,
-  validatePasswordStrength,
-} from '@/lib/utils/validation';
+import { validateEmail } from '@/lib/utils/validation/email';
+import { validatePasswordStrength } from '@/lib/utils/validation/password';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../lib/services/loggerService';
 import {

@@ -57,3 +57,34 @@ export type DevModelGroup = {
   group: string;
   models: DevModelInfo[];
 };
+
+// ============================================================================
+// Query Builder types
+// ============================================================================
+
+/** MongoDB-like comparison / membership operators exposed in the UI. */
+export type DevFilterOp =
+  | 'eq'
+  | 'ne'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'contains'
+  | 'startsWith'
+  | 'exists'
+  | 'notExists'
+  | 'in';
+
+/** A single filter row in the query builder panel. */
+export type DevFilterClause = {
+  /** Stable row key so React can reconcile add/remove without flicker. */
+  id: string;
+  field: string;
+  op: DevFilterOp;
+  /** Always a string in the UI; the API coerces per the schema field type. */
+  value: string;
+};
+
+/** How multiple clauses are combined at the MongoDB level. */
+export type DevFilterLogic = 'and' | 'or';

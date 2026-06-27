@@ -22,7 +22,6 @@ import {
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { dateRange as DateRange } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
 import {
@@ -39,7 +38,9 @@ import type {
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type CabinetSortOption =
+import type { DateRange as LibDateRange } from '@/lib/types';
+
+export type CabinetSortOption =
   | 'assetNumber'
   | 'locationName'
   | 'moneyIn'
@@ -57,7 +58,7 @@ type UseLocationCabinetsDataProps = {
   locationId: string;
   selectedLicencee: string | null;
   activeMetricsFilter: string | null;
-  customDateRange: DateRange | null;
+  customDateRange: LibDateRange | null;
   dateFilterInitialized: boolean;
   filtersInitialized: boolean;
   isAdminUser: boolean;

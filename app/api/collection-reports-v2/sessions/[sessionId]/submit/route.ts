@@ -11,13 +11,12 @@
  * @module app/api/collection-reports-v2/sessions/[sessionId]/submit/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import {
   extractUserFromRequest,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import {
   validateChronologicalSubmit,
   uploadSessionImages,
@@ -50,31 +49,17 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
+  const startTime = Date.now();
   const functionName =
     'PATCH /api/collection-reports-v2/sessions/[sessionId]/submit';
   const user = extractUserFromRequest(req);
 
   let sessionId = '';
 
+  return withApiAuth(req, async ({ user: userPayload }) => {
   try {
     // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Parse request body
+    // STEP 1: Parse request body
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -212,7 +197,7 @@ export async function PATCH(
           },
         },
       });
-    });
+    }) as unknown as NextResponse;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
@@ -223,9 +208,14 @@ export async function PATCH(
       errorMessage,
       user
     );
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[PATCH submit] slow: ${duration}ms`);
+    }
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
     );
   }
+  });
 }

@@ -114,9 +114,9 @@ export default function CabinetsDetailsChartSection({
           </div>
         )}
 
-        {/* Scrollable Chart Container for Mobile */}
+        {/* Scrollable Chart Container */}
         <div className="w-full touch-pan-x overflow-x-auto overflow-y-hidden">
-          <div className="min-w-full">
+          <div className="min-w-[600px]">
             <DashboardChart
               loadingChartData={loadingChart}
               chartData={chartData}

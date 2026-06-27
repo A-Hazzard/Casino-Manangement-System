@@ -22,6 +22,7 @@ import type {
   TopLocationData,
   dateRange,
 } from '@/lib/types';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import type { ExtendedLegacyExportData } from '@/lib/utils/export';
 import type { MachineData } from '@/shared/types/machines';
 
@@ -75,7 +76,8 @@ export async function handleExportMachinesEvaluation(
   toast: {
     success: (message: string) => void;
     error: (message: string) => void;
-  }
+  },
+  displayCurrency?: string
 ) {
   try {
     if (
@@ -231,7 +233,7 @@ export async function handleExportMachinesEvaluation(
           '',
           '',
           '',
-          `Location: ${machine.locationName || 'N/A'} | Handle: $${(machine.coinIn || 0).toLocaleString()} | Net Win: $${(machine.netWin || 0).toLocaleString()} | Gross: $${(machine.gross || 0).toLocaleString()} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
+          `Location: ${machine.locationName || 'N/A'} | Handle: ${formatCurrencyWithCodeString(machine.coinIn || 0, displayCurrency)} | Net Win: ${formatCurrencyWithCodeString(machine.netWin || 0, displayCurrency)} | Gross: ${formatCurrencyWithCodeString(machine.gross || 0, displayCurrency)} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
         ]),
         // Separator row
         ['', '', '', '', '', '', '', '', '', ''],
@@ -259,7 +261,7 @@ export async function handleExportMachinesEvaluation(
           '',
           '',
           '',
-          `Location: ${machine.locationName || 'N/A'} | Handle: $${(machine.coinIn || 0).toLocaleString()} | Net Win: $${(machine.netWin || 0).toLocaleString()} | Gross: $${(machine.gross || 0).toLocaleString()} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
+          `Location: ${machine.locationName || 'N/A'} | Handle: ${formatCurrencyWithCodeString(machine.coinIn || 0, displayCurrency)} | Net Win: ${formatCurrencyWithCodeString(machine.netWin || 0, displayCurrency)} | Gross: ${formatCurrencyWithCodeString(machine.gross || 0, displayCurrency)} | Hold: ${((machine.actualHold || 0) * 100).toFixed(1)}% | Games Played: ${(machine.gamesPlayed || 0).toLocaleString()}`,
         ]),
       ],
       summary: [
@@ -323,7 +325,8 @@ export async function handleExportSASEvaluation(
   toast: {
     success: (message: string) => void;
     error: (message: string) => void;
-  }
+  },
+  displayCurrency?: string
 ) {
   try {
     const filteredData =
@@ -384,9 +387,10 @@ export async function handleExportSASEvaluation(
         },
         {
           label: 'Total Gross Revenue',
-          value: `$${filteredData
-            .reduce((sum, loc) => sum + (loc.gross || 0), 0)
-            .toLocaleString()}`,
+          value: formatCurrencyWithCodeString(
+            filteredData.reduce((sum, loc) => sum + (loc.gross || 0), 0),
+            displayCurrency
+          ),
         },
       ],
       metadata: {
@@ -441,7 +445,8 @@ export async function handleExportMeters(
   toast: {
     error: (message: string) => void;
     success: (message: string) => void;
-  }
+  },
+  displayCurrency?: string
 ) {
   try {
     // Ensure we have data to export
@@ -540,23 +545,25 @@ export async function handleExportMeters(
         },
         {
           label: 'Total Net Win',
-          value: `$${machinesToExport
-            .reduce(
+          value: formatCurrencyWithCodeString(
+            machinesToExport.reduce(
               (sum: number, machineData: MachineData) =>
                 sum + (machineData.netWin || 0),
               0
-            )
-            .toLocaleString()}`,
+            ),
+            displayCurrency
+          ),
         },
         {
           label: 'Total Drop',
-          value: `$${machinesToExport
-            .reduce(
+          value: formatCurrencyWithCodeString(
+            machinesToExport.reduce(
               (sum: number, machineData: MachineData) =>
                 sum + (machineData.drop || 0),
               0
-            )
-            .toLocaleString()}`,
+            ),
+            displayCurrency
+          ),
         },
       ],
       metadata: {

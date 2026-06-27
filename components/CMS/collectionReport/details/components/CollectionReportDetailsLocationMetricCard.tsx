@@ -8,6 +8,8 @@
 'use client';
 
 import { getFinancialColorClass } from '@/lib/utils/financial';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { FC } from 'react';
 
 type MetricItem = {
@@ -24,6 +26,11 @@ type CollectionReportDetailsLocationMetricCardProps = {
 export const CollectionReportDetailsLocationMetricCard: FC<
   CollectionReportDetailsLocationMetricCardProps
 > = ({ title, items }) => {
+  // ============================================================================
+  // Currency
+  // ============================================================================
+  const { displayCurrency } = useCurrencyFormat();
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -49,7 +56,7 @@ export const CollectionReportDetailsLocationMetricCard: FC<
                   className={`py-2 text-right font-semibold ${item.isCurrency ? getFinancialColorClass(item.value as number) : 'text-gray-900'}`}
                 >
                   {item.isCurrency
-                    ? `$${(item.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+                    ? formatCurrencyWithCodeString(item.value as number ?? 0, displayCurrency)
                     : (item.value ?? '-')}
                 </td>
               </tr>

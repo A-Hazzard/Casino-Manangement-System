@@ -39,19 +39,19 @@ import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManageme
 
 import {
   fetchCashiersData,
+  fetchVaultBalance,
+} from '@/lib/helpers/vault/vaultDataFetching';
+import {
   handleCreateCashier,
   handleDeleteCashier,
-  handleFloatAction,
   handleResetCashierPassword,
   handleUpdateCashierStatus,
-} from '@/lib/helpers/vaultHelpers';
+} from '@/lib/helpers/vault/vaultCashierOps';
+import { handleFloatAction } from '@/lib/helpers/vault/vaultEventHandlers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
-
-// Phase 2 Modals
-import { fetchVaultBalance } from '@/lib/helpers/vaultHelpers';
 import {
   getDenominationValues,
   getInitialDenominationRecord,
@@ -1277,7 +1277,7 @@ export default function CashierManagementPanel({
                 Total Collected:
               </span>
               <span className="text-2xl font-black text-red-600">
-                TT${shiftTotal.toLocaleString()}
+                {formatAmount(shiftTotal)}
               </span>
             </div>
 
@@ -1371,10 +1371,10 @@ export default function CashierManagementPanel({
                 Total Float:
               </span>
               <span className="text-2xl font-black text-purple-600">
-                TT$
-                {Object.entries(reviewDenominations)
-                  .reduce((sum, [val, qty]) => sum + Number(val) * qty, 0)
-                  .toLocaleString()}
+                {formatAmount(
+                  Object.entries(reviewDenominations)
+                    .reduce((total, [value, quantity]) => total + Number(value) * quantity, 0)
+                )}
               </span>
             </div>
           </div>

@@ -189,11 +189,10 @@ export default function CollectionReportMobileEditMachineList({
                     <p className="break-words text-sm font-semibold text-primary">
                       {formatMachineDisplayNameWithBold(machine)}
                     </p>
-                    {machine.relayId && (
-                      <MachineOnlineStatusDot
-                        isOnline={machineStatusMap[String(machine._id)]}
-                      />
-                    )}
+                    <MachineOnlineStatusDot
+                      isOnline={machineStatusMap[String(machine._id)]}
+                      hasRelay={!!machine.relayId}
+                    />
                     <div className="mt-1 space-y-1 text-xs text-gray-600">
                       <p className="flex flex-col sm:flex-row sm:gap-2">
                         <span>

@@ -24,7 +24,7 @@ import {
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
 import { setupAxiosInterceptors } from '@/lib/utils/axiosInterceptor';
 import { useUserStore } from '@/lib/store/userStore';
-import { hasCmsAccess, isCashierOnly } from '@/lib/utils/permissions/client';
+import { hasCmsAccess, isCashierOnly } from '@/lib/utils/permissions/roleChecks';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 

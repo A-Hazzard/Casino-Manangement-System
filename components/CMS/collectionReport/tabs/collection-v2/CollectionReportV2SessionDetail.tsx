@@ -133,7 +133,7 @@ function buildV2SubmitPhases(machineCount: number): ProcessingPhase[] {
 }
 
 type SubmitProgressOverlayProps = {
-  submitPhase: 'idle' | 'pre-creating' | 'submitting' | 'error';
+  submitPhase: 'idle' | 'submitting' | 'error';
   machineName: string | null;
   error: string | null;
   onClose: () => void;
@@ -167,37 +167,6 @@ function SubmitProgressOverlay({
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
         >
-          {/* Pre-creating meters */}
-          {submitPhase === 'pre-creating' && (
-            <div className="flex flex-col items-center gap-4 w-full">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              >
-                <Loader2 className="h-12 w-12 text-blue-500" />
-              </motion.div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-800">
-                  Creating manual meters…{' '}
-                  <span className="tabular-nums">
-                    {progress?.done ?? 0} / {progress?.total ?? 0}
-                  </span>
-                </p>
-                {machineName && (
-                  <p className="mt-1 text-sm text-gray-600">{machineName}</p>
-                )}
-              </div>
-              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-200"
-                  style={{
-                    width: `${Math.round(((progress?.done ?? 0) / Math.max(progress?.total ?? 1, 1)) * 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Submitting */}
           {submitPhase === 'submitting' && (
             <div className="flex flex-col items-center gap-4 w-full">
@@ -330,7 +299,7 @@ export default function CollectionReportV2SessionDetail({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState<
-    'idle' | 'pre-creating' | 'submitting' | 'error'
+    'idle' | 'submitting' | 'error'
   >('idle');
   const [submitMeterMachineName, setSubmitMeterMachineName] = useState<
     string | null
@@ -1210,77 +1179,15 @@ export default function CollectionReportV2SessionDetail({
 
     try {
       // ============================================================================
-      // Phase 1: Pre-create meter documents for offline/non-SMIB machines.
-      // The variation check is not part of V2 — this is purely for progress display
-      // and to ensure meter docs exist before the submit endpoint fires.
-      // The submit endpoint's deleteMany+recreate still runs to handle re-submits.
-      // ============================================================================
-      // WOW machines never get manual meters (synced via WOW_SYNC), so they are
-      // excluded from the pre-create step entirely.
-      const offlineMachines = (session.machines ?? []).filter(
-        m => !m.isWow && (!m.hasRelay || m.isSupplemental)
-      );
-
-      if (offlineMachines.length > 0) {
-        setSubmitPhase('pre-creating');
-        setSubmitProgress({ done: 0, total: offlineMachines.length });
-
-        for (let machineIndex = 0; machineIndex < offlineMachines.length; machineIndex++) {
-          const machine = offlineMachines[machineIndex];
-          const displayName = machine.machineCustomName || machine.machineName || 'Machine';
-          setSubmitMeterMachineName(displayName);
-          setSubmitProgress({ done: machineIndex, total: offlineMachines.length });
-
-          const metersIn = machine.manualMetersIn ?? machine.sasMetersIn ?? 0;
-          const metersOut = machine.manualMetersOut ?? machine.sasMetersOut ?? 0;
-          const prevMetersIn = machine.prevManualMetersIn ?? machine.prevsasMetersIn ?? 0;
-          const prevMetersOut = machine.prevManualMetersOut ?? machine.prevsasMetersOut ?? 0;
-
-          try {
-            const response = await axios.post(
-              '/api/collection-reports/pre-create-meters',
-              {
-                machineId: machine.machineId,
-                locationId: session.locationId,
-                sessionId,
-                metersIn,
-                metersOut,
-                prevMetersIn,
-                prevMetersOut,
-                ramClear: machine.ramClear,
-                ramClearMetersIn: machine.ramClearMetersIn,
-                ramClearMetersOut: machine.ramClearMetersOut,
-                sasEndTime: machine.sasEndTime ?? session.sessionEndTime,
-              }
-            );
-
-            if (!response.data.success && !response.data.skipped) {
-              setSubmitMeterError(
-                response.data.error ?? 'Meter creation failed'
-              );
-              setSubmitPhase('error');
-              return;
-            }
-      } catch (e) {
-        console.error('[fetchCollectorList] Error:', e instanceof Error ? e.message : 'Unknown error');
-            setSubmitMeterError(
-              e instanceof Error ? e.message : 'Failed to create meter'
-            );
-            setSubmitPhase('error');
-            return;
-          }
-        }
-        setSubmitProgress(prev => prev ? { done: prev.total, total: prev.total } : null);
-      }
-
-      // ============================================================================
-      // Phase 2: Submit the session
+      // Submit the session
       // Images are already stored as tempImageData in MongoDB from each save.
-      // The submit endpoint automatically discovers and uploads them to Drive.
+      // The submit endpoint automatically discovers, uploads them to Drive, and
+      // creates Meter documents for no-SMIB/offline machines via persistMachineMetersOnSubmit.
       // ============================================================================
       setSubmitPhase('submitting');
-      setSubmitMeterMachineName(null);
       setCurrentV2Phase(undefined);
+      const machineCount = session.machines?.length ?? 0;
+      setSubmitProgress({ done: 0, total: machineCount });
 
       const payload: Record<string, unknown> = {};
       if (session.sessionStartTime) {
@@ -1552,9 +1459,22 @@ export default function CollectionReportV2SessionDetail({
           <div className="rounded-lg bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-start justify-between gap-3 text-sm">
               <div className="min-w-0">
-                <p className="font-medium text-gray-700">
-                  {session.locationName}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-700">
+                    {session.locationName}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(session.sessionId);
+                      toast.success('Session ID copied');
+                    }}
+                    className="flex-shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                    title="Click to copy session ID"
+                  >
+                    {session.sessionId.slice(0, 8)}…
+                  </button>
+                </div>
                 {session.sessionStartTime && (
                   <p className="mt-0.5 text-xs text-gray-400">
                     Start:{' '}
@@ -1640,22 +1560,23 @@ export default function CollectionReportV2SessionDetail({
           {/* Machine Header */}
           <div className="mb-6 border-b border-gray-100 pb-4">
             <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  Machine {currentIndex + 1} of {totalCount}
-                </h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-semibold text-gray-800">
+              <div className="flex-1 min-w-0">
+                {/* Machine Name + Status */}
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-900 truncate">
                     {currentMachine.machineCustomName ||
                       currentMachine.machineName}
-                  </p>
-                  {currentMachine.hasRelay !== false && (
-                    <MachineOnlineStatusDot
-                      isOnline={machineStatusMap[currentMachine.machineId]}
-                    />
-                  )}
+                  </h2>
+                  <MachineOnlineStatusDot
+                    isOnline={machineStatusMap[currentMachine.machineId]}
+                    hasRelay={currentMachine.hasRelay}
+                  />
                 </div>
-                <div className="mt-1 flex flex-wrap gap-x-4 text-sm text-gray-500">
+                {/* Details Row */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-gray-500">
+                  <span className="font-medium text-gray-400">
+                    {currentIndex + 1}/{totalCount}
+                  </span>
                   {currentMachine.serialNumber && (
                     <span>SN: {currentMachine.serialNumber}</span>
                   )}
@@ -1665,7 +1586,7 @@ export default function CollectionReportV2SessionDetail({
                   {currentMachine.game && <span>{currentMachine.game}</span>}
                 </div>
               </div>
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+              <span className="flex-shrink-0 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
                 #{currentMachine.sequenceOrder + 1}
               </span>
             </div>
@@ -1685,21 +1606,19 @@ export default function CollectionReportV2SessionDetail({
             ) : useCustomPeriod ? (
               /* Custom period — two date pickers */
               <div className="space-y-2">
-                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-blue-800">
-                      Custom collection period
+                    <p className="text-xs font-medium text-blue-700">
+                      Collection period
                     </p>
                     {isCurrentMachineNoSMIB && (
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600">
-                        Audit only
-                      </span>
+                      <span className="text-[11px] text-blue-500">Audit only</span>
                     )}
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {/* Start picker */}
                     <div>
-                      <p className="mb-1 text-xs font-medium text-blue-700">
+                      <p className="mb-1 text-[11px] font-medium text-blue-600">
                         Start
                       </p>
                       <Popover
@@ -1709,7 +1628,7 @@ export default function CollectionReportV2SessionDetail({
                         <PopoverTrigger asChild>
                           <button
                             type="button"
-                            className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
                           >
                             {customSasStart
                               ? new Date(customSasStart).toLocaleString(
@@ -1717,12 +1636,11 @@ export default function CollectionReportV2SessionDetail({
                                   {
                                     month: 'short',
                                     day: 'numeric',
-                                    year: 'numeric',
                                     hour: 'numeric',
                                     minute: '2-digit',
                                   }
                                 )
-                              : 'Select start date & time'}
+                              : 'Select start'}
                           </button>
                         </PopoverTrigger>
                         <PopoverContent
@@ -1749,24 +1667,23 @@ export default function CollectionReportV2SessionDetail({
                     </div>
                     {/* End picker */}
                     <div>
-                      <p className="mb-1 text-xs font-medium text-blue-700">
+                      <p className="mb-1 text-[11px] font-medium text-blue-600">
                         End
                       </p>
                       <Popover open={sasEndOpen} onOpenChange={setSasEndOpen}>
                         <PopoverTrigger asChild>
                           <button
                             type="button"
-                            className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
+                            className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
                           >
                             {customSasEnd
                               ? new Date(customSasEnd).toLocaleString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
-                                  year: 'numeric',
                                   hour: 'numeric',
                                   minute: '2-digit',
                                 })
-                              : 'Select end date & time'}
+                              : 'Select end'}
                           </button>
                         </PopoverTrigger>
                         <PopoverContent
@@ -1799,14 +1716,14 @@ export default function CollectionReportV2SessionDetail({
                   {customSasStart &&
                     customSasEnd &&
                     new Date(customSasStart) > new Date(customSasEnd) && (
-                      <p className="mt-2 text-xs font-semibold text-red-600">
-                        ⚠️ Start time must be before end time
+                      <p className="text-[11px] font-medium text-red-600">
+                        Start must be before end
                       </p>
                     )}
 
                   {/* Apply Period Meters button — SMIB and WOW locations */}
                   {(!isCurrentMachineNoSMIB || isCurrentMachineWow) && (
-                    <div className="mt-3 flex justify-end">
+                    <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={handleApplyCustomPeriod}
@@ -1818,11 +1735,11 @@ export default function CollectionReportV2SessionDetail({
                             !!customSasEnd &&
                             new Date(customSasStart) > new Date(customSasEnd))
                         }
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {fetchingCustomMeters
                           ? 'Applying...'
-                          : 'Apply Period Meters'}
+                          : 'Apply'}
                       </button>
                     </div>
                   )}
@@ -1834,7 +1751,7 @@ export default function CollectionReportV2SessionDetail({
                       ? () => setUseCustomPeriod(false)
                       : handleUseAutoDetected
                   }
-                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                  className="text-xs text-gray-500 hover:text-gray-700"
                 >
                   Use default times
                 </button>
@@ -1843,91 +1760,73 @@ export default function CollectionReportV2SessionDetail({
               currentMachine.lastCollectionTime ? (
               /* Saved start time (edit) or auto-detected hint (new capture) */
               <div className="space-y-2">
-                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-green-700">
-                        {currentMachine.sasStartTime
-                          ? 'Period start'
-                          : 'Period start · last collected'}
-                      </p>
-                      <p className="text-sm font-semibold text-green-800">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-medium text-green-600">From</span>
+                      <span className="text-sm font-semibold text-green-900">
                         {new Date(
                           currentMachine.sasStartTime ??
                             currentMachine.lastCollectionTime!
                         ).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
-                          year: 'numeric',
                           hour: 'numeric',
                           minute: '2-digit',
                         })}
-                      </p>
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-medium text-green-700">
+                    <span className="text-xs text-green-500">→</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-medium text-green-600">To</span>
+                      <span className="text-sm font-semibold text-green-900">
                         {currentMachine.sasEndTime
-                          ? 'Period end'
-                          : 'Period end · now'}
-                      </p>
-                      <p className="text-sm font-semibold text-green-800">
-                        {new Date(
-                          currentMachine.sasEndTime ?? new Date()
-                        ).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                      </p>
+                          ? new Date(currentMachine.sasEndTime).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Now'}
+                      </span>
                     </div>
                   </div>
                   {isCurrentMachineNoSMIB && (
-                    <p className="mt-2 text-xs italic text-green-600">
-                      For auditing purposes only
+                    <p className="mt-1.5 text-[11px] text-green-600">
+                      Audit only — does not affect meter calculations
                     </p>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => setUseCustomPeriod(true)}
-                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                  className="text-xs text-gray-500 hover:text-gray-700"
                 >
-                  Set custom start and end time
+                  Customize period
                 </button>
               </div>
             ) : (
               /* No previous collection — machine.collectionTime is the start */
               <div className="space-y-2">
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-sm font-semibold text-amber-800">
-                    No previous collection found for this machine
-                  </p>
-                  <p className="mt-1 text-xs text-amber-700">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-xs text-amber-700">
                     {isCurrentMachineNoSMIB
-                      ? 'Set the collection start time for auditing purposes.'
-                      : 'When was the last time this machine was collected?'}
+                      ? 'No previous collection — set start time for audit'
+                      : 'No previous collection — when was this machine last collected?'}
                   </p>
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <Popover>
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="w-full rounded-lg border border-amber-300 bg-white px-4 py-2 text-left text-sm hover:bg-gray-50"
+                          className="w-full rounded-md border border-amber-200 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50"
                         >
                           {machineLastCollectionInput
                             ? new Date(
                                 machineLastCollectionInput
-                              ).toLocaleDateString('en-US', {
+                              ).toLocaleString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
-                                year: 'numeric',
-                              }) +
-                              ' ' +
-                              new Date(
-                                machineLastCollectionInput
-                              ).toLocaleTimeString('en-US', {
                                 hour: 'numeric',
                                 minute: '2-digit',
                               })
@@ -1955,18 +1854,13 @@ export default function CollectionReportV2SessionDetail({
                       </PopoverContent>
                     </Popover>
                   </div>
-                  {isCurrentMachineNoSMIB && (
-                    <p className="mt-2 text-xs italic text-amber-600">
-                      For auditing purposes only
-                    </p>
-                  )}
                 </div>
                 <button
                   type="button"
                   onClick={() => setUseCustomPeriod(true)}
-                  className="text-xs text-gray-600 underline hover:text-gray-900"
+                  className="text-xs text-gray-500 hover:text-gray-700"
                 >
-                  Set custom start and end time
+                  Customize period
                 </button>
               </div>
             )}
@@ -2620,6 +2514,12 @@ function ReviewView({
     m => m.status === 'confirmed' || m.status === 'captured'
   );
 
+  const allMachineIds = useMemo(
+    () => session.machines.map(m => m.machineId).filter(Boolean),
+    [session.machines]
+  );
+  const machineStatusMap = useMachineOnlineStatus(allMachineIds);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
@@ -2714,9 +2614,15 @@ function ReviewView({
                     {/* On mobile only — name + status sit next to thumbnail */}
                     <div className="flex min-w-0 flex-1 items-start justify-between gap-2 sm:hidden">
                       <div className="min-w-0">
-                        <h3 className="truncate font-semibold text-gray-900">
-                          {machine.machineCustomName || machine.machineName}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="truncate font-semibold text-gray-900">
+                            {machine.machineCustomName || machine.machineName}
+                          </h3>
+                          <MachineOnlineStatusDot
+                            isOnline={machineStatusMap[machine.machineId]}
+                            hasRelay={machine.hasRelay}
+                          />
+                        </div>
                         <p className="truncate text-xs text-gray-500">
                           {machine.serialNumber && `${machine.serialNumber}`}
                           {machine.serialNumber &&
@@ -2766,9 +2672,15 @@ function ReviewView({
                     {/* Desktop only — name + status row (hidden on mobile, shown above) */}
                     <div className="hidden items-start justify-between sm:flex">
                       <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {machine.machineCustomName || machine.machineName}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">
+                            {machine.machineCustomName || machine.machineName}
+                          </h3>
+                          <MachineOnlineStatusDot
+                            isOnline={machineStatusMap[machine.machineId]}
+                            hasRelay={machine.hasRelay}
+                          />
+                        </div>
                         <p className="text-xs text-gray-500">
                           {machine.serialNumber && `${machine.serialNumber} · `}
                           {machine.manufacturer}

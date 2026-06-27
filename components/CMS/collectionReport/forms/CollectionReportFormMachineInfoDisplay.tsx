@@ -2,6 +2,7 @@
 
 import { ReactElement } from 'react';
 import { ExternalLink } from 'lucide-react';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 
 type MachineInfoDisplayProps = {
   machineName?: string | ReactElement;
@@ -11,6 +12,8 @@ type MachineInfoDisplayProps = {
   onViewMachine?: () => void;
   showExternalLink?: boolean;
   className?: string;
+  isOnline?: boolean;
+  hasRelay?: boolean;
 };
 
 /**
@@ -25,6 +28,8 @@ export default function CollectionReportFormMachineInfoDisplay({
   onViewMachine,
   showExternalLink = true,
   className = '',
+  isOnline,
+  hasRelay,
 }: MachineInfoDisplayProps) {
   // ============================================================================
   // Render
@@ -41,7 +46,10 @@ export default function CollectionReportFormMachineInfoDisplay({
           ) : (
             <p className="font-semibold">{machineName}</p>
           )}
-          <p className="text-xs text-gray-500">SMIB: {smibId}</p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="text-xs text-gray-500">SMIB: {smibId}</p>
+            <MachineOnlineStatusDot isOnline={isOnline} hasRelay={hasRelay} />
+          </div>
           <p className="mt-1 text-xs text-gray-500">
             Current In: {currentMetersIn} | Current Out: {currentMetersOut}
           </p>

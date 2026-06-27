@@ -18,11 +18,11 @@ import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetecte
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/cabinetList';
 import {
   fetchGlobalVaultOverviewData,
   fetchVaultOverviewData,
-} from '@/lib/helpers/vaultHelpers';
+} from '@/lib/helpers/vault/vaultDataFetching';
 import { useUserStore } from '@/lib/store/userStore';
 import { isShiftStale } from '@/lib/utils/vault/shift';
 import type { GamingMachine } from '@/shared/types/entities';

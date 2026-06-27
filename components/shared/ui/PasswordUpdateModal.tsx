@@ -24,7 +24,7 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { cn } from '@/lib/utils';
-import { validatePasswordStrength } from '@/lib/utils/validation';
+import { validatePasswordStrength } from '@/lib/utils/validation/password';
 import {
   CheckCircle,
   Eye,

@@ -15,7 +15,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Filter, Search, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/shared/ui/button';
 import ConfirmationModal from '@/components/shared/ui/ConfirmationModal';
@@ -38,6 +38,7 @@ import type {
 import DevBulkEditModal from './DevBulkEditModal';
 import DevCollectionTable from './DevCollectionTable';
 import DevRecordEditModal from './DevRecordEditModal';
+import DevQueryBuilder from './DevQueryBuilder';
 
 const TIME_PERIODS: DevTimePeriod[] = [
   'Today',
@@ -85,6 +86,7 @@ export default function DevCollectionExplorer({
     null
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [showQueryBuilder, setShowQueryBuilder] = useState(false);
 
   // ============================================================================
   // Computed
@@ -246,6 +248,26 @@ export default function DevCollectionExplorer({
           </div>
         )}
 
+        <Button
+          onClick={() => setShowQueryBuilder(prev => !prev)}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold text-white shadow-sm transition-colors ${
+            showQueryBuilder
+              ? 'bg-purple-700 hover:bg-purple-800'
+              : explorer.appliedFilters.length > 0
+                ? 'bg-purple-600 hover:bg-purple-700 ring-2 ring-purple-300'
+                : 'bg-purple-500 hover:bg-purple-600'
+          }`}
+          title="Toggle Visual Query Builder"
+        >
+          <Filter className="h-4 w-4" />
+          Query Builder
+          {explorer.appliedFilters.length > 0 && (
+            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
+              {explorer.appliedFilters.length}
+            </span>
+          )}
+        </Button>
+
         <Popover open={exportOpen} onOpenChange={setExportOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -277,6 +299,28 @@ export default function DevCollectionExplorer({
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Collapsible Visual Query Builder */}
+      {showQueryBuilder && (
+        <div className="my-3">
+          <DevQueryBuilder
+            columns={explorer.columns}
+            fields={explorer.fields}
+            filterClauses={explorer.filterClauses}
+            filterLogic={explorer.filterLogic}
+            querySortField={explorer.querySortField}
+            querySortDir={explorer.querySortDir}
+            queryLimit={explorer.queryLimit}
+            onClausesChange={explorer.setFilterClauses}
+            onLogicChange={explorer.setFilterLogic}
+            onSortFieldChange={explorer.setQuerySortField}
+            onSortDirChange={explorer.setQuerySortDir}
+            onLimitChange={explorer.setQueryLimit}
+            onRun={explorer.applyQuery}
+            onClear={explorer.clearQuery}
+          />
+        </div>
+      )}
 
       {/* Search */}
       <div className="my-3 flex flex-wrap items-center gap-2">

@@ -13,7 +13,7 @@
  * - Handles errors gracefully with comprehensive error handling.
  */
 
-import { dashboardData } from '@/lib/types';
+import { ActiveFilters, dashboardData } from '@/lib/types';
 import { TimePeriod } from '@/shared/types';
 import {
   formatISODate,
@@ -21,6 +21,31 @@ import {
 } from '@/shared/utils/dateFormat';
 import axios from 'axios';
 import { getGranularityFromDataPoints } from '../utils/chart/granularity';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type MetricsUrlResult = {
+  url: string;
+  normalizedStart: Date | undefined;
+  normalizedEnd: Date | undefined;
+};
+
+type MetricsRawResponseItem = {
+  day: string;
+  time?: string;
+  drop: number;
+  totalCancelledCredits: number;
+  gross: number;
+  location?: string;
+  machine?: string;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    longtitude?: number;
+  };
+};
 
 // ============================================================================
 // Metrics Data Fetching and Processing
@@ -53,436 +78,34 @@ export async function getMetrics(
   searchTerm?: string
 ): Promise<dashboardData[]> {
   try {
-    let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
-    let normalizedStart: Date | undefined;
-    let normalizedEnd: Date | undefined;
-    if (timePeriod === 'Custom' && startDate && endDate) {
-      const sd = startDate instanceof Date ? startDate : new Date(startDate);
-      const ed = endDate instanceof Date ? endDate : new Date(endDate);
-      normalizedStart = sd;
-      normalizedEnd = ed;
+    const { url, normalizedStart, normalizedEnd } = buildMetricsUrl(
+      timePeriod,
+      startDate,
+      endDate,
+      licencee,
+      displayCurrency,
+      granularity,
+      locationId,
+      gameType,
+      onlineStatus,
+      searchTerm
+    );
 
-      // Check if dates have time components (not midnight)
-      const hasTime =
-        sd.getHours() !== 0 ||
-        sd.getMinutes() !== 0 ||
-        sd.getSeconds() !== 0 ||
-        ed.getHours() !== 0 ||
-        ed.getMinutes() !== 0 ||
-        ed.getSeconds() !== 0;
-
-      if (hasTime) {
-        // Send local time with timezone offset to preserve user's time selection
-        url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
-      } else {
-        // Date-only: always include time component so backend doesn't need format detection
-        url += `&startDate=${sd.toISOString().split('T')[0]}T00:00:00.000Z&endDate=${ed.toISOString().split('T')[0]}T00:00:00.000Z`;
-      }
-    }
-    if (licencee && licencee !== 'all') {
-      url += `&licencee=${licencee}`;
-    }
-    if (displayCurrency) {
-      url += `&currency=${displayCurrency}`;
-    }
-    if (granularity) {
-      url += `&granularity=${granularity}`;
-    }
-
-    // Add location filter if provided
-    if (
-      locationId &&
-      locationId !== 'all' &&
-      (Array.isArray(locationId) ? locationId.length > 0 : true)
-    ) {
-      const locIds = Array.isArray(locationId)
-        ? locationId.join(',')
-        : locationId;
-      url += `&locationId=${encodeURIComponent(locIds)}`;
-    }
-
-    // Add game type filter if provided
-    if (
-      gameType &&
-      gameType !== 'all' &&
-      (Array.isArray(gameType) ? gameType.length > 0 : true)
-    ) {
-      const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
-      url += `&gameType=${encodeURIComponent(gTypes)}`;
-    }
-
-    // Add status filter if provided
-    if (onlineStatus && onlineStatus !== 'all') {
-      url += `&onlineStatus=${encodeURIComponent(onlineStatus)}`;
-    }
-
-    // Add search term if provided
-    if (searchTerm) {
-      url += `&search=${encodeURIComponent(searchTerm)}`;
-    }
-
-    const { data } = await axios.get<
-      Array<{
-        day: string;
-        time?: string;
-        drop: number;
-        totalCancelledCredits: number;
-        gross: number;
-        location?: string;
-        machine?: string;
-        geoCoords?: {
-          latitude?: number;
-          longitude?: number;
-          longtitude?: number;
-        };
-      }>
-    >(url, {
+    const { data } = await axios.get<MetricsRawResponseItem[]>(url, {
       headers: {
         'Cache-Control': 'no-cache',
       },
       signal,
     });
-    // if (!Array.isArray(data) || data.length === 0) return [];
 
-    // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
-    const hasMinuteLevelData =
-      Array.isArray(data) &&
-      data.some(item => {
-        if (!item.time) return false;
-        const timeParts = item.time.split(':');
-        if (timeParts.length !== 2) return false;
-        const minutes = parseInt(timeParts[1], 10);
-        return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
-      });
-
-    // Determine if we should group by hour or minute
-    // If granularity was manually specified (from selector), use it
-    let groupByHour = false;
-    let useMinute = false;
-
-    if (granularity) {
-      // Manual granularity override (from selector)
-      if (granularity === 'hourly') {
-        groupByHour = true;
-        useMinute = false;
-      } else if (granularity === 'minute') {
-        groupByHour = false;
-        useMinute = true;
-      }
-    } else {
-      // Auto-detect granularity based on actual data points' time range
-      // Check all meters and if they span more than 5 hours, default to hourly
-      const dataBasedGranularity = getGranularityFromDataPoints(
-        data.map(doc => ({
-          day: doc.day,
-          time: doc.time || '',
-        }))
-      );
-
-      // Use the data-based granularity
-      if (dataBasedGranularity === 'minute') {
-        useMinute = true;
-        groupByHour = false;
-      } else {
-        // Data spans > 5 hours, use hourly
-        useMinute = false;
-        groupByHour = true;
-      }
-    }
-
-    const rawData = data.map((doc): dashboardData => {
-      const day = doc.day;
-      let time = '';
-
-      if (doc.time) {
-        if (groupByHour) {
-          // For hourly: strip minutes (convert "14:15" to "14:00")
-          const [hh] = doc.time.split(':');
-          time = `${hh.padStart(2, '0')}:00`;
-        } else if (useMinute) {
-          // For minute-level: preserve original time from API (e.g., "14:15")
-          time = doc.time;
-        } else {
-          // For daily: preserve time as-is (may be empty or "00:00")
-          time = doc.time || '';
-        }
-      }
-
-      // xValue: use time for hourly/minute charts, day for daily charts
-      const xValue = groupByHour || useMinute ? time : day;
-      return {
-        xValue,
-        day,
-        time,
-        moneyIn: doc.drop,
-        moneyOut: doc.totalCancelledCredits,
-        gross: doc.gross,
-        location: doc.location,
-        machine: doc.machine,
-        geoCoords: doc.geoCoords,
-      };
-    });
-
-    const grouped: Record<string, dashboardData> = {};
-    rawData.forEach(item => {
-      // Use different grouping keys for hourly, minute, and daily
-      let key: string;
-      if (groupByHour) {
-        key = `${item.day}_${item.time}`; // e.g., "2025-12-07_14:00"
-      } else if (useMinute) {
-        key = `${item.day}_${item.time}`; // e.g., "2025-12-07_14:15"
-      } else {
-        key = item.day; // Daily grouping
-      }
-
-      if (!grouped[key]) {
-        grouped[key] = { ...item };
-      } else {
-        grouped[key].moneyIn += item.moneyIn;
-        grouped[key].moneyOut += item.moneyOut;
-        grouped[key].gross += item.gross;
-      }
-    });
-
-    const sortedData = Object.values(grouped).sort((a, b) => {
-      const dayA = a.day ?? '';
-      const dayB = b.day ?? '';
-      if (dayA === dayB) {
-        const xA = a.xValue ?? '';
-        const xB = b.xValue ?? '';
-        return xA.localeCompare(xB);
-      }
-      return dayA.localeCompare(dayB);
-    });
-
-    // Filter data to only include times within the selected custom range (if applicable)
-    let filteredData = sortedData;
-    if (
-      timePeriod === 'Custom' &&
-      normalizedStart &&
-      normalizedEnd &&
-      (useMinute || groupByHour)
-    ) {
-      const sd =
-        normalizedStart instanceof Date
-          ? normalizedStart
-          : new Date(normalizedStart);
-      const ed =
-        normalizedEnd instanceof Date ? normalizedEnd : new Date(normalizedEnd);
-
-      // Check if dates have time components (not midnight)
-      const hasTime =
-        sd.getHours() !== 0 ||
-        sd.getMinutes() !== 0 ||
-        sd.getSeconds() !== 0 ||
-        ed.getHours() !== 0 ||
-        ed.getMinutes() !== 0 ||
-        ed.getSeconds() !== 0;
-
-      if (hasTime) {
-        // Convert local time to UTC for comparison (AST is UTC-4)
-        // API returns times in UTC format
-        const startLocal = new Date(sd);
-        const endLocal = new Date(ed);
-
-        // Convert to UTC by creating a Date object with UTC components
-        const startUTC = new Date(
-          Date.UTC(
-            startLocal.getFullYear(),
-            startLocal.getMonth(),
-            startLocal.getDate(),
-            startLocal.getHours() + 4, // AST is UTC-4, so add 4 for UTC
-            startLocal.getMinutes(),
-            0,
-            0
-          )
-        );
-        const endUTC = new Date(
-          Date.UTC(
-            endLocal.getFullYear(),
-            endLocal.getMonth(),
-            endLocal.getDate(),
-            endLocal.getHours() + 4, // AST is UTC-4, so add 4 for UTC
-            endLocal.getMinutes(),
-            0,
-            0
-          )
-        );
-
-        // Format UTC times for comparison (HH:MM format)
-        const startUTCHour = startUTC.getUTCHours();
-        const startUTCMinute = startUTC.getUTCMinutes();
-        const endUTCHour = endUTC.getUTCHours();
-        const endUTCMinute = endUTC.getUTCMinutes();
-
-        const startUTCTime = `${startUTCHour.toString().padStart(2, '0')}:${startUTCMinute.toString().padStart(2, '0')}`;
-        const endUTCTime = `${endUTCHour.toString().padStart(2, '0')}:${endUTCMinute.toString().padStart(2, '0')}`;
-
-        // Helper function to convert HH:MM time string to total minutes for comparison
-        const timeToMinutes = (timeStr: string): number => {
-          const [hours, minutes] = timeStr.split(':').map(Number);
-          return hours * 60 + minutes;
-        };
-
-        // Check if range spans multiple days
-        const rangeStartDay = sd.toISOString().split('T')[0];
-        const rangeEndDay = ed.toISOString().split('T')[0];
-        const isMultiDay = rangeStartDay !== rangeEndDay;
-
-        // Filter data points that fall within the time range
-        filteredData = sortedData.filter(item => {
-          if (!item.time) return false;
-
-          // Get the day from the item
-          const itemDay = item.day;
-
-          // Handle single-day vs multi-day ranges
-          if (!isMultiDay) {
-            // Single day: only include items from the same day
-            if (itemDay !== rangeStartDay) {
-              return false;
-            }
-          } else {
-            // Multi-day: include items from any day within the range
-            if (itemDay < rangeStartDay || itemDay > rangeEndDay) {
-              return false;
-            }
-          }
-
-          // Convert times to minutes for accurate comparison
-          const itemTimeMinutes = timeToMinutes(item.time);
-          const startTimeMinutes = timeToMinutes(startUTCTime);
-          const endTimeMinutes = timeToMinutes(endUTCTime);
-
-          // For multi-day ranges, apply time filtering only to start and end days
-          if (isMultiDay) {
-            // For items on start day, only include if time >= startTime
-            if (itemDay === rangeStartDay) {
-              if (groupByHour && !useMinute) {
-                const itemHour = Math.floor(itemTimeMinutes / 60);
-                const startHour = Math.floor(startTimeMinutes / 60);
-                return itemHour >= startHour;
-              }
-              return itemTimeMinutes >= startTimeMinutes;
-            }
-
-            // For items on end day, only include if time <= endTime
-            if (itemDay === rangeEndDay) {
-              if (groupByHour && !useMinute) {
-                const itemHour = Math.floor(itemTimeMinutes / 60);
-                const endHour = Math.floor(endTimeMinutes / 60);
-                return itemHour <= endHour;
-              }
-              return itemTimeMinutes <= endTimeMinutes;
-            }
-
-            // For items in between start and end days, include all
-            // (no time filtering needed for middle days)
-            return true;
-          }
-
-          // Single-day range: apply time filtering as before
-          // For hourly data, check if the hour falls within range
-          if (groupByHour && !useMinute) {
-            const itemHour = Math.floor(itemTimeMinutes / 60);
-            const startHour = Math.floor(startTimeMinutes / 60);
-            const endHour = Math.floor(endTimeMinutes / 60);
-
-            // If range crosses midnight (end < start), handle wrap-around
-            if (endHour < startHour) {
-              return itemHour >= startHour || itemHour <= endHour;
-            }
-            return itemHour >= startHour && itemHour <= endHour;
-          }
-
-          // For minute-level data, compare exact times (inclusive range)
-          // Include times >= startTime and <= endTime
-          if (endTimeMinutes < startTimeMinutes) {
-            // Handle wrap-around (shouldn't happen for same day, but just in case)
-            return (
-              itemTimeMinutes >= startTimeMinutes ||
-              itemTimeMinutes <= endTimeMinutes
-            );
-          }
-
-          return (
-            itemTimeMinutes >= startTimeMinutes &&
-            itemTimeMinutes <= endTimeMinutes
-          );
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Metrics] Filtered data by custom time range:', {
-            startUTCTime,
-            endUTCTime,
-            originalCount: sortedData.length,
-            filteredCount: filteredData.length,
-            useMinute,
-            groupByHour,
-          });
-        }
-      }
-    }
-
-    // Safety check: if filtering removed all data but we had data, use unfiltered data
-    // This prevents data loss when filtering is too aggressive
-    if (filteredData.length === 0 && sortedData.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(
-          '[Metrics] Time filtering removed all data, using unfiltered data instead',
-          {
-            timePeriod,
-            sortedDataLength: sortedData.length,
-            normalizedStart,
-            normalizedEnd,
-            groupByHour,
-            useMinute,
-          }
-        );
-      }
-      // Use sortedData instead of filteredData to prevent data loss
-      filteredData = sortedData;
-    }
-
-    // Fill missing intervals to ensure consistent chart display
-    const filledData = fillMissingIntervals(
-      filteredData,
+    return normalizeMetricsResponse(
+      data,
       timePeriod,
       normalizedStart,
       normalizedEnd,
-      groupByHour,
-      useMinute
+      granularity
     );
-
-    // Debug: Log if we're losing data
-    if (process.env.NODE_ENV === 'development') {
-      if (sortedData.length > 0 && filledData.length === 0) {
-        console.error('Data lost in fillMissingIntervals:', {
-          timePeriod,
-          sortedDataLength: sortedData.length,
-          normalizedStart,
-          normalizedEnd,
-          groupByHour,
-          useMinute,
-          hasMinuteLevelData,
-          sampleData: sortedData.slice(0, 3),
-        });
-      }
-      if (timePeriod === 'Custom' && sortedData.length > 0) {
-        console.log('Custom range data processing:', {
-          sortedDataLength: sortedData.length,
-          filledDataLength: filledData.length,
-          groupByHour,
-          useMinute,
-          sampleData: sortedData.slice(0, 3),
-        });
-      }
-    }
-
-    return filledData;
   } catch (error: unknown) {
-    // First, check if the error is due to a cancelled request.
-    // These are expected and should be handled silently by the calling hook.
     if (
       (axios.isCancel && axios.isCancel(error)) ||
       (error instanceof Error && error.name === 'AbortError') ||
@@ -491,14 +114,11 @@ export async function getMetrics(
         'code' in error &&
         (error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED'))
     ) {
-      // Re-throw cancelled requests so the caller (e.g., useAbortableRequest) can handle them.
       throw error;
     }
 
-    // If the error is not a cancellation, it's unexpected. Log it.
     console.error('Failed to fetch metrics:', error);
 
-    // Handle specific HTTP error types for more granular feedback
     if (error && typeof error === 'object' && 'response' in error) {
       const axiosError = error as {
         response?: { status?: number; statusText?: string };
@@ -510,7 +130,6 @@ export async function getMetrics(
         console.warn(
           'Metrics API temporarily unavailable (503). This may be due to server load.'
         );
-        // Return empty array for 503 errors to prevent UI blocking
         return [];
       }
 
@@ -525,7 +144,6 @@ export async function getMetrics(
       }
     }
 
-    // Handle network errors
     if (
       (error &&
         typeof error === 'object' &&
@@ -539,13 +157,548 @@ export async function getMetrics(
       return [];
     }
 
-    // Log the full error in development for better debugging
     if (process.env.NODE_ENV === 'development') {
       console.error('Full error details:', error);
     }
 
-    // Fallback to returning an empty array for any other unexpected errors.
     return [];
+  }
+}
+
+// ============================================================================
+// URL Building
+// ============================================================================
+
+/**
+ * Builds the API URL with all query parameters for fetching metrics.
+ *
+ * @param timePeriod - The time period to fetch metrics for.
+ * @param startDate - (Optional) Start date for a custom range.
+ * @param endDate - (Optional) End date for a custom range.
+ * @param licencee - (Optional) Licencee ID to filter metrics.
+ * @param displayCurrency - (Optional) Currency code for display.
+ * @param granularity - (Optional) Granularity override.
+ * @param locationId - (Optional) Location ID(s) to filter.
+ * @param gameType - (Optional) Game type(s) to filter.
+ * @param onlineStatus - (Optional) Online status filter.
+ * @param searchTerm - (Optional) Search term filter.
+ * @returns Object containing the URL and normalized date objects.
+ */
+function buildMetricsUrl(
+  timePeriod: TimePeriod,
+  startDate?: Date | string,
+  endDate?: Date | string,
+  licencee?: string,
+  displayCurrency?: string,
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
+  locationId?: string | string[],
+  gameType?: string | string[],
+  onlineStatus?: string,
+  searchTerm?: string
+): MetricsUrlResult {
+  let url = `/api/metrics/meters?timePeriod=${timePeriod}`;
+  let normalizedStart: Date | undefined;
+  let normalizedEnd: Date | undefined;
+
+  if (timePeriod === 'Custom' && startDate && endDate) {
+    const sd = startDate instanceof Date ? startDate : new Date(startDate);
+    const ed = endDate instanceof Date ? endDate : new Date(endDate);
+    normalizedStart = sd;
+    normalizedEnd = ed;
+
+    const hasTime =
+      sd.getHours() !== 0 ||
+      sd.getMinutes() !== 0 ||
+      sd.getSeconds() !== 0 ||
+      ed.getHours() !== 0 ||
+      ed.getMinutes() !== 0 ||
+      ed.getSeconds() !== 0;
+
+    if (hasTime) {
+      url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
+    } else {
+      url += `&startDate=${sd.toISOString().split('T')[0]}T00:00:00.000Z&endDate=${ed.toISOString().split('T')[0]}T00:00:00.000Z`;
+    }
+  }
+
+  if (licencee && licencee !== 'all') {
+    url += `&licencee=${licencee}`;
+  }
+
+  if (displayCurrency) {
+    url += `&currency=${displayCurrency}`;
+  }
+
+  if (granularity) {
+    url += `&granularity=${granularity}`;
+  }
+
+  if (
+    locationId &&
+    locationId !== 'all' &&
+    (Array.isArray(locationId) ? locationId.length > 0 : true)
+  ) {
+    const locIds = Array.isArray(locationId)
+      ? locationId.join(',')
+      : locationId;
+    url += `&locationId=${encodeURIComponent(locIds)}`;
+  }
+
+  if (
+    gameType &&
+    gameType !== 'all' &&
+    (Array.isArray(gameType) ? gameType.length > 0 : true)
+  ) {
+    const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
+    url += `&gameType=${encodeURIComponent(gTypes)}`;
+  }
+
+  if (onlineStatus && onlineStatus !== 'all') {
+    url += `&onlineStatus=${encodeURIComponent(onlineStatus)}`;
+  }
+
+  if (searchTerm) {
+    url += `&search=${encodeURIComponent(searchTerm)}`;
+  }
+
+  return { url, normalizedStart, normalizedEnd };
+}
+
+// ============================================================================
+// Response Processing and Normalization
+// ============================================================================
+
+/**
+ * Normalizes raw API response data into dashboardData format by detecting
+ * granularity, mapping, grouping, sorting, and filling missing intervals.
+ *
+ * @param data - Raw API response items.
+ * @param timePeriod - The time period for the data.
+ * @param normalizedStart - Normalized start date for custom ranges.
+ * @param normalizedEnd - Normalized end date for custom ranges.
+ * @param granularity - (Optional) Manual granularity override.
+ * @returns Array of aggregated dashboardData objects.
+ */
+function normalizeMetricsResponse(
+  data: MetricsRawResponseItem[],
+  timePeriod: TimePeriod,
+  normalizedStart: Date | undefined,
+  normalizedEnd: Date | undefined,
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+): dashboardData[] {
+  // Detect granularity from data or manual override
+  let groupByHour = false;
+  let useMinute = false;
+
+  if (granularity) {
+    if (granularity === 'hourly') {
+      groupByHour = true;
+    } else if (granularity === 'minute') {
+      useMinute = true;
+    }
+  } else {
+    const dataBasedGranularity = getGranularityFromDataPoints(
+      data.map(doc => ({
+        day: doc.day,
+        time: doc.time || '',
+      }))
+    );
+
+    if (dataBasedGranularity === 'minute') {
+      useMinute = true;
+    } else {
+      groupByHour = true;
+    }
+  }
+
+  // Map raw API response to dashboardData format
+  const rawData = data.map((doc): dashboardData => {
+    const day = doc.day;
+    let time = '';
+
+    if (doc.time) {
+      if (groupByHour) {
+        const [hour] = doc.time.split(':');
+        time = `${hour.padStart(2, '0')}:00`;
+      } else if (useMinute) {
+        time = doc.time;
+      } else {
+        time = doc.time || '';
+      }
+    }
+
+    const xValue = groupByHour || useMinute ? time : day;
+    return {
+      xValue,
+      day,
+      time,
+      moneyIn: doc.drop,
+      moneyOut: doc.totalCancelledCredits,
+      gross: doc.gross,
+      location: doc.location,
+      machine: doc.machine,
+      geoCoords: doc.geoCoords,
+    };
+  });
+
+  // Group by day or day+time key
+  const grouped: Record<string, dashboardData> = {};
+  rawData.forEach(item => {
+    let key: string;
+    if (groupByHour || useMinute) {
+      key = `${item.day}_${item.time}`;
+    } else {
+      key = item.day;
+    }
+
+    if (!grouped[key]) {
+      grouped[key] = { ...item };
+    } else {
+      grouped[key].moneyIn += item.moneyIn;
+      grouped[key].moneyOut += item.moneyOut;
+      grouped[key].gross += item.gross;
+    }
+  });
+
+  // Sort chronologically by day then xValue
+  const sortedData = Object.values(grouped).sort((a, b) => {
+    const dayA = a.day ?? '';
+    const dayB = b.day ?? '';
+    if (dayA === dayB) {
+      const xA = a.xValue ?? '';
+      const xB = b.xValue ?? '';
+      return xA.localeCompare(xB);
+    }
+    return dayA.localeCompare(dayB);
+  });
+
+  // Apply custom time range filtering
+  let filteredData = sortedData;
+  if (
+    timePeriod === 'Custom' &&
+    normalizedStart &&
+    normalizedEnd &&
+    (useMinute || groupByHour)
+  ) {
+    filteredData = filterByTimeRange(
+      sortedData,
+      normalizedStart,
+      normalizedEnd,
+      groupByHour,
+      useMinute
+    );
+  }
+
+  // Safety check: prevent data loss from over-aggressive filtering
+  if (filteredData.length === 0 && sortedData.length > 0) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[Metrics] Time filtering removed all data, using unfiltered data instead',
+        {
+          timePeriod,
+          sortedDataLength: sortedData.length,
+          normalizedStart,
+          normalizedEnd,
+          groupByHour,
+          useMinute,
+        }
+      );
+    }
+    filteredData = sortedData;
+  }
+
+  // Fill missing intervals for consistent chart display
+  const filledData = fillMissingIntervals(
+    filteredData,
+    timePeriod,
+    normalizedStart,
+    normalizedEnd,
+    groupByHour,
+    useMinute
+  );
+
+  // Debug logging in development
+  if (process.env.NODE_ENV === 'development') {
+    if (sortedData.length > 0 && filledData.length === 0) {
+      console.error('Data lost in fillMissingIntervals:', {
+        timePeriod,
+        sortedDataLength: sortedData.length,
+        normalizedStart,
+        normalizedEnd,
+        groupByHour,
+        useMinute,
+        hasMinuteLevelData:
+          Array.isArray(data) &&
+          data.some(item => {
+            if (!item.time) return false;
+            const timeParts = item.time.split(':');
+            if (timeParts.length !== 2) return false;
+            const minutes = parseInt(timeParts[1], 10);
+            return !isNaN(minutes) && minutes !== 0;
+          }),
+        sampleData: sortedData.slice(0, 3),
+      });
+    }
+    if (timePeriod === 'Custom' && sortedData.length > 0) {
+      console.log('Custom range data processing:', {
+        sortedDataLength: sortedData.length,
+        filledDataLength: filledData.length,
+        groupByHour,
+        useMinute,
+        sampleData: sortedData.slice(0, 3),
+      });
+    }
+  }
+
+  return filledData;
+}
+
+// ============================================================================
+// Custom Date Range Time Filtering
+// ============================================================================
+
+/**
+ * Filters sorted dashboard data by a custom time range, handling hourly/minute
+ * granularity, multi-day ranges, and UTC conversion.
+ *
+ * @param sortedData - Chronologically sorted dashboard data.
+ * @param startDate - Start of the custom time range.
+ * @param endDate - End of the custom time range.
+ * @param groupByHour - Whether data is grouped hourly.
+ * @param useMinute - Whether data uses minute granularity.
+ * @returns Filtered dashboard data array.
+ */
+function filterByTimeRange(
+  sortedData: dashboardData[],
+  startDate: Date,
+  endDate: Date,
+  groupByHour: boolean,
+  useMinute: boolean
+): dashboardData[] {
+  const startLocal =
+    startDate instanceof Date ? startDate : new Date(startDate);
+  const endLocal = endDate instanceof Date ? endDate : new Date(endDate);
+
+  const hasTime =
+    startLocal.getHours() !== 0 ||
+    startLocal.getMinutes() !== 0 ||
+    startLocal.getSeconds() !== 0 ||
+    endLocal.getHours() !== 0 ||
+    endLocal.getMinutes() !== 0 ||
+    endLocal.getSeconds() !== 0;
+
+  if (!hasTime) {
+    return sortedData;
+  }
+
+  const startUTC = new Date(
+    Date.UTC(
+      startLocal.getFullYear(),
+      startLocal.getMonth(),
+      startLocal.getDate(),
+      startLocal.getHours() + 4,
+      startLocal.getMinutes(),
+      0,
+      0
+    )
+  );
+  const endUTC = new Date(
+    Date.UTC(
+      endLocal.getFullYear(),
+      endLocal.getMonth(),
+      endLocal.getDate(),
+      endLocal.getHours() + 4,
+      endLocal.getMinutes(),
+      0,
+      0
+    )
+  );
+
+  const startUTCHour = startUTC.getUTCHours();
+  const startUTCMinute = startUTC.getUTCMinutes();
+  const endUTCHour = endUTC.getUTCHours();
+  const endUTCMinute = endUTC.getUTCMinutes();
+
+  const startUTCTime = `${startUTCHour.toString().padStart(2, '0')}:${startUTCMinute.toString().padStart(2, '0')}`;
+  const endUTCTime = `${endUTCHour.toString().padStart(2, '0')}:${endUTCMinute.toString().padStart(2, '0')}`;
+
+  const rangeStartDay = startLocal.toISOString().split('T')[0];
+  const rangeEndDay = endLocal.toISOString().split('T')[0];
+  const isMultiDay = rangeStartDay !== rangeEndDay;
+
+  const startTimeMinutes = timeToMinutes(startUTCTime);
+  const endTimeMinutes = timeToMinutes(endUTCTime);
+
+  const filtered = sortedData.filter(item => {
+    if (!item.time) return false;
+
+    const itemDay = item.day;
+
+    if (!isMultiDay) {
+      if (itemDay !== rangeStartDay) {
+        return false;
+      }
+    } else {
+      if (itemDay < rangeStartDay || itemDay > rangeEndDay) {
+        return false;
+      }
+    }
+
+    const itemTimeMinutes = timeToMinutes(item.time);
+
+    if (isMultiDay) {
+      if (itemDay === rangeStartDay) {
+        if (groupByHour && !useMinute) {
+          return (
+            Math.floor(itemTimeMinutes / 60) >=
+            Math.floor(startTimeMinutes / 60)
+          );
+        }
+        return itemTimeMinutes >= startTimeMinutes;
+      }
+
+      if (itemDay === rangeEndDay) {
+        if (groupByHour && !useMinute) {
+          return (
+            Math.floor(itemTimeMinutes / 60) <=
+            Math.floor(endTimeMinutes / 60)
+          );
+        }
+        return itemTimeMinutes <= endTimeMinutes;
+      }
+
+      return true;
+    }
+
+    if (groupByHour && !useMinute) {
+      const itemHour = Math.floor(itemTimeMinutes / 60);
+      const startHour = Math.floor(startTimeMinutes / 60);
+      const endHour = Math.floor(endTimeMinutes / 60);
+
+      if (endHour < startHour) {
+        return itemHour >= startHour || itemHour <= endHour;
+      }
+      return itemHour >= startHour && itemHour <= endHour;
+    }
+
+    if (endTimeMinutes < startTimeMinutes) {
+      return (
+        itemTimeMinutes >= startTimeMinutes ||
+        itemTimeMinutes <= endTimeMinutes
+      );
+    }
+
+    return (
+      itemTimeMinutes >= startTimeMinutes &&
+      itemTimeMinutes <= endTimeMinutes
+    );
+  });
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Metrics] Filtered data by custom time range:', {
+      startUTCTime,
+      endUTCTime,
+      originalCount: sortedData.length,
+      filteredCount: filtered.length,
+      useMinute,
+      groupByHour,
+    });
+  }
+
+  return filtered;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Converts an "HH:MM" time string to total minutes since midnight.
+ *
+ * @param timeStr - Time string in "HH:MM" format.
+ * @returns Total minutes.
+ */
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// ============================================================================
+// Filter Switch Functions
+// ============================================================================
+
+/**
+ * Fetches new metrics data based on selected filter.
+ */
+export async function switchFilter(
+  filter: TimePeriod,
+  setTotals: (state: dashboardData | null) => void,
+  setChartData: (state: dashboardData[]) => void,
+  startDate?: Date,
+  endDate?: Date,
+  licencee?: string,
+  setActiveFilters?: (filters: ActiveFilters) => void,
+  setShowDatePicker?: (state: boolean) => void,
+  displayCurrency?: string,
+  signal?: AbortSignal,
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+): Promise<void> {
+  try {
+    if (setActiveFilters) {
+      const newFilters: ActiveFilters = {
+        Today: filter === 'Today',
+        Yesterday: filter === 'Yesterday',
+        last7days: filter === '7d',
+        last30days: filter === '30d',
+        Custom: filter === 'Custom',
+      };
+      setActiveFilters(newFilters);
+    }
+
+    if (setShowDatePicker) {
+      setShowDatePicker(filter === 'Custom');
+    }
+
+    const data: dashboardData[] = await getMetrics(
+      filter,
+      startDate,
+      endDate,
+      licencee,
+      displayCurrency,
+      signal,
+      granularity
+    );
+
+    if (data.length > 0) {
+      setChartData(data);
+      setTotals({
+        xValue: 'total',
+        day: 'total',
+        time: 'total',
+        moneyIn: data.reduce(
+          (accumulator, current) => accumulator + current.moneyIn,
+          0
+        ),
+        moneyOut: data.reduce(
+          (accumulator, current) => accumulator + current.moneyOut,
+          0
+        ),
+        gross: data.reduce(
+          (accumulator, current) => accumulator + current.gross,
+          0
+        ),
+        location: undefined,
+        geoCoords: undefined,
+      });
+    } else {
+      setTotals(null);
+      setChartData([]);
+    }
+  } catch (e) {
+    console.error(
+      '[switchFilter] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
   }
 }
 

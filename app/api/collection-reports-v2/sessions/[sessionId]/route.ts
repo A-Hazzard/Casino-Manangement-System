@@ -8,7 +8,7 @@
  * @module app/api/collection-reports-v2/sessions/[sessionId]/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { CollectionSessionV2 } from '@/app/api/lib/models/collectionSessionV2';
@@ -20,7 +20,6 @@ import {
   logRouteUpdate,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import type { ReportedMachineDocument } from '@/app/api/lib/models/reportedMachines';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -120,18 +119,8 @@ export async function GET(
   const user = extractUserFromRequest(req);
   let sessionId = '';
 
+  return withApiAuth(req, async ({ user: userPayload }) => {
   try {
-    // ============================================================================
-    // STEP 1: Connect and authenticate
-    // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     // ============================================================================
     // STEP 2: Parse session ID
@@ -217,11 +206,12 @@ export async function GET(
       success: true,
       data: { ...sessionData, machines: scaledMachines, financials: scaledFinancials },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'GET', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
+  });
 }
 
 // ============================================================================
@@ -237,18 +227,11 @@ export async function DELETE(
   const user = extractUserFromRequest(req);
   let sessionId = '';
 
+  return withApiAuth(req, async ({ user: userPayload }) => {
   try {
     // ============================================================================
-    // STEP 1: Connect, authenticate, and check permissions
+    // STEP 1: Check permissions
     // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const { roles } = extractUserPayload(
       userPayload as unknown as Record<string, unknown>
@@ -338,11 +321,12 @@ export async function DELETE(
       success: true,
       data: { sessionId, count },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'DELETE', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
+  });
 }
 
 // ============================================================================
@@ -358,21 +342,10 @@ export async function PATCH(
   const user = extractUserFromRequest(req);
   let sessionId = '';
 
+  return withApiAuth(req, async () => {
   try {
     // ============================================================================
-    // STEP 1: Connect and authenticate
-    // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 2: Parse request params and body
+    // STEP 1: Parse request params and body
     // ============================================================================
     sessionId = (await params).sessionId;
     if (!sessionId) {
@@ -468,9 +441,10 @@ export async function PATCH(
         financialsUpdated: Object.keys(financialUpdate).length > 0,
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'PATCH', `/api/collection-reports-v2/sessions/${sessionId}`, errorMessage, user);
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
+  });
 }

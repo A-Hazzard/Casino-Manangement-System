@@ -34,6 +34,7 @@ import {
   getMoneyInColorClass,
   getMoneyOutColorClass,
 } from '@/lib/utils/financial';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -168,27 +169,12 @@ export default function FinancialMetricsCards({
   // ============================================================================
   // Handlers
   // ============================================================================
-  const formatNumberOnly = (value: number): string => {
-    if (Number.isNaN(value)) {
-      return '--';
-    }
-
-    const hasDecimals = value % 1 !== 0;
-    const decimalPart = Math.abs(value % 1);
-    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
-
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
-      maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
-    }).format(value);
-  };
-
   const formatCurrencyAmount = (value: number): string => {
     if (Number.isNaN(value)) {
       return '--';
     }
 
-    return `${currencyCode} ${formatNumberOnly(value)}`;
+    return formatCurrencyWithCodeString(value, currencyCode);
   };
 
   const formatCurrencyWithScaling = (
@@ -213,24 +199,23 @@ export default function FinancialMetricsCards({
       };
     }
 
+    const hasDecimals = absValue % 1 !== 0;
+    const decimalPart = Math.abs(absValue % 1);
+    const hasSignificantDecimals = hasDecimals && decimalPart >= 0.01;
+
+    const formattedNumber = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: hasSignificantDecimals ? 2 : 0,
+      maximumFractionDigits: hasSignificantDecimals ? 2 : 0,
+    }).format(absValue);
+
     return {
-      display: `${sign}${currencyCode} ${formatNumberOnly(absValue)}`,
+      display: `${sign}${currencyCode} ${formattedNumber}`,
       size: 'text-lg sm:text-xl md:text-2xl lg:text-3xl',
     };
   };
 
   const showJackpotIndicator = includeJackpot && (totals?.jackpot ?? 0) > 0;
 
-  // DEBUG: Log totals being received
-  if (totals && (totals.moneyOut > 0 || (totals.jackpot ?? 0) > 0)) {
-    console.warn('[FinancialMetricsCards] Received totals:', {
-      moneyIn: totals.moneyIn,
-      moneyOut: totals.moneyOut,
-      jackpot: totals.jackpot,
-      gross: totals.gross,
-      baseCancelledCredits: (totals.moneyOut || 0) - (totals.jackpot || 0),
-    });
-  }
   const jackpotBreakdownPopover = showJackpotIndicator ? (
     <Popover>
       <PopoverTrigger asChild>

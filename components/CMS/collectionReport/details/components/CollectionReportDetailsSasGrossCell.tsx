@@ -55,14 +55,11 @@ export const CollectionReportDetailsSasGrossCell: FC<
 
   const fmt = (v: number) => {
     const frac = Math.abs(v % 1);
-    return (
-      '$' +
-      v.toLocaleString(
-        undefined,
-        frac >= 0.1
-          ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-          : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
-      )
+    return v.toLocaleString(
+      undefined,
+      frac >= 0.1
+        ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+        : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
 

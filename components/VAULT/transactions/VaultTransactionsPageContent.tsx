@@ -28,10 +28,8 @@ import {
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
-import {
-  fetchVaultTransactions,
-  getTransactionTypeBadge,
-} from '@/lib/helpers/vaultHelpers';
+import { fetchVaultTransactions } from '@/lib/helpers/vault/vaultDataFetching';
+import { getTransactionTypeBadge } from '@/lib/helpers/vault/vaultCalculationHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useUserStore } from '@/lib/store/userStore';

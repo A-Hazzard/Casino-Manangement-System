@@ -21,9 +21,9 @@ export default function VaultTransfersSkeleton() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map(index => (
           <div
-            key={i}
+            key={index}
             className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
           >
             <div className="flex items-center justify-between">
@@ -54,17 +54,17 @@ export default function VaultTransfersSkeleton() {
             {/* Table Header */}
             <div className="border-b border-gray-200">
               <div className="grid grid-cols-7 gap-4 p-4">
-                {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                  <Skeleton key={i} className="h-4 w-full" />
+                {[1, 2, 3, 4, 5, 6, 7].map(index => (
+                  <Skeleton key={index} className="h-4 w-full" />
                 ))}
               </div>
             </div>
             {/* Table Rows */}
             <div className="divide-y divide-gray-200">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="grid grid-cols-7 gap-4 p-4">
-                  {[1, 2, 3, 4, 5, 6, 7].map(j => (
-                    <Skeleton key={j} className="h-4 w-full" />
+              {[1, 2, 3].map(index => (
+                <div key={index} className="grid grid-cols-7 gap-4 p-4">
+                  {[1, 2, 3, 4, 5, 6, 7].map(index => (
+                    <Skeleton key={index} className="h-4 w-full" />
                   ))}
                 </div>
               ))}
@@ -75,9 +75,9 @@ export default function VaultTransfersSkeleton() {
         {/* Mobile Cards Skeleton */}
         <div className="lg:hidden">
           <div className="space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map(index => (
               <div
-                key={i}
+                key={index}
                 className="rounded-lg border border-gray-200 bg-white p-4"
               >
                 <div className="flex items-center justify-between">
@@ -117,17 +117,17 @@ export default function VaultTransfersSkeleton() {
             {/* Table Header */}
             <div className="border-b border-gray-200">
               <div className="grid grid-cols-7 gap-4 p-4">
-                {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                  <Skeleton key={i} className="h-4 w-full" />
+                {[1, 2, 3, 4, 5, 6, 7].map(index => (
+                  <Skeleton key={index} className="h-4 w-full" />
                 ))}
               </div>
             </div>
             {/* Table Rows */}
             <div className="divide-y divide-gray-200">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                <div key={i} className="grid grid-cols-7 gap-4 p-4">
-                  {[1, 2, 3, 4, 5, 6, 7].map(j => (
-                    <Skeleton key={j} className="h-4 w-full" />
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
+                <div key={index} className="grid grid-cols-7 gap-4 p-4">
+                  {[1, 2, 3, 4, 5, 6, 7].map(index => (
+                    <Skeleton key={index} className="h-4 w-full" />
                   ))}
                 </div>
               ))}
@@ -138,9 +138,9 @@ export default function VaultTransfersSkeleton() {
         {/* Mobile Cards Skeleton */}
         <div className="lg:hidden">
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(index => (
               <div
-                key={i}
+                key={index}
                 className="rounded-lg border border-gray-200 bg-white p-4"
               >
                 <div className="flex items-center justify-between">

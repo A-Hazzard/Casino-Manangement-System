@@ -67,6 +67,7 @@ import { formatDate } from '@/lib/utils/formatting';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ExternalLink } from 'lucide-react';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 
 type EditCollectionFormFieldsProps = {
   selectedLocationName: string;
@@ -104,6 +105,7 @@ type EditCollectionFormFieldsProps = {
   onViewMachine: () => void;
   includeJackpot?: boolean;
   jackpot?: number;
+  machineIsOnline?: boolean;
 };
 
 export default function CollectionReportEditFormFields({
@@ -141,6 +143,7 @@ export default function CollectionReportEditFormFields({
   onViewMachine,
   includeJackpot = false,
   jackpot = 0,
+  machineIsOnline,
 }: EditCollectionFormFieldsProps) {
   // ============================================================================
   // Computed
@@ -164,14 +167,22 @@ export default function CollectionReportEditFormFields({
       </div>
 
       <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
-        <span className="text-sm font-medium">
-          {machineForDataEntry
-            ? formatMachineDisplayNameWithBold({
-                ...machineForDataEntry,
-                serialNumber: getSerialNumberIdentifier(machineForDataEntry),
-              })
-            : 'Select a machine to edit'}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-sm font-medium">
+            {machineForDataEntry
+              ? formatMachineDisplayNameWithBold({
+                  ...machineForDataEntry,
+                  serialNumber: getSerialNumberIdentifier(machineForDataEntry),
+                })
+              : 'Select a machine to edit'}
+          </span>
+          {machineForDataEntry && (
+            <MachineOnlineStatusDot
+              isOnline={machineIsOnline}
+              hasRelay={machineForDataEntry.relayId ? true : false}
+            />
+          )}
+        </div>
         {machineForDataEntry && (
           <button
             type="button"

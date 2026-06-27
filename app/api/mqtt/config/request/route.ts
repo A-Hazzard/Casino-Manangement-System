@@ -11,6 +11,7 @@
  */
 
 import { validateMQTTConfigRequest } from '@/app/api/lib/helpers/mqtt';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import {
   logRouteFetch,
@@ -37,85 +38,86 @@ export async function POST(request: NextRequest) {
   const functionName = 'POST /api/mqtt/config/request';
   const user = extractUserFromRequest(request);
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse request body
-    // ============================================================================
-    const body = await request.json();
-    const { relayId, component } = body as {
-      relayId?: string;
-      component?: string;
-    };
+  return withApiAuth(request, async () => {
+    try {
+      // ============================================================================
+      // STEP 1: Parse request body
+      // ============================================================================
+      const body = await request.json();
+      const { relayId, component } = body as {
+        relayId?: string;
+        component?: string;
+      };
 
-    // ============================================================================
-    // STEP 2: Validate request body
-    // ============================================================================
-    const validationError = validateMQTTConfigRequest(body);
-    if (validationError) {
+      // ============================================================================
+      // STEP 2: Validate request body
+      // ============================================================================
+      const validationError = validateMQTTConfigRequest(body);
+      if (validationError) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/mqtt/config/request',
+          validationError,
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: validationError },
+          { status: 400 }
+        );
+      }
+
+      // ============================================================================
+      // STEP 3: Request config from SMIB via MQTT
+      // ============================================================================
+      await mqttService.requestConfig(relayId!, component!);
+
+      // ============================================================================
+      // STEP 4: Return success response
+      // ============================================================================
+      const duration = Date.now() - startTime;
+      if (duration > 1000) {
+        console.warn(`[MQTT Config Request API] slow: ${duration}ms`);
+      }
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/mqtt/config/request',
+        1,
+        user,
+        duration
+      );
+      return NextResponse.json({
+        success: true,
+        message: `Config request sent for ${component} to relayId: ${relayId}`,
+        relayId,
+        component,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
       logRouteError(
         functionName,
         'POST',
         '/api/mqtt/config/request',
-        validationError,
+        errorMessage,
         user
       );
+      console.error(
+        `[MQTT Config Request API] Error after ${duration}ms:`,
+        errorMessage
+      );
       return NextResponse.json(
-        { success: false, error: validationError },
-        { status: 400 }
+        {
+          success: false,
+          error: errorMessage,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 }
       );
     }
-
-    // ============================================================================
-    // STEP 3: Request config from SMIB via MQTT
-    // ============================================================================
-    await mqttService.requestConfig(relayId!, component!);
-
-    // ============================================================================
-    // STEP 4: Return success response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[MQTT Config Request API] Completed in ${duration}ms`);
-    }
-    logRouteCreate(
-      functionName,
-      'POST',
-      '/api/mqtt/config/request',
-      1,
-      user,
-      duration
-    );
-    return NextResponse.json({
-      success: true,
-      message: `Config request sent for ${component} to relayId: ${relayId}`,
-      relayId,
-      component,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    logRouteError(
-      functionName,
-      'POST',
-      '/api/mqtt/config/request',
-      errorMessage,
-      user
-    );
-    console.error(
-      `[MQTT Config Request API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 /**
@@ -127,26 +129,28 @@ export async function GET(request: NextRequest) {
   const functionName = 'GET /api/mqtt/config/request';
   const user = extractUserFromRequest(request);
 
-  const duration = Date.now() - startTime;
-  logRouteFetch(
-    functionName,
-    'GET',
-    '/api/mqtt/config/request',
-    1,
-    user,
-    duration
-  );
-  return NextResponse.json({
-    success: true,
-    message: 'MQTT Config Request API',
-    usage: {
-      request:
-        'POST /api/mqtt/config/request with { "relayId": "string", "component": "string" }',
-      components: ['mqtt', 'ota', 'coms', 'net', 'app'],
-    },
-    example: {
-      relayId: 'e831cdfa8384',
-      component: 'mqtt',
-    },
+  return withApiAuth(request, async () => {
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/mqtt/config/request',
+      1,
+      user,
+      duration
+    );
+    return NextResponse.json({
+      success: true,
+      message: 'MQTT Config Request API',
+      usage: {
+        request:
+          'POST /api/mqtt/config/request with { "relayId": "string", "component": "string" }',
+        components: ['mqtt', 'ota', 'coms', 'net', 'app'],
+      },
+      example: {
+        relayId: 'e831cdfa8384',
+        component: 'mqtt',
+      },
+    });
   });
 }

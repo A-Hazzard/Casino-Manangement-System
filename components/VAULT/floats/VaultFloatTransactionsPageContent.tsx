@@ -27,11 +27,8 @@ import {
 } from '@/components/shared/ui/tabs';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_CASHIER_FLOATS } from '@/components/VAULT/overview/data/defaults';
-import {
-  fetchFloatTransactionsData,
-  handleApproveFloatTransaction,
-  handleRejectFloatTransaction,
-} from '@/lib/helpers/vaultHelpers';
+import { fetchFloatTransactionsData } from '@/lib/helpers/vault/vaultDataFetching';
+import { handleApproveFloatTransaction, handleRejectFloatTransaction } from '@/lib/helpers/vault/vaultEventHandlers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
@@ -464,8 +461,8 @@ export default function VaultFloatTransactionsPageContent() {
             <TabsContent value="floats">
               {loading ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                  {[1, 2, 3, 4].map(index => (
+                    <Card key={index} className="h-32 animate-pulse bg-gray-50" />
                   ))}
                 </div>
               ) : (
@@ -476,8 +473,8 @@ export default function VaultFloatTransactionsPageContent() {
             <TabsContent value="history">
               {loading ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="h-32 animate-pulse bg-gray-50" />
+                  {[1, 2, 3, 4].map(index => (
+                    <Card key={index} className="h-32 animate-pulse bg-gray-50" />
                   ))}
                 </div>
               ) : (

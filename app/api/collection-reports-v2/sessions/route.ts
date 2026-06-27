@@ -7,7 +7,7 @@
  * @module app/api/collection-reports-v2/sessions/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ReportedMachine } from '@/app/api/lib/models/reportedMachines';
 import { Machine } from '@/app/api/lib/models/machines';
 import { determineAllowedLocationIds } from '@/app/api/lib/helpers/collectionReport/queries';
@@ -17,7 +17,6 @@ import {
   logRouteCreate,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { generateMongoId } from '@/lib/utils/id';
 import type { MachineDocument } from '@/shared/types/models';
 import { NextRequest, NextResponse } from 'next/server';
@@ -45,18 +44,8 @@ export async function GET(req: NextRequest) {
   const functionName = 'GET /api/collection-reports-v2/sessions';
   const user = extractUserFromRequest(req);
 
+  return withApiAuth(req, async ({ user: userPayload }) => {
   try {
-    // ============================================================================
-    // STEP 1: Connect and authenticate
-    // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     // ============================================================================
     // STEP 2: Parse query parameters
@@ -127,11 +116,12 @@ export async function GET(req: NextRequest) {
         totalPages: Math.ceil(total / limit) || 1,
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'GET', '/api/collection-reports-v2/sessions', errorMessage, user);
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
+  });
 }
 
 // ============================================================================
@@ -143,21 +133,10 @@ export async function POST(req: NextRequest) {
   const functionName = 'POST /api/collection-reports-v2/sessions';
   const user = extractUserFromRequest(req);
 
+  return withApiAuth(req, async ({ user: userPayload }) => {
   try {
     // ============================================================================
-    // STEP 1: Connect and authenticate
-    // ============================================================================
-    await connectDB();
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 2: Parse request body
+    // STEP 1: Parse request body
     // ============================================================================
     const body = await req.json();
     const { locationId, locationName, licencee } = body as {
@@ -226,7 +205,7 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 6: Look up last collection times per machine
     // ============================================================================
-    const machineIdsList = machines.map(m => String(m._id));
+    const machineIdsList = machines.map(machine => String(machine._id));
     const lastCollectionMap = await lookupLastSessionEndTimes(machineIdsList);
 
     // ============================================================================
@@ -250,6 +229,9 @@ export async function POST(req: NextRequest) {
     const insertedIds = inserted.map(doc => doc._id);
 
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[POST /api/collection-reports-v2/sessions] slow: ${duration}ms`);
+    }
     logRouteCreate(functionName, 'POST', '/api/collection-reports-v2/sessions', inserted.length, user, duration);
 
     // ============================================================================
@@ -269,9 +251,10 @@ export async function POST(req: NextRequest) {
         reportedMachineIds: insertedIds,
       },
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Internal server error';
     logRouteError(functionName, 'POST', '/api/collection-reports-v2/sessions', errorMessage, user);
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
+  });
 }

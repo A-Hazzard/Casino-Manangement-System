@@ -152,10 +152,10 @@ export function useCabinetAccountingData({
                 reportVersion: entry.reportVersion,
               };
             })
-            .sort((a, b) => {
+            .sort((entryA, entryB) => {
               return (
-                new Date(b.timestamp).getTime() -
-                new Date(a.timestamp).getTime()
+                new Date(entryB.timestamp).getTime() -
+                new Date(entryA.timestamp).getTime()
               );
             });
 

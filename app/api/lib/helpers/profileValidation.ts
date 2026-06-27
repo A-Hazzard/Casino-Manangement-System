@@ -1,16 +1,18 @@
 import {
   containsEmailPattern,
-  containsPhonePattern,
   isPlaceholderEmail,
-  normalizePhoneNumber,
   validateEmail,
+} from '@/lib/utils/validation/email';
+import { validatePasswordStrength } from '@/lib/utils/validation/password';
+import {
+  containsPhonePattern,
+  normalizePhoneNumber,
   validateNameField,
   validateOptionalGender,
-  validatePasswordStrength,
   validatePhoneNumber,
   validateProfileField,
   validateUsername,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/members';
 
 type NullableString = string | undefined | null;
 

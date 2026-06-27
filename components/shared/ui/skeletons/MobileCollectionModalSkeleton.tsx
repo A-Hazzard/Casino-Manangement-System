@@ -38,8 +38,8 @@ export const MobileCollectionModalSkeleton = () => {
 
           {/* Machine Cards */}
           <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="rounded-lg border bg-gray-50 p-4">
+            {[1, 2, 3, 4, 5].map(index => (
+              <div key={index} className="rounded-lg border bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-24" />

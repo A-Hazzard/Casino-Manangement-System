@@ -162,9 +162,9 @@ export default function ProfileAddressIdentity({
                     }
                   >
                     <option value="">Select country</option>
-                    {countries.map(c => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
+                    {countries.map(country => (
+                      <option key={country._id} value={country._id}>
+                        {country.name}
                       </option>
                     ))}
                   </select>
@@ -176,7 +176,7 @@ export default function ProfileAddressIdentity({
                 </>
               ) : (
                 <p className="mt-2 text-sm text-gray-900">
-                  {countries.find(c => c._id === formData?.address?.country)
+                  {countries.find(country => country._id === formData?.address?.country)
                     ?.name ||
                     formData?.address?.country ||
                     '-'}

@@ -52,7 +52,7 @@ export default function ReportsLocationsTab() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const { formatAmount, shouldShowCurrency, displayCurrency } = useCurrencyFormat();
   const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
   const { selectedDateRange, setLoading } = useReportsStore();
@@ -485,6 +485,7 @@ export default function ReportsLocationsTab() {
         format,
         formatAmount,
         shouldShowCurrency,
+        displayCurrency,
         toast,
       });
     },
@@ -495,6 +496,7 @@ export default function ReportsLocationsTab() {
       activeMetricsFilter,
       formatAmount,
       shouldShowCurrency,
+      displayCurrency,
     ]
   );
 
@@ -512,6 +514,7 @@ export default function ReportsLocationsTab() {
         selectedDateRange,
         activeMetricsFilter: activeMetricsFilter || 'Today',
         format,
+        displayCurrency,
         toast,
       });
     },
@@ -523,6 +526,7 @@ export default function ReportsLocationsTab() {
       topLocations,
       selectedDateRange,
       activeMetricsFilter,
+      displayCurrency,
     ]
   );
 
@@ -541,6 +545,7 @@ export default function ReportsLocationsTab() {
         format,
         formatAmount,
         shouldShowCurrency,
+        displayCurrency,
         toast,
       });
     },
@@ -553,6 +558,7 @@ export default function ReportsLocationsTab() {
       activeMetricsFilter,
       formatAmount,
       shouldShowCurrency,
+      displayCurrency,
     ]
   );
 

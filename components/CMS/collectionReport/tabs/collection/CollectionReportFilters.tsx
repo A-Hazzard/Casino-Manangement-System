@@ -65,12 +65,6 @@ export default function CollectionReportFilters({
   onClearFilters,
   isSearching,
 }: CollectionReportFiltersProps) {
-  console.warn('[COLLECTION REPORT FILTERS] Component rendered with:');
-  console.warn(`  - selectedLocation: "${selectedLocation}"`);
-  console.warn(`  - locations count: ${locations.length}`);
-  console.warn(`  - search: "${search}"`);
-  console.warn(`  - showUncollectedOnly: ${showUncollectedOnly}`);
-
   // ============================================================================
   // State & Hooks
   // ============================================================================

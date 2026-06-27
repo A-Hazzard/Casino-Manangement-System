@@ -71,8 +71,8 @@ export const ReportsPageSkeleton = () => (
 
     {/* Navigation skeleton */}
     <div className="flex gap-2">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-10 w-24" />
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} className="h-10 w-24" />
       ))}
     </div>
 

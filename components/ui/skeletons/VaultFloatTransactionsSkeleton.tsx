@@ -24,9 +24,9 @@ export default function VaultFloatTransactionsSkeleton() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[1, 2, 3, 4].map(i => (
+        {[1, 2, 3, 4].map(index => (
           <div
-            key={i}
+            key={index}
             className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
           >
             <div className="flex items-center justify-between">
@@ -34,7 +34,7 @@ export default function VaultFloatTransactionsSkeleton() {
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="mt-2 h-8 w-24" />
               </div>
-              {i === 2 && <Skeleton className="h-8 w-8 rounded-full" />}
+              {index === 2 && <Skeleton className="h-8 w-8 rounded-full" />}
             </div>
           </div>
         ))}
@@ -59,8 +59,8 @@ export default function VaultFloatTransactionsSkeleton() {
             </div>
           </div>
           <div className="divide-y divide-gray-200">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="p-4">
+            {[1, 2, 3, 4, 5].map(index => (
+              <div key={index} className="p-4">
                 <div className="grid grid-cols-4 gap-4">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-4 w-20" />
@@ -88,8 +88,8 @@ export default function VaultFloatTransactionsSkeleton() {
             </div>
           </div>
           <div className="divide-y divide-gray-200">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="p-4">
+            {[1, 2, 3, 4, 5].map(index => (
+              <div key={index} className="p-4">
                 <div className="grid grid-cols-6 gap-4">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-4 w-32" />

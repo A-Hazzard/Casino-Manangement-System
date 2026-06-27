@@ -7,6 +7,8 @@
  * - Client-side permission checks (hasPageAccess, hasAdminAccess)
  * - Server-side database permission checks (hasPageAccessDb, hasAdminAccessDb)
  * - User role and page name types
+ * - Sidebar visibility helpers
+ * - Machine/location CRUD permissions
  */
 
 // Re-export types from client
@@ -17,10 +19,23 @@ export type { UserRole } from '@/lib/constants';
 export {
   hasPageAccess,
   hasTabAccess,
+  shouldShowNavigationLink,
+} from './client';
+
+// Role check utilities
+export {
   hasAdminAccess,
   hasManagerAccess,
-  shouldShowNavigationLink,
   getRoleDisplayName,
+  getUserPrimaryRole,
+  isCashierOnly,
+  isVaultManagerOnly,
+  hasCmsAccess,
+  hasCashierRole,
+  hasVaultManagerRole,
+  shouldShowCmsSidebar,
+  shouldShowVaultSidebar,
+  shouldShowCashierSidebar,
   canEditMachines,
   canDeleteMachines,
   canManageLocations,

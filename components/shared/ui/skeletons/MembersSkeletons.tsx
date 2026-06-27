@@ -15,8 +15,8 @@ export const MembersPageSkeleton = () => (
     {/* Navigation skeleton */}
     <div className="mb-6 flex items-center justify-between">
       <div className="flex space-x-1">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-24 rounded-md" />
+        {Array.from({ length: 2 }).map((_, index) => (
+          <Skeleton key={index} className="h-10 w-24 rounded-md" />
         ))}
       </div>
       <Skeleton className="h-10 w-32" />
@@ -59,16 +59,16 @@ export const MembersListTabSkeleton = () => (
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <th key={i} className="p-3 text-center">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <th key={index} className="p-3 text-center">
                         <Skeleton className="h-4 w-20" />
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <tr key={index} className="border-b">
                       <td className="p-3">
                         <div className="flex items-center gap-3">
                           <Skeleton className="h-8 w-8 rounded-full" />
@@ -104,8 +104,8 @@ export const MembersListTabSkeleton = () => (
 
       {/* Mobile cards skeleton */}
       <div className="block space-y-4 lg:hidden">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Card key={i}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Card key={index}>
             <CardContent className="p-4">
               {/* Header */}
               <div className="mb-2">
@@ -168,8 +168,8 @@ export const MembersSummaryTabSkeleton = () => (
   <div className="space-y-6">
     {/* Summary cards skeleton */}
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i}>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
@@ -220,9 +220,9 @@ export const MembersSummaryTabSkeleton = () => (
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, index) => (
             <div
-              key={i}
+              key={index}
               className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
             >
               <div className="flex items-center gap-3">

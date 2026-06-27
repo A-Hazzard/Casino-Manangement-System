@@ -13,11 +13,8 @@ import VaultOverviewCloseDayModals from '@/components/VAULT/overview/sections/Va
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
-import {
-  fetchVaultBalance,
-  handleFloatAction,
-  handleFloatConfirm,
-} from '@/lib/helpers/vaultHelpers';
+import { fetchVaultBalance } from '@/lib/helpers/vault/vaultDataFetching';
+import { handleFloatAction, handleFloatConfirm } from '@/lib/helpers/vault/vaultEventHandlers';
 import { useNotifications } from '@/lib/hooks/vault/useNotifications';
 import { useVaultCloseDay } from '@/lib/hooks/vault/useVaultCloseDay';
 import { useNotificationStore } from '@/lib/store/notificationStore';
@@ -54,8 +51,8 @@ export default function VaultManagerHeader({
   // ============================================================================
   const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } =
     useUserStore();
-  const isAdminOrDev = user?.roles?.some(r =>
-    ['admin', 'developer'].includes(r?.toLowerCase())
+  const isAdminOrDev = user?.roles?.some(role =>
+    ['admin', 'developer'].includes(role?.toLowerCase())
   );
   const locationId = user?.assignedLocations?.[0];
   const [vaultInventory, setVaultInventory] = useState<Denomination[]>(
@@ -124,7 +121,7 @@ export default function VaultManagerHeader({
 
         if (approvedDenominations) {
           const approvedAmount = approvedDenominations.reduce(
-            (sum, d) => sum + d.denomination * d.quantity,
+            (total, denom) => total + denom.denomination * denom.quantity,
             0
           );
           data = { approvedDenominations, approvedAmount };

@@ -30,12 +30,14 @@ import type { User } from '@/lib/types/administration';
 import type { Country, Licencee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
-  getPasswordStrengthLabel,
   isPlaceholderEmail,
   validateEmail,
+} from '@/lib/utils/validation/email';
+import {
+  getPasswordStrengthLabel,
   validatePasswordStrength,
-  validatePhoneNumber,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/password';
+import { validatePhoneNumber } from '@/lib/utils/validation/members';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {

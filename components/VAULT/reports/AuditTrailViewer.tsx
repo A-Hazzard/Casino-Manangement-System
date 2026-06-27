@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import { fetchAuditTrail } from '@/lib/helpers/vaultHelpers';
+import { fetchAuditTrail } from '@/lib/helpers/vault/vaultDataFetching';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import {

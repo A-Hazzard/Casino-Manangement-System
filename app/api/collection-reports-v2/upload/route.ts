@@ -4,15 +4,16 @@
  * POST /api/collection-reports-v2/upload
  * Accepts a FormData payload with a machine meter photo and stores it in
  * MongoDB GridFS under the `collection_v2_images` bucket.
+ *
+ * @module app/api/collection-reports-v2/upload/route
  */
 
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   extractUserFromRequest,
   logRouteCreate,
   logRouteError,
 } from '@/app/api/lib/utils/routeLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { GridFSBucket } from 'mongodb';
 import { Readable } from 'stream';
 import { NextRequest, NextResponse } from 'next/server';
@@ -32,25 +33,10 @@ export async function POST(req: NextRequest) {
   const functionName = 'POST /api/collection-reports-v2/upload';
   const user = extractUserFromRequest(req);
 
-  try {
+  return withApiAuth(req, async ({ user: userPayload, db }) => {
+    try {
     // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-
-    // ============================================================================
-    // STEP 2: Authenticate user
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Parse form data and validate
+    // STEP 1: Parse form data and validate
     // ============================================================================
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -88,6 +74,12 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 4: Upload file to GridFS
     // ============================================================================
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: 'Database connection unavailable' },
+        { status: 500 }
+      );
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
     const bucket = new GridFSBucket(db, { bucketName: BUCKET_NAME });
 
@@ -113,6 +105,9 @@ export async function POST(req: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[POST /api/collection-reports-v2/upload] slow: ${duration}ms`);
+    }
     logRouteCreate(
       functionName,
       'POST',
@@ -133,9 +128,9 @@ export async function POST(req: NextRequest) {
         imageSize: file.size,
       },
     });
-  } catch (error) {
+  } catch (e) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Upload failed';
+      e instanceof Error ? e.message : 'Upload failed';
     logRouteError(
       functionName,
       'POST',
@@ -148,6 +143,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 function getExtension(filename: string): string {

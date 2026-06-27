@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
-import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vaultHelpers';
+import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vault/vaultDataFetching';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { VaultMetrics } from '@/shared/types/vault';

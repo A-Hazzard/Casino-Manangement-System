@@ -136,7 +136,7 @@ export default function ProfileAssignments({
     selectedLocationIds.forEach(id => {
       if (!id || id === 'all') return;
 
-      const licencee = licencees.find(l => String(l._id) === id);
+      const licencee = licencees.find(lic => String(lic._id) === id);
       if (licencee) {
         // It's a licencee ID - find all locations for it
         const licenceeLocations = locations.filter(loc => {
@@ -147,7 +147,7 @@ export default function ProfileAssignments({
             loc.licencee ||
             loc.licensee;
           if (Array.isArray(lid)) {
-            return lid.some(l => String(l) === String(licencee._id));
+            return lid.some(licId => String(licId) === String(licencee._id));
           }
           return String(lid) === String(licencee._id);
         });
@@ -164,7 +164,7 @@ export default function ProfileAssignments({
         });
       } else {
         // Regular location ID
-        const loc = locations.find(l => String(l._id) === id);
+        const loc = locations.find(locItem => String(locItem._id) === id);
         if (loc) {
           if (!processedLocationIds.has(String(loc._id))) {
             const lid =
@@ -175,7 +175,7 @@ export default function ProfileAssignments({
               loc.licensee;
             const singleLid = Array.isArray(lid) ? lid[0] : lid;
             const lic = licencees.find(
-              l => String(l._id) === String(singleLid)
+              licItem => String(licItem._id) === String(singleLid)
             );
             rows.push({
               locationName: loc.name,
@@ -228,8 +228,8 @@ export default function ProfileAssignments({
               Your assigned roles and permissions
             </p>
             {isEditMode &&
-            userData.roles?.some(r =>
-              ['admin', 'developer'].includes(r?.toLowerCase())
+            userData.roles?.some(role =>
+              ['admin', 'developer'].includes(role?.toLowerCase())
             ) ? (
               <div className="space-y-2">
                 {roles.map(role => (
@@ -240,20 +240,20 @@ export default function ProfileAssignments({
                     <Checkbox
                       id={`role-${role}`}
                       checked={selectedRoles
-                        .map(r => r?.toLowerCase())
+                        .map(selectedRole => selectedRole?.toLowerCase())
                         .includes(role?.toLowerCase())}
                       onCheckedChange={checked => {
                         if (checked) {
                           setSelectedRoles(prev => [
                             ...prev.filter(
-                              r => r?.toLowerCase() !== role?.toLowerCase()
+                              prevRole => prevRole?.toLowerCase() !== role?.toLowerCase()
                             ),
                             role,
                           ]);
                         } else {
                           setSelectedRoles(prev =>
                             prev.filter(
-                              r => r?.toLowerCase() !== role?.toLowerCase()
+                              prevRole => prevRole?.toLowerCase() !== role?.toLowerCase()
                             )
                           );
                         }
@@ -332,7 +332,7 @@ export default function ProfileAssignments({
                     ? selectedLicenceeIds
                         .map(
                           id =>
-                            licencees.find(l => String(l._id) === id)?.name ||
+                            licencees.find(lic => String(lic._id) === id)?.name ||
                             id
                         )
                         .filter(Boolean)

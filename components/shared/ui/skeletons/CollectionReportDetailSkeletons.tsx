@@ -76,8 +76,8 @@ const TabContentSkeleton = () => (
     <div className="space-y-4 p-6">
       <div className="skeleton-bg h-6 w-1/3 rounded"></div>
       <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="skeleton-bg h-12 w-full rounded"></div>
+        {[...Array(5)].map((_, index) => (
+          <div key={index} className="skeleton-bg h-12 w-full rounded"></div>
         ))}
       </div>
       <div className="mt-4 flex items-center justify-between">
@@ -100,8 +100,8 @@ const MobileSectionSkeleton = () => (
     <div className="space-y-4 p-4">
       <div className="skeleton-bg h-5 w-1/2 rounded"></div>
       <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex justify-between">
+        {[...Array(3)].map((_, index) => (
+          <div key={index} className="flex justify-between">
             <div className="skeleton-bg h-4 w-1/3 rounded"></div>
             <div className="skeleton-bg h-4 w-1/4 rounded"></div>
           </div>

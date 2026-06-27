@@ -63,12 +63,77 @@ function resolveEntry(
   return { entry };
 }
 
+// ============================================================================
+// Query-builder helpers
+// ============================================================================
+
+/** Operators the UI filter builder can send. */
+type FilterOp =
+  | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte'
+  | 'contains' | 'startsWith'
+  | 'exists' | 'notExists'
+  | 'in';
+
+type FilterClause = { field: string; op: FilterOp; value: string };
+
+/**
+ * Converts a single UI filter clause into a MongoDB field-level condition.
+ * Values are left as strings; MongoDB's driver coerces numeric strings for
+ * Number-type fields automatically when queried against the native collection.
+ */
+function clauseToMongo(clause: FilterClause): Record<string, unknown> | null {
+  const { field, op, value } = clause;
+  if (!field) return null;
+  switch (op) {
+    case 'eq':         return { [field]: value === 'true' ? true : value === 'false' ? false : value };
+    case 'ne':         return { [field]: { $ne: value } };
+    case 'gt':         return { [field]: { $gt: isNaN(Number(value)) ? value : Number(value) } };
+    case 'gte':        return { [field]: { $gte: isNaN(Number(value)) ? value : Number(value) } };
+    case 'lt':         return { [field]: { $lt: isNaN(Number(value)) ? value : Number(value) } };
+    case 'lte':        return { [field]: { $lte: isNaN(Number(value)) ? value : Number(value) } };
+    case 'contains':   return { [field]: { $regex: value, $options: 'i' } };
+    case 'startsWith': return { [field]: { $regex: `^${value}`, $options: 'i' } };
+    case 'exists':     return { [field]: { $exists: true, $ne: null } };
+    case 'notExists':  return { [field]: { $in: [null, undefined] } };
+    case 'in': {
+      const list = value.split(',').map(v => v.trim()).filter(Boolean);
+      return { [field]: { $in: list } };
+    }
+    default: return null;
+  }
+}
+
+/**
+ * Merges a UI-defined filter clause array into a MongoDB-compatible filter
+ * object, combining with the existing base filter using $and.
+ */
+function applyFilterClauses(
+  baseFilter: Record<string, unknown>,
+  clauses: FilterClause[],
+  logic: 'and' | 'or'
+): Record<string, unknown> {
+  const conditions = clauses
+    .map(clauseToMongo)
+    .filter((c): c is Record<string, unknown> => c !== null);
+  if (conditions.length === 0) return baseFilter;
+  const clauseFilter =
+    conditions.length === 1
+      ? conditions[0]
+      : logic === 'or'
+        ? { $or: conditions }
+        : { $and: conditions };
+  const baseKeys = Object.keys(baseFilter);
+  if (baseKeys.length === 0) return clauseFilter;
+  return { $and: [baseFilter, clauseFilter] };
+}
+
 /**
  * GET /api/dev/collections/[model]
  *
  * Flow:
  * 1. Authenticate — developer role required
- * 2. Resolve model + parse params (date range, apiPage, search, optional machine)
+ * 2. Resolve model + parse params (date range, apiPage, search, optional machine,
+ *    optional filter clauses, optional sort/limit overrides)
  * 3. Export mode → all matching docs as CSV/JSON
  * 4. Search seek → locate the Nth match's batch
  * 5. Query the resolved batch + total
@@ -112,11 +177,40 @@ export async function GET(
       parseInt(searchParams.get('apiPage') || '1')
     );
 
+    // --- Query builder params ---
+    const filtersParam = searchParams.get('filters');
+    const filterLogic: 'and' | 'or' =
+      searchParams.get('filterLogic') === 'or' ? 'or' : 'and';
+    const sortFieldParam = searchParams.get('sortField') || '';
+    const sortDirParam = searchParams.get('sortDir') === 'asc' ? 1 : -1;
+    const limitParam = parseInt(searchParams.get('limit') || '0');
+
+    let filterClauses: FilterClause[] = [];
+    if (filtersParam) {
+      try {
+        const parsed = JSON.parse(filtersParam);
+        if (Array.isArray(parsed)) filterClauses = parsed as FilterClause[];
+      } catch {
+        // Ignore malformed filter JSON
+      }
+    }
+
     const hasDateRange = Boolean(startDate || endDate);
-    const baseFilter: Record<string, unknown> = {
+    let baseFilter: Record<string, unknown> = {
       ...buildDateFilter(dateField, startDate, endDate),
     };
     if (machine) baseFilter.machine = machine;
+
+    // Merge query-builder clauses into baseFilter
+    baseFilter = applyFilterClauses(baseFilter, filterClauses, filterLogic);
+
+    // Sort override (only when query builder specifies a sort field)
+    const effectiveSort: Record<string, 1 | -1> = sortFieldParam
+      ? { [sortFieldParam]: sortDirParam as 1 | -1 }
+      : (entry.defaultSort as Record<string, 1 | -1>);
+
+    // Limit override for query builder (0 = use default batch)
+    const effectiveLimit = limitParam > 0 ? limitParam : undefined;
 
     // ==========================================================================
     // STEP 3: Export mode — all matching docs, no pagination
@@ -125,7 +219,8 @@ export async function GET(
       const format = searchParams.get('format') === 'json' ? 'json' : 'csv';
       const allDocs = (await entry.model.collection
         .find(baseFilter)
-        .sort(entry.defaultSort)
+        .sort(effectiveSort)
+        .limit(effectiveLimit ?? 0)
         .toArray()) as Record<string, unknown>[];
 
       const filename = `${entry.key}-${new Date().toISOString().split('T')[0]}`;
@@ -162,7 +257,14 @@ export async function GET(
     // ==========================================================================
     // STEP 5: Query the resolved batch + total
     // ==========================================================================
-    const batch = await queryBatch(entry, baseFilter, apiPage, hasDateRange);
+    const batch = await queryBatch(
+      entry,
+      baseFilter,
+      apiPage,
+      hasDateRange || filterClauses.length > 0,
+      effectiveSort,
+      effectiveLimit
+    );
 
     if (Date.now() - startTime > 1000) {
       console.warn(

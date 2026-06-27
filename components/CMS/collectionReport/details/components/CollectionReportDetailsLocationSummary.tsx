@@ -69,7 +69,7 @@ export const CollectionReportDetailsLocationSummary: FC<
                 className={`font-medium ${row.isCurrency ? getFinancialColorClass(row.value as number) : 'text-gray-800'}`}
               >
                 {row.isCurrency ? (
-                  `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+                  (row.value as number ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                 ) : row.value === 'No SMIB for this Machine' ? (
                   <span className="italic text-gray-500">
                     No SMIB for this Machine
@@ -106,7 +106,7 @@ export const CollectionReportDetailsLocationSummary: FC<
                 }`}
               >
                 {row.isCurrency ? (
-                  `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+                  (row.value as number ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                 ) : row.value === 'No SMIB for this Machine' ? (
                   <span className="italic text-gray-500">
                     No SMIB for this Machine

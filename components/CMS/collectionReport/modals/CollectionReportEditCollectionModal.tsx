@@ -1282,7 +1282,7 @@ function MobileEditWrapper({
         <MobileCollectionModalSkeleton />
       ) : (
         <MobileEditLayout
-          {...mobileHook}
+          {...(mobileHook as unknown as Parameters<typeof MobileEditLayout>[0])}
           onClose={onClose}
           handleStartSubmit={handleMobileSubmit}
           variationsData={variation.variationsData}

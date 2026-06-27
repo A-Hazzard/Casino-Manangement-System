@@ -1,10 +1,7 @@
 'use client';
 
-import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
-import {
-  fetchVaultBalance,
-  fetchVaultOverviewData,
-} from '@/lib/helpers/vaultHelpers';
+import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/cabinetList';
+import { fetchVaultBalance, fetchVaultOverviewData } from '@/lib/helpers/vault/vaultDataFetching';
 import type { GamingMachine } from '@/shared/types/entities';
 import type {
   CashDesk,

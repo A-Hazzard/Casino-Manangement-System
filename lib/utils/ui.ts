@@ -121,15 +121,15 @@ export const filterAndSortCabinets = (
   }
 
   // Apply sorting
-  filtered.sort((a, b) => {
+  filtered.sort((itemA, itemB) => {
     // If searching, relevance (starts with) takes TOP priority
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
-      const aSerial = (a.serialNumber || a.assetNumber || '').toLowerCase();
-      const bSerial = (b.serialNumber || b.assetNumber || '').toLowerCase();
+      const itemASerial = (itemA.serialNumber || itemA.assetNumber || '').toLowerCase();
+      const itemBSerial = (itemB.serialNumber || itemB.assetNumber || '').toLowerCase();
 
-      const aStarts = aSerial.startsWith(searchLower);
-      const bStarts = bSerial.startsWith(searchLower);
+      const aStarts = itemASerial.startsWith(searchLower);
+      const bStarts = itemBSerial.startsWith(searchLower);
 
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
@@ -138,8 +138,8 @@ export const filterAndSortCabinets = (
     const order = sortOrder === 'desc' ? -1 : 1;
 
     // Determine online status for both machines
-    const firstLastActivity = a.lastActivity || a.lastOnline;
-    const secondLastActivity = b.lastActivity || b.lastOnline;
+    const firstLastActivity = itemA.lastActivity || itemA.lastOnline;
+    const secondLastActivity = itemB.lastActivity || itemB.lastOnline;
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
 
@@ -179,8 +179,8 @@ export const filterAndSortCabinets = (
     if (firstIsOnline && !secondIsOnline) return -1;
     if (!firstIsOnline && secondIsOnline) return 1;
 
-    let valA = a[sortOption as keyof Cabinet] as string | number | undefined;
-    let valB = b[sortOption as keyof Cabinet] as string | number | undefined;
+    let valA = itemA[sortOption as keyof Cabinet] as string | number | undefined;
+    let valB = itemB[sortOption as keyof Cabinet] as string | number | undefined;
 
     // Handle null/undefined specifically for sorting, treating them as lowest value
     const aIsNull = valA === null || valA === undefined;

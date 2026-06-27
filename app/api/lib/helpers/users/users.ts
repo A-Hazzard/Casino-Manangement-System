@@ -7,7 +7,7 @@ import {
   validateAlphabeticField,
   validateNameField,
   validateOptionalGender,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/members';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';

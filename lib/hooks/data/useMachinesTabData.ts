@@ -234,9 +234,9 @@ export const useMachinesTabData = (
             setAllOfflineMachines(newOfflineMachines);
           } else {
             setAllOfflineMachines(prev => {
-              const existingIds = new Set(prev.map(m => m.machineId));
+              const existingIds = new Set(prev.map(machine => machine.machineId));
               const uniqueNewMachines = newOfflineMachines.filter(
-                m => !existingIds.has(m.machineId)
+                machine => !existingIds.has(machine.machineId)
               );
               return [...prev, ...uniqueNewMachines];
             });

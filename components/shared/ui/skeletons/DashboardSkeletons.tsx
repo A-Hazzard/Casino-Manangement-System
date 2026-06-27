@@ -17,9 +17,9 @@ export const DashboardFinancialMetricsSkeleton = ({
   count?: number;
 }) => (
   <div className="flex w-full flex-col gap-4 md:flex-row">
-    {Array.from({ length: count }).map((_, i) => (
+    {Array.from({ length: count }).map((_, index) => (
       <div
-        key={i}
+        key={index}
         className="flex min-h-[120px] flex-1 flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6"
       >
         <div className="flex flex-1 flex-col justify-center">
@@ -74,8 +74,8 @@ export const DashboardTopPerformingSkeleton = () => (
         <div className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
           {/* Left side - List skeleton */}
           <ul className="flex-1 space-y-2 lg:min-w-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <li key={index} className="flex items-center gap-2 text-sm">
                 <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
                 <Skeleton className="h-4 flex-1" />
                 <Skeleton className="h-3.5 w-3.5 flex-shrink-0" />
@@ -97,8 +97,8 @@ export const DashboardTopPerformingSkeleton = () => (
  */
 export const DashboardKPISkeleton = () => (
   <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-    {Array.from({ length: 4 }).map((_, i) => (
-      <Card key={i} className="p-6">
+    {Array.from({ length: 4 }).map((_, index) => (
+      <Card key={index} className="p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <Skeleton className="h-4 w-24" />

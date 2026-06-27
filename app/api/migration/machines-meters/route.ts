@@ -8,6 +8,7 @@
  */
 
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -58,12 +59,12 @@ type MigrationPeriod = 'Today' | 'Yesterday';
  * @body {string} licenceeName - Optional. Name of the licencee to migrate (default: 'Cabana')
  * @body {boolean} migrateMeters - Optional. Whether to include meter readings (default: true)
  */
-export async function POST(request: Request) {
+export async function POST(request: import('next/server').NextRequest) {
   const startTime = Date.now();
   const functionName = 'POST /api/migration/machines-meters';
-  const user = extractUserFromRequest(
-    request as unknown as import('next/server').NextRequest
-  );
+  const user = extractUserFromRequest(request);
+
+  return withApiAuth(request, async () => {
   const logs: string[] = [];
   const log = (msg: string) => {
     const timestamped = `[${new Date().toISOString()}] ${msg}`;
@@ -333,4 +334,5 @@ export async function POST(request: Request) {
     await mongoose.disconnect();
     process.env.MONGODB_URI = originalUri;
   }
+  }, { bypassDb: true });
 }

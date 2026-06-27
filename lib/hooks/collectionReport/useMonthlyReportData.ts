@@ -118,9 +118,9 @@ export function useMonthlyReportData(
     const data = [...monthlyDetails];
     if (!sortField) return data;
 
-    return data.sort((a, b) => {
-      const valA = a[sortField];
-      const valB = b[sortField];
+    return data.sort((detailA, detailB) => {
+      const valA = detailA[sortField];
+      const valB = detailB[sortField];
 
       // Helper to parse currency string to number
       const parseVal = (value: string) => {

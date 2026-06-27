@@ -1,92 +1,19 @@
 /**
  * Date Formatting Utilities
  *
- * Utility functions for formatting dates, times, and related objects.
+ * Utility functions for formatting dates, times, and general values.
  *
  * Features:
  * - Date formatting with various formats
- * - Profile object formatting
- * - Resource permissions formatting
  * - Full date formatting with weekday and ordinal
  * - ISO date parsing and validation
+ * - Value formatting with smart type detection
  */
 
 import { format, isValid, parseISO } from 'date-fns';
+import { formatProfileObject, type ProfileField } from './profileFormatting';
 
-// ============================================================================
-// Object Formatting Functions
-// ============================================================================
-type ProfileField = {
-  firstName?: unknown;
-  lastName?: unknown;
-  middleName?: unknown;
-  gender?: unknown;
-  email?: unknown;
-  address?: {
-    street?: unknown;
-    town?: unknown;
-    country?: unknown;
-    [key: string]: unknown;
-  };
-  identification?: {
-    idType?: unknown;
-    idNumber?: unknown;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-};
-
-/**
- * Formats a profile object with nested address and identification
- * @param profile - The profile object to format
- * @returns Formatted string representation
- */
-function formatProfileObject(profile: ProfileField): string {
-  if (!profile) {
-    console.error('[formatProfileObject] profile is required');
-    return 'Empty profile';
-  }
-  const parts: string[] = [];
-
-  // Handle basic profile fields
-  if (profile.firstName && profile.firstName !== '')
-    parts.push(`First: ${profile.firstName}`);
-  if (profile.lastName && profile.lastName !== '')
-    parts.push(`Last: ${profile.lastName}`);
-  if (profile.middleName && profile.middleName !== '')
-    parts.push(`Middle: ${profile.middleName}`);
-  if (profile.gender && profile.gender !== '')
-    parts.push(`Gender: ${profile.gender}`);
-  if (profile.email && profile.email !== '')
-    parts.push(`Email: ${profile.email}`);
-
-  // Handle nested address object
-  if (profile.address && typeof profile.address === 'object') {
-    const address = profile.address;
-    const addressParts: string[] = [];
-    if (address.street && address.street !== '')
-      addressParts.push(`Street: ${address.street}`);
-    if (address.town && address.town !== '')
-      addressParts.push(`Town: ${address.town}`);
-    if (address.country && address.country !== '')
-      addressParts.push(`Country: ${address.country}`);
-    if (addressParts.length > 0)
-      parts.push(`Address: ${addressParts.join(', ')}`);
-  }
-
-  // Handle nested identification object
-  if (profile.identification && typeof profile.identification === 'object') {
-    const identification = profile.identification;
-    const idParts: string[] = [];
-    if (identification.idType && identification.idType !== '')
-      idParts.push(`Type: ${identification.idType}`);
-    if (identification.idNumber && identification.idNumber !== '')
-      idParts.push(`Number: ${identification.idNumber}`);
-    if (idParts.length > 0) parts.push(`ID: ${idParts.join(', ')}`);
-  }
-
-  return parts.length > 0 ? parts.join('; ') : 'Empty profile';
-}
+export { formatProfileObject } from './profileFormatting';
 
 // ============================================================================
 // Date Formatting Functions

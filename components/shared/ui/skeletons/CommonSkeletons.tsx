@@ -27,8 +27,8 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  */
 export const SummaryCardsSkeleton = () => (
   <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-    {Array.from({ length: 4 }).map((_, i) => (
-      <Card key={i}>
+    {Array.from({ length: 4 }).map((_, index) => (
+      <Card key={index}>
         <CardContent className="p-4">
           <div className="animate-pulse space-y-3">
             <Skeleton className="h-8 w-24" />
@@ -46,8 +46,8 @@ export const SummaryCardsSkeleton = () => (
  */
 export const MetricCardsSkeleton = ({ count = 4 }: { count?: number }) => (
   <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-    {Array.from({ length: count }).map((_, i) => (
-      <Card key={i}>
+    {Array.from({ length: count }).map((_, index) => (
+      <Card key={index}>
         <CardContent className="p-4">
           <div className="animate-pulse space-y-3">
             <Skeleton className="h-8 w-24" />
@@ -121,16 +121,16 @@ export const TableSkeleton = ({
       <div className="animate-pulse">
         <div className="border-b px-4 py-3">
           <div className="flex gap-4">
-            {Array.from({ length: cols }).map((_, i) => (
-              <Skeleton key={i} className="h-4 flex-1" />
+            {Array.from({ length: cols }).map((_, index) => (
+              <Skeleton key={index} className="h-4 flex-1" />
             ))}
           </div>
         </div>
         <div className="divide-y">
-          {Array.from({ length: rows }).map((_, i) => (
-            <div key={i} className="flex gap-4 px-4 py-4">
-              {Array.from({ length: cols }).map((_, j) => (
-                <Skeleton key={j} className="h-4 flex-1" />
+          {Array.from({ length: rows }).map((_, index) => (
+            <div key={index} className="flex gap-4 px-4 py-4">
+              {Array.from({ length: cols }).map((_, index) => (
+                <Skeleton key={index} className="h-4 flex-1" />
               ))}
             </div>
           ))}

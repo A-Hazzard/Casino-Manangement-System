@@ -179,6 +179,7 @@ async function processSingleMachine(
       gamesWon: isOffline && prevMeterDoc ? (prevMeterDoc.gamesWon ?? 0) : 0,
       totalCancelledCredits: currentMetersOut, drop: currentMetersIn,
       meterSource: 'COLLECTION_REPORT' as const,
+      isRamClear: false,
       isSupplemental: isOffline || !!existingMeterId,
       readAt: baseReadAt, createdAt: baseCreatedAt,
     });
@@ -196,12 +197,12 @@ async function processSingleMachine(
           currentCredits: meter.currentCredits, totalWonCredits: meter.totalWonCredits,
           gamesPlayed: meter.gamesPlayed, gamesWon: meter.gamesWon,
           totalCancelledCredits: meter.totalCancelledCredits, drop: meter.drop,
-          meterSource: meter.meterSource, isSupplemental: meter.isSupplemental,
+          meterSource: meter.meterSource, isRamClear: meter.isRamClear,
+          isSupplemental: meter.isSupplemental,
           readAt: meter.readAt, updatedAt: new Date(),
         },
         $setOnInsert: {
           _id: meter._id, createdAt: meter.createdAt,
-          ...(meter.isRamClear !== undefined ? { isRamClear: meter.isRamClear } : {}),
         },
       },
       upsert: true,

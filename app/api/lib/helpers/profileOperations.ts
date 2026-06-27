@@ -16,15 +16,17 @@ import UserModel from '@/app/api/lib/models/user';
 import { comparePassword } from '@/app/api/lib/utils/validation';
 import {
   containsEmailPattern,
+  validateEmail,
+} from '@/lib/utils/validation/email';
+import { validatePasswordStrength } from '@/lib/utils/validation/password';
+import {
   isValidDateInput,
   normalizePhoneNumber,
-  validateEmail,
   validateNameField,
   validateOptionalGender,
-  validatePasswordStrength,
   validatePhoneNumber,
   validateUsername,
-} from '@/lib/utils/validation';
+} from '@/lib/utils/validation/members';
 import type { ProfileUpdatePayload } from '@/shared/types/users';
 
 // ============================================================================

@@ -31,6 +31,8 @@ import type {
   DevCustomDateRange,
   DevSearchMatchMode,
   DevTimePeriod,
+  DevFilterClause,
+  DevFilterLogic,
 } from '@/lib/types/dev/collectionExplorer';
 import {
   buildHideSet,
@@ -100,6 +102,21 @@ export function useDevCollectionExplorer(
   const [timePeriod, setTimePeriod] = useState<DevTimePeriod>('All Time');
   const [customDateRange, setCustomDateRange] = useState<DevCustomDateRange>({});
   const [scopeToCabinet, setScopeToCabinet] = useState<boolean>(false);
+
+  // ==========================================================================
+  // Local State — query builder
+  // ==========================================================================
+  const [filterClauses, setFilterClauses] = useState<DevFilterClause[]>([]);
+  const [filterLogic, setFilterLogic] = useState<DevFilterLogic>('and');
+  const [querySortField, setQuerySortField] = useState<string>('');
+  const [querySortDir, setQuerySortDir] = useState<'asc' | 'desc'>('desc');
+  const [queryLimit, setQueryLimit] = useState<number>(500);
+
+  const [appliedFilters, setAppliedFilters] = useState<DevFilterClause[]>([]);
+  const [appliedFilterLogic, setAppliedFilterLogic] = useState<DevFilterLogic>('and');
+  const [appliedSortField, setAppliedSortField] = useState<string>('');
+  const [appliedSortDir, setAppliedSortDir] = useState<'asc' | 'desc'>('desc');
+  const [appliedLimit, setAppliedLimit] = useState<number>(0);
 
   // ==========================================================================
   // Local State — search
@@ -218,7 +235,13 @@ export function useDevCollectionExplorer(
       term = '',
       column = '',
       ordinal = 0,
-      mode: DevSearchMatchMode = 'contains'
+      mode: DevSearchMatchMode = 'contains',
+      // Query builder parameters
+      clauses: DevFilterClause[] = [],
+      logic: DevFilterLogic = 'and',
+      sortField = '',
+      sortDir: 'asc' | 'desc' = 'desc',
+      limit = 0
     ) => {
       setLoading(true);
       setError(null);
@@ -237,12 +260,31 @@ export function useDevCollectionExplorer(
         if (field) params.set('dateField', field);
         if (scoped && defaultCabinetId) params.set('machine', defaultCabinetId);
         params.set('apiPage', String(apiPage));
+        
         const trimmed = term.trim();
         if (trimmed) {
           params.set('search', trimmed);
           if (column) params.set('searchColumn', column);
           params.set('matchOrdinal', String(ordinal));
           if (mode === 'exact') params.set('matchMode', 'exact');
+        }
+
+        // Add query builder filters if any
+        if (clauses.length > 0) {
+          params.set(
+            'filters',
+            JSON.stringify(
+              clauses.map(c => ({ field: c.field, op: c.op, value: c.value }))
+            )
+          );
+          params.set('filterLogic', logic);
+        }
+        if (sortField) {
+          params.set('sortField', sortField);
+          params.set('sortDir', sortDir);
+        }
+        if (limit > 0) {
+          params.set('limit', String(limit));
         }
 
         const { data } = await axios.get<DevCollectionListResponse>(
@@ -290,7 +332,12 @@ export function useDevCollectionExplorer(
       appliedTerm,
       appliedColumn,
       0,
-      appliedMatchMode
+      appliedMatchMode,
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit
     );
   }, [
     fetchRecords,
@@ -302,6 +349,11 @@ export function useDevCollectionExplorer(
     appliedTerm,
     appliedColumn,
     appliedMatchMode,
+    appliedFilters,
+    appliedFilterLogic,
+    appliedSortField,
+    appliedSortDir,
+    appliedLimit,
   ]);
 
   // ==========================================================================
@@ -323,6 +375,16 @@ export function useDevCollectionExplorer(
     setSearchQuery('');
     setSearchColumn('');
     setSelectedIds(new Set());
+    setFilterClauses([]);
+    setFilterLogic('and');
+    setQuerySortField('');
+    setQuerySortDir('desc');
+    setQueryLimit(500);
+    setAppliedFilters([]);
+    setAppliedFilterLogic('and');
+    setAppliedSortField('');
+    setAppliedSortDir('desc');
+    setAppliedLimit(0);
     axios
       .get<DevCollectionSchemaResponse>(
         `/api/dev/collections/${modelKey}/schema`
@@ -365,7 +427,16 @@ export function useDevCollectionExplorer(
       customDateRange,
       scopeToCabinet,
       1,
-      0
+      0,
+      '',
+      '',
+      0,
+      'contains',
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit
     );
   }, [
     modelKey,
@@ -375,6 +446,11 @@ export function useDevCollectionExplorer(
     scopeToCabinet,
     refreshTrigger,
     fetchRecords,
+    appliedFilters,
+    appliedFilterLogic,
+    appliedSortField,
+    appliedSortDir,
+    appliedLimit,
   ]);
 
   // ==========================================================================
@@ -396,7 +472,12 @@ export function useDevCollectionExplorer(
           appliedTerm,
           appliedColumn,
           matchOrdinal,
-          appliedMatchMode
+          appliedMatchMode,
+          appliedFilters,
+          appliedFilterLogic,
+          appliedSortField,
+          appliedSortDir,
+          appliedLimit
         );
       } else {
         setDisplayPage(zeroBased);
@@ -413,6 +494,11 @@ export function useDevCollectionExplorer(
       appliedColumn,
       matchOrdinal,
       appliedMatchMode,
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit,
       fetchRecords,
     ]
   );
@@ -438,7 +524,12 @@ export function useDevCollectionExplorer(
       term,
       searchColumn,
       0,
-      searchMatchMode
+      searchMatchMode,
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit
     );
   }, [
     searchQuery,
@@ -449,6 +540,11 @@ export function useDevCollectionExplorer(
     timePeriod,
     customDateRange,
     scopeToCabinet,
+    appliedFilters,
+    appliedFilterLogic,
+    appliedSortField,
+    appliedSortDir,
+    appliedLimit,
     fetchRecords,
   ]);
 
@@ -467,7 +563,12 @@ export function useDevCollectionExplorer(
         appliedTerm,
         appliedColumn,
         ordinal,
-        appliedMatchMode
+        appliedMatchMode,
+        appliedFilters,
+        appliedFilterLogic,
+        appliedSortField,
+        appliedSortDir,
+        appliedLimit
       );
     },
     [
@@ -480,6 +581,11 @@ export function useDevCollectionExplorer(
       timePeriod,
       customDateRange,
       scopeToCabinet,
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit,
       fetchRecords,
     ]
   );
@@ -614,6 +720,24 @@ export function useDevCollectionExplorer(
         if (range.endDate) params.set('endDate', range.endDate.toISOString());
         if (format === 'csv') params.set('columns', columns.join(','));
 
+        // Query builder options
+        if (appliedFilters.length > 0) {
+          params.set(
+            'filters',
+            JSON.stringify(
+              appliedFilters.map(c => ({ field: c.field, op: c.op, value: c.value }))
+            )
+          );
+          params.set('filterLogic', appliedFilterLogic);
+        }
+        if (appliedSortField) {
+          params.set('sortField', appliedSortField);
+          params.set('sortDir', appliedSortDir);
+        }
+        if (appliedLimit > 0) {
+          params.set('limit', String(appliedLimit));
+        }
+
         const response = await fetch(
           `/api/dev/collections/${modelKey}?${params.toString()}`
         );
@@ -639,6 +763,11 @@ export function useDevCollectionExplorer(
       timePeriod,
       customDateRange,
       columns,
+      appliedFilters,
+      appliedFilterLogic,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit,
     ]
   );
 
@@ -706,6 +835,96 @@ export function useDevCollectionExplorer(
   );
 
   // ==========================================================================
+  // Event Handlers — query builder
+  // ==========================================================================
+  const applyQuery = useCallback(() => {
+    setAppliedFilters(filterClauses);
+    setAppliedFilterLogic(filterLogic);
+    setAppliedSortField(querySortField);
+    setAppliedSortDir(querySortDir);
+    setAppliedLimit(queryLimit);
+
+    fetchRecords(
+      modelKey,
+      dateField,
+      timePeriod,
+      customDateRange,
+      scopeToCabinet,
+      1,
+      0,
+      appliedTerm,
+      appliedColumn,
+      matchOrdinal,
+      appliedMatchMode,
+      filterClauses,
+      filterLogic,
+      querySortField,
+      querySortDir,
+      queryLimit
+    );
+  }, [
+    fetchRecords,
+    modelKey,
+    dateField,
+    timePeriod,
+    customDateRange,
+    scopeToCabinet,
+    appliedTerm,
+    appliedColumn,
+    matchOrdinal,
+    appliedMatchMode,
+    filterClauses,
+    filterLogic,
+    querySortField,
+    querySortDir,
+    queryLimit,
+  ]);
+
+  const clearQuery = useCallback(() => {
+    setFilterClauses([]);
+    setFilterLogic('and');
+    setQuerySortField('');
+    setQuerySortDir('desc');
+    setQueryLimit(500);
+
+    setAppliedFilters([]);
+    setAppliedFilterLogic('and');
+    setAppliedSortField('');
+    setAppliedSortDir('desc');
+    setAppliedLimit(0);
+
+    fetchRecords(
+      modelKey,
+      dateField,
+      timePeriod,
+      customDateRange,
+      scopeToCabinet,
+      1,
+      0,
+      appliedTerm,
+      appliedColumn,
+      matchOrdinal,
+      appliedMatchMode,
+      [],
+      'and',
+      '',
+      'desc',
+      0
+    );
+  }, [
+    fetchRecords,
+    modelKey,
+    dateField,
+    timePeriod,
+    customDateRange,
+    scopeToCabinet,
+    appliedTerm,
+    appliedColumn,
+    matchOrdinal,
+    appliedMatchMode,
+  ]);
+
+  // ==========================================================================
   // Return
   // ==========================================================================
   return {
@@ -725,6 +944,24 @@ export function useDevCollectionExplorer(
     scopeToCabinet,
     setScopeToCabinet,
     cabinetScopable,
+    // query builder
+    filterClauses,
+    setFilterClauses,
+    filterLogic,
+    setFilterLogic,
+    querySortField,
+    setQuerySortField,
+    querySortDir,
+    setQuerySortDir,
+    queryLimit,
+    setQueryLimit,
+    appliedFilters,
+    appliedFilterLogic,
+    appliedSortField,
+    appliedSortDir,
+    appliedLimit,
+    applyQuery,
+    clearQuery,
     // search
     searchQuery,
     setSearchQuery,
