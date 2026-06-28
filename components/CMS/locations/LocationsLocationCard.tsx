@@ -330,36 +330,39 @@ export default function LocationsLocationCard({
         </div>
       </div>
 
-      <div className="mb-2 flex flex-col space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="font-medium">Money In</span>
-          <CurrencyValueWithOverflow
-            value={location.moneyIn ?? 0}
-            className={`break-words text-right font-semibold ${getMoneyInColorClass(location.moneyIn)}`}
-            formatCurrencyFn={formatCurrency}
-          />
+      <div className="mt-2 border-t border-gray-200 pt-2">
+        <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Money In</span>
+            <CurrencyValueWithOverflow
+              value={location.moneyIn ?? 0}
+              className={`text-[10px] font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Money Out</span>
+            <MoneyOutCell
+              moneyOut={location.moneyOut ?? 0}
+              moneyIn={location.moneyIn ?? 0}
+              jackpot={location.jackpot ?? 0}
+              displayValue={formatCurrency(location.moneyOut ?? 0)}
+              className="text-[10px]"
+              includeJackpot={!!location.includeJackpot}
+              showInfoIcon={true}
+            />
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span className="font-medium">Money Out</span>
-          <MoneyOutCell
-            moneyOut={location.moneyOut ?? 0}
-            moneyIn={location.moneyIn ?? 0}
-            jackpot={location.jackpot ?? 0}
-            displayValue={formatCurrency(location.moneyOut ?? 0)}
-            includeJackpot={!!location.includeJackpot}
-            showInfoIcon={true}
-          />
+        <div className="mb-2 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Gross</span>
+            <CurrencyValueWithOverflow
+              value={location.gross ?? 0}
+              className={`text-[10px] font-medium ${getGrossColorClass(location.gross)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
         </div>
-        {/* Jackpot info is shown via the info icon on Money Out — no duplicate row needed */}
-      </div>
-
-      <div className="mb-3 mt-1 flex justify-between">
-        <span className="font-medium">Gross</span>
-        <CurrencyValueWithOverflow
-          value={location.gross ?? 0}
-          className={`break-words text-right font-semibold ${getGrossColorClass(location.gross)}`}
-          formatCurrencyFn={formatCurrency}
-        />
       </div>
 
       {/* Archived Info */}

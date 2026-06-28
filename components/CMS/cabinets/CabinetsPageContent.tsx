@@ -13,6 +13,7 @@ import { CabinetsCabinetContentDisplay } from '@/components/CMS/cabinets/Cabinet
 import { CabinetsCabinetSearchFilters } from '@/components/CMS/cabinets/CabinetsCabinetSearchFilters';
 import CabinetsNavigation from '@/components/CMS/cabinets/CabinetsNavigation';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import UploadSmibDataModal from '@/components/shared/ui/firmware/UploadSmibDataModal';
@@ -27,7 +28,6 @@ import {
   Info,
   MonitorPlay,
   Package,
-  RefreshCw,
   Settings,
   Wrench,
 } from 'lucide-react';
@@ -107,6 +107,8 @@ export default function CabinetsPageContent() {
     transformCabinet,
   } = cabinetsPageData;
 
+  useRegisterRefresh(handleRefresh, refreshing);
+
   // ============================================================================
   // Computed Values
   // ============================================================================
@@ -165,25 +167,13 @@ export default function CabinetsPageContent() {
         headerProps={{ setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
       >
-        {/* Page Header: Title, refresh button, and action buttons */}
-        <div className="mb-6 mt-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
+        {/* Page Header: Title and action buttons */}
+        <div className="mt-4 flex items-center justify-between">
+          <h1 className="text-lg font-bold text-gray-900 sm:text-2xl md:text-3xl">
             Cabinets
           </h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-50"
-              aria-label="Refresh data"
-            >
-              <RefreshCw
-                className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
             <CabinetsActions
               activeSection={activeSection}
               selectedLocation={selectedLocation}
@@ -230,7 +220,7 @@ export default function CabinetsPageContent() {
         {activeSection === 'cabinets' && (
           <div className="mt-6 w-full max-w-full overflow-x-hidden">
             {/* Filter Controls Row: Date selection and machine status widget */}
-            <div className="mb-6 mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+            <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
               <div className="order-1">
                 {isTechnicianOnly ? (
                   <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">

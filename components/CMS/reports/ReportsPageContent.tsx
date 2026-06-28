@@ -11,6 +11,7 @@ import ReportsLocationsTabWithErrorHandling from '@/components/CMS/reports/tabs/
 import ReportsMachinesTab from '@/components/CMS/reports/tabs/machines/ReportsMachinesTab';
 import ReportsMetersTab from '@/components/CMS/reports/tabs/meters/ReportsMetersTab';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import {
   IMAGES,
   REPORTS_ANIMATIONS,
@@ -105,6 +106,8 @@ export default function ReportsPageContent() {
     setRefreshing(false);
   }, []);
 
+  useRegisterRefresh(handleRefresh, refreshing);
+
   // ============================================================================
   // Computed
   // ============================================================================
@@ -183,11 +186,9 @@ export default function ReportsPageContent() {
       showToaster={true}
       toasterPosition="top-right"
       toasterRichColors={true}
-      onRefresh={handleRefresh}
-      refreshing={refreshing}
     >
       {/* Title and Icon */}
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3 md:mb-6">
         <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">
           Reports
         </h1>

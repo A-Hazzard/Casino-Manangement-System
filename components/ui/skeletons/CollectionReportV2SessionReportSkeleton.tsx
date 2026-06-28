@@ -14,29 +14,38 @@ export default function CollectionReportV2SessionReportSkeleton() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Back button */}
-        <Skeleton className="mb-6 h-4 w-28" />
+        {/* Back button + Edit button row */}
+        <div className="mb-6 flex items-center justify-between">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-10 w-28 rounded-lg" />
+        </div>
 
         {/* Header card */}
-        <div className="mb-6 rounded-lg bg-white p-6 text-center shadow">
-          <Skeleton className="mx-auto mb-2 h-3 w-32 rounded" />
-          <Skeleton className="mx-auto mb-2 h-8 w-48 rounded lg:h-10 lg:w-64" />
-          <Skeleton className="mx-auto mb-2 h-4 w-56 rounded" />
-          <Skeleton className="mx-auto h-4 w-72 rounded" />
+        <div className="mb-6 rounded-lg bg-white py-4 text-center shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
+          <div className="px-4 py-2 lg:py-4">
+            <Skeleton className="mx-auto mb-2 h-3 w-32 rounded lg:hidden" />
+            <Skeleton className="mx-auto mb-2 h-8 w-48 rounded lg:h-10 lg:w-64" />
+            <Skeleton className="mx-auto mb-2 h-4 w-56 rounded" />
+            <Skeleton className="mx-auto h-4 w-72 rounded" />
+          </div>
         </div>
 
         {/* Desktop layout */}
         <div className="hidden lg:flex lg:flex-row lg:space-x-6">
+          {/* Sidebar with "Sections" heading and tab buttons */}
           <div className="lg:w-1/4">
             <div className="space-y-2 rounded-lg bg-white p-3 shadow">
-              <Skeleton className="h-10 w-full rounded" />
-              <Skeleton className="h-10 w-full rounded" />
+              <Skeleton className="mb-4 h-6 w-20" />
+              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
             </div>
           </div>
+          {/* Main content — machines table with search bar */}
           <div className="lg:w-3/4">
             <div className="rounded-lg bg-white shadow-md">
-              <div className="border-b border-gray-200 p-4">
-                <Skeleton className="h-10 w-full rounded-lg" />
+              <div className="flex flex-col gap-4 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <Skeleton className="h-6 w-24 lg:hidden" />
+                <Skeleton className="h-10 w-full max-w-sm rounded-lg" />
               </div>
               {Array.from({ length: 5 }).map((_, index) => (
                 <div
@@ -55,9 +64,11 @@ export default function CollectionReportV2SessionReportSkeleton() {
           </div>
         </div>
 
-        {/* Mobile layout */}
+        {/* Mobile layout — select dropdown + tab content */}
         <div className="space-y-4 lg:hidden">
+          {/* Tab selector — matches actual <select> element */}
           <Skeleton className="h-12 w-full rounded-lg" />
+          {/* Machine cards */}
           {Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="rounded-lg bg-white p-4 shadow-md">
               <div className="mb-3 flex items-start gap-3">

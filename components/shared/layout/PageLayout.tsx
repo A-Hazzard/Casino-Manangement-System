@@ -9,6 +9,7 @@
  * - Customizable main content area styling
  * - Gradient background
  * - Hydration-safe rendering
+ * - Centralized refresh via RefreshProvider in LayoutWrapper
  *
  * Used across all authenticated pages except login.
  *
@@ -29,7 +30,7 @@
 import Header from '@/components/shared/layout/Header';
 import { FloatingActionButtons } from '@/components/shared/ui/FloatingActionButtons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 
 type PageLayoutProps = {
@@ -46,12 +47,11 @@ type PageLayoutProps = {
     containerPaddingMobile?: string;
     hideCurrencyFilter?: boolean;
   };
+  headerActions?: ReactNode;
   mainClassName?: string;
   showToaster?: boolean;
   toasterPosition?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   toasterRichColors?: boolean;
-  onRefresh?: () => void | Promise<void>;
-  refreshing?: boolean;
 };
 
 export default function PageLayout({
@@ -62,39 +62,20 @@ export default function PageLayout({
   hideCurrencyFilter = false,
   showHeader = true,
   headerProps,
-  mainClassName = 'flex-1 w-full max-w-full mx-auto px-4 py-8 sm:p-10 md:px-12 space-y-12 mt-6',
+  headerActions,
+  mainClassName = 'flex-1 w-full max-w-full mx-auto px-4 py-8 sm:p-10 md:px-12 mt-6',
   showToaster = true,
   toasterPosition = 'top-right',
   toasterRichColors = true,
-  onRefresh,
-  refreshing = false,
 }: PageLayoutProps) {
   // ============================================================================
   // State & Hooks
   // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
-  const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
-
-  // ============================================================================
-  // Effects
-  // ============================================================================
-  // Handle scroll events for the floating refresh button
-  useEffect(() => {
-    if (!onRefresh) return undefined;
-
-    const handleScroll = () => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      setShowFloatingRefresh(scrollTop > 200);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [onRefresh]);
 
   // ============================================================================
   // Computed
   // ============================================================================
-  // Use headerProps if provided, otherwise use default store values
   const headerSelectedLicencee =
     headerProps?.selectedLicencee ?? selectedLicencee;
   const headerSetSelectedLicencee =
@@ -127,6 +108,7 @@ export default function PageLayout({
               disabled={headerDisabled}
               containerPaddingMobile={headerContainerPaddingMobile}
               hideCurrencyFilter={headerHideCurrencyFilter}
+              headerActions={headerActions}
             />
           )}
           {children}
@@ -135,11 +117,7 @@ export default function PageLayout({
       {showToaster && (
         <Toaster position={toasterPosition} richColors={toasterRichColors} />
       )}
-      <FloatingActionButtons
-        showRefresh={showFloatingRefresh}
-        refreshing={refreshing}
-        onRefresh={onRefresh || (() => {})}
-      />
+      <FloatingActionButtons />
     </>
   );
 }

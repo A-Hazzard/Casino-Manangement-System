@@ -9,6 +9,7 @@ import { useCallback, useRef, useState } from 'react';
 // Internal Components & Hooks
 // ============================================================================
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import CashierManagementSkeleton from '@/components/ui/skeletons/CashierManagementSkeleton';
 import CashierManagementPanel from '@/components/VAULT/admin/CashierManagementPanel';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
@@ -34,6 +35,8 @@ export default function CashierManagementPageContent() {
     refreshFnRef.current();
   }, []);
 
+  useRegisterRefresh(handleRefresh, panelLoading);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -49,11 +52,7 @@ export default function CashierManagementPageContent() {
   }
 
   return (
-    <PageLayout
-      pageTitle="Cashier Management"
-      onRefresh={handleRefresh}
-      refreshing={panelLoading}
-    >
+    <PageLayout pageTitle="Cashier Management">
       <div className="space-y-6">
         <VaultManagerHeader />
 

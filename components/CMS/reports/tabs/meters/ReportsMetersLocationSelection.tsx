@@ -1,19 +1,15 @@
 /**
  * Reports Meters Location Selection Component
  *
- * Displays location selection controls and top performing machines pie chart
- *
- * Features:
- * - Location multi-select dropdown
- * - Top performing machines pie chart with legend
- * - Interactive hover states
- * - Navigation to machine details
+ * Location filters, top performing machines, and performance charts
+ * for the Meters reports tab.
  *
  * @module components/reports/tabs/meters/ReportsMetersLocationSelection
  */
 
 'use client';
 
+import ReportsMetersTopPerformingMachines from '@/components/CMS/reports/tabs/meters/ReportsMetersTopPerformingMachines';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -23,14 +19,20 @@ import {
   CardTitle,
 } from '@/components/shared/ui/card';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
-import { Skeleton } from '@/components/shared/ui/skeleton';
-import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/shared/ui/dropdown-menu';
 import type { TopPerformingItem } from '@/lib/types';
-import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import { ExternalLink, Monitor } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+} from 'lucide-react';
 import { ReportsMetersHourlyCharts } from './ReportsMetersHourlyCharts';
 
 type ReportsMetersLocationSelectionProps = {
@@ -50,39 +52,126 @@ type ReportsMetersLocationSelectionProps = {
   hourlyChartLoading: boolean;
   chartGranularity: 'hourly' | 'minute';
   onGranularityChange: (granularity: 'hourly' | 'minute') => void;
+  onExportPdf: () => void;
+  onExportExcel: () => void;
+  exportDisabled?: boolean;
 };
 
-/**
- * Top Performing Machines Skeleton
- */
-function TopPerformingMachinesSkeleton() {
+type PerformanceChartsSectionProps = {
+  hourlyChartData: ReportsMetersLocationSelectionProps['hourlyChartData'];
+  hourlyChartLoading: boolean;
+  chartGranularity: 'hourly' | 'minute';
+  onGranularityChange: (granularity: 'hourly' | 'minute') => void;
+  variant: 'mobile' | 'desktop';
+  selectId: string;
+};
+
+function PerformanceChartsSection({
+  hourlyChartData,
+  hourlyChartLoading,
+  chartGranularity,
+  onGranularityChange,
+  variant,
+  selectId,
+}: PerformanceChartsSectionProps) {
+  const isMobile = variant === 'mobile';
+
   return (
-    <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
-      {/* Legend skeleton */}
-      <div className="min-w-0 flex-1 space-y-2">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <div
-            key={index}
-            className="flex items-center gap-2 rounded px-2 py-1.5"
+    <section className={isMobile ? 'space-y-3' : 'space-y-2'}>
+      <div
+        className={
+          isMobile
+            ? 'space-y-2'
+            : 'flex items-center justify-between gap-4'
+        }
+      >
+        <h2 className="text-sm font-semibold text-gray-800">
+          Performance Charts
+        </h2>
+        <div className={isMobile ? 'w-full' : 'flex items-center gap-2'}>
+          {!isMobile && (
+            <label
+              htmlFor={selectId}
+              className="text-xs font-medium text-gray-600"
+            >
+              Granularity:
+            </label>
+          )}
+          <select
+            id={selectId}
+            value={chartGranularity}
+            onChange={event =>
+              onGranularityChange(event.target.value as 'hourly' | 'minute')
+            }
+            className={
+              isMobile
+                ? 'h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm focus:border-buttonActive focus:outline-none focus:ring-1 focus:ring-buttonActive'
+                : 'rounded-md border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
+            }
           >
-            <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
-            <Skeleton className="h-4 min-w-0 flex-1" />
-            <Skeleton className="h-3.5 w-3.5 flex-shrink-0" />
-            <Skeleton className="h-4 w-16 flex-shrink-0" />
-          </div>
-        ))}
+            <option value="minute">Minute</option>
+            <option value="hourly">Hourly</option>
+          </select>
+        </div>
       </div>
-      {/* Pie chart skeleton */}
-      <div className="flex-shrink-0">
-        <Skeleton className="h-[200px] w-[200px] rounded-full" />
+
+      {isMobile ? (
+        <ReportsMetersHourlyCharts
+          data={hourlyChartData}
+          loading={hourlyChartLoading}
+          variant="embedded"
+        />
+      ) : (
+        <div className="rounded-md border border-gray-300 bg-white p-4">
+          <ReportsMetersHourlyCharts
+            data={hourlyChartData}
+            loading={hourlyChartLoading}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LocationFilterControls({
+  locations,
+  selectedLocations,
+  onSelectionChange,
+}: Pick<
+  ReportsMetersLocationSelectionProps,
+  'locations' | 'selectedLocations' | 'onSelectionChange'
+>) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/90">
+          Locations
+        </p>
+        {selectedLocations.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onSelectionChange([])}
+            className="h-7 border-white bg-white/20 text-xs text-white hover:bg-white/30"
+          >
+            Clear
+          </Button>
+        )}
       </div>
+      <LocationMultiSelect
+        locations={locations.map(location => ({
+          id: location.id,
+          name: location.name,
+        }))}
+        selectedLocations={selectedLocations}
+        onSelectionChange={onSelectionChange}
+        placeholder="All locations"
+        className="w-full"
+      />
     </div>
   );
 }
 
-/**
- * Main ReportsMetersLocationSelection Component
- */
 export default function ReportsMetersLocationSelection({
   locations,
   selectedLocations,
@@ -94,27 +183,10 @@ export default function ReportsMetersLocationSelection({
   hourlyChartLoading,
   chartGranularity,
   onGranularityChange,
+  onExportPdf,
+  onExportExcel,
+  exportDisabled = false,
 }: ReportsMetersLocationSelectionProps) {
-  // ============================================================================
-  // State & Hooks
-  // ============================================================================
-  const router = useRouter();
-  const { displayCurrency } = useCurrencyFormat();
-  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
-
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-  const formatCurrency = (amount: number | null | undefined) =>
-    formatCurrencyWithCodeString(amount, displayCurrency);
-
-  // ============================================================================
-  // Computed
-  // ============================================================================
-
-  // Determine layout:
-  // - If ALL locations are selected, keep pie chart below (not on right)
-  // - Only if individual locations are selected (not "all") AND more than 10, show on right
   const allLocationsSelected =
     selectedLocations.length === locations.length && locations.length > 0;
   const individualLocationsSelected =
@@ -122,250 +194,158 @@ export default function ReportsMetersLocationSelection({
   const moreThan10Locations = selectedLocations.length > 10;
   const shouldShowChartOnRight =
     individualLocationsSelected && moreThan10Locations;
+  const hasLocationsSelected = selectedLocations.length > 0;
+  const selectedCountLabel =
+    selectedLocations.length === 0
+      ? 'no locations selected'
+      : selectedLocations.length === locations.length
+        ? `all ${locations.length} locations`
+        : `${selectedLocations.length} location${selectedLocations.length > 1 ? 's' : ''}`;
 
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Monitor className="h-5 w-5" />
-          Location Selection & Controls
-        </CardTitle>
-        <CardDescription>
-          Select specific locations to filter data or view all locations
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Location Selection and Top Machines - Conditionally in grid if chart on right */}
-        <div
-          className={`grid grid-cols-1 gap-4 ${shouldShowChartOnRight ? 'lg:grid-cols-2' : ''}`}
-        >
-          {/* Location Selection Controls */}
-          <div className="space-y-3 rounded-lg bg-buttonActive p-4">
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm font-medium text-white">
-                  Select Locations
-                </label>
-                {selectedLocations.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSelectionChange([])}
-                    className="h-7 border-white bg-white/20 text-xs text-white hover:bg-white/30"
-                  >
-                    Clear Selection
-                  </Button>
-                )}
-              </div>
-              <LocationMultiSelect
-                locations={locations.map(loc => ({
-                  id: loc.id,
-                  name: loc.name,
-                }))}
-                selectedLocations={selectedLocations}
-                onSelectionChange={onSelectionChange}
-                placeholder="Choose locations to filter..."
-              />
-            </div>
-          </div>
+    <>
+      {/* Mobile layout */}
+      <div className="flex flex-col gap-4 md:hidden">
+        <p className="px-1 text-xs font-medium text-gray-500">
+          Showing meters for{' '}
+          <span className="font-bold text-buttonActive">
+            {selectedCountLabel}
+          </span>
+        </p>
 
-          {/* Top Performing Machines Pie Chart */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
+        <div className="flex w-full flex-col gap-3 rounded-lg bg-buttonActive p-4">
+          <LocationFilterControls
+            locations={locations}
+            selectedLocations={selectedLocations}
+            onSelectionChange={onSelectionChange}
+          />
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={exportDisabled || loading}
+                className="h-11 w-full gap-2 rounded-md border-white/30 bg-white text-sm font-semibold text-gray-800 hover:bg-gray-50"
+              >
+                <Download className="h-4 w-4" />
+                Export Report
+                <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={onExportPdf} className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onExportExcel}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {hasLocationsSelected && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <h2 className="text-sm font-semibold text-gray-800">
                 Top Performing Machines
-              </label>
-              <div className="text-xs text-gray-500">
+              </h2>
+              <span className="text-xs text-gray-500">
                 {topMachinesData.length > 0
                   ? `${topMachinesData.length} machines`
                   : 'No data'}
-              </div>
+              </span>
             </div>
-            <div className="rounded-md border border-gray-300 bg-white p-4">
-              {loading || topMachinesLoading ? (
-                <TopPerformingMachinesSkeleton />
-              ) : topMachinesData.length > 0 ? (
-                <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
-                  {/* Legend */}
-                  <div className="min-w-0 flex-1 space-y-2">
-                    {topMachinesData.map((item, index) => (
-                      <div
-                        key={item._id}
-                        className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors ${
-                          activePieIndex === index
-                            ? 'bg-blue-50 ring-2 ring-blue-500'
-                            : 'hover:bg-gray-50'
-                        }`}
-                        onMouseEnter={() => setActivePieIndex(index)}
-                        onMouseLeave={() => setActivePieIndex(null)}
-                      >
-                        <div
-                          className="h-4 w-4 flex-shrink-0 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="flex-1 truncate font-medium text-gray-700">
-                          {item.name}
-                        </span>
-                        {item._id && (
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              if (item._id) {
-                                router.push(`/cabinets/${item._id}`);
-                              }
-                            }}
-                            className="flex-shrink-0"
-                            title="View machine details"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
-                          </button>
-                        )}
-                        <span className="flex-shrink-0 text-xs text-gray-500">
-                          {formatCurrency(item.totalDrop)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Pie Chart */}
-                  <div className="flex-shrink-0">
-                    <ResponsiveContainer width={200} height={200}>
-                      <PieChart>
-                        <Pie
-                          data={topMachinesData}
-                          dataKey="totalDrop"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          innerRadius={30}
-                          paddingAngle={2}
-                          activeIndex={activePieIndex ?? undefined}
-                          onMouseEnter={(_, index) => setActivePieIndex(index)}
-                          onMouseLeave={() => setActivePieIndex(null)}
-                        >
-                          {topMachinesData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={entry.color}
-                              stroke={
-                                activePieIndex === index ? '#3b82f6' : '#fff'
-                              }
-                              strokeWidth={activePieIndex === index ? 2 : 1}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0]
-                                .payload as TopPerformingItem;
-                              return (
-                                <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-                                  <p className="font-semibold text-gray-900">
-                                    {data.name}
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    Total: {formatCurrency(data.totalDrop)}
-                                  </p>
-                                  {data.location && (
-                                    <p className="text-xs text-gray-500">
-                                      Location: {data.location}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex h-[300px] items-center justify-center text-sm text-gray-400">
-                  No top performing machines data available
-                </div>
-              )}
-            </div>
-          </div>
+            <ReportsMetersTopPerformingMachines
+              data={topMachinesData}
+              loading={loading || topMachinesLoading}
+            />
+          </section>
+        )}
 
-          {/* Hourly Charts - Show on right if more than 10 locations, otherwise below */}
-          {shouldShowChartOnRight && selectedLocations.length > 0 && (
+        {hasLocationsSelected && (
+          <PerformanceChartsSection
+            hourlyChartData={hourlyChartData}
+            hourlyChartLoading={hourlyChartLoading}
+            chartGranularity={chartGranularity}
+            onGranularityChange={onGranularityChange}
+            variant="mobile"
+            selectId="chart-granularity-meters-mobile"
+          />
+        )}
+      </div>
+
+      {/* Desktop layout */}
+      <Card className="hidden md:block">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Location Selection & Controls
+          </CardTitle>
+          <CardDescription>
+            Select specific locations to filter data or view all locations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div
+            className={`grid grid-cols-1 gap-4 ${shouldShowChartOnRight ? 'lg:grid-cols-2' : ''}`}
+          >
+            <div className="space-y-3 rounded-lg bg-buttonActive p-4">
+              <LocationFilterControls
+                locations={locations}
+                selectedLocations={selectedLocations}
+                onSelectionChange={onSelectionChange}
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-700">
-                  Performance Charts
+                  Top Performing Machines
                 </label>
-                <div className="flex items-center gap-2">
-                  <label
-                    htmlFor="chart-granularity-meters"
-                    className="text-xs font-medium text-gray-600"
-                  >
-                    Granularity:
-                  </label>
-                  <select
-                    id="chart-granularity-meters"
-                    value={chartGranularity}
-                    onChange={e =>
-                      onGranularityChange(e.target.value as 'hourly' | 'minute')
-                    }
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="minute">Minute</option>
-                    <option value="hourly">Hourly</option>
-                  </select>
+                <div className="text-xs text-gray-500">
+                  {topMachinesData.length > 0
+                    ? `${topMachinesData.length} machines`
+                    : 'No data'}
                 </div>
               </div>
               <div className="rounded-md border border-gray-300 bg-white p-4">
-                <ReportsMetersHourlyCharts
-                  data={hourlyChartData}
-                  loading={hourlyChartLoading}
+                <ReportsMetersTopPerformingMachines
+                  data={topMachinesData}
+                  loading={loading || topMachinesLoading}
                 />
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Hourly Charts - Show below if 10 or fewer locations selected */}
-        {!shouldShowChartOnRight && selectedLocations.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Performance Charts
-              </label>
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="chart-granularity-meters-below"
-                  className="text-xs font-medium text-gray-600"
-                >
-                  Granularity:
-                </label>
-                <select
-                  id="chart-granularity-meters-below"
-                  value={chartGranularity}
-                  onChange={e =>
-                    onGranularityChange(e.target.value as 'hourly' | 'minute')
-                  }
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="minute">Minute</option>
-                  <option value="hourly">Hourly</option>
-                </select>
-              </div>
-            </div>
-            <div className="rounded-md border border-gray-300 bg-white p-4">
-              <ReportsMetersHourlyCharts
-                data={hourlyChartData}
-                loading={hourlyChartLoading}
+            {shouldShowChartOnRight && hasLocationsSelected && (
+              <PerformanceChartsSection
+                hourlyChartData={hourlyChartData}
+                hourlyChartLoading={hourlyChartLoading}
+                chartGranularity={chartGranularity}
+                onGranularityChange={onGranularityChange}
+                variant="desktop"
+                selectId="chart-granularity-meters"
               />
-            </div>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {!shouldShowChartOnRight && hasLocationsSelected && (
+            <PerformanceChartsSection
+              hourlyChartData={hourlyChartData}
+              hourlyChartLoading={hourlyChartLoading}
+              chartGranularity={chartGranularity}
+              onGranularityChange={onGranularityChange}
+              variant="desktop"
+              selectId="chart-granularity-meters-below"
+            />
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }

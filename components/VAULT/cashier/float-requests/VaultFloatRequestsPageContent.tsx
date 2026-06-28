@@ -12,13 +12,14 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
 import { CheckCircle2, Clock, Loader2, RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
 import type { FloatRequestSortOption } from './tables/VaultFloatRequestsTable';
@@ -321,6 +322,12 @@ export default function VaultFloatRequestsPageContent() {
     }
   };
 
+  const handlePageRefresh = useCallback(() => {
+    void fetchRequests(true);
+  }, [fetchRequests]);
+
+  useRegisterRefresh(handlePageRefresh, refreshing);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -337,7 +344,7 @@ export default function VaultFloatRequestsPageContent() {
   }
 
   return (
-    <PageLayout onRefresh={() => fetchRequests(true)} refreshing={refreshing}>
+    <PageLayout>
       <div className="space-y-6">
         <VaultManagerHeader
           title="Float Requests"

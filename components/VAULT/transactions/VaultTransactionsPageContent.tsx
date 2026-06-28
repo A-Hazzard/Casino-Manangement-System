@@ -13,6 +13,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -138,6 +139,12 @@ export default function VaultTransactionsPageContent() {
 
     return () => clearInterval(interval);
   }, [fetchData, transactions.length]);
+
+  const handlePageRefresh = useCallback(() => {
+    void fetchData(true);
+  }, [fetchData]);
+
+  useRegisterRefresh(handlePageRefresh, loading);
 
   // ============================================================================
   // Computed
@@ -269,8 +276,6 @@ export default function VaultTransactionsPageContent() {
 
   return (
     <PageLayout
-      onRefresh={() => fetchData(true)}
-      refreshing={loading}
       headerProps={
         isAdminOrDev
           ? {

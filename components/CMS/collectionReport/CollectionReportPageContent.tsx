@@ -38,6 +38,7 @@ import CollectionReportV2WizardModal from '@/components/CMS/collectionReport/mod
 
 // === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -221,7 +222,7 @@ const CollectionReportPageContent: FC = () => {
         : activeTab;
 
   // Wrapped refresh that calls correct hook based on active tab
-  const handleRefreshAll = () => {
+  const handleRefreshAll = useCallback(() => {
     if (effectiveTab === 'collection') {
       handleRefresh();
     } else if (effectiveTab === 'collection-v2') {
@@ -233,7 +234,14 @@ const CollectionReportPageContent: FC = () => {
     } else if (effectiveTab === 'manager') {
       managerHook.onRefresh();
     }
-  };
+  }, [
+    effectiveTab,
+    handleRefresh,
+    v2Hook,
+    monthlyHook,
+    collectorHook,
+    managerHook,
+  ]);
 
   const activeRefreshing =
     effectiveTab === 'collection'
@@ -247,6 +255,8 @@ const CollectionReportPageContent: FC = () => {
             : effectiveTab === 'manager'
               ? managerHook.loadingSchedulers
               : false;
+
+  useRegisterRefresh(handleRefreshAll, activeRefreshing);
 
   // ============================================================================
   // Render
@@ -275,14 +285,10 @@ const CollectionReportPageContent: FC = () => {
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
-        onRefresh={handleRefreshAll}
-        refreshing={activeRefreshing}
       >
         {/* Header Section */}
         <CollectionReportHeader
           activeTab={effectiveTab}
-          refreshing={activeRefreshing}
-          onRefresh={handleRefreshAll}
           onCreateDesktop={() => {
             if (effectiveTab === 'collection-v2') {
               setShowV2StartSession(true);

@@ -5,7 +5,7 @@
  * Features:
  * - Matches AdministrationLicenceeTable layout structure
  * - 8 skeleton rows
- * - 5 columns (NAME, COUNTRY, STATUS, EXPIRY DATE, ACTIONS)
+ * - 8 columns (NAME, COUNTRY, VALID FROM, EXPIRES, PAYMENT STATUS, INCLUDE JACKPOT, LAST EDITED, ACTIONS)
  * - Responsive design
  */
 'use client';
@@ -17,34 +17,66 @@ function AdministrationLicenceeTableSkeleton() {
   // Render - Table Skeleton
   // ============================================================================
   return (
-    <div className="mt-6 overflow-x-auto">
-      <table className="min-w-full rounded-lg bg-white shadow-md">
-        <thead className="bg-button text-white">
-          <tr>
-            {['NAME', 'COUNTRY', 'STATUS', 'EXPIRY DATE', 'ACTIONS'].map(
-              col => (
+    <div className="hidden lg:block">
+      <div className="overflow-x-auto rounded-lg bg-white shadow-md">
+        <table className="min-w-full">
+          <thead className="bg-button text-white">
+            <tr>
+              {[
+                'NAME',
+                'COUNTRY',
+                'VALID FROM',
+                'EXPIRES',
+                'PAYMENT STATUS',
+                'INCLUDE JACKPOT',
+                'LAST EDITED',
+                'ACTIONS',
+              ].map(col => (
                 <th
                   key={col}
-                  className="select-none px-4 py-3 text-left text-sm font-semibold"
+                  className="px-4 py-3 text-center text-sm font-semibold text-white"
                 >
                   {col}
                 </th>
-              )
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: 8 }).map((_, idx) => (
-            <tr key={idx} className="border-b last:border-b-0">
-              {Array.from({ length: 5 }).map((__, colIdx) => (
-                <td key={colIdx} className="px-4 py-3">
-                  <Skeleton className="h-4 w-3/4" />
-                </td>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Array.from({ length: 8 }).map((_, rowIndex) => (
+              <tr key={rowIndex} className="border-b last:border-b-0">
+                <td className="px-4 py-3">
+                  <Skeleton className="h-4 w-28" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-24" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-5 w-16 rounded-full" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-5 w-10 rounded-full" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <Skeleton className="mx-auto h-4 w-20" />
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-3">
+                    <Skeleton className="h-5 w-5" />
+                    <Skeleton className="h-5 w-5" />
+                    <Skeleton className="h-5 w-5" />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

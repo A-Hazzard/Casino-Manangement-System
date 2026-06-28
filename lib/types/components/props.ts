@@ -45,6 +45,7 @@ export type HeaderProps = {
   containerPaddingMobile?: string;
   disabled?: boolean;
   hideCurrencyFilter?: boolean;
+  headerActions?: React.ReactNode;
 };
 
 export type CollectorTooltipData = {

@@ -356,7 +356,7 @@ export default function LocationsDetailsCabinetsSection({
       />
 
       {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
-      <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+      <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
         <div className="order-1 flex-1">
           <DateFilters
             onCustomRangeGo={onCustomRangeGo ?? handleRefresh}
@@ -365,7 +365,7 @@ export default function LocationsDetailsCabinetsSection({
             enableTimeInputs={true}
           />
         </div>
-        <div className="order-2 hidden w-auto flex-shrink-0 md:block">
+        <div className="order-2 w-auto flex-shrink-0">
           <MachineStatusWidget
             isLoading={
               machineStatsLoading ||

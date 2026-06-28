@@ -16,6 +16,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
@@ -33,6 +34,7 @@ import {
   UserRole,
 } from '@/lib/utils/permissions';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Settings } from 'lucide-react';
 
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
@@ -220,26 +222,27 @@ export default function LocationsDetailsPageContent() {
   };
 
   // Refresh handler
+  const [pageRefreshing, setPageRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
-    // If members view is active, trigger members refresh handler
     if (activeView === 'members' && membersRefreshHandlerRef.current) {
       membersRefreshHandlerRef.current();
       return;
     }
 
-    // Only refresh machines/charts if on machines view
     if (activeView !== 'machines') {
       return;
     }
 
-    // Refresh location document (re-runs SMIB auto-tag + updates locationData)
-    await cabinetsData.refreshLocation();
-    // Refresh machine status and membership stats
-    await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
-    // Refresh cabinets data (hook handles the refresh)
-    await cabinetsData.refreshCabinets();
-    // Refresh chart data
-    chartDataHook.refreshChart();
+    setPageRefreshing(true);
+
+    try {
+      await cabinetsData.refreshLocation();
+      await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
+      await cabinetsData.refreshCabinets();
+      chartDataHook.refreshChart();
+    } finally {
+      setPageRefreshing(false);
+    }
   }, [
     activeView,
     refreshMachineStats,
@@ -247,6 +250,8 @@ export default function LocationsDetailsPageContent() {
     cabinetsData,
     chartDataHook,
   ]);
+
+  useRegisterRefresh(handleRefresh, pageRefreshing || cabinetsData.refreshing);
 
   // Custom range handler — does NOT call refreshCabinets() because the
   // useLocationCabinetsData effect already re-fetches when filters change.
@@ -366,26 +371,33 @@ export default function LocationsDetailsPageContent() {
             cabinetsData.cabinetsLoading ||
             cabinetsData.refreshing,
         }}
+        headerActions={
+          activeView === 'machines' && canManageMachines ? (
+            <button
+              onClick={() => {
+                if (cabinetsData.locationData) {
+                  if (canEditLocation) {
+                    openEditModal(cabinetsData.locationData as AggregatedLocation);
+                  }
+                }
+              }}
+              className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900"
+              aria-label="Location Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          ) : null
+        }
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
-        onRefresh={handleRefresh}
-        refreshing={cabinetsData.refreshing}
       >
-        {/* Header Section: Title, back button, and action buttons */}
+        {/* Header Section: Title, back button, and create button */}
         <LocationsDetailsHeader
           locationId={locationId}
           locationData={cabinetsData.locationData as AggregatedLocation}
-          refreshing={cabinetsData.refreshing}
-          activeView={activeView}
           canManageMachines={canManageMachines}
-          onRefresh={handleRefresh}
-          onEditLocation={loc => {
-            if (canEditLocation) {
-              openEditModal(loc);
-            }
-          }}
           onNewMachine={openCabinetModal}
         />
 
@@ -394,6 +406,7 @@ export default function LocationsDetailsPageContent() {
           activeView={activeView}
           showMembersTab={showMembersTab}
           onViewChange={handleViewChange}
+          locationData={cabinetsData.locationData as AggregatedLocation}
         />
 
         {activeView === 'members' ? (

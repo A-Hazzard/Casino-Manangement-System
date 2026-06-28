@@ -3,9 +3,9 @@
 import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
-import { endOfMonth, setMonth, setYear, startOfMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { endOfMonth, format, setMonth, setYear, startOfMonth } from 'date-fns';
 import { useMemo } from 'react';
-
 import { DateRange as RDPDateRange } from 'react-day-picker';
 
 type MonthYearPickerProps = {
@@ -13,20 +13,20 @@ type MonthYearPickerProps = {
   onChange: (range?: RDPDateRange) => void;
   onSetLastMonth: () => void;
   disabled?: boolean;
+  variant?: 'default' | 'filterBar';
 };
 
-/**
- * MonthYearPicker Component
- * A specialized date picker that only allows selecting Month and Year.
- * Returns a date range covering the entire selected month.
- */
 export const CollectionReportMonthlyMonthYearPicker: FC<
   MonthYearPickerProps
-> = ({ value, onChange, onSetLastMonth, disabled = false }) => {
-  // ============================================================================
-  // Computed
-  // ============================================================================
-  // Current selections
+> = ({
+  value,
+  onChange,
+  onSetLastMonth,
+  disabled = false,
+  variant = 'default',
+}) => {
+  const isFilterBar = variant === 'filterBar';
+
   const selectedMonth = value?.from
     ? value.from.getMonth().toString()
     : new Date().getMonth().toString();
@@ -34,10 +34,6 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     ? value.from.getFullYear().toString()
     : new Date().getFullYear().toString();
 
-  // ============================================================================
-  // State & Hooks
-  // ============================================================================
-  // Options for months
   const monthOptions = useMemo(
     () => [
       { value: '0', label: 'January' },
@@ -56,7 +52,6 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     []
   );
 
-  // Options for years (from 2020 to current year)
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
@@ -66,13 +61,10 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     return years;
   }, []);
 
-  // ============================================================================
-  // Handlers
-  // ============================================================================
   const handleMonthChange = (month: string) => {
-    const monthIdx = parseInt(month);
+    const monthIndex = parseInt(month, 10);
     const baseDate = value?.from || new Date();
-    const newDate = setMonth(baseDate, monthIdx);
+    const newDate = setMonth(baseDate, monthIndex);
 
     onChange({
       from: startOfMonth(newDate),
@@ -81,7 +73,7 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
   };
 
   const handleYearChange = (year: string) => {
-    const yearNum = parseInt(year);
+    const yearNum = parseInt(year, 10);
     const baseDate = value?.from || new Date();
     const newDate = setYear(baseDate, yearNum);
 
@@ -91,42 +83,76 @@ export const CollectionReportMonthlyMonthYearPicker: FC<
     });
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        variant="outline"
-        className="h-10 shrink-0 rounded-lg border-gray-300 bg-white px-4 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-100"
-        onClick={onSetLastMonth}
-        disabled={disabled}
-      >
-        Last Month
-      </Button>
+  const selectTriggerClass = isFilterBar
+    ? 'h-11 w-full rounded-md border-0 bg-white text-sm font-medium text-gray-800 shadow-sm focus:ring-2 focus:ring-white/40'
+    : 'h-10 w-full border-gray-300 bg-white font-semibold shadow-sm';
 
-      <div className="flex flex-1 items-center gap-2">
-        <div className="min-w-[130px]">
+  const lastMonthButtonClass = isFilterBar
+    ? 'h-11 w-full rounded-md border border-white/30 bg-white/10 text-sm font-semibold text-white hover:bg-white/20'
+    : 'h-10 shrink-0 rounded-lg border-gray-300 bg-white px-4 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-100';
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-2',
+        !isFilterBar && 'flex-wrap items-center gap-2 sm:flex-row'
+      )}
+    >
+      {isFilterBar && (
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/90">
+          Period
+        </p>
+      )}
+
+      <div
+        className={cn(
+          'grid gap-2',
+          isFilterBar ? 'grid-cols-1' : 'flex flex-1 flex-wrap items-center gap-2'
+        )}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          className={lastMonthButtonClass}
+          onClick={onSetLastMonth}
+          disabled={disabled}
+        >
+          Last Month
+        </Button>
+
+        <div
+          className={cn(
+            'grid gap-2',
+            isFilterBar ? 'grid-cols-2' : 'flex flex-1 items-center gap-2'
+          )}
+        >
           <CustomSelect
             value={selectedMonth}
             onValueChange={handleMonthChange}
             options={monthOptions}
             placeholder="Month"
             disabled={disabled}
-            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm w-full"
+            triggerClassName={selectTriggerClass}
           />
-        </div>
-        <div className="w-24 shrink-0">
           <CustomSelect
             value={selectedYear}
             onValueChange={handleYearChange}
             options={yearOptions}
             placeholder="Year"
             disabled={disabled}
-            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm w-full"
+            triggerClassName={selectTriggerClass}
           />
         </div>
       </div>
+
+      {isFilterBar && value?.from && (
+        <p className="text-xs text-white/80">
+          Viewing{' '}
+          <span className="font-semibold text-white">
+            {format(value.from, 'MMMM yyyy')}
+          </span>
+        </p>
+      )}
     </div>
   );
 };

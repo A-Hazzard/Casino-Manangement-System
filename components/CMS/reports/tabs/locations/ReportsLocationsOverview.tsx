@@ -12,6 +12,7 @@
 
 'use client';
 
+import ReportsLocationsSummaryMetrics from '@/components/CMS/reports/common/ReportsLocationsSummaryMetrics';
 import ReportsLocationsMap from '@/components/CMS/reports/tabs/locations/ReportsLocationsMap';
 import ReportsLocationsTable from '@/components/CMS/reports/tabs/locations/ReportsLocationsTable';
 import { Button } from '@/components/shared/ui/button';
@@ -29,21 +30,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import { Progress } from '@/components/shared/ui/progress';
-import {
-  SummaryCardsSkeleton,
-  TopMachinesTableSkeleton,
-} from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { DashboardTotals } from '@/lib/types';
 import type { MapPreviewLocation } from '@/lib/types/components';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { AggregatedLocation } from '@/lib/types/location';
-import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-} from '@/lib/utils/financial';
-import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { TopLocation } from '@/shared/types';
 import {
   ChevronDown,
@@ -158,82 +149,30 @@ export default function ReportsLocationsOverview({
         <h3 className="mb-4 text-lg font-semibold text-gray-900">
           Metrics Overview
         </h3>
-        <div className="mb-2 flex justify-end">
+        <div className="mb-2 hidden justify-end md:flex">
           <Button variant="outline" size="sm" onClick={onRefresh}>
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
         </div>
         {metricsLoading || metricsTotalsLoading ? (
-          <SummaryCardsSkeleton />
+          <ReportsLocationsSummaryMetrics
+            gross={0}
+            moneyIn={0}
+            moneyOut={0}
+            formatCurrency={formatCurrency}
+            loading
+          />
         ) : metricsTotals ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Gross Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`truncate text-xl font-bold md:text-2xl ${getGrossColorClass(metricsTotals.gross || 0)}`}
-                >
-                  {formatCurrency(metricsTotals.gross || 0)}
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  Gross revenue this period
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Money In</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={`truncate text-xl font-bold md:text-2xl ${getMoneyInColorClass()}`}
-                >
-                  {formatCurrency(metricsTotals.moneyIn || 0)}
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  Total money in this period
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Money Out</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="truncate text-xl font-bold md:text-2xl">
-                  <MoneyOutCell
-                    moneyOut={metricsTotals.moneyOut || 0}
-                    moneyIn={metricsTotals.moneyIn || 0}
-                    jackpot={totalJackpot}
-                    displayValue={formatCurrency(metricsTotals.moneyOut || 0)}
-                    includeJackpot={anyIncludeJackpot}
-                    showInfoIcon={true}
-                  />
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  Total money out this period
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="truncate text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
-                  {`${onlineMachinesData.online}/${onlineMachinesData.total}`}
-                </div>
-                <p className="truncate text-xs text-muted-foreground sm:text-sm">
-                  Online Machines
-                </p>
-                <Progress
-                  value={onlineMachinesData.percentage}
-                  className="mt-2"
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <ReportsLocationsSummaryMetrics
+            gross={metricsTotals.gross || 0}
+            moneyIn={metricsTotals.moneyIn || 0}
+            moneyOut={metricsTotals.moneyOut || 0}
+            jackpot={totalJackpot}
+            includeJackpot={anyIncludeJackpot}
+            onlineMachines={onlineMachinesData.online}
+            totalMachines={onlineMachinesData.total}
+            formatCurrency={formatCurrency}
+          />
         ) : (
           <div className="py-8 text-center text-gray-500">
             No metrics data available
@@ -401,18 +340,25 @@ export default function ReportsLocationsOverview({
           </div>
         </CardHeader>
         <CardContent>
-          {paginationLoading ||
-          locationsLoading ||
-          gamingLocationsLoading ||
-          locationAggregatesLoading ? (
-            <TopMachinesTableSkeleton />
-          ) : paginatedLocations.length === 0 ? (
+          {paginatedLocations.length === 0 &&
+          !paginationLoading &&
+          !locationsLoading &&
+          !gamingLocationsLoading &&
+          !locationAggregatesLoading ? (
             <div className="py-8 text-center text-gray-500">
               No locations found matching your criteria.
             </div>
           ) : (
             <>
-              <ReportsLocationsTable locations={paginatedLocations} />
+              <ReportsLocationsTable
+                locations={paginatedLocations}
+                loading={
+                  paginationLoading ||
+                  locationsLoading ||
+                  gamingLocationsLoading ||
+                  locationAggregatesLoading
+                }
+              />
               <div className="mt-4">
                 <PaginationControls
                   currentPage={currentPage}

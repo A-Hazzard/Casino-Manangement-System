@@ -18,6 +18,7 @@
 
 import DebugSection from '@/components/shared/debug/DebugSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -207,6 +208,8 @@ export default function VaultEndOfDayReportsPageContent() {
     toast.success('Report data refreshed');
   };
 
+  useRegisterRefresh(handleRefresh, loading);
+
   /**
    * Handle CSV export
    */
@@ -349,7 +352,7 @@ export default function VaultEndOfDayReportsPageContent() {
   // ============================================================================
 
   return (
-    <PageLayout onRefresh={handleRefresh} refreshing={loading}>
+    <PageLayout>
       <div className="space-y-6">
         {/* Header - Always Visible */}
         <VaultManagerHeader

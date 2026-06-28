@@ -9,6 +9,7 @@
 import { ReactNode } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
+import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -50,12 +51,15 @@ import { format, formatDistanceToNow } from 'date-fns';
 import {
   ChevronDown,
   ChevronUp,
+  Clock,
   Download,
   ExternalLink,
   FileSpreadsheet,
   FileText,
   Monitor,
+  Pencil,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -578,150 +582,99 @@ export const ReportsMachinesOffline = ({
               </div>
 
               {/* Mobile Card View */}
-              <div className="grid grid-cols-1 gap-4 lg:hidden">
+              <div className="grid grid-cols-1 gap-3 lg:hidden">
                 {offlineMachines.map((machine: MachineData) => {
                   const lastOnlineDate = machine.lastActivity
                     ? new Date(machine.lastActivity)
                     : null;
 
                   return (
-                    <Card
+                    <ReportsMachineCard
                       key={machine.machineId}
-                      className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
-                    >
-                      {/* Header */}
-                      <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
-                        <div className="mb-2 flex flex-col">
-                          <div className="flex items-center">
-                            <span className="text-sm font-semibold text-gray-900">
+                      title={formatMachineDisplayNameWithBold({
+                        serialNumber:
+                          machine.serialNumber || machine.machineId,
+                        custom: { name: machine.machineName },
+                        game: machine.gameTitle,
+                      })}
+                      machineHref={`/cabinets/${machine.machineId}`}
+                      subtitle={
+                        machine.gameTitle || (
+                          <span className="text-red-600">
+                            (game name not provided)
+                          </span>
+                        )
+                      }
+                      locationName={machine.locationName || 'N/A'}
+                      locationHref={
+                        machine.locationId
+                          ? `/locations/${machine.locationId}`
+                          : undefined
+                      }
+                      banner={
+                        <div className="mb-3 flex flex-col gap-1 text-xs font-medium text-red-600">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3 w-3" />
+                            <span>
                               {machine.offlineTimeLabel ||
                                 (machine.lastActivity
-                                  ? formatDistanceToNow(
+                                  ? `Offline ${formatDistanceToNow(
                                       new Date(machine.lastActivity),
                                       { addSuffix: true }
-                                    )
-                                  : 'Never')}
+                                    )}`
+                                  : 'Never Online')}
                             </span>
                           </div>
                           {machine.actualOfflineTime &&
-                            machine.actualOfflineTime !==
-                              machine.offlineTimeLabel && (
-                              <span className="ml-[18px] text-[10px] italic text-gray-500 opacity-80">
-                                Actual Offline Time: {machine.actualOfflineTime}
-                              </span>
-                            )}
+                          machine.actualOfflineTime !==
+                            machine.offlineTimeLabel ? (
+                            <span className="ml-[18px] text-[10px] italic text-gray-500 opacity-80">
+                              Actual Offline Time: {machine.actualOfflineTime}
+                            </span>
+                          ) : null}
                         </div>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <button
-                              onClick={() => {
-                                router.push(`/cabinets/${machine.machineId}`);
-                              }}
-                              className="group flex items-center gap-1.5 text-left"
-                            >
-                              <h3 className="break-words font-mono text-base font-semibold text-gray-900 underline decoration-blue-600 decoration-2 underline-offset-2">
-                                {formatMachineDisplayNameWithBold({
-                                  serialNumber:
-                                    machine.serialNumber || machine.machineId,
-                                  custom: { name: machine.machineName },
-                                  game: machine.gameTitle,
-                                })}
-                              </h3>
-                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                            </button>
-                            <p className="mt-1 truncate text-sm text-gray-600">
-                              {machine.gameTitle || (
-                                <span className="text-red-600">
-                                  (game name not provided)
-                                </span>
-                              )}
-                            </p>
-                            <button
-                              onClick={() => {
-                                router.push(`/locations/${machine.locationId}`);
-                              }}
-                              className="group mt-1 flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
-                            >
-                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                {machine.locationName || 'N/A'}
-                              </span>
-                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Metrics Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">
-                            Last Online
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-gray-900">
-                            {lastOnlineDate
-                              ? format(lastOnlineDate, 'MMM d, yyyy h:mm a')
-                              : 'Never'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">
-                            Handle
-                          </p>
-                          <p
-                            className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.coinIn)}`}
+                      }
+                      metrics={[
+                        {
+                          label: 'Last Online',
+                          value: lastOnlineDate
+                            ? format(lastOnlineDate, 'MMM d, yyyy h:mm a')
+                            : 'Never',
+                        },
+                        {
+                          label: 'Handle',
+                          value: formatCurrency(machine.coinIn),
+                          valueClassName: getFinancialColorClass(machine.coinIn),
+                        },
+                        {
+                          label: 'Net Win',
+                          value: formatCurrency(machine.netWin),
+                          valueClassName: getFinancialColorClass(machine.netWin),
+                        },
+                      ]}
+                      footer={
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={() => onEdit(machine)}
+                            variant="outline"
+                            size="sm"
+                            className="flex w-full items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                           >
-                            {formatCurrency(machine.coinIn)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">
-                            Net Win
-                          </p>
-                          <p
-                            className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.netWin)}`}
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => onDelete(machine)}
+                            variant="outline"
+                            size="sm"
+                            className="flex w-full items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
                           >
-                            {formatCurrency(machine.netWin)}
-                          </p>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
                         </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500">
-                            Actions
-                          </p>
-                          <div className="mt-1 flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onEdit(machine)}
-                              className="h-8 w-8 p-1 hover:bg-accent"
-                              title="Edit"
-                            >
-                              <Image
-                                src={editIcon}
-                                alt="Edit"
-                                width={16}
-                                height={16}
-                                className="h-4 w-4"
-                              />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(machine)}
-                              className="h-8 w-8 p-1 hover:bg-accent"
-                              title="Delete"
-                            >
-                              <Image
-                                src={deleteIcon}
-                                alt="Delete"
-                                width={16}
-                                height={16}
-                                className="h-4 w-4"
-                              />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
+                      }
+                    />
                   );
                 })}
               </div>

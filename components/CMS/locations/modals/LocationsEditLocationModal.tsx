@@ -919,46 +919,53 @@ export default function LocationsEditLocationModal({
       />
 
       {/* Responsive Modal */}
-      <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
+      <div className="fixed inset-0 flex items-start justify-center overflow-y-auto md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="edit-location-modal max-h-[95vh] w-full max-w-xl overflow-hidden rounded-md bg-container shadow-lg md:max-h-[90vh] lg:max-w-4xl"
+          className="edit-location-modal flex h-full w-full flex-col bg-container shadow-lg md:h-auto md:max-h-[90vh] md:w-full md:max-w-4xl md:rounded-md"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4">
-            <h2 className="flex-1 text-center text-xl font-semibold">
-              Edit {selectedLocation.locationName || 'Location'} Details
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3 md:px-6">
+            <h2 className="flex-1 text-lg font-semibold md:text-xl">
+              Edit {selectedLocation.locationName || 'Location'}
             </h2>
+            <button
+              onClick={handleClose}
+              className="ml-4 flex-shrink-0 p-1 text-gray-500 hover:text-gray-700"
+              aria-label="Close"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Form Content */}
-          <div className="max-h-[calc(95vh-120px)] space-y-4 overflow-y-auto px-4 pb-4 md:max-h-[calc(90vh-120px)] md:px-8 md:pb-8">
-            {/* Form Fields Section */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:pb-8">
             {/* Location ID & Creation Date Display */}
             <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700">
+                  <h3 className="text-xs font-medium text-gray-500">
                     Location ID
                   </h3>
-                  <p className="mt-1 font-mono text-sm text-gray-600">
+                  <p className="mt-1 truncate font-mono text-sm text-gray-600">
                     {locationDetails?._id ||
                       selectedLocation.location ||
                       'Unknown'}
                   </p>
                 </div>
-                <div className="text-center">
-                  <h3 className="text-sm font-medium text-gray-700">
-                    Last Collection Time
+                <div>
+                  <h3 className="text-xs font-medium text-gray-500">
+                    Last Collection
                   </h3>
                   <div className="mt-1 font-mono text-sm text-gray-600">
                     {locationDetailsLoading ? (
-                      <div className="mx-auto h-4 w-32 animate-pulse rounded bg-gray-200" />
+                      <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
                     ) : formData.previousCollectionTime ? (
                       new Date(formData.previousCollectionTime).toLocaleString(
                         'en-US',
                         {
-                          year: 'numeric',
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
@@ -970,16 +977,15 @@ export default function LocationsEditLocationModal({
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <h3 className="text-sm font-medium text-gray-700">Created</h3>
+                <div>
+                  <h3 className="text-xs font-medium text-gray-500">Created</h3>
                   <div className="mt-1 text-sm text-gray-600">
                     {locationDetailsLoading && !locationDetails?.createdAt ? (
-                      <div className="ml-auto h-4 w-24 animate-pulse rounded bg-gray-200" />
+                      <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
                     ) : locationDetails?.createdAt ? (
                       new Date(locationDetails.createdAt).toLocaleDateString(
                         'en-US',
                         {
-                          year: 'numeric',
                           month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
@@ -1056,7 +1062,7 @@ export default function LocationsEditLocationModal({
             </div>
 
             {/* Country and Profit Share */}
-            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Country */}
               <div>
                 <label
@@ -1218,13 +1224,13 @@ export default function LocationsEditLocationModal({
                 />
                 <Label
                   htmlFor="membershipEnabled"
-                  className="text-lg font-semibold text-gray-800"
+                  className="text-sm font-semibold text-gray-800 sm:text-lg"
                 >
                   Membership Enabled
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <Checkbox
                   id="aceEnabled"
                   checked={formData.aceEnabled}
@@ -1235,7 +1241,7 @@ export default function LocationsEditLocationModal({
                 />
                 <Label
                   htmlFor="aceEnabled"
-                  className="text-lg font-semibold text-gray-800"
+                  className="text-sm font-semibold text-gray-800 sm:text-lg"
                 >
                   Ace Enabled
                 </Label>
@@ -1809,9 +1815,9 @@ export default function LocationsEditLocationModal({
             </div>
 
             {/* Actions */}
-            <div className="mt-6 flex flex-row justify-center gap-3">
+            <div className="sticky bottom-0 -mx-4 border-t border-gray-200 bg-container px-4 py-3 md:mx-0 md:mt-6 md:flex md:flex-row md:justify-center md:gap-3 md:border-0 md:px-0">
               <Button
-                className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto sm:flex-initial"
+                className="h-12 w-full bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto sm:flex-initial"
                 onClick={handleSubmit}
                 disabled={loading}
               >
@@ -1819,7 +1825,7 @@ export default function LocationsEditLocationModal({
               </Button>
               <Button
                 variant="outline"
-                className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:w-auto sm:flex-initial"
+                className="mt-2 h-12 w-full border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:mt-0 sm:w-auto sm:flex-initial"
                 onClick={handleClose}
               >
                 Close

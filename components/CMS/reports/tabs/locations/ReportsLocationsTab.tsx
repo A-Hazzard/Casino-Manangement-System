@@ -641,7 +641,7 @@ export default function ReportsLocationsTab() {
           </div>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6 pb-24 md:pb-0">
             <ReportsLocationsOverview
               metricsTotals={metricsTotals}
               metricsTotalsLoading={metricsTotalsLoading}
@@ -665,7 +665,7 @@ export default function ReportsLocationsTab() {
           </TabsContent>
 
           {/* SAS Evaluation Tab */}
-          <TabsContent value="location-evaluation" className="space-y-6">
+          <TabsContent value="location-evaluation" className="space-y-6 pb-24 md:pb-0">
             <ReportsLocationsSASEvaluation
               paginatedLocations={paginatedLocations}
               allLocationsForDropdown={allLocationsForDropdown}
@@ -696,7 +696,7 @@ export default function ReportsLocationsTab() {
           </TabsContent>
 
           {/* Revenue Analysis Tab */}
-          <TabsContent value="location-revenue" className="space-y-6">
+          <TabsContent value="location-revenue" className="space-y-6 pb-24 md:pb-0">
             <ReportsLocationsRevenueAnalysis
               paginatedLocations={paginatedLocations}
               allLocationsForDropdown={allLocationsForDropdown}

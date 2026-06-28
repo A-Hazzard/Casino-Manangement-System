@@ -16,13 +16,15 @@
 
 'use client';
 
+import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
+import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { formatMachineIdForDisplay } from '@/lib/helpers/reports/metersTabHelpers';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import type { MetersReportData } from '@/shared/types/meters';
-import { ExternalLink, Search } from 'lucide-react';
+import { ExternalLink, Eye, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type ReportsMetersTableProps = {
@@ -306,179 +308,89 @@ export default function ReportsMetersTable({
         </div>
       </div>
 
-      {/* Card View - md and below (2x2 grid on md, single column on mobile) */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
+      {/* Card View - mobile and tablet */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:hidden">
         {paginatedMetersData.map((item, index) => {
           const formatted = formatMachineIdForDisplay(item);
+          const machineHref = formatted.hasLink
+            ? `/cabinets/${formatted.machineDocumentId}`
+            : undefined;
+
           return (
-            <div
-              key={index}
-              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
-            >
-              {/* Header */}
-              <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
-                <div className="mb-2 w-fit flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="break-words font-mono text-base font-semibold text-gray-900">
-                      {formatted.mainIdentifier} (
-                      {formatted.displayParts.map((part, idx) => (
-                        <span key={idx}>
-                          {part.isError ? (
-                            <span className="text-red-600">{part.text}</span>
-                          ) : (
-                            part.text
-                          )}
-                          {idx < formatted.displayParts.length - 1 && ', '}
-                        </span>
-                      ))}
-                      )
-                    </h3>
-                    <p className="mt-1 truncate text-sm text-gray-600">
-                      {item.location}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Meters In
-                    </p>
-                    <CalculationHelp
-                      title="Meters In"
-                      formula="SAS: coinIn"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.metersIn)}`}
+            <ReportsMachineCard
+              key={`${item.machineId}-${index}`}
+              title={
+                <>
+                  {formatted.mainIdentifier} (
+                  {formatted.displayParts.map((part, partIndex) => (
+                    <span key={partIndex}>
+                      {part.isError ? (
+                        <span className="text-red-600">{part.text}</span>
+                      ) : (
+                        part.text
+                      )}
+                      {partIndex < formatted.displayParts.length - 1 && ', '}
+                    </span>
+                  ))}
+                  )
+                </>
+              }
+              machineHref={machineHref}
+              subtitle={new Date(item.createdAt).toLocaleDateString()}
+              locationName={item.location}
+              locationHref={
+                item.locationId ? `/locations/${item.locationId}` : undefined
+              }
+              metrics={[
+                {
+                  label: 'Meters In',
+                  value: item.metersIn.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.metersIn),
+                },
+                {
+                  label: 'Meters Out',
+                  value: item.metersOut.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.metersOut),
+                },
+                {
+                  label: 'Jackpot',
+                  value: item.jackpot.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.jackpot),
+                },
+                {
+                  label: 'Bill In',
+                  value: item.billIn.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.billIn),
+                },
+                {
+                  label: 'Voucher Out',
+                  value: item.voucherOut.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.voucherOut),
+                },
+                {
+                  label: 'Hand Paid',
+                  value: item.attPaidCredits.toLocaleString(),
+                  valueClassName: getFinancialColorClass(item.attPaidCredits),
+                },
+                {
+                  label: 'Games Played',
+                  value: item.gamesPlayed.toLocaleString(),
+                },
+              ]}
+              footer={
+                machineHref ? (
+                  <Button
+                    onClick={() => router.push(machineHref)}
+                    variant="outline"
+                    size="sm"
+                    className="flex w-full items-center justify-center gap-1.5 text-xs"
                   >
-                    {item.metersIn.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Meters Out
-                    </p>
-                    <CalculationHelp
-                      title="Meters Out"
-                      formula="SAS: totalWonCredits"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.metersOut)}`}
-                  >
-                    {item.metersOut.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Jackpot
-                    </p>
-                    <CalculationHelp
-                      title="Jackpot"
-                      formula="SAS: jackpot"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.jackpot)}`}
-                  >
-                    {item.jackpot.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Bill In
-                    </p>
-                    <CalculationHelp
-                      title="Bill In"
-                      formula="SAS: drop"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.billIn)}`}
-                  >
-                    {item.billIn.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Voucher Out
-                    </p>
-                    <CalculationHelp
-                      title="Voucher Out"
-                      formula="SAS: totalCancelledCredits + jackpot"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.voucherOut)}`}
-                  >
-                    {item.voucherOut.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                      Hand Paid
-                    </p>
-                    <CalculationHelp
-                      title="Hand Paid"
-                      formula="SAS: totalHandPaidCancelledCredits"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p
-                    className={`text-base font-bold ${getFinancialColorClass(item.attPaidCredits)}`}
-                  >
-                    {item.attPaidCredits.toLocaleString()}
-                  </p>
-                </div>
-                <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
-                  <div className="mb-1 flex items-center justify-between">
-                    <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
-                      Games Played
-                    </p>
-                    <CalculationHelp
-                      title="Games Played"
-                      formula="SAS: gamesPlayed"
-                      className="ml-0"
-                    />
-                  </div>
-                  <p className="text-lg font-bold text-gray-900">
-                    {item.gamesPlayed.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* View Machine Button */}
-              {formatted.hasLink && formatted.machineDocumentId && (
-                <div className="mt-4 border-t border-gray-100 pt-4">
-                  <button
-                    onClick={() => {
-                      router.push(`/cabinets/${formatted.machineDocumentId}`);
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                  >
-                    <ExternalLink className="h-4 w-4" />
+                    <Eye className="h-3.5 w-3.5" />
                     View Machine
-                  </button>
-                </div>
-              )}
-            </div>
+                  </Button>
+                ) : undefined
+              }
+            />
           );
         })}
       </div>

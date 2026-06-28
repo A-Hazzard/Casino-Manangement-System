@@ -18,6 +18,9 @@
  */
 'use client';
 
+import ReportsMachineCard, {
+  type ReportsMachineCardMetric,
+} from '@/components/CMS/reports/common/ReportsMachineCard';
 import {
   Card,
   CardContent,
@@ -75,6 +78,72 @@ function MachinesWithDataModal({
   const startIndex = currentPage * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedMachines = sortedMachines.slice(startIndex, endIndex);
+
+  const buildMachineMetrics = (
+    machine: (typeof sortedMachines)[number]
+  ): ReportsMachineCardMetric[] => {
+    const metrics: ReportsMachineCardMetric[] = [
+      {
+        label: `${details.metricName} Value`,
+        value: formatValue(machine.value),
+      },
+      {
+        label: '% of Total',
+        value: `${machine.percentageOfTotal.toFixed(2)}%`,
+      },
+    ];
+
+    if (details.metricName === 'Handle') {
+      metrics.push(
+        {
+          label: 'Net Win',
+          value:
+            machine.netWin !== undefined ? formatValue(machine.netWin) : '-',
+        },
+        {
+          label: 'Games Played',
+          value:
+            machine.gamesPlayed !== undefined
+              ? machine.gamesPlayed.toLocaleString()
+              : '-',
+        }
+      );
+    }
+
+    if (details.metricName === 'Win') {
+      metrics.push(
+        {
+          label: 'Handle',
+          value:
+            machine.coinIn !== undefined ? formatValue(machine.coinIn) : '-',
+        },
+        {
+          label: 'Games Played',
+          value:
+            machine.gamesPlayed !== undefined
+              ? machine.gamesPlayed.toLocaleString()
+              : '-',
+        }
+      );
+    }
+
+    if (details.metricName === 'Games Played') {
+      metrics.push(
+        {
+          label: 'Handle',
+          value:
+            machine.coinIn !== undefined ? formatValue(machine.coinIn) : '-',
+        },
+        {
+          label: 'Net Win',
+          value:
+            machine.netWin !== undefined ? formatValue(machine.netWin) : '-',
+        }
+      );
+    }
+
+    return metrics;
+  };
 
   // ============================================================================
   // Effects
@@ -370,141 +439,34 @@ function MachinesWithDataModal({
             <div className="space-y-3 md:hidden">
               {paginatedMachines.map(machine => {
                 const isInTopMachines = details.topMachines.some(
-                  tm => tm.machineId === machine.machineId
+                  topMachine => topMachine.machineId === machine.machineId
                 );
-                return (
-                  <div
-                    key={machine.machineId}
-                    className={`rounded-lg border p-4 ${
-                      isInTopMachines
-                        ? 'border-orangeHighlight/50 bg-orangeHighlight/20 shadow-sm'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    <div className="mb-3 space-y-2">
-                      <div>
-                        <button
-                          onClick={() => {
-                            router.push(`/cabinets/${machine.machineId}`);
-                          }}
-                          className="group flex items-center gap-1.5 text-left"
-                        >
-                          <span className="text-sm font-semibold text-gray-900 underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
-                            {machine.machineName}
-                          </span>
-                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                        {machine.locationName ? (
-                          <button
-                            onClick={() => {
-                              router.push(`/locations/${machine.locationId}`);
-                            }}
-                            className="group flex items-center gap-1 transition-opacity hover:opacity-80"
-                          >
-                            <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
-                              {machine.locationName}
-                            </span>
-                            <ExternalLink className="h-3 w-3 flex-shrink-0 text-blueHighlight" />
-                          </button>
-                        ) : (
-                          <span className="text-gray-500">
-                            Unknown Location
-                          </span>
-                        )}
-                        {machine.manufacturer && (
-                          <>
-                            <span>•</span>
-                            <span>{machine.manufacturer}</span>
-                          </>
-                        )}
-                        {machine.gameTitle && (
-                          <>
-                            <span>•</span>
-                            <span>{machine.gameTitle}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="space-y-2 border-t border-gray-200 pt-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">
-                          {details.metricName} Value:
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          {formatValue(machine.value)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">% of Total:</span>
-                        <span className="text-gray-700">
-                          {machine.percentageOfTotal.toFixed(2)}%
-                        </span>
-                      </div>
-                      {details.metricName === 'Handle' && (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Net Win:</span>
-                            <span className="text-gray-700">
-                              {machine.netWin !== undefined
-                                ? formatValue(machine.netWin)
-                                : '-'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Games Played:</span>
-                            <span className="text-gray-700">
-                              {machine.gamesPlayed !== undefined
-                                ? machine.gamesPlayed.toLocaleString()
-                                : '-'}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                      {details.metricName === 'Win' && (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Handle:</span>
-                            <span className="text-gray-700">
-                              {machine.coinIn !== undefined
-                                ? formatValue(machine.coinIn)
-                                : '-'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Games Played:</span>
-                            <span className="text-gray-700">
-                              {machine.gamesPlayed !== undefined
-                                ? machine.gamesPlayed.toLocaleString()
-                                : '-'}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                      {details.metricName === 'Games Played' && (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Handle:</span>
-                            <span className="text-gray-700">
-                              {machine.coinIn !== undefined
-                                ? formatValue(machine.coinIn)
-                                : '-'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Net Win:</span>
-                            <span className="text-gray-700">
-                              {machine.netWin !== undefined
-                                ? formatValue(machine.netWin)
-                                : '-'}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                return (
+                  <ReportsMachineCard
+                    key={machine.machineId}
+                    highlighted={isInTopMachines}
+                    title={machine.machineName}
+                    machineHref={`/cabinets/${machine.machineId}`}
+                    subtitle={
+                      <>
+                        {machine.manufacturer ? (
+                          <span>{machine.manufacturer}</span>
+                        ) : null}
+                        {machine.manufacturer && machine.gameTitle ? ' • ' : null}
+                        {machine.gameTitle ? (
+                          <span>{machine.gameTitle}</span>
+                        ) : null}
+                      </>
+                    }
+                    locationName={machine.locationName || 'Unknown Location'}
+                    locationHref={
+                      machine.locationId
+                        ? `/locations/${machine.locationId}`
+                        : undefined
+                    }
+                    metrics={buildMachineMetrics(machine)}
+                  />
                 );
               })}
             </div>

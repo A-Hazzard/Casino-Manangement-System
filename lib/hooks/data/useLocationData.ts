@@ -175,7 +175,20 @@ export function useLocationData({
         : '';
 
       // Create unique key for this fetch - include filters in the key
-      const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}-${selectedStatus}-${sortBy}-${sortOrder}`;
+      const fetchKey = [
+        debouncedSearchTerm ?? '',
+        selectedLicencee ?? '',
+        activeMetricsFilter ?? '',
+        dateRangeForFetch?.from?.getTime() ?? '',
+        dateRangeForFetch?.to?.getTime() ?? '',
+        displayCurrency ?? '',
+        page ?? '',
+        limit ?? '',
+        currentFilters,
+        selectedStatus ?? '',
+        sortBy ?? '',
+        sortOrder ?? '',
+      ].join('-');
 
       // Mark this as the current active fetch generation
       const currentFetchId = performance.now();

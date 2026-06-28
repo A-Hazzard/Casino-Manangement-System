@@ -8,6 +8,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
@@ -284,6 +285,8 @@ export default function VaultPayoutsPageContent() {
     });
   }, [payouts, sortOption, sortOrder]);
 
+  useRegisterRefresh(fetchPayouts, loading);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -298,7 +301,7 @@ export default function VaultPayoutsPageContent() {
   }
 
   return (
-    <PageLayout onRefresh={fetchPayouts} refreshing={loading}>
+    <PageLayout>
       <div className="space-y-6">
         <VaultManagerHeader
           title="Player Payouts"

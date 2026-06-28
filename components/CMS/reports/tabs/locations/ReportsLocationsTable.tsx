@@ -16,15 +16,14 @@
 
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/shared/ui/card';
+import ReportsLocationCard, {
+  ReportsLocationCardSkeleton,
+} from '@/components/CMS/reports/common/ReportsLocationCard';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 
 import {
   getGrossColorClass,
@@ -90,7 +89,7 @@ export default function ReportsLocationsTable({
   // ============================================================================
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const { formatAmount } = useCurrencyFormat();
+  const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
   // Computed
@@ -192,193 +191,12 @@ export default function ReportsLocationsTable({
     );
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    return formatAmount(amount || 0);
-  };
+  const formatCurrency = (amount: number | null | undefined) =>
+    formatCurrencyWithCodeString(amount || 0, displayCurrency);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
-
-  // Mobile Card Component
-  const LocationCard = ({ location }: { location: AggregatedLocation }) => {
-    const holdPercentage =
-      (location.moneyIn || 0) > 0
-        ? (location.gross / location.moneyIn) * 100
-        : 0;
-    const avgWagerPerGame =
-      location.gamesPlayed && location.gamesPlayed > 0
-        ? location.moneyIn / location.gamesPlayed
-        : 0;
-
-    return (
-      <Card
-        className={`mb-4 cursor-pointer transition-shadow hover:shadow-md ${
-          onLocationClick ? 'cursor-pointer' : ''
-        }`}
-        onClick={() => onLocationClick?.(location.location)}
-      >
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between gap-2 text-lg">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              {location.location ? (
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    window.location.href = `/locations/${location.location}`;
-                  }}
-                  className="group flex items-center gap-1.5"
-                >
-                  <span className="truncate underline decoration-blue-600 decoration-2 underline-offset-2">
-                    {location.locationName}
-                  </span>
-                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                </button>
-              ) : (
-                <span className="truncate">{location.locationName}</span>
-              )}
-              {/* SMIB Icon - Show if location has SMIB machines */}
-              {Boolean(
-                (location as { hasSmib?: boolean }).hasSmib ||
-                !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-              ) &&
-                !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
-                  <div className="group relative inline-flex flex-shrink-0">
-                    <Server className="h-4 w-4 text-blue-600" />
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      SMIB Location
-                    </div>
-                  </div>
-                )}
-              {/* No SMIB Icon - Show if location is marked as no SMIB */}
-              {Boolean(
-                (location as { noSMIBLocation?: boolean }).noSMIBLocation
-              ) && (
-                <div className="group relative inline-flex flex-shrink-0">
-                  <MonitorOff className="h-4 w-4 text-gray-500" />
-                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                    No SMIB Location
-                  </div>
-                </div>
-              )}
-              {/* Local Server Icon */}
-              {Boolean(
-                (location as { isLocalServer?: boolean }).isLocalServer
-              ) && (
-                <div className="group relative inline-flex flex-shrink-0">
-                  <Home className="h-4 w-4 text-purple-600" />
-                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                    Local Server
-                  </div>
-                </div>
-              )}
-              {/* Unknown Type Icon - Show if location doesn't match any known type */}
-              {(() => {
-                const hasSmib = Boolean(
-                  (location as { hasSmib?: boolean }).hasSmib ||
-                  !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-                );
-                const isLocalServer = Boolean(
-                  (location as { isLocalServer?: boolean }).isLocalServer
-                );
-                const hasMembership = Boolean(
-                  (
-                    location as {
-                      membershipEnabled?: boolean;
-                    }
-                  ).membershipEnabled ||
-                  (
-                    location as {
-                      enableMembership?: boolean;
-                    }
-                  ).enableMembership
-                );
-
-                // Show unknown icon if location doesn't match any known type
-                const isUnknownType =
-                  !hasSmib && !isLocalServer && !hasMembership;
-
-                return isUnknownType ? (
-                  <div className="group relative inline-flex flex-shrink-0">
-                    <HelpCircle className="h-4 w-4 text-gray-500" />
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      Unknown location type
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500">Machines:</span>
-              <span className="ml-2 font-medium">{location.totalMachines}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Games Played:</span>
-              <span className="ml-2 font-medium">
-                {formatNumber(location.gamesPlayed || 0)}
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Drop (Money In):</span>
-              <span
-                className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}
-              >
-                {formatCurrency(location.moneyIn)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Money Out:</span>
-              <MoneyOutCell
-                moneyOut={location.moneyOut || 0}
-                moneyIn={location.moneyIn || 0}
-                jackpot={location.jackpot || 0}
-                displayValue={formatCurrency(location.moneyOut)}
-                includeJackpot={!!location.includeJackpot}
-                showInfoIcon={true}
-                className="font-medium"
-              />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Gross Revenue:</span>
-              <span
-                className={`font-medium ${getGrossColorClass(location.gross)}`}
-              >
-                {formatCurrency(location.gross)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Hold %:</span>
-              <span className="font-medium">{holdPercentage.toFixed(2)}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Avg. Wager per Game:</span>
-              <span className="font-medium">
-                {formatCurrency(avgWagerPerGame)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Table Skeleton Component
-  const TableSkeleton = () => (
-    <div className="space-y-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="animate-pulse">
-          <div className="h-16 rounded-lg bg-gray-200"></div>
-        </div>
-      ))}
-    </div>
-  );
 
   // ============================================================================
   // Render
@@ -388,7 +206,35 @@ export default function ReportsLocationsTable({
       {/* Content */}
       {loading ? (
         <div className="p-4">
-          <TableSkeleton />
+          <div className="md:hidden">
+            <ReportsLocationCardSkeleton count={5} />
+          </div>
+          <div className="hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    {Array.from({ length: 8 }).map((_, index) => (
+                      <th key={index} className="px-4 py-3">
+                        <Skeleton className="mx-auto h-4 w-20" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {Array.from({ length: 8 }).map((_, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {Array.from({ length: 8 }).map((_, colIndex) => (
+                        <td key={colIndex} className="px-4 py-3">
+                          <Skeleton className="mx-auto h-4 w-16" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : error ? (
         <div className="py-8 text-center">
@@ -400,17 +246,25 @@ export default function ReportsLocationsTable({
       ) : (
         <>
           {/* Mobile Card View */}
-          <div className="p-4 md:hidden">
+          <div className="space-y-3 p-4 md:hidden">
             {sortedLocations.length === 0 ? (
               <div className="py-8 text-center text-gray-500">
                 No locations found
               </div>
             ) : (
-              <div className="space-y-4">
-                {sortedLocations.map(location => (
-                  <LocationCard key={location.location} location={location} />
-                ))}
-              </div>
+              sortedLocations.map(location => (
+                <ReportsLocationCard
+                  key={location.location}
+                  location={location}
+                  formatCurrency={formatCurrency}
+                  variant="full"
+                  onLocationClick={
+                    onLocationClick
+                      ? location => onLocationClick(location.location)
+                      : undefined
+                  }
+                />
+              ))
             )}
           </div>
 

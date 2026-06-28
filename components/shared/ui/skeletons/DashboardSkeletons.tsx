@@ -9,28 +9,79 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 /**
  * Specific skeleton component for Dashboard Financial Metrics Cards
  * Matches the exact layout of FinancialMetricsCards component
- * Uses the same grid structure as the actual component
+ * Mobile: 2 merged cards (Money In|Money Out, Jackpot|Gross)
+ * Desktop: 4 individual cards
  */
 export const DashboardFinancialMetricsSkeleton = ({
   count = 3,
 }: {
   count?: number;
 }) => (
-  <div className="flex w-full flex-col gap-4 md:flex-row">
-    {Array.from({ length: count }).map((_, index) => (
-      <div
-        key={index}
-        className="flex min-h-[120px] flex-1 flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6"
-      >
-        <div className="flex flex-1 flex-col justify-center">
-          <Skeleton className="mx-auto mb-2 h-4 w-5/6" />
-          <div className="my-2 h-[4px] w-full rounded-full bg-gray-200" />
-          <div className="flex flex-1 items-center justify-center">
-            <Skeleton className="mx-auto h-8 w-4/5" />
+  <div className="space-y-4">
+    {/* Mobile skeleton — matches merged card layout */}
+    <div className="block md:hidden">
+      <div className="grid grid-cols-1 gap-3">
+        {/* Money In | Money Out merged card */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 via-purple-500 to-blue-500"></div>
+          <div className="flex divide-x divide-gray-100">
+            <div className="flex-1 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-1.5 w-1.5 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-24" />
+            </div>
+            <div className="flex-1 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-1.5 w-1.5 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-24" />
+            </div>
+          </div>
+        </div>
+
+        {/* Jackpot | Gross merged card */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500"></div>
+          <div className="flex divide-x divide-gray-100">
+            <div className="flex-1 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-1.5 w-1.5 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex-1 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-1.5 w-1.5 rounded-full" />
+              </div>
+              <Skeleton className="h-5 w-20" />
+            </div>
           </div>
         </div>
       </div>
-    ))}
+    </div>
+
+    {/* Desktop skeleton — matches individual card layout */}
+    <div className="hidden md:block">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: count }).map((_, index) => (
+          <div
+            key={index}
+            className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6"
+          >
+            <Skeleton className="mx-auto mb-2 h-4 w-5/6" />
+            <div className="my-2 h-[4px] w-full rounded-full bg-gray-200" />
+            <div className="flex flex-1 items-center justify-center">
+              <Skeleton className="mx-auto h-8 w-4/5" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 );
 
@@ -39,11 +90,19 @@ export const DashboardFinancialMetricsSkeleton = ({
  * Matches the exact layout of the Chart component
  */
 export const DashboardChartSkeleton = () => (
-  <div className="flex-1 rounded-lg bg-container p-6 shadow-md">
-    <div className="mb-4 flex items-center justify-between">
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-8 w-24" />
+  <div className="w-full max-w-full rounded-lg bg-container p-4 shadow-md">
+    {/* Metric selection checkboxes skeleton - matches the actual 4 checkbox legend items */}
+    <div className="mb-6 overflow-x-auto border-b pb-4">
+      <div className="flex min-w-max flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <Skeleton className="h-4 w-4 rounded" />
+            <Skeleton className="h-3 w-14" />
+          </div>
+        ))}
+      </div>
     </div>
+    {/* Chart area */}
     <div className="h-[320px] w-full animate-pulse rounded-md bg-gray-200" />
   </div>
 );
@@ -71,9 +130,9 @@ export const DashboardTopPerformingSkeleton = () => (
 
       {/* Content area skeleton - matches the two-column layout (list + pie chart) */}
       <div className="mb-0 rounded-lg rounded-tl-none rounded-tr-3xl bg-container p-6 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+        <div className="flex flex-col items-center gap-6 xl:flex-row xl:items-center xl:justify-between">
           {/* Left side - List skeleton */}
-          <ul className="flex-1 space-y-2 lg:min-w-0">
+          <ul className="w-full flex-1 space-y-2 lg:w-auto">
             {Array.from({ length: 5 }).map((_, index) => (
               <li key={index} className="flex items-center gap-2 text-sm">
                 <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
@@ -83,8 +142,8 @@ export const DashboardTopPerformingSkeleton = () => (
             ))}
           </ul>
           {/* Right side - Pie chart skeleton */}
-          <div className="flex-shrink-0">
-            <Skeleton className="h-[200px] w-[200px] rounded-full" />
+          <div className="h-40 min-h-[160px] w-40 min-w-[160px] flex-shrink-0 md:mx-auto lg:mx-0">
+            <Skeleton className="h-full w-full rounded-full" />
           </div>
         </div>
       </div>

@@ -230,13 +230,21 @@ export default function ReportsMetersTab() {
     []
   );
 
+  const handleExportPdf = useCallback(async () => {
+    await handleExport('pdf');
+  }, [handleExport]);
+
+  const handleExportExcel = useCallback(() => {
+    void handleExport('excel');
+  }, [handleExport]);
+
   // ============================================================================
   // Render
   // ============================================================================
   return (
-    <div className="space-y-6">
-      {/* Header with Export Buttons - Mobile Responsive */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+    <div className="space-y-4 pb-24 md:space-y-6 md:pb-0">
+      {/* Desktop actions — mobile uses filter bar export */}
+      <div className="hidden flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 md:flex">
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -297,11 +305,26 @@ export default function ReportsMetersTab() {
         hourlyChartLoading={hourlyChartLoading}
         chartGranularity={chartGranularity}
         onGranularityChange={handleGranularityChange}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
+        exportDisabled={paginatedMetersData.length === 0}
       />
 
       {/* Data Display */}
       {selectedLocations.length === 0 ? (
-        <Card>
+        <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 text-center shadow-sm md:hidden">
+          <AlertCircle className="mb-4 h-10 w-10 text-gray-400" />
+          <h3 className="mb-1 text-base font-semibold text-gray-900">
+            No Locations Selected
+          </h3>
+          <p className="text-sm text-gray-500">
+            Select one or more locations above to view meters data.
+          </p>
+        </div>
+      ) : null}
+
+      {selectedLocations.length === 0 ? (
+        <Card className="hidden md:block">
           <CardContent className="p-8 text-center">
             <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-400" />
             <h3 className="mb-2 text-lg font-medium text-gray-900">
@@ -323,8 +346,8 @@ export default function ReportsMetersTab() {
           </CardContent>
         </Card>
       ) : loading ? (
-        <Card>
-          <CardHeader>
+        <Card className="border-0 bg-transparent shadow-none md:border md:bg-card md:shadow-sm">
+          <CardHeader className="hidden md:block">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -338,7 +361,7 @@ export default function ReportsMetersTab() {
               comprehensive filtering
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 md:px-6">
             <ReportsMetersTable
               paginatedMetersData={[]}
               searchTerm={searchTerm}
@@ -352,8 +375,8 @@ export default function ReportsMetersTab() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
+        <Card className="border-0 bg-transparent shadow-none md:border md:bg-card md:shadow-sm">
+          <CardHeader className="hidden px-0 pb-2 md:block md:px-6">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -365,7 +388,7 @@ export default function ReportsMetersTab() {
               comprehensive filtering
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 md:px-6">
             <div className="flex flex-col">
               {/* Search bar and Table Section - Order 1 on mobile, Order 2 on md+ (appears first on desktop) */}
               <div className="order-2 flex flex-col md:order-1">

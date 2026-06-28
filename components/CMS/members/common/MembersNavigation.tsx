@@ -1,17 +1,14 @@
 'use client';
-import { Button } from '@/components/shared/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/shared/ui/tabs';
 import type { MembersTab, MembersView } from '@/shared/types/entities';
-import { Activity, BarChart3, RefreshCw, Users } from 'lucide-react';
+import { Activity, BarChart3, Users } from 'lucide-react';
 
 type MembersNavigationProps = {
   availableTabs: MembersTab[];
   activeTab: MembersView;
   onTabChange: (tabId: string) => void;
   selectedLicencee?: string;
-  onRefresh?: () => void;
   onNewMember?: () => void;
-  refreshing?: boolean;
   locationName?: string;
 };
 
@@ -24,8 +21,6 @@ export default function MembersNavigation({
   activeTab,
   onTabChange,
   selectedLicencee,
-  onRefresh,
-  refreshing = false,
   locationName,
 }: MembersNavigationProps) {
   // ============================================================================
@@ -108,26 +103,6 @@ export default function MembersNavigation({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {onRefresh && (
-              <Button
-                onClick={e => {
-                  e.preventDefault();
-                  if (typeof onRefresh === 'function') {
-                    onRefresh();
-                  }
-                }}
-                disabled={refreshing}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                title="Refresh data"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-                />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-            )}
             {/* {onNewMember && (
               <Button
                 onClick={e => {
