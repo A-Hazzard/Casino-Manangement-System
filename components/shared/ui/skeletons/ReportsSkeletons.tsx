@@ -36,6 +36,12 @@ export {
   LocationsRevenueAnalysisSkeleton,
 } from './LocationsSkeletons';
 
+export { ReportsLocationsSummaryMetricsSkeleton } from '@/components/CMS/reports/common/ReportsLocationsSummaryMetrics';
+export {
+  ReportsLocationCardSkeleton,
+} from '@/components/CMS/reports/common/ReportsLocationCard';
+export { ReportsMachineCardSkeleton } from '@/components/CMS/reports/common/ReportsMachineCard';
+
 // Re-export meters skeletons
 export {} from './MetersSkeletons';
 

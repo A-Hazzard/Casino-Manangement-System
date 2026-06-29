@@ -13,6 +13,7 @@
  */
 
 import { ReactNode } from 'react';
+import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -101,6 +102,61 @@ const SortableTopMachinesHeader = ({
         )}
       </div>
     </th>
+  );
+};
+
+function EvaluationMachineMobileCards({
+  machines,
+  formatCurrency,
+}: {
+  machines: MachineEvaluationData[];
+  formatCurrency: (value: number | null | undefined) => string;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:hidden">
+      {machines.map(machine => (
+        <ReportsMachineCard
+          key={machine.machineId}
+          title={formatMachineDisplayNameWithBold({
+            serialNumber: machine.machineId,
+            custom: { name: machine.machineName },
+            game: machine.gameTitle,
+          })}
+          machineHref={`/cabinets/${machine.machineId}`}
+          subtitle={
+            machine.gameTitle || (
+              <span className="text-red-600">(game name not provided)</span>
+            )
+          }
+          locationName={machine.locationName}
+          locationHref={
+            machine.locationId ? `/locations/${machine.locationId}` : undefined
+          }
+          metrics={[
+            {
+              label: 'Handle',
+              value: formatCurrency(machine.coinIn),
+              valueClassName: getFinancialColorClass(machine.coinIn),
+            },
+            {
+              label: 'Net Win',
+              value: formatCurrency(machine.netWin),
+              valueClassName: getFinancialColorClass(machine.netWin),
+            },
+            {
+              label: 'Gross',
+              value: formatCurrency(machine.gross),
+              valueClassName: getFinancialColorClass(machine.gross),
+            },
+            {
+              label: 'Hold %',
+              value: `${((machine.actualHold ?? 0) * 100).toFixed(1)}%`,
+              valueClassName: 'text-gray-600',
+            },
+          ]}
+        />
+      ))}
+    </div>
   );
 };
 
@@ -313,7 +369,8 @@ export const ReportsMachinesEvaluation = ({
               No machines found matching your criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-gray-50">
@@ -430,6 +487,11 @@ export const ReportsMachinesEvaluation = ({
                 </tbody>
               </table>
             </div>
+            <EvaluationMachineMobileCards
+              machines={topMachines}
+              formatCurrency={formatCurrency}
+            />
+            </>
           )}
         </CardContent>
       </Card>
@@ -453,7 +515,8 @@ export const ReportsMachinesEvaluation = ({
               No machines found matching your criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-gray-50">
@@ -570,6 +633,11 @@ export const ReportsMachinesEvaluation = ({
                 </tbody>
               </table>
             </div>
+            <EvaluationMachineMobileCards
+              machines={bottomMachines}
+              formatCurrency={formatCurrency}
+            />
+            </>
           )}
         </CardContent>
       </Card>

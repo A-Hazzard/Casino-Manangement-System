@@ -7,11 +7,9 @@ type LocationsCabinetCardsSkeletonProps = {
 
 /**
  * Locations Cabinet Cards Skeleton Loader
- * Matches the exact structure of CabinetCardMobile component
+ * Matches the exact structure of LocationsCabinetCardMobile component
  */
-const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
-  includeJackpot = false,
-}) => {
+const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = () => {
   // ============================================================================
   // Render
   // ============================================================================
@@ -39,32 +37,30 @@ const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
             <Skeleton className="h-4 w-24" />
           </div>
 
-          {/* Financial Data */}
+          {/* Financial Data — matches merged Money In|Money Out + Jackpot|Gross layout */}
           <div className="mt-2 border-t border-gray-200 pt-2">
-            <div className="mb-1 flex justify-between">
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div className="mb-1 flex justify-between">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div className="mb-1 flex justify-between">
-              <Skeleton className="h-3 w-12" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div
-              className={`${includeJackpot ? 'mb-1' : ''} flex justify-between`}
-            >
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            {includeJackpot && (
-              <div className="flex justify-between">
-                <Skeleton className="h-3 w-16" />
+            {/* Money In | Money Out merged row */}
+            <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+              <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+                <Skeleton className="h-3 w-14" />
                 <Skeleton className="h-3 w-20" />
               </div>
-            )}
+              <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            {/* Jackpot | Gross merged row */}
+            <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+              <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}

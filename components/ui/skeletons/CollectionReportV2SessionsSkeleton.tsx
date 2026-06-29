@@ -53,7 +53,7 @@ export default function CollectionReportV2SessionsSkeleton() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 20 }).map((_, index) => (
+              {Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
@@ -77,8 +77,11 @@ export default function CollectionReportV2SessionsSkeleton() {
                     <Skeleton className="mx-auto h-4 w-24" />
                   </TableCell>
                   <TableCell centered>
-                    <div className="flex items-center justify-center">
-                      <Skeleton className="h-8 w-24 rounded" />
+                    <div className="flex items-center justify-center gap-2">
+                      <Skeleton className="h-6 w-14 rounded" />
+                      <Skeleton className="h-6 w-14 rounded" />
+                      <Skeleton className="h-6 w-6 rounded" />
+                      <Skeleton className="h-6 w-6 rounded" />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -90,12 +93,12 @@ export default function CollectionReportV2SessionsSkeleton() {
 
       {/* Mobile skeleton */}
       <div className="space-y-4 md:hidden">
-        {Array.from({ length: 20 }).map((_, index) => (
+        {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={index}
             className="transform overflow-hidden rounded-lg bg-white shadow-sm"
           >
-            {/* Header Section */}
+            {/* Header Section — matches "Session: [location]" and "Collector: [name]" */}
             <div className="bg-lighterBlueHighlight px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -155,9 +158,16 @@ export default function CollectionReportV2SessionsSkeleton() {
                 <Skeleton className="h-5 w-24" />
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons — matches actual: View Details + Submit + Edit + Delete */}
               <div className="mt-3 flex flex-col gap-2">
-                <Skeleton className="h-9 w-full rounded" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-full rounded" />
+                  <Skeleton className="h-9 w-full rounded" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-full rounded" />
+                  <Skeleton className="h-9 w-full rounded" />
+                </div>
               </div>
             </div>
           </div>

@@ -14,6 +14,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -219,6 +220,8 @@ export default function VaultFloatTransactionsPageContent() {
     toast.success('Data refreshed');
   };
 
+  useRegisterRefresh(handleRefresh, loading);
+
   /**
    * Handle approve transaction action
    */
@@ -323,7 +326,7 @@ export default function VaultFloatTransactionsPageContent() {
   }
 
   return (
-    <PageLayout onRefresh={handleRefresh} refreshing={loading}>
+    <PageLayout>
       <div className="space-y-6">
         <VaultManagerHeader
           title="Float Transactions"

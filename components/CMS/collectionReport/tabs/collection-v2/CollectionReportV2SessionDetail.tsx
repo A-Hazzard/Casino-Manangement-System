@@ -338,6 +338,8 @@ export default function CollectionReportV2SessionDetail({
     in: number | null;
     out: number | null;
   } | null>(null);
+  const lastAutoAppliedRef = useRef<{ start: string; end: string } | null>(null);
+  const handleApplyCustomPeriodRef = useRef<() => Promise<void>>(undefined!);
 
   const autoEdited = useRef(false);
 
@@ -577,7 +579,7 @@ export default function CollectionReportV2SessionDetail({
 
     axios
       .get(
-        `/api/collection-reports-v2/machines/last-collection-time?machineId=${currentMachine.machineId}&excludeSessionId=${sessionId || ''}`
+        `/api/collection-reports-v2/machines/last-collection-time?machineId=${currentMachine.machineId}&locationId=${session?.locationId || ''}&excludeSessionId=${sessionId || ''}`
       )
       .then(res => {
         const data = res.data?.data;
@@ -749,6 +751,25 @@ export default function CollectionReportV2SessionDetail({
       setFetchingCustomMeters(false);
     }
   };
+
+  // Keep ref in sync with latest handler so the auto-apply effect can call it
+  handleApplyCustomPeriodRef.current = handleApplyCustomPeriod;
+
+  // Auto-apply custom period: when both SAS start and end are set (and valid),
+  // immediately query the meters instead of requiring the user to press Apply.
+  useEffect(() => {
+    if (!customSasStart || !customSasEnd || !useCustomPeriod) return;
+    if (new Date(customSasStart) >= new Date(customSasEnd)) return;
+    if (fetchingCustomMeters) return;
+    if (
+      lastAutoAppliedRef.current?.start === customSasStart &&
+      lastAutoAppliedRef.current?.end === customSasEnd
+    )
+      return;
+
+    lastAutoAppliedRef.current = { start: customSasStart, end: customSasEnd };
+    handleApplyCustomPeriodRef.current();
+  }, [customSasStart, customSasEnd, useCustomPeriod, fetchingCustomMeters]);
 
   const handleUseAutoDetected = () => {
     if (originalMetersRef.current && session) {
@@ -1721,27 +1742,11 @@ export default function CollectionReportV2SessionDetail({
                       </p>
                     )}
 
-                  {/* Apply Period Meters button — SMIB and WOW locations */}
-                  {(!isCurrentMachineNoSMIB || isCurrentMachineWow) && (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleApplyCustomPeriod}
-                        disabled={
-                          fetchingCustomMeters ||
-                          !customSasStart ||
-                          !customSasEnd ||
-                          (!!customSasStart &&
-                            !!customSasEnd &&
-                            new Date(customSasStart) > new Date(customSasEnd))
-                        }
-                        className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {fetchingCustomMeters
-                          ? 'Applying...'
-                          : 'Apply'}
-                      </button>
-                    </div>
+                  {/* Loading indicator for auto-applied custom period */}
+                  {fetchingCustomMeters && (
+                    <p className="text-[11px] text-blue-500 animate-pulse">
+                      Fetching meters for selected period...
+                    </p>
                   )}
                 </div>
                 <button

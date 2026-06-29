@@ -232,41 +232,45 @@ export default function LocationsCabinetCardMobile({
         </div>
       )}
       <div className="mt-2 border-t border-gray-200 pt-2">
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Money In:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.moneyIn || 0}
-            className={`text-xs font-medium ${getMoneyInColorClass()}`}
-            formatCurrencyFn={formatCurrency}
-          />
+        <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Money In:</span>
+            <CurrencyValueWithOverflow
+              value={cabinet.moneyIn || 0}
+              className={`text-[10px] font-medium ${getMoneyInColorClass()}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Money Out:</span>
+            <MoneyOutCell
+              moneyOut={cabinet.moneyOut || 0}
+              moneyIn={cabinet.moneyIn || 0}
+              jackpot={cabinet.jackpot || 0}
+              displayValue={formatCurrency(cabinet.moneyOut || 0)}
+              className="text-[10px]"
+              includeJackpot={!!cabinet.includeJackpot}
+              showInfoIcon={true}
+            />
+          </div>
         </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Money Out:</span>
-          <MoneyOutCell
-            moneyOut={cabinet.moneyOut || 0}
-            moneyIn={cabinet.moneyIn || 0}
-            jackpot={cabinet.jackpot || 0}
-            displayValue={formatCurrency(cabinet.moneyOut || 0)}
-            className="text-xs"
-            includeJackpot={!!cabinet.includeJackpot}
-            showInfoIcon={true}
-          />
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Jackpot:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.jackpot || 0}
-            className="text-xs font-medium"
-            formatCurrencyFn={formatCurrency}
-          />
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Gross:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.gross || 0}
-            className={`text-xs font-medium ${getGrossColorClass(cabinet.gross)}`}
-            formatCurrencyFn={formatCurrency}
-          />
+        <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Jackpot:</span>
+            <CurrencyValueWithOverflow
+              value={cabinet.jackpot || 0}
+              className="text-[10px] font-medium"
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
+          <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+            <span className="text-[10px] text-gray-500">Gross:</span>
+            <CurrencyValueWithOverflow
+              value={cabinet.gross || 0}
+              className={`text-[10px] font-medium ${getGrossColorClass(cabinet.gross)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
         </div>
       </div>
 

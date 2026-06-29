@@ -13,6 +13,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 
@@ -67,6 +68,9 @@ export default function CabinetsDetailsPageContent() {
     onBack,
     onLocationClick,
   } = hook;
+
+  useRegisterRefresh(handleRefresh, refreshing);
+
   // TODO Review this component
   // ============================================================================
   // Early Returns
@@ -110,8 +114,6 @@ export default function CabinetsDetailsPageContent() {
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
       >
         <div className="flex w-full min-w-0 flex-col gap-6 overflow-hidden">
           {/* Header & Summary */}

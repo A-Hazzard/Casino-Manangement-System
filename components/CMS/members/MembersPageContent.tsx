@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 
 // Layout components
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 
 // Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -48,6 +49,8 @@ function MembersPageContentInner() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
   const { user } = useUserStore();
+
+  useRegisterRefresh(onRefresh ?? (() => {}), refreshing);
 
   const isManagement = !!(
     user?.roles &&
@@ -128,8 +131,6 @@ function MembersPageContentInner() {
         hideLicenceeFilter={true}
         hideCurrencyFilter={true}
         showToaster={false}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
       >
         {/* Navigation */}
         <MembersNavigation
@@ -137,9 +138,7 @@ function MembersPageContentInner() {
           activeTab={activeTab}
           onTabChange={handleTabClick}
           selectedLicencee={selectedLicencee}
-          onRefresh={onRefresh}
           onNewMember={onNewMember}
-          refreshing={refreshing}
         />
 
         {/* Main Content */}

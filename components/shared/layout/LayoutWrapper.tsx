@@ -7,6 +7,7 @@
  * Features:
  * - Query provider for React Query
  * - Currency provider for multi-currency support
+ * - Refresh provider for centralized page refresh
  * - Sidebar provider with CMS navigation
  * - Profile validation gate with CMS context
  * - Toast notifications
@@ -23,6 +24,7 @@ import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
 import { SidebarInset, SidebarProvider } from '@/components/shared/ui/sidebar';
 import { getCmsNavigationConfig } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
+import { RefreshProvider } from '@/lib/contexts/RefreshContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
 import { useMemo } from 'react';
@@ -66,10 +68,12 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   if (isAuthPage) {
     return (
       <QueryProvider>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          {children}
-          <Toaster position="top-right" richColors />
-        </LocalizationProvider>
+        <RefreshProvider>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            {children}
+            <Toaster position="top-right" richColors />
+          </LocalizationProvider>
+        </RefreshProvider>
       </QueryProvider>
     );
   }
@@ -77,14 +81,16 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   return (
     <QueryProvider>
       <CurrencyProvider>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <SidebarProvider>
-            <GlobalSidebarWrapper navConfig={navConfig} />
-            <TempPasswordGate />
-            <ProfileValidationGate context="CMS" />
-            <SidebarInset>{children}</SidebarInset>
-          </SidebarProvider>
-        </LocalizationProvider>
+        <RefreshProvider>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <SidebarProvider>
+              <GlobalSidebarWrapper navConfig={navConfig} />
+              <TempPasswordGate />
+              <ProfileValidationGate context="CMS" />
+              <SidebarInset>{children}</SidebarInset>
+            </SidebarProvider>
+          </LocalizationProvider>
+        </RefreshProvider>
         <Toaster position="top-right" richColors />
       </CurrencyProvider>
     </QueryProvider>

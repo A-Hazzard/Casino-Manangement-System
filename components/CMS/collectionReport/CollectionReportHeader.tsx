@@ -1,17 +1,14 @@
 /**
  * CollectionReportHeader Component
  *
- * Displays the page title, refresh controls, and report creation actions.
+ * Displays the page title and report creation actions.
  *
  * Features:
  * - Responsive page title with icon
- * - Global refresh button
  * - Create Report button (Desktop full, Mobile icon)
  * - Loading states for actions
  *
  * @param activeTab - ID of the currently active navigation tab
- * @param refreshing - Whether a global refresh operation is in progress
- * @param onRefresh - Callback to trigger a data refresh across all tabs
  * @param onCreateDesktop - Callback to open the desktop version of create report modal
  * @param onCreateMobile - Callback to open the mobile version of create report modal
  */
@@ -20,21 +17,17 @@
 
 import { Button } from '@/components/shared/ui/button';
 import { IMAGES } from '@/lib/constants';
-import { PlusCircle, RefreshCw } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 
 type CollectionReportHeaderProps = {
   activeTab: string;
-  refreshing: boolean;
-  onRefresh: () => void;
   onCreateDesktop: () => void;
   onCreateMobile: () => void;
 };
 
 export default function CollectionReportHeader({
   activeTab,
-  refreshing,
-  onRefresh,
   onCreateDesktop,
   onCreateMobile,
 }: CollectionReportHeaderProps) {
@@ -55,19 +48,6 @@ export default function CollectionReportHeader({
       </h1>
 
       <div className="flex flex-shrink-0 items-center gap-2">
-        {/* Refresh Icon */}
-        <button
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:p-2"
-          aria-label="Refresh"
-        >
-          <RefreshCw
-            className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
-          />
-        </button>
-
-        {/* Create Button */}
         {(activeTab === 'collection' || activeTab === 'collection-v2') && (
           <Button
             onClick={() => {
@@ -80,14 +60,8 @@ export default function CollectionReportHeader({
             className="flex flex-shrink-0 items-center gap-1 rounded-md bg-buttonActive px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-purple-700 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
           >
             <PlusCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              {activeTab === 'collection-v2'
-                ? 'Start Collection Report'
-                : 'Create Collection Report'}
-            </span>
-            <span className="sm:hidden">
-              {activeTab === 'collection-v2' ? 'Start' : 'Create'}
-            </span>
+            <span className="hidden sm:inline">Create Report</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         )}
       </div>

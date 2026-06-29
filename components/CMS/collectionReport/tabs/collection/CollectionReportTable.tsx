@@ -65,6 +65,9 @@ export default function CollectionReportTable({
   onSort,
   editableReportIds,
   selectedLicencee,
+  selectedReports,
+  onSelectionChange,
+  showBulkSelection = false,
 }: CollectionReportTableProps) {
   // ============================================================================
   // State & Hooks
@@ -125,6 +128,25 @@ export default function CollectionReportTable({
   }, [user]);
 
   // ============================================================================
+  // Computed - Selection State
+  // ============================================================================
+  const visibleIds = useMemo(() => {
+    return data
+      .map(row => row.locationReportId || row._id)
+      .filter(Boolean) as string[];
+  }, [data]);
+
+  const allVisibleSelected = useMemo(() => {
+    if (!selectedReports || visibleIds.length === 0) return false;
+    return visibleIds.every(id => selectedReports.has(id));
+  }, [selectedReports, visibleIds]);
+
+  const someVisibleSelected = useMemo(() => {
+    if (!selectedReports || visibleIds.length === 0) return false;
+    return visibleIds.some(id => selectedReports.has(id)) && !allVisibleSelected;
+  }, [selectedReports, visibleIds, allVisibleSelected]);
+
+  // ============================================================================
   // Render
   // ============================================================================
   // Show skeleton while loading (initial load or subsequent loads)
@@ -149,10 +171,28 @@ export default function CollectionReportTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
+            {showBulkSelection && (
+              <TableHead centered={false} isFirstColumn={true} className="w-10 px-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+                  checked={allVisibleSelected}
+                  ref={el => {
+                    if (el) el.indeterminate = someVisibleSelected;
+                  }}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    for (const id of visibleIds) {
+                      onSelectionChange?.(id, checked);
+                    }
+                  }}
+                />
+              </TableHead>
+            )}
             <TableHead
               className="cursor-pointer select-none font-semibold text-white hover:bg-button/80"
               centered={false}
-              isFirstColumn={true}
+              isFirstColumn={false}
             >
               <div
                 className="flex items-center gap-1"
@@ -294,10 +334,24 @@ export default function CollectionReportTable({
                   );
                 }}
               >
+                {showBulkSelection && (
+                  <TableCell centered={false} isFirstColumn={true} className="w-10 px-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+                      checked={
+                        selectedReports?.has(row.locationReportId || row._id || '') ?? false
+                      }
+                      onChange={e =>
+                        onSelectionChange?.(row.locationReportId || row._id || '', e.target.checked)
+                      }
+                    />
+                  </TableCell>
+                )}
                 <TableCell
                   className="font-medium"
                   centered={false}
-                  isFirstColumn={true}
+                  isFirstColumn={!showBulkSelection}
                 >
                   <div className="flex items-center gap-2">
                     {hasIssues && (
@@ -507,6 +561,22 @@ export default function CollectionReportTable({
           })}
         </TableBody>
       </Table>
+      {showBulkSelection && selectedReports && selectedReports.size > 0 && (
+        <div className="flex items-center justify-between border-t bg-gray-50 px-4 py-3">
+          <span className="text-sm text-gray-600">
+            {selectedReports.size} report{selectedReports.size !== 1 ? 's' : ''} selected
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              selectedReports.forEach(id => onSelectionChange?.(id, false));
+            }}
+          >
+            Clear Selection
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

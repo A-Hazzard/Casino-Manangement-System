@@ -20,6 +20,7 @@ import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collecti
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import {
   DropdownMenu,
@@ -173,6 +174,8 @@ export default function CollectionReportDetailsPageContent() {
     handleRefresh,
   } = hook;
 
+  useRegisterRefresh(handleRefresh, loading);
+
   // ============================================================================
   // Effects
   // ============================================================================
@@ -258,8 +261,6 @@ export default function CollectionReportDetailsPageContent() {
         hideCurrencyFilter={true}
         mainClassName="flex flex-col flex-1 w-full max-w-full"
         showToaster={false}
-        onRefresh={handleRefresh}
-        refreshing={loading}
       >
         {/* Header Section (Desktop Only): Back button, title */}
         <div className="hidden px-2 pt-6 lg:block lg:px-6">

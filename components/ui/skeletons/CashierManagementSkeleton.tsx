@@ -34,35 +34,39 @@ export default function CashierManagementSkeleton() {
       </div>
 
       {/* Cashiers Table Card */}
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 p-6">
+      <div className="rounded-lg bg-container shadow-md">
+        <div className="p-6 pb-2">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-5 rounded" />
-            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-5 w-5" />
+            <Skeleton className="h-5 w-32" />
           </div>
         </div>
-        <div className="p-6">
-          {/* Table Header */}
-          <div className="mb-4 grid grid-cols-5 gap-4 border-b border-gray-200 pb-4">
+        <div className="px-6 pb-6 pt-2">
+          {/* Table Header — 7 columns */}
+          <div className="mb-4 grid grid-cols-7 gap-4 border-b border-gray-200 pb-4">
             <Skeleton className="h-4 w-16" />
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-16" />
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16" />
           </div>
 
-          {/* Table Rows */}
+          {/* Table Rows — 7 columns */}
           <div className="space-y-4">
             {[1, 2, 3, 4, 5].map(index => (
               <div
                 key={index}
-                className="grid grid-cols-5 gap-4 border-b border-gray-100 pb-4"
+                className="grid grid-cols-7 gap-4 border-b border-gray-100 pb-4"
               >
                 <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-6 w-16 rounded-full" />
                 <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-24" />
               </div>
             ))}
           </div>

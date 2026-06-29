@@ -52,6 +52,9 @@ export default function CollectionReportCards({
   onDelete,
   editableReportIds,
   selectedLicencee,
+  selectedReports,
+  onSelectionChange,
+  showBulkSelection = false,
 }: CollectionReportCardsProps) {
   // ============================================================================
   // State & Hooks
@@ -135,6 +138,21 @@ export default function CollectionReportCards({
   }
   return (
     <div className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4`}>
+      {showBulkSelection && onSelectionChange && selectedReports && selectedReports.size > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2 shadow-sm">
+          <span className="text-sm font-medium text-gray-700">
+            {selectedReports.size} report{selectedReports.size !== 1 ? 's' : ''} selected
+          </span>
+          <button
+            className="text-xs text-red-600 hover:text-red-800"
+            onClick={() => {
+              selectedReports.forEach(id => onSelectionChange(id, false));
+            }}
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
       <div
         className={`${
           gridLayout ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-4'
@@ -166,6 +184,18 @@ export default function CollectionReportCards({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    {showBulkSelection && onSelectionChange && (
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+                        checked={
+                          selectedReports?.has(row.locationReportId || row._id || '') ?? false
+                        }
+                        onChange={e =>
+                          onSelectionChange(row.locationReportId || row._id || '', e.target.checked)
+                        }
+                      />
+                    )}
                     <span>Collector:</span>
                     {row.collectorUserNotFound ? (
                       <span className="border-b-2 border-dotted border-orange-300 text-orange-100">

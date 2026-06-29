@@ -51,6 +51,8 @@ const ActivityLogSchema = new Schema(
         'auth',
         'feedback',
         'collection-report',
+        'collection-report-v2',
+        'collection-report-v2-machine',
         'report',
         'system',
         'vault',

@@ -45,6 +45,7 @@ type HourlyChartData = {
 type ReportsMetersHourlyChartsProps = {
   data: HourlyChartData[];
   loading?: boolean;
+  variant?: 'default' | 'embedded';
 };
 
 /**
@@ -97,6 +98,7 @@ function ChartContainer({
 export function ReportsMetersHourlyCharts({
   data,
   loading = false,
+  variant = 'default',
 }: ReportsMetersHourlyChartsProps) {
   // ============================================================================
   // State & Hooks
@@ -268,250 +270,272 @@ export function ReportsMetersHourlyCharts({
     return chartData.some(item => item.coinOut > 0);
   }, [chartData]);
 
+  const isEmbedded = variant === 'embedded';
+  const chartPanelClassName = isEmbedded
+    ? 'rounded-lg border border-gray-200 bg-white p-3 shadow-sm'
+    : '';
+  const emptyStateHeightClass = isEmbedded ? 'h-48' : 'h-64';
+  const chartTitleClassName = isEmbedded
+    ? 'text-sm font-semibold text-gray-800'
+    : 'text-base font-semibold';
+
+  const renderChartPanel = (
+    title: string,
+    hasData: boolean,
+    legendItem: { label: string; color: string },
+    scrollRef: RefObject<HTMLDivElement | null>,
+    chartContent: ReactNode
+  ) => {
+    const body = loading ? (
+      <div
+        className={`${emptyStateHeightClass} w-full animate-pulse rounded bg-gray-100`}
+      />
+    ) : !hasData || chartData.length === 0 ? (
+      <div
+        className={`flex ${emptyStateHeightClass} flex-col items-center justify-center text-gray-500`}
+      >
+        <div className="mb-1 text-base text-gray-500">No Data to Display</div>
+        <div className="px-4 text-center text-xs text-gray-400">
+          No {title.toLowerCase()} available for the selected time period
+        </div>
+      </div>
+    ) : (
+      <ChartContainer
+        legendItem={legendItem}
+        scrollRef={scrollRef}
+        chartWidth={chartWidth}
+      >
+        {chartContent}
+      </ChartContainer>
+    );
+
+    if (isEmbedded) {
+      return (
+        <div className={chartPanelClassName}>
+          <h3 className={`mb-3 ${chartTitleClassName}`}>{title}</h3>
+          {body}
+        </div>
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className={chartTitleClassName}>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>{body}</CardContent>
+      </Card>
+    );
+  };
+
   // ============================================================================
   // Render
   // ============================================================================
   // Early returns after all hooks
   if (loading) {
     return (
-      <div className="space-y-4">
-        {/* Games Played - Full Width Skeleton */}
-        <Card>
-          <CardHeader>
-            <div className="h-6 w-48 animate-pulse rounded bg-gray-200"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
-          </CardContent>
-        </Card>
-        {/* Coin In and Coin Out - Side by Side Skeleton */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {[1, 2].map(i => (
-            <Card key={i}>
+      <div className="space-y-3">
+        {isEmbedded ? (
+          <>
+            <div className={`${chartPanelClassName} space-y-3`}>
+              <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+              <div
+                className={`${emptyStateHeightClass} w-full animate-pulse rounded bg-gray-100`}
+              />
+            </div>
+            {[1, 2].map(index => (
+              <div key={index} className={`${chartPanelClassName} space-y-3`}>
+                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                <div
+                  className={`${emptyStateHeightClass} w-full animate-pulse rounded bg-gray-100`}
+                />
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <Card>
               <CardHeader>
-                <div className="h-6 w-32 animate-pulse rounded bg-gray-200"></div>
+                <div className="h-6 w-48 animate-pulse rounded bg-gray-200" />
               </CardHeader>
               <CardContent>
-                <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
+                <div className="h-64 w-full animate-pulse rounded bg-gray-100" />
               </CardContent>
             </Card>
-          ))}
-        </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[1, 2].map(index => (
+                <Card key={index}>
+                  <CardHeader>
+                    <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 w-full animate-pulse rounded bg-gray-100" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     );
   }
 
+  const gamesPlayedChart = (
+    <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+      <LineChart
+        data={chartData}
+        margin={
+          isMobile
+            ? { top: 5, right: 10, left: 0, bottom: 5 }
+            : { top: 5, right: 30, left: 20, bottom: 60 }
+        }
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis
+          dataKey="time"
+          tickFormatter={formatTimeLabel}
+          angle={isMobile ? 0 : -45}
+          textAnchor={isMobile ? 'middle' : 'end'}
+          height={isMobile ? 40 : 80}
+          interval={xAxisInterval}
+          tick={{ fontSize: isMobile ? 10 : 12 }}
+        />
+        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+        <Tooltip
+          labelFormatter={formatTimeLabel}
+          formatter={(value: number) => value.toLocaleString()}
+          contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+        />
+        <Line
+          type="monotone"
+          dataKey="gamesPlayed"
+          stroke="#3b82f6"
+          strokeWidth={isMobile ? 2.5 : 2}
+          name="Games Played"
+          dot={false}
+          activeDot={{ r: isMobile ? 5 : 4 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+
+  const coinInChart = (
+    <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+      <LineChart
+        data={chartData}
+        margin={
+          isMobile
+            ? { top: 5, right: 10, left: 0, bottom: 5 }
+            : { top: 5, right: 30, left: 20, bottom: 60 }
+        }
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis
+          dataKey="time"
+          tickFormatter={formatTimeLabel}
+          angle={isMobile ? 0 : -45}
+          textAnchor={isMobile ? 'middle' : 'end'}
+          height={isMobile ? 40 : 80}
+          interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
+          tick={{ fontSize: isMobile ? 10 : 12 }}
+        />
+        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+        <Tooltip
+          labelFormatter={formatTimeLabel}
+          formatter={(value: number) =>
+            value.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          }
+          contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+        />
+        <Line
+          type="monotone"
+          dataKey="coinIn"
+          stroke="#10b981"
+          strokeWidth={isMobile ? 2.5 : 2}
+          name="Coin In"
+          dot={false}
+          activeDot={{ r: isMobile ? 5 : 4 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+
+  const coinOutChart = (
+    <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+      <LineChart
+        data={chartData}
+        margin={
+          isMobile
+            ? { top: 5, right: 10, left: 0, bottom: 5 }
+            : { top: 5, right: 30, left: 20, bottom: 60 }
+        }
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis
+          dataKey="time"
+          tickFormatter={formatTimeLabel}
+          angle={isMobile ? 0 : -45}
+          textAnchor={isMobile ? 'middle' : 'end'}
+          height={isMobile ? 40 : 80}
+          interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
+          tick={{ fontSize: isMobile ? 10 : 12 }}
+        />
+        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+        <Tooltip
+          labelFormatter={formatTimeLabel}
+          formatter={(value: number) =>
+            value.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          }
+          contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+        />
+        <Line
+          type="monotone"
+          dataKey="coinOut"
+          stroke="#f59e0b"
+          strokeWidth={isMobile ? 2.5 : 2}
+          name="Coin Out"
+          dot={false}
+          activeDot={{ r: isMobile ? 5 : 4 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+
   return (
-    <div className="space-y-4">
-      {/* Games Played Per Hour - Full Width */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base font-semibold">
-            Games Played Per Hour
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
-          ) : !hasGamesPlayedData || chartData.length === 0 ? (
-            <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-              <div className="mb-2 text-lg text-gray-500">
-                No Data to Display
-              </div>
-              <div className="text-center text-sm text-gray-400">
-                No games played data available for the selected time period
-              </div>
-            </div>
-          ) : (
-            <ChartContainer
-              legendItem={{ label: 'Games Played', color: '#3b82f6' }}
-              scrollRef={gamesScrollRef}
-              chartWidth={chartWidth}
-            >
-              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                <LineChart
-                  data={chartData}
-                  margin={
-                    isMobile
-                      ? { top: 5, right: 10, left: 0, bottom: 5 }
-                      : { top: 5, right: 30, left: 20, bottom: 60 }
-                  }
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="time"
-                    tickFormatter={formatTimeLabel}
-                    angle={isMobile ? 0 : -45}
-                    textAnchor={isMobile ? 'middle' : 'end'}
-                    height={isMobile ? 40 : 80}
-                    interval={xAxisInterval}
-                    tick={{ fontSize: isMobile ? 10 : 12 }}
-                  />
-                  <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                  <Tooltip
-                    labelFormatter={formatTimeLabel}
-                    formatter={(value: number) => value.toLocaleString()}
-                    contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="gamesPlayed"
-                    stroke="#3b82f6"
-                    strokeWidth={isMobile ? 2.5 : 2}
-                    name="Games Played"
-                    dot={false}
-                    activeDot={{ r: isMobile ? 5 : 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
+    <div className={isEmbedded ? 'space-y-3' : 'space-y-4'}>
+      {renderChartPanel(
+        'Games Played Per Hour',
+        hasGamesPlayedData,
+        { label: 'Games Played', color: '#3b82f6' },
+        gamesScrollRef,
+        gamesPlayedChart
+      )}
 
-      {/* Coin In and Coin Out - Side by Side */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Coin In (Meters In) Per Hour */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base font-semibold">
-              Coin In Per Hour
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
-            ) : !hasCoinInData || chartData.length === 0 ? (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-                <div className="mb-2 text-lg text-gray-500">
-                  No Data to Display
-                </div>
-                <div className="text-center text-sm text-gray-400">
-                  No coin in data available for the selected time period
-                </div>
-              </div>
-            ) : (
-              <ChartContainer
-                legendItem={{ label: 'Coin In', color: '#10b981' }}
-                scrollRef={coinInScrollRef}
-                chartWidth={chartWidth}
-              >
-                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                  <LineChart
-                    data={chartData}
-                    margin={
-                      isMobile
-                        ? { top: 5, right: 10, left: 0, bottom: 5 }
-                        : { top: 5, right: 30, left: 20, bottom: 60 }
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="time"
-                      tickFormatter={formatTimeLabel}
-                      angle={isMobile ? 0 : -45}
-                      textAnchor={isMobile ? 'middle' : 'end'}
-                      height={isMobile ? 40 : 80}
-                      interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
-                      tick={{ fontSize: isMobile ? 10 : 12 }}
-                    />
-                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                    <Tooltip
-                      labelFormatter={formatTimeLabel}
-                      formatter={(value: number) =>
-                        value.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }
-                      contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="coinIn"
-                      stroke="#10b981"
-                      strokeWidth={isMobile ? 2.5 : 2}
-                      name="Coin In"
-                      dot={false}
-                      activeDot={{ r: isMobile ? 5 : 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Coin Out (Money Won) Per Hour */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base font-semibold">
-              Coin Out Per Hour
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-64 w-full animate-pulse rounded bg-gray-100"></div>
-            ) : !hasCoinOutData || chartData.length === 0 ? (
-              <div className="flex h-64 flex-col items-center justify-center text-gray-500">
-                <div className="mb-2 text-lg text-gray-500">
-                  No Data to Display
-                </div>
-                <div className="text-center text-sm text-gray-400">
-                  No coin out data available for the selected time period
-                </div>
-              </div>
-            ) : (
-              <ChartContainer
-                legendItem={{ label: 'Coin Out', color: '#f59e0b' }}
-                scrollRef={coinOutScrollRef}
-                chartWidth={chartWidth}
-              >
-                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                  <LineChart
-                    data={chartData}
-                    margin={
-                      isMobile
-                        ? { top: 5, right: 10, left: 0, bottom: 5 }
-                        : { top: 5, right: 30, left: 20, bottom: 60 }
-                    }
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="time"
-                      tickFormatter={formatTimeLabel}
-                      angle={isMobile ? 0 : -45}
-                      textAnchor={isMobile ? 'middle' : 'end'}
-                      height={isMobile ? 40 : 80}
-                      interval={isMobile ? xAxisInterval : 'preserveStartEnd'}
-                      tick={{ fontSize: isMobile ? 10 : 12 }}
-                    />
-                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                    <Tooltip
-                      labelFormatter={formatTimeLabel}
-                      formatter={(value: number) =>
-                        value.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })
-                      }
-                      contentStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="coinOut"
-                      stroke="#f59e0b"
-                      strokeWidth={isMobile ? 2.5 : 2}
-                      name="Coin Out"
-                      dot={false}
-                      activeDot={{ r: isMobile ? 5 : 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
+      <div
+        className={
+          isEmbedded ? 'space-y-3' : 'grid grid-cols-1 gap-4 md:grid-cols-2'
+        }
+      >
+        {renderChartPanel(
+          'Coin In Per Hour',
+          hasCoinInData,
+          { label: 'Coin In', color: '#10b981' },
+          coinInScrollRef,
+          coinInChart
+        )}
+        {renderChartPanel(
+          'Coin Out Per Hour',
+          hasCoinOutData,
+          { label: 'Coin Out', color: '#f59e0b' },
+          coinOutScrollRef,
+          coinOutChart
+        )}
       </div>
     </div>
   );

@@ -265,60 +265,63 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
         </div>
       )}
 
-      {/* Financial Data - List Layout */}
-      <div className="border-t border-gray-200 pt-2 text-sm">
-        <div className="mb-1 flex justify-between">
-          <span className="text-gray-500">Money In</span>
-          {props.hideFinancials ? (
-            <span className="font-medium text-gray-500">-</span>
-          ) : (
-            <CurrencyValueWithOverflow
-              value={props.moneyIn || 0}
-              className={`font-medium ${getMoneyInColorClass(props.moneyIn)}`}
-              formatCurrencyFn={formatCurrency}
-            />
-          )}
+      {/* Financial Data - Stacked Layout */}
+      <div className="border-t border-gray-200 pt-2">
+        <div className="mb-1 grid grid-cols-2 gap-1">
+          <div className="rounded-lg border border-gray-100 bg-gray-50/50 px-2 py-1.5">
+            <span className="block text-[10px] text-gray-500">Money In</span>
+            {props.hideFinancials ? (
+              <span className="text-xs font-medium text-gray-500">-</span>
+            ) : (
+              <CurrencyValueWithOverflow
+                value={props.moneyIn || 0}
+                className={`text-xs font-medium ${getMoneyInColorClass(props.moneyIn)}`}
+                formatCurrencyFn={formatCurrency}
+              />
+            )}
+          </div>
+          <div className="rounded-lg border border-gray-100 bg-gray-50/50 px-2 py-1.5">
+            <span className="block text-[10px] text-gray-500">Money Out</span>
+            {props.hideFinancials ? (
+              <span className="text-xs font-medium text-gray-500">-</span>
+            ) : (
+              <MoneyOutCell
+                moneyOut={props.moneyOut || 0}
+                moneyIn={props.moneyIn || 0}
+                jackpot={props.jackpot || 0}
+                displayValue={formatCurrency(props.moneyOut || 0)}
+                includeJackpot={!!props.includeJackpot}
+                showInfoIcon={true}
+              />
+            )}
+          </div>
         </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-gray-500">Money Out</span>
-          {props.hideFinancials ? (
-            <span className="font-medium text-gray-500">-</span>
-          ) : (
-            <MoneyOutCell
-              moneyOut={props.moneyOut || 0}
-              moneyIn={props.moneyIn || 0}
-              jackpot={props.jackpot || 0}
-              displayValue={formatCurrency(props.moneyOut || 0)}
-              includeJackpot={!!props.includeJackpot}
-              showInfoIcon={true}
-            />
-          )}
+        <div className="grid grid-cols-2 gap-1">
+          <div className="rounded-lg border border-gray-100 bg-gray-50/50 px-2 py-1.5">
+            <span className="block text-[10px] text-gray-500">Jackpot</span>
+            {props.hideFinancials ? (
+              <span className="text-xs font-medium text-gray-500">-</span>
+            ) : (
+              <CurrencyValueWithOverflow
+                value={props.jackpot || 0}
+                className="text-xs font-medium"
+                formatCurrencyFn={formatCurrency}
+              />
+            )}
+          </div>
+          <div className="rounded-lg border border-gray-100 bg-gray-50/50 px-2 py-1.5">
+            <span className="block text-[10px] text-gray-500">Gross</span>
+            {props.hideFinancials ? (
+              <span className="text-xs font-medium text-gray-500">-</span>
+            ) : (
+              <CurrencyValueWithOverflow
+                value={props.gross || 0}
+                className={`text-xs font-medium ${getGrossColorClass(props.gross)}`}
+                formatCurrencyFn={formatCurrency}
+              />
+            )}
+          </div>
         </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-gray-500">Jackpot</span>
-          {props.hideFinancials ? (
-            <span className="font-medium text-gray-500">-</span>
-          ) : (
-            <CurrencyValueWithOverflow
-              value={props.jackpot || 0}
-              className="font-medium"
-              formatCurrencyFn={formatCurrency}
-            />
-          )}
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-gray-500">Gross</span>
-          {props.hideFinancials ? (
-            <span className="font-medium text-gray-500">-</span>
-          ) : (
-            <CurrencyValueWithOverflow
-              value={props.gross || 0}
-              className={`font-medium ${getGrossColorClass(props.gross)}`}
-              formatCurrencyFn={formatCurrency}
-            />
-          )}
-        </div>
-        {/* Jackpot info is shown via the info icon on Money Out — no duplicate row needed */}
       </div>
 
       {/* Action Buttons - Fixed at bottom */}

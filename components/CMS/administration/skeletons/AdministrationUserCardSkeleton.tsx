@@ -2,6 +2,11 @@
  * Administration User Card Skeleton Component
  * Loading skeleton for user cards on mobile view.
  *
+ * Matches the exact layout of AdministrationUserCard:
+ * - Blue header with avatar + role badges
+ * - 7 body fields: Username, Name, Email, Enabled, Login Count, Last Login, Session
+ * - Edit/Delete action buttons
+ *
  * @module components/administration/AdministrationUserCardSkeleton
  */
 
@@ -23,25 +28,27 @@ export function AdministrationUserCardSkeleton() {
           key={idx}
           className="overflow-hidden rounded-lg bg-white shadow-md"
         >
-          <div className="flex items-center justify-between bg-blue-500 p-3 text-white">
-            <div className="flex items-baseline gap-2">
-              <Skeleton className="h-5 w-16 bg-white/20" />
-              <Skeleton className="h-4 w-14 bg-white/20" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-7 w-7 rounded-full bg-white/20" />
-              <Skeleton className="h-5 w-10 bg-white/20" />
+          {/* Blue header with avatar + role badges */}
+          <div className="flex items-center gap-2 bg-blue-500 p-3 text-white">
+            <Skeleton className="h-6 w-6 flex-shrink-0 rounded-full bg-white/20" />
+            <div className="flex min-w-0 flex-1 gap-1 overflow-hidden">
+              <Skeleton className="h-5 w-16 flex-shrink-0 rounded bg-white/20" />
+              <Skeleton className="h-5 w-12 flex-shrink-0 rounded bg-white/20" />
             </div>
           </div>
           <div className="p-3">
-            <Skeleton className="mb-2 h-4 w-40 max-w-full" />
-            <Skeleton className="mb-2 h-4 w-32 max-w-full" />
-            <Skeleton className="mb-3 h-4 w-24 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-40 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-32 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-36 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-20 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-16 max-w-full" />
+            <Skeleton className="mb-1 h-4 w-32 max-w-full" />
+            <Skeleton className="mb-3 h-4 w-14 max-w-full" />
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
-              <Skeleton className="h-8 flex-1" />
-              <Skeleton className="h-8 flex-1" />
+              <Skeleton className="h-8 flex-1 rounded" />
+              <Skeleton className="h-8 flex-1 rounded" />
             </div>
           </div>
         </div>

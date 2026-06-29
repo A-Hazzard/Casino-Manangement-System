@@ -36,7 +36,7 @@ export default function LocationsDetailsMembersSection({
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
+  const { onRefresh } = useMembersHandlers();
 
   // ============================================================================
   // Effects
@@ -59,9 +59,6 @@ export default function LocationsDetailsMembersSection({
         activeTab={activeTab as 'members' | 'summary-report'}
         onTabChange={handleTabClick}
         selectedLicencee={selectedLicencee || undefined}
-        onRefresh={onRefresh}
-        onNewMember={onNewMember}
-        refreshing={refreshing}
         locationName={locationName}
       />
 

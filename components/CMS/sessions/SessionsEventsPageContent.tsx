@@ -19,7 +19,6 @@ import {
   ChevronDown,
   ChevronUp,
   History,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react';
@@ -37,6 +36,7 @@ import { toast } from 'sonner';
 
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -385,6 +385,8 @@ export function SessionsEventsPageContent({
     resetAccumulation();
     // The batch effect fires after state updates and fetches batch 1
   };
+
+  useRegisterRefresh(handleRefresh, loading);
 
   const toggleEventExpansion = (id: string) => {
     setExpandedEvents(prev => {
@@ -1089,8 +1091,6 @@ export function SessionsEventsPageContent({
         }}
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:p-8 w-full max-w-full space-y-6 mt-4"
         showToaster={false}
-        onRefresh={handleRefresh}
-        refreshing={loading}
       >
         <div className="flex flex-col space-y-6">
           {/* Navigation Section */}
@@ -1103,18 +1103,6 @@ export function SessionsEventsPageContent({
             >
               <History className="mr-2 h-4 w-4" />
               Back to Sessions
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="h-9"
-            >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-              />
-              Refresh
             </Button>
           </div>
 

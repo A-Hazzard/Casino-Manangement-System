@@ -14,6 +14,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -259,11 +260,13 @@ export default function VaultExpensesPageContent() {
     setCategory('all');
   };
 
+  useRegisterRefresh(fetchExpenses, loading);
+
   // ============================================================================
   // Render
   // ============================================================================
   return (
-    <PageLayout onRefresh={fetchExpenses} refreshing={loading}>
+    <PageLayout>
       <div className="flex flex-col gap-6">
         <StaleShiftDetectedBlock
           isStale={isStaleShift}

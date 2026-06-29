@@ -15,6 +15,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import { CasinoMember as Member } from '@/shared/types/entities';
 import axios from 'axios';
@@ -181,6 +182,8 @@ export default function MembersDetailsPageContent() {
     setCurrentPage(0);
     fetchMemberData();
   };
+
+  useRegisterRefresh(handleRefresh, loading);
 
   const handleToggleTotals = () => {
     setShowTotals(!showTotals);
@@ -492,8 +495,6 @@ export default function MembersDetailsPageContent() {
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full"
         hideCurrencyFilter={true}
         showToaster={false}
-        onRefresh={handleRefresh}
-        refreshing={loading}
       >
         <div className="mt-8 w-full">{renderContent()}</div>
       </PageLayout>

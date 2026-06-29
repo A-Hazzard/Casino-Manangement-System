@@ -88,7 +88,7 @@ export default function LocationsLocationSkeleton() {
         </div>
       </div>
 
-      {/* Mobile skeleton (card) - matches LocationsLocationCard - single card per skeleton */}
+      {/* Mobile skeleton (card) - matches LocationsLocationCard financial layout */}
       <div className="relative mx-auto w-full rounded-lg border border-border bg-white p-3 md:p-4 shadow-sm lg:hidden">
         {/* Location Name with Icons */}
         <div className="mb-3 flex flex-col gap-2">
@@ -105,22 +105,26 @@ export default function LocationsLocationSkeleton() {
           </div>
         </div>
 
-        {/* Financial Metrics */}
-        <div className="mb-2 flex flex-col space-y-2 text-sm">
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-24" />
+        {/* Financial Metrics — matches merged Money In|Money Out + Gross layout */}
+        <div className="mt-2 border-t border-gray-200 pt-2">
+          {/* Money In | Money Out merged row */}
+          <div className="mb-1 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+            <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-3 w-20" />
+            </div>
           </div>
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-24" />
+          {/* Gross separate row */}
+          <div className="mb-2 flex divide-x divide-gray-100 rounded-lg border border-gray-100 bg-gray-50/50">
+            <div className="flex flex-1 items-center justify-between px-2 py-1.5">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-3 w-20" />
+            </div>
           </div>
-        </div>
-
-        {/* Gross (separate row) */}
-        <div className="mb-3 mt-1 flex justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-24" />
         </div>
 
         {/* Action Buttons */}

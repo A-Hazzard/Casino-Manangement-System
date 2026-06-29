@@ -9,6 +9,7 @@
 import { ReactNode } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
+import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
 import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
@@ -327,7 +328,8 @@ export const ReportsMachinesOverview = ({
               No machines found matching your criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto lg:block">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b">
@@ -501,6 +503,97 @@ export const ReportsMachinesOverview = ({
                 </tbody>
               </table>
             </div>
+
+            <div className="grid grid-cols-1 gap-3 lg:hidden">
+              {overviewMachines.map((machine: MachineData) => (
+                <ReportsMachineCard
+                  key={machine.machineId}
+                  title={formatMachineDisplayNameWithBold({
+                    serialNumber: machine.serialNumber || machine.machineId,
+                    custom: { name: machine.machineName },
+                    game: machine.gameTitle,
+                  })}
+                  machineHref={`/cabinets/${machine.machineId}`}
+                  subtitle={
+                    machine.gameTitle || (
+                      <span className="text-red-600">
+                        (game name not provided)
+                      </span>
+                    )
+                  }
+                  locationName={machine.locationName || 'N/A'}
+                  locationHref={
+                    machine.locationId
+                      ? `/locations/${machine.locationId}`
+                      : undefined
+                  }
+                  headerAdornment={
+                    <StatusIcon
+                      isOnline={machine.isOnline || false}
+                      className={machine.isOnline ? 'mt-1 animate-pulse' : 'mt-1'}
+                    />
+                  }
+                  metrics={[
+                    {
+                      label: 'Handle',
+                      value: formatCurrency(machine.coinIn),
+                      valueClassName: getFinancialColorClass(machine.coinIn),
+                    },
+                    {
+                      label: 'Money Out',
+                      value: formatCurrency(machine.totalCancelledCredits),
+                      valueClassName: getFinancialColorClass(
+                        machine.totalCancelledCredits
+                      ),
+                    },
+                    {
+                      label: 'Net Win',
+                      value: formatCurrency(machine.netWin),
+                      valueClassName: getFinancialColorClass(machine.netWin),
+                    },
+                    {
+                      label: 'Gross',
+                      value: formatCurrency(machine.gross),
+                      valueClassName: getFinancialColorClass(machine.gross),
+                    },
+                  ]}
+                  footer={
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={() =>
+                          router.push(`/cabinets/${machine.machineId}`)
+                        }
+                        variant="outline"
+                        size="sm"
+                        className="flex w-full items-center justify-center gap-1.5 text-xs"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View
+                      </Button>
+                      <Button
+                        onClick={() => onEdit(machine)}
+                        variant="outline"
+                        size="sm"
+                        className="flex w-full items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                      >
+                        <Pencil2Icon className="h-3.5 w-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => onDelete(machine)}
+                        variant="outline"
+                        size="sm"
+                        className="flex w-full items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                    </div>
+                  }
+                />
+              ))}
+            </div>
+            </>
           )}
 
           {/* Pagination */}

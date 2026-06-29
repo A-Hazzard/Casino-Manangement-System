@@ -10,6 +10,7 @@
 import LocationsPageFilterSection from '@/components/CMS/locations/LocationsPageFilterSection';
 import LocationsPageHeaderSection from '@/components/CMS/locations/LocationsPageHeaderSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
@@ -77,6 +78,8 @@ export default function LocationsPageContent() {
     hasMoreLocations,
     isDataComplete,
   } = locationsPageData;
+
+  useRegisterRefresh(handleRefresh, refreshing);
 
   // ============================================================================
   // Computed
@@ -181,28 +184,23 @@ export default function LocationsPageContent() {
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
       >
         {/* Page Header: Title and primary actions */}
         <LocationsPageHeaderSection
-          refreshing={refreshing}
           canManage={canManageLocations}
-          onRefresh={handleRefresh}
           onNew={() => setIsNewModalOpen(true)}
         />
 
-        {/* Financial Performance Summary Cards */}
-        <div className="mt-6">
-          <FinancialMetricsCards
-            totals={
-              isDataComplete && !metricsTotalsLoading
-                ? financialTotals
-                : metricsTotals || financialTotals
-            }
-            loading={loading || metricsTotalsLoading}
-            title="Total for all Locations"
-          />
+      {/* Financial Performance Summary Cards */}
+      <div className="mt-6">
+        <FinancialMetricsCards
+          totals={
+            isDataComplete && !metricsTotalsLoading
+              ? financialTotals
+              : metricsTotals || financialTotals
+          }
+          loading={loading || metricsTotalsLoading}
+        />
         </div>
 
         {/* Filters and Status Section */}

@@ -29,7 +29,7 @@ export default function ReportsNavigation({
   // Render
   // ============================================================================
   return (
-    <div className="mb-6 rounded-lg border-b border-gray-200 bg-white shadow-sm">
+    <div className="mb-4 rounded-lg border-b border-gray-200 bg-white shadow-sm md:mb-6">
       {/* Desktop Navigation */}
       <nav className="hidden space-x-8 px-6 md:flex">
         {visibleTabs.map(tab => (

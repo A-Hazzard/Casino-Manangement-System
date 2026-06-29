@@ -27,6 +27,8 @@ import {
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 
+import ReportsLocationsSummaryMetrics from '@/components/CMS/reports/common/ReportsLocationsSummaryMetrics';
+import ReportsSasMachineMobileCard from '@/components/CMS/reports/common/ReportsSasMachineMobileCard';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -41,15 +43,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
-import { Progress } from '@/components/shared/ui/progress';
-import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
   LocationsRevenueAnalysisSkeleton,
   MachineHourlyChartsSkeleton,
-  SummaryCardsSkeleton,
   TopMachinesTableSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
-import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import ReportsLocationsRevenueTable from '@/components/CMS/reports/tabs/locations/ReportsLocationsRevenueTable';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import { ReportsLocationTrendChart } from '@/components/CMS/reports/tabs/locations/ReportsLocationTrendChart';
@@ -59,10 +57,6 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
 import { AggregatedLocation } from '@/lib/types/location';
-import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-} from '@/lib/utils/financial';
 import { MachineData } from '@/shared/types/machines';
 import { LocationTrendsResponse } from '@/shared/types/reports';
 import { useRouter } from 'next/navigation';
@@ -177,6 +171,18 @@ export default function ReportsLocationsRevenueAnalysis({
     return paginatedLocations.some(loc => loc.includeJackpot);
   }, [paginatedLocations]);
 
+  const onlineMachinesData = useMemo(() => {
+    const online = paginatedLocations.reduce(
+      (sum, loc) => sum + (loc.onlineMachines || 0),
+      0
+    );
+    const total = paginatedLocations.reduce(
+      (sum, loc) => sum + (loc.totalMachines || 0),
+      0
+    );
+    return { online, total };
+  }, [paginatedLocations]);
+
   // All locations for dropdown (SAS and non-SAS)
   const allLocations = useMemo(() => {
     return allLocationsForDropdown.map(loc => ({
@@ -212,7 +218,7 @@ export default function ReportsLocationsRevenueAnalysis({
               metricsLoading ||
               metricsTotalsLoading
             }
-            className="flex w-full items-center justify-center gap-2 sm:w-auto"
+            className="hidden w-full items-center justify-center gap-2 sm:flex sm:w-auto"
           >
             <RefreshCw
               className={`h-4 w-4 ${
@@ -358,117 +364,27 @@ export default function ReportsLocationsRevenueAnalysis({
           {/* Summary Cards for Revenue Analysis */}
           {paginatedLocations.length > 0 &&
             (locationsLoading || metricsTotalsLoading ? (
-              <SummaryCardsSkeleton />
+              <ReportsLocationsSummaryMetrics
+                gross={0}
+                moneyIn={0}
+                moneyOut={0}
+                formatCurrency={formatCurrency}
+                grossLabel="Total Net Win (Gross)"
+                loading
+              />
             ) : (
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Total Net Win (Gross)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div
-                      className={`text-2xl font-bold ${getGrossColorClass(
-                        displayTotals?.gross || 0
-                      )}`}
-                    >
-                      {metricsTotalsLoading ? (
-                        <Skeleton className="h-8 w-24" />
-                      ) : (
-                        formatCurrency(displayTotals?.gross || 0)
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      (Green if positive, Red if negative)
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Money In
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div
-                      className={`text-2xl font-bold ${getMoneyInColorClass()}`}
-                    >
-                      {metricsTotalsLoading ? (
-                        <Skeleton className="h-8 w-24" />
-                      ) : (
-                        formatCurrency(displayTotals?.moneyIn || 0)
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Total money in this period
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Money Out
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {metricsTotalsLoading ? (
-                        <Skeleton className="h-8 w-24" />
-                      ) : (
-                        <MoneyOutCell
-                          moneyOut={displayTotals?.moneyOut || 0}
-                          moneyIn={displayTotals?.moneyIn || 0}
-                          jackpot={displayTotals?.jackpot || 0}
-                          displayValue={formatCurrency(
-                            displayTotals?.moneyOut || 0
-                          )}
-                          includeJackpot={anyIncludeJackpot}
-                          showInfoIcon={true}
-                        />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Total money out this period
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="break-words text-lg font-bold text-blue-600 sm:text-xl lg:text-2xl">
-                      {(() => {
-                        const onlineMachines = paginatedLocations.reduce(
-                          (sum, loc) => sum + (loc.onlineMachines || 0),
-                          0
-                        );
-                        const totalMachines = paginatedLocations.reduce(
-                          (sum, loc) => sum + (loc.totalMachines || 0),
-                          0
-                        );
-                        return `${onlineMachines}/${totalMachines}`;
-                      })()}
-                    </div>
-                    <p className="break-words text-xs text-muted-foreground sm:text-sm">
-                      Online Machines
-                    </p>
-                    <Progress
-                      value={(() => {
-                        const onlineMachines = paginatedLocations.reduce(
-                          (sum, loc) => sum + (loc.onlineMachines || 0),
-                          0
-                        );
-                        const totalMachines = paginatedLocations.reduce(
-                          (sum, loc) => sum + (loc.totalMachines || 0),
-                          0
-                        );
-                        return totalMachines > 0
-                          ? (onlineMachines / totalMachines) * 100
-                          : 0;
-                      })()}
-                      className="mt-2"
-                    />
-                  </CardContent>
-                </Card>
+              <div className="mb-6">
+                <ReportsLocationsSummaryMetrics
+                  gross={displayTotals?.gross || 0}
+                  moneyIn={displayTotals?.moneyIn || 0}
+                  moneyOut={displayTotals?.moneyOut || 0}
+                  jackpot={displayTotals?.jackpot || 0}
+                  includeJackpot={anyIncludeJackpot}
+                  onlineMachines={onlineMachinesData.online}
+                  totalMachines={onlineMachinesData.total}
+                  formatCurrency={formatCurrency}
+                  grossLabel="Total Net Win (Gross)"
+                />
               </div>
             ))}
 
@@ -831,115 +747,25 @@ export default function ReportsLocationsRevenueAnalysis({
                       </div>
 
                       {/* Mobile Card View */}
-                      <div className="space-y-4 md:hidden">
-                        {topMachinesData.map((machine, index) => (
-                          <Card
-                            key={`${machine.machineId}-${index}`}
-                            className="p-4"
-                          >
-                            <div className="mb-3">
-                              <h4 className="text-sm font-medium">
-                                {machine.machineName}
-                              </h4>
-                              <p className="text-xs text-muted-foreground">
-                                {machine.locationName} •{' '}
-                                {machine.gameTitle ? (
-                                  machine.gameTitle
-                                ) : (
-                                  <span className="text-red-600">
-                                    (game name not provided)
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                            <div className="space-y-2 text-xs">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Manufacturer:
-                                </span>
-                                <span className="font-medium">
-                                  {machine.manufacturer}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Money In:
-                                </span>
-                                <span className="font-medium">
-                                  {formatCurrency(machine.drop || 0)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Win/Loss:
-                                </span>
-                                <span
-                                  className={`font-medium ${
-                                    (machine.netWin || 0) >= 0
-                                      ? 'text-green-600'
-                                      : 'text-red-600'
-                                  }`}
-                                >
-                                  {formatCurrency(machine.netWin || 0)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Avg. Wag. per Game:
-                                </span>
-                                <span className="font-medium">
-                                  {formatCurrency(machine.avgBet || 0)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Actual Hold:
-                                </span>
-                                <span className="font-medium text-gray-600">
-                                  {machine.actualHold != null &&
-                                  !isNaN(machine.actualHold)
-                                    ? machine.actualHold.toFixed(2) + '%'
-                                    : 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Games Played:
-                                </span>
-                                <span className="font-medium">
-                                  {(machine.gamesPlayed || 0).toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Floor Position %:
-                                </span>
-                                <span className="font-medium">
-                                  {(() => {
-                                    const totalMachines =
-                                      paginatedLocations.reduce(
-                                        (sum, loc) =>
-                                          sum + (loc.totalMachines || 0),
-                                        0
-                                      );
-                                    return totalMachines > 0
-                                      ? ((1 / totalMachines) * 100).toFixed(2)
-                                      : '0.00';
-                                  })()}
-                                  %
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">
-                                  Handle:
-                                </span>
-                                <span className="font-medium">
-                                  ${(machine.coinIn || 0).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
+                      <div className="space-y-3 md:hidden">
+                        {topMachinesData.map((machine, index) => {
+                          const totalMachines = paginatedLocations.reduce(
+                            (sum, location) =>
+                              sum + (location.totalMachines || 0),
+                            0
+                          );
+                          const floorPositionPercent =
+                            totalMachines > 0 ? (1 / totalMachines) * 100 : 0;
+
+                          return (
+                            <ReportsSasMachineMobileCard
+                              key={`${machine.machineId}-${index}`}
+                              machine={machine}
+                              formatCurrency={formatCurrency}
+                              floorPositionPercent={floorPositionPercent}
+                            />
+                          );
+                        })}
                       </div>
                     </>
                   );

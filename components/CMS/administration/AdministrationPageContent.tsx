@@ -14,6 +14,7 @@ import AdministrationLicenceesSection from '@/components/CMS/administration/sect
 import AdministrationUsersSection from '@/components/CMS/administration/sections/AdministrationUsersSection';
 import AdministrationActivityLogsTable from '@/components/CMS/administration/tables/AdministrationActivityLogsTable';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import { Button } from '@/components/shared/ui/button';
 import { ADMINISTRATION_TABS_CONFIG, IMAGES } from '@/lib/constants';
@@ -25,7 +26,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SortKey } from '@/lib/types/administration';
 import { hasTabAccess, UserRole } from '@/lib/utils/permissions';
-import { PlusCircle, RefreshCw } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -98,6 +99,8 @@ export default function AdministrationPageContent() {
       setRefreshing(false);
     }
   }, [activeSection, usersHook, licenceesHook, countriesHook]);
+
+  useRegisterRefresh(handleRefresh, refreshing);
 
   // ============================================================================
   // Computed
@@ -282,8 +285,6 @@ export default function AdministrationPageContent() {
       mainClassName="flex flex-col flex-1 p-4 lg:p-6 w-full max-w-full"
       showToaster={false}
       hideCurrencyFilter
-      onRefresh={handleRefresh}
-      refreshing={refreshing}
     >
       {/* Page Header & Desktop Actions */}
       <div className="mt-4 flex w-full max-w-full items-center justify-between md:mt-6">
@@ -298,18 +299,8 @@ export default function AdministrationPageContent() {
               className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
             />
           </h1>
-          {/* Mobile Refresh + Create Buttons */}
+          {/* Mobile Create Buttons */}
           <div className="ml-auto flex shrink-0 items-center gap-1 md:hidden">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Refresh"
-            >
-              <RefreshCw
-                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
             {activeSection === 'users' ? (
               <Button
                 onClick={usersHook.openAddUserModal}
@@ -342,18 +333,8 @@ export default function AdministrationPageContent() {
           </div>
         </div>
 
-        {/* Desktop Refresh and Action Buttons */}
+        {/* Desktop Action Buttons */}
         <div className="hidden flex-shrink-0 items-center gap-2 md:flex">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Refresh"
-          >
-            <RefreshCw
-              className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
-            />
-          </button>
           {activeSection === 'users' ? (
             <Button
               onClick={usersHook.openAddUserModal}

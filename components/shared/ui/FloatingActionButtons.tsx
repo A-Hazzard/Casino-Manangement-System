@@ -1,19 +1,14 @@
 /**
  * Floating Action Buttons Component
- * Combined floating buttons container with refresh and feedback buttons.
+ * Fixed-position feedback and notification controls.
  *
  * Features:
- * - Fixed position floating buttons container
- * - Refresh button appears on scroll
  * - Feedback button always visible
- * - Vertical stack layout (refresh above feedback)
+ * - Notification bell when unread notifications exist
  * - Framer Motion animations
  * - Proper z-index management
- * - Responsive design
  *
- * @param showRefresh - Whether the refresh button should be visible
- * @param refreshing - Whether refresh is in progress
- * @param onRefresh - Callback when refresh is clicked
+ * Page refresh is handled centrally via HeaderRefreshButton.
  */
 
 'use client';
@@ -28,20 +23,10 @@ import NotificationBell, {
 import { useNotificationStore } from '@/lib/store/notificationStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, MessageSquare, RefreshCw } from 'lucide-react';
+import { Bell, MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-type FloatingActionButtonsProps = {
-  showRefresh: boolean;
-  refreshing: boolean;
-  onRefresh: () => void;
-};
-
-export const FloatingActionButtons = ({
-  showRefresh,
-  refreshing,
-  onRefresh,
-}: FloatingActionButtonsProps) => {
+export const FloatingActionButtons = () => {
   // ============================================================================
   // State & Hooks
   // ============================================================================
@@ -57,6 +42,7 @@ export const FloatingActionButtons = ({
     onMarkAllAsRead,
     onDismiss,
   } = useNotificationStore();
+
   // ============================================================================
   // Computed
   // ============================================================================
@@ -93,7 +79,6 @@ export const FloatingActionButtons = ({
   // ============================================================================
   // Render
   // ============================================================================
-  // Avoid rendering on the server to prevent hydration mismatches
   if (!mounted) {
     return null;
   }
@@ -101,9 +86,8 @@ export const FloatingActionButtons = ({
   return (
     <>
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-center gap-4">
-        {/* Floating Notification Bell - appears on scroll if there are unread notifications */}
         <AnimatePresence>
-          {showRefresh && unreadCount > 0 && (
+          {unreadCount > 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -140,32 +124,6 @@ export const FloatingActionButtons = ({
           )}
         </AnimatePresence>
 
-        {/* Refresh Button - appears on scroll */}
-        <AnimatePresence>
-          {showRefresh && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.button
-                onClick={onRefresh}
-                disabled={refreshing}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-button p-3 text-container shadow-lg transition-colors duration-200 hover:bg-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                aria-label="Refresh data"
-              >
-                <RefreshCw
-                  className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`}
-                />
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Feedback Button - always visible */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -193,7 +151,6 @@ export const FloatingActionButtons = ({
         </motion.div>
       </div>
 
-      {/* Admin feedback panel (privileged users) */}
       {isPrivileged ? (
         <AdminFeedbackPanel
           isOpen={isFeedbackOpen}

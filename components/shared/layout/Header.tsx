@@ -29,6 +29,7 @@
  */
 'use client';
 import CurrencyFilter from '@/components/shared/layout/CurrencyFilter';
+import HeaderRefreshButton from '@/components/shared/layout/HeaderRefreshButton';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
 import LicenceeSelect from '@/components/shared/ui/LicenceeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/shared/ui/sidebar';
@@ -61,6 +62,7 @@ export default function Header({
   containerPaddingMobile,
   disabled = false,
   hideCurrencyFilter = false,
+  headerActions,
 }: HeaderProps) {
   // ============================================================================
   // Hooks & State
@@ -366,11 +368,11 @@ export default function Header({
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
         {/* Header Section: Main header with title and licencee selector */}
-        <header className="mb-4 flex w-full flex-col p-2">
+        <header className="flex w-full flex-col py-1">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
-          <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:gap-4">
             {/* Left side: Menu button and title */}
-            <div className="flex w-full min-w-0 flex-shrink items-center gap-2 sm:w-auto">
+            <div className="flex min-w-0 flex-shrink items-center gap-2">
               {/* Mobile sidebar trigger uses the same icon as sidebar, layered under opened sidebar */}
               <SidebarTrigger
                 className={cn(
@@ -396,6 +398,7 @@ export default function Header({
                     </span>
                   )}
                 </h1>
+                <HeaderRefreshButton />
                 {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">
                     {singleLicenceeName}
@@ -404,56 +407,51 @@ export default function Header({
               </div>
             </div>
 
-            {/* Right side: Filters */}
-            {(!hideLicenceeFilter && shouldShowLicenceeSelect) ||
-            shouldRenderCurrencyFilter ? (
-              <div className="flex w-full min-w-0 shrink items-center gap-2 sm:w-auto sm:justify-end">
-                {!hideLicenceeFilter && shouldShowLicenceeSelect && (
-                  <div
-                    className="w-full min-w-0 overflow-hidden sm:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
-                    style={{
-                      // On strictly mobile, let it be 100% width or whatever flex permits, disable the clamp if on very small screen
-                      width: '100%',
-                      maxWidth: '100%',
-                    }}
-                  >
-                    {/* Applying a media query class approach for the clamp to only apply on sm+ */}
-                    <div className="w-full sm:w-[clamp(120px,calc((100vw-240px)*0.5+120px),200px)] md:w-auto lg:w-full">
-                      <LicenceeSelect
-                        selected={selectedLicencee || ''}
-                        onChange={handleLicenceeChange}
-                        userLicenceeIds={isAdmin ? undefined : userLicencees}
-                        disabled={disabled}
-                      />
-                    </div>
+            {/* Right side: Actions + Filters */}
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              {headerActions && (
+                <div className="flex items-center gap-1">
+                  {headerActions}
+                </div>
+              )}
+              {!hideLicenceeFilter && shouldShowLicenceeSelect && (
+                <div
+                  className="hidden min-w-0 overflow-hidden sm:block md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
+                >
+                  <div className="w-full sm:w-[clamp(120px,calc((100vw-240px)*0.5+120px),200px)] md:w-auto lg:w-full">
+                    <LicenceeSelect
+                      selected={selectedLicencee || ''}
+                      onChange={handleLicenceeChange}
+                      userLicenceeIds={isAdmin ? undefined : userLicencees}
+                      disabled={disabled}
+                    />
                   </div>
-                )}
-                {shouldRenderCurrencyFilter && (
-                  <CurrencyFilter
-                    className="hidden md:flex"
-                    disabled={disabled}
-                    userRoles={userRoles}
-                    hasMultipleLicencees={hasMultipleLicencees}
-                    onCurrencyChange={newCurrency => {
-                      // Trigger data refresh when currency changes
-                      if (pathname === '/' && activeMetricsFilter) {
-                        setLoadingChartData(true);
-                        fetchMetricsData(
-                          activeMetricsFilter,
-                          customDateRange,
-                          selectedLicencee,
-                          setTotals,
-                          setChartData,
-                          setActiveFilters,
-                          setShowDatePicker,
-                          newCurrency
-                        ).finally(() => setLoadingChartData(false));
-                      }
-                    }}
-                  />
-                )}
-              </div>
-            ) : null}
+                </div>
+              )}
+              {shouldRenderCurrencyFilter && (
+                <CurrencyFilter
+                  className="hidden md:flex"
+                  disabled={disabled}
+                  userRoles={userRoles}
+                  hasMultipleLicencees={hasMultipleLicencees}
+                  onCurrencyChange={newCurrency => {
+                    if (pathname === '/' && activeMetricsFilter) {
+                      setLoadingChartData(true);
+                      fetchMetricsData(
+                        activeMetricsFilter,
+                        customDateRange,
+                        selectedLicencee,
+                        setTotals,
+                        setChartData,
+                        setActiveFilters,
+                        setShowDatePicker,
+                        newCurrency
+                      ).finally(() => setLoadingChartData(false));
+                    }
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Mobile Menu Overlay Section: Full-screen mobile navigation menu */}

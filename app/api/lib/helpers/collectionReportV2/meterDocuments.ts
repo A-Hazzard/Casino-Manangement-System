@@ -96,6 +96,11 @@ export function resolvePrevMeters(
  * Finds the canonical meter _id for a machine+session+isRamClear slot and
  * removes duplicate orphan documents. Prefers explicit isRamClear match, then
  * the newest createdAt (correct post-race document wins).
+ *
+ * Also cleans up orphan V1 meters: documents for the same machine with no
+ * `locationSession` field (created by the old V1 report creation path which
+ * never set this field). These orphans are invisible to the primary
+ * `{ locationSession: sessionId }` query, so they must be caught separately.
  */
 export async function findCanonicalMeterId(
   machineId: string,
@@ -109,6 +114,7 @@ export async function findCanonicalMeterId(
     ? { isRamClear: true }
     : { isRamClear: { $ne: true } };
 
+  // Primary: session-scoped meters (V2 code path)
   const candidates = await Meters.find({
     machine: machineId,
     locationSession: sessionId,
@@ -118,11 +124,28 @@ export async function findCanonicalMeterId(
     .lean<MeterCandidate[]>()
     .catch(() => [] as MeterCandidate[]);
 
-  if (candidates.length === 0) {
+  // Secondary: orphan meters (V1-created, no locationSession field at all)
+  const orphanCandidates = await Meters.find({
+    machine: machineId,
+    locationSession: { $exists: false },
+    ...ramClearFilter,
+  })
+    .select('_id isRamClear createdAt')
+    .lean<MeterCandidate[]>()
+    .catch(() => [] as MeterCandidate[]);
+
+  // Merge both sets, deduplicating by _id
+  const allCandidatesMap = new Map<string, MeterCandidate>();
+  for (const candidate of [...orphanCandidates, ...candidates]) {
+    allCandidatesMap.set(candidate._id, candidate);
+  }
+  const allCandidates = [...allCandidatesMap.values()];
+
+  if (allCandidates.length === 0) {
     return generateMongoId();
   }
 
-  const sorted = [...candidates].sort((left, right) => {
+  const sorted = [...allCandidates].sort((left, right) => {
     const leftExplicit = left.isRamClear === isRamClear ? 1 : 0;
     const rightExplicit = right.isRamClear === isRamClear ? 1 : 0;
     if (rightExplicit !== leftExplicit) {

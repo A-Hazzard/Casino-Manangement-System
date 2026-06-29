@@ -16,6 +16,7 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { PieChartLabelRenderer } from '@/components/shared/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import {
   fetchMetricsData,
   fetchTopPerformingDataHelper,
@@ -112,6 +113,8 @@ export default function DashboardPageContent() {
     activeTab,
     displayCurrency,
   });
+
+  useRegisterRefresh(handleRefresh, refreshing);
 
   const [machineStats, setMachineStats] = useState<{
     totalMachines: number;
@@ -459,13 +462,10 @@ export default function DashboardPageContent() {
         setSelectedLicencee,
         disabled: loadingChartData || refreshing,
       }}
-      pageTitle="Dashboard"
       hideOptions={false}
       hideLicenceeFilter={false}
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
-      onRefresh={handleRefresh}
-      refreshing={refreshing}
     >
       {/* Mobile Layout */}
       <div className="block md:hidden">

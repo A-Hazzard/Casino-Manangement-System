@@ -45,6 +45,7 @@ export type HeaderProps = {
   containerPaddingMobile?: string;
   disabled?: boolean;
   hideCurrencyFilter?: boolean;
+  headerActions?: React.ReactNode;
 };
 
 export type CollectorTooltipData = {
@@ -145,9 +146,13 @@ export type CollectionReportTableProps = {
   onSort?: (field: keyof CollectionReportRow) => void;
   editableReportIds?: Set<string>;
   selectedLicencee?: string | null;
+  selectedReports?: Set<string>;
+  onSelectionChange?: (reportId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 };
 
 export type CollectionReportCardsProps = {
+  showBulkSelection?: boolean;
   data: CollectionReportRow[];
   gridLayout?: boolean;
   reportIssues?: ReportIssuesMap;
@@ -157,6 +162,8 @@ export type CollectionReportCardsProps = {
   loading?: boolean;
   onRefresh?: () => void;
   selectedLicencee?: string | null;
+  selectedReports?: Set<string>;
+  onSelectionChange?: (reportId: string, checked: boolean) => void;
 };
 
 export type CollectionReportDesktopUIProps = {
@@ -199,9 +206,13 @@ export type CollectionReportDesktopUIProps = {
   onSort?: (field: keyof CollectionReportRow) => void;
   selectedLicencee?: string;
   editableReportIds?: Set<string>;
+  selectedReports?: Set<string>;
+  onSelectionChange?: (reportId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 };
 
 export type CollectionReportMobileUIProps = {
+  showBulkSelection?: boolean;
   loading: boolean;
   filteredReports: CollectionReportRow[];
   mobileCardsRef: RefObject<HTMLDivElement | null>;
@@ -239,6 +250,8 @@ export type CollectionReportMobileUIProps = {
   onDelete?: (reportId: string) => void;
   selectedLicencee?: string;
   editableReportIds?: Set<string>;
+  selectedReports?: Set<string>;
+  onSelectionChange?: (reportId: string, checked: boolean) => void;
 };
 
 export type CollectionReportMonthlyDesktopUIProps = {

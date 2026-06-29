@@ -16,6 +16,9 @@
 'use client';
 
 import { ReactNode } from 'react';
+import ReportsLocationCard, {
+  ReportsLocationCardSkeleton,
+} from '@/components/CMS/reports/common/ReportsLocationCard';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -178,145 +181,22 @@ export default function ReportsLocationsRevenueTable({
     </div>
   );
 
-  // Skeleton loading component for card view
-  const CardSkeleton = () => (
-    <div className="animate-pulse space-y-4">
-      <div className="p-4">
-        <div className="mb-4 text-sm text-gray-500">
-          Loading location data...
-        </div>
-      </div>
-      {[...Array(6)].map((_, i) => (
-        <div
-          key={i}
-          className="space-y-3 rounded-lg border border-gray-200 bg-white p-4"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1 space-y-2">
-              <div className="h-5 w-3/4 rounded bg-gray-300"></div>
-              <div className="h-4 w-1/2 rounded bg-gray-300"></div>
-            </div>
-            <div className="h-6 w-20 rounded bg-gray-300"></div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="h-4 w-16 rounded bg-gray-300"></div>
-              <div className="h-4 w-20 rounded bg-gray-300"></div>
-            </div>
-            <div className="space-y-2">
-              <div className="h-4 w-16 rounded bg-gray-300"></div>
-              <div className="h-4 w-20 rounded bg-gray-300"></div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const CardSkeleton = () => <ReportsLocationCardSkeleton count={6} />;
 
   // Card component for mobile view
-  const LocationCard = ({ location }: { location: AggregatedLocation }) => {
-    return (
-      <div
-        className={`space-y-3 rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md ${
-          onLocationClick ? 'cursor-pointer' : ''
-        }`}
-        onClick={() => onLocationClick?.(location)}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            {(() => {
-              // Get location ID - try multiple possible fields
-              const locationId =
-                location.location ||
-                location._id;
-              const locationName: string = String(
-                location.name ||
-                  location.locationName ||
-                  'Unknown'
-              );
-
-              if (locationId) {
-                return (
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      window.location.href = `/locations/${String(locationId)}`;
-                    }}
-                    className="group flex items-center gap-1.5 text-left"
-                  >
-                    <h3 className="truncate text-sm font-medium text-gray-900 underline decoration-blue-600 decoration-2 underline-offset-2">
-                      {locationName}
-                    </h3>
-                    <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                  </button>
-                );
-              }
-
-              return (
-                <h3 className="truncate text-sm font-medium text-gray-900">
-                  {locationName}
-                </h3>
-              );
-            })()}
-            <p className="truncate text-xs text-gray-500">
-              {String(
-                location.location ||
-                  location._id ||
-                  ''
-              )}
-            </p>
-          </div>
-          <Badge variant="secondary" className="font-mono text-xs">
-            {location.totalMachines} machines
-          </Badge>
-        </div>
-
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500">Drop</p>
-            <p className={`text-sm font-medium ${getMoneyInColorClass()}`}>
-              {formatCurrency(location.moneyIn)}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500">Money Out</p>
-            <MoneyOutCell
-              moneyOut={location.moneyOut || 0}
-              moneyIn={location.moneyIn || 0}
-              jackpot={location.jackpot || 0}
-              displayValue={formatCurrency(location.moneyOut)}
-              includeJackpot={!!location.includeJackpot}
-              showInfoIcon={true}
-            />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <p className="text-xs text-gray-500">Gross Revenue</p>
-            <p
-              className={`text-lg font-semibold ${getGrossColorClass(location.gross)}`}
-            >
-              {formatCurrency(location.gross)}
-            </p>
-          </div>
-        </div>
-
-        {/* Additional Info */}
-        <div className="border-t border-gray-100 pt-2">
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>Online: {location.onlineMachines}</span>
-            <span>
-              Hold:{' '}
-              {location.moneyIn > 0
-                ? ((location.gross / location.moneyIn) * 100).toFixed(1)
-                : 0}
-              %
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const LocationCard = ({ location }: { location: AggregatedLocation }) => (
+    <ReportsLocationCard
+      location={location}
+      formatCurrency={formatCurrency}
+      variant="revenue"
+      onLocationClick={onLocationClick}
+      headerExtra={
+        <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+          {location.totalMachines} machines
+        </Badge>
+      }
+    />
+  );
 
   // ============================================================================
   // Render
@@ -520,7 +400,7 @@ export default function ReportsLocationsRevenueTable({
         </div>
 
         {/* Mobile Card View */}
-        <div className="space-y-4 lg:hidden">
+        <div className="space-y-3 lg:hidden">
           {paginatedLocations.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               No locations available

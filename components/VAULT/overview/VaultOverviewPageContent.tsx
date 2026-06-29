@@ -16,6 +16,7 @@ import {
 } from '@/components/VAULT/overview/data/defaults';
 import StaleShiftDetectedBlock from '@/components/VAULT/shared/StaleShiftDetectedBlock';
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/cabinetList';
@@ -589,6 +590,12 @@ export default function VaultOverviewPageContent() {
     setModals(prev => ({ ...prev, [actionKey]: true }));
   };
 
+  const handlePageRefresh = useCallback(() => {
+    void fetchData(false);
+  }, [fetchData]);
+
+  useRegisterRefresh(handlePageRefresh, refreshing);
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -614,8 +621,6 @@ export default function VaultOverviewPageContent() {
 
   return (
     <PageLayout
-      onRefresh={() => fetchData(false)}
-      refreshing={refreshing}
       headerProps={
         isAdminOrDev
           ? {

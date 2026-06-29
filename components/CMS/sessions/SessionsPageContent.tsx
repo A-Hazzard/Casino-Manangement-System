@@ -9,6 +9,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -16,7 +17,6 @@ import { IMAGES } from '@/lib/constants';
 import { useSessions } from '@/lib/hooks/data/useSessions';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
-import { RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { SessionsTable } from './SessionsTable';
@@ -65,6 +65,8 @@ export default function SessionsPageContent() {
     setRefreshing(false);
   };
 
+  useRegisterRefresh(handleRefresh, refreshing);
+
   const handleSort = (field: string) => {
     const newSortOrder =
       sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
@@ -84,8 +86,6 @@ export default function SessionsPageContent() {
       }}
       mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
       showToaster={false}
-      onRefresh={handleRefresh}
-      refreshing={refreshing}
     >
       <div className="flex flex-col">
         {/* Page Header */}
@@ -101,16 +101,6 @@ export default function SessionsPageContent() {
                 className="h-6 w-6 sm:h-8 sm:w-8"
               />
             </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading || refreshing}
-              className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Refresh"
-            >
-              <RefreshCw
-                className={`h-5 w-5 ${isLoading || refreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
           </div>
           <p className="mt-1 text-gray-600">
             View all gaming sessions and their events

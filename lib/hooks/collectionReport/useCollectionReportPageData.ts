@@ -113,6 +113,22 @@ export function useCollectionReportPageData() {
   const [currentDeletePhase, setCurrentDeletePhase] = useState<string | undefined>();
 
   // ==========================================================================
+  // Local State - Bulk Selection
+  // ==========================================================================
+  const [selectedReportIds, setSelectedReportIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState<{
+    current: number;
+    total: number;
+    currentLabel: string;
+    failedCount: number;
+    isDone: boolean;
+  } | null>(null);
+
+  // ==========================================================================
   // Debounced Values
   // ==========================================================================
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -463,6 +479,94 @@ export function useCollectionReportPageData() {
   };
 
   // ==========================================================================
+  // Handlers - Selection
+  // ==========================================================================
+
+  /**
+   * Toggle a single report selection
+   */
+  const handleSelectionChange = (reportId: string, checked: boolean) => {
+    setSelectedReportIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(reportId);
+      } else {
+        next.delete(reportId);
+      }
+      return next;
+    });
+  };
+
+  /**
+   * Select or deselect all visible (paginated) reports
+   */
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedReportIds(prev => {
+      const next = new Set(prev);
+      for (const report of paginatedReports) {
+        const id = report.locationReportId || report._id;
+        if (id) {
+          if (checked) {
+            next.add(id);
+          } else {
+            next.delete(id);
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  /**
+   * Clear all selections
+   */
+  const clearSelection = () => {
+    setSelectedReportIds(new Set());
+  };
+
+  /**
+   * Execute bulk delete sequentially, updating progress state for each item
+   */
+  const confirmBulkDelete = async () => {
+    const ids = Array.from(selectedReportIds);
+    if (ids.length === 0) return;
+
+    setShowBulkDeleteConfirm(false);
+    setIsBulkDeleting(true);
+    setBulkDeleteProgress({ current: 0, total: ids.length, currentLabel: '', failedCount: 0, isDone: false });
+
+    const { default: axios } = await import('axios');
+    let failedCount = 0;
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const report = allReports.find(r => r.locationReportId === id || r._id === id);
+      const label = report ? `${report.location} (${report.time})` : id;
+
+      setBulkDeleteProgress({ current: index + 1, total: ids.length, currentLabel: label, failedCount, isDone: false });
+
+      try {
+        await axios.delete(`/api/collection-reports/${id}`);
+      } catch {
+        failedCount++;
+        console.error(`[confirmBulkDelete] Failed to delete report ${id}`);
+      }
+    }
+
+    setBulkDeleteProgress(prev => prev ? { ...prev, isDone: true, failedCount } : null);
+    setIsBulkDeleting(false);
+  };
+
+  /**
+   * Close progress modal, clear selection, and refresh the list
+   */
+  const closeBulkDeleteProgress = useCallback(() => {
+    setBulkDeleteProgress(null);
+    setSelectedReportIds(new Set());
+    refreshReports();
+  }, [refreshReports]);
+
+  // ==========================================================================
   // Handlers
   // ==========================================================================
 
@@ -623,6 +727,10 @@ export function useCollectionReportPageData() {
     isDeleting,
     currentDeletePhase,
     editableReportIds,
+    // Bulk Selection State
+    selectedReportIds,
+    showBulkDeleteConfirm,
+    isBulkDeleting,
     // Tab Handlers
     handleTabChange,
     handleRefresh: useCallback(async () => {
@@ -633,6 +741,14 @@ export function useCollectionReportPageData() {
     handleEdit,
     handleDelete,
     confirmDelete,
+    // Bulk Selection Handlers
+    handleSelectionChange,
+    handleSelectAll,
+    clearSelection,
+    confirmBulkDelete,
+    closeBulkDeleteProgress,
+    bulkDeleteProgress,
+    setShowBulkDeleteConfirm,
     // Setters
     setSearchTerm: handleSetSearchTerm,
     setSearchType,

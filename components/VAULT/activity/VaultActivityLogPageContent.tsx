@@ -9,6 +9,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import ActivityLogDateFilter from '@/components/shared/ui/ActivityLogDateFilter';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -45,7 +46,7 @@ import { cn } from '@/lib/utils';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { TimePeriod } from '@/shared/types';
 import { Download, FileText, RefreshCw, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultManagerHeader from '../layout/VaultManagerHeader';
 
@@ -385,15 +386,18 @@ export default function VaultActivityLogPageContent() {
     }
   };
 
+  const handlePageRefresh = useCallback(() => {
+    void fetchActivities(currentPage);
+  }, [currentPage]);
+
+  useRegisterRefresh(handlePageRefresh, loading);
+
   // ============================================================================
   // Render
   // ============================================================================
 
   return (
-    <PageLayout
-      onRefresh={() => fetchActivities(currentPage)}
-      refreshing={loading}
-    >
+    <PageLayout>
       <div className="space-y-6">
         <StaleShiftDetectedBlock
           isStale={isStaleShift}

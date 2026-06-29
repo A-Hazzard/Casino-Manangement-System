@@ -38,9 +38,21 @@ import CollectionReportV2WizardModal from '@/components/CMS/collectionReport/mod
 
 // === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
+import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/shared/ui/alert-dialog';
+import BulkDeleteProgressModal from '@/components/CMS/collectionReport/modals/BulkDeleteProgressModal';
 
 // === Hooks & Store ===
 import { COLLECTION_TABS_CONFIG, UserRole } from '@/lib/constants';
@@ -184,6 +196,15 @@ const CollectionReportPageContent: FC = () => {
     setEditingReportId,
     onRefreshLocations,
     currentDeletePhase,
+    selectedReportIds,
+    showBulkDeleteConfirm,
+    isBulkDeleting,
+    bulkDeleteProgress,
+    handleSelectionChange,
+    clearSelection,
+    confirmBulkDelete,
+    closeBulkDeleteProgress,
+    setShowBulkDeleteConfirm,
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
@@ -221,7 +242,7 @@ const CollectionReportPageContent: FC = () => {
         : activeTab;
 
   // Wrapped refresh that calls correct hook based on active tab
-  const handleRefreshAll = () => {
+  const handleRefreshAll = useCallback(() => {
     if (effectiveTab === 'collection') {
       handleRefresh();
     } else if (effectiveTab === 'collection-v2') {
@@ -233,7 +254,14 @@ const CollectionReportPageContent: FC = () => {
     } else if (effectiveTab === 'manager') {
       managerHook.onRefresh();
     }
-  };
+  }, [
+    effectiveTab,
+    handleRefresh,
+    v2Hook,
+    monthlyHook,
+    collectorHook,
+    managerHook,
+  ]);
 
   const activeRefreshing =
     effectiveTab === 'collection'
@@ -247,6 +275,8 @@ const CollectionReportPageContent: FC = () => {
             : effectiveTab === 'manager'
               ? managerHook.loadingSchedulers
               : false;
+
+  useRegisterRefresh(handleRefreshAll, activeRefreshing);
 
   // ============================================================================
   // Render
@@ -275,14 +305,10 @@ const CollectionReportPageContent: FC = () => {
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
-        onRefresh={handleRefreshAll}
-        refreshing={activeRefreshing}
       >
         {/* Header Section */}
         <CollectionReportHeader
           activeTab={effectiveTab}
-          refreshing={activeRefreshing}
-          onRefresh={handleRefreshAll}
           onCreateDesktop={() => {
             if (effectiveTab === 'collection-v2') {
               setShowV2StartSession(true);
@@ -343,6 +369,30 @@ const CollectionReportPageContent: FC = () => {
               {/* === COLLECTION TAB === */}
               {effectiveTab === 'collection' && (
                 <div className="tab-content-wrapper">
+                  {/* Bulk Action Bar — developer only */}
+                  {isDeveloper && selectedReportIds.size > 0 && (
+                    <div className="mb-4 flex items-center justify-between rounded-lg border bg-red-50 px-4 py-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-700">
+                        {selectedReportIds.size} report{selectedReportIds.size !== 1 ? 's' : ''} selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={isBulkDeleting}
+                          onClick={() => setShowBulkDeleteConfirm(true)}
+                        >
+                          {`Delete Selected (${selectedReportIds.size})`}
+                        </button>
+                        <button
+                          className="rounded-md bg-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-300"
+                          onClick={clearSelection}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="hidden md:block">
                     <CollectionReportDesktopLayout
                       loading={loading}
@@ -375,6 +425,9 @@ const CollectionReportPageContent: FC = () => {
                       onSort={filters.handleSort}
                       selectedLicencee={selectedLicencee}
                       editableReportIds={hook.editableReportIds}
+                      selectedReports={selectedReportIds}
+                      onSelectionChange={handleSelectionChange}
+                      showBulkSelection={isDeveloper}
                     />
                   </div>
 
@@ -407,6 +460,9 @@ const CollectionReportPageContent: FC = () => {
                       onDelete={handleDelete}
                       selectedLicencee={selectedLicencee}
                       editableReportIds={hook.editableReportIds}
+                      selectedReports={selectedReportIds}
+                      onSelectionChange={handleSelectionChange}
+                      showBulkSelection={isDeveloper}
                     />
                   </div>
 
@@ -501,9 +557,34 @@ const CollectionReportPageContent: FC = () => {
                 </div>
               )}
 
-              {/* === COLLECTION REPORT V2 TAB (Developer only) === */}
+                {/* === COLLECTION REPORT V2 TAB (Developer only) === */}
               {effectiveTab === 'collection-v2' && (
                 <div className="tab-content-wrapper">
+                  {/* V2 Bulk Action Bar — developer only */}
+                  {isDeveloper && v2Hook.selectedSessionIds.size > 0 && (
+                    <div className="mb-4 flex items-center justify-between rounded-lg border bg-red-50 px-4 py-3 shadow-sm">
+                      <span className="text-sm font-medium text-gray-700">
+                        {v2Hook.selectedSessionIds.size} session
+                        {v2Hook.selectedSessionIds.size !== 1 ? 's' : ''} selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={v2Hook.isBulkDeleting}
+                          onClick={() => v2Hook.setShowBulkDeleteConfirm(true)}
+                        >
+                          {`Delete Selected (${v2Hook.selectedSessionIds.size})`}
+                        </button>
+                        <button
+                          className="rounded-md bg-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-300"
+                          onClick={v2Hook.clearV2Selection}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="hidden md:block">
                     <CollectionReportV2Desktop
                       sessions={v2Hook.sessions}
@@ -535,6 +616,11 @@ const CollectionReportPageContent: FC = () => {
                       sortField={v2Hook.sortField}
                       sortDirection={v2Hook.sortDirection}
                       onSort={v2Hook.handleSort}
+                      selectedSessions={v2Hook.selectedSessionIds}
+                      onSessionSelectionChange={
+                        v2Hook.handleSessionSelectionChange
+                      }
+                      showBulkSelection={isDeveloper}
                     />
                   </div>
 
@@ -566,6 +652,11 @@ const CollectionReportPageContent: FC = () => {
                       onDeleteSession={sessionId => {
                         setV2DeleteConfirm(sessionId);
                       }}
+                      selectedSessions={v2Hook.selectedSessionIds}
+                      onSessionSelectionChange={
+                        v2Hook.handleSessionSelectionChange
+                      }
+                      showBulkSelection={isDeveloper}
                     />
                   </div>
 
@@ -722,6 +813,94 @@ const CollectionReportPageContent: FC = () => {
           v2Hook.onRefresh();
         }}
       />
+
+      {/* V1 Bulk Delete Confirmation — developer only */}
+      {isDeveloper && (
+        <AlertDialog
+          open={showBulkDeleteConfirm}
+          onOpenChange={showBulkDeleteConfirm ? () => setShowBulkDeleteConfirm(false) : undefined}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedReportIds.size} Report{selectedReportIds.size !== 1 ? 's' : ''}</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-gray-900">{selectedReportIds.size}</span>{' '}
+                collection report{selectedReportIds.size !== 1 ? 's' : ''}?
+                <br />
+                <span className="mt-1 block text-xs text-gray-500">
+                  This action cannot be undone. All collection data and meter history for these reports will be permanently removed.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowBulkDeleteConfirm(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBulkDelete}
+                className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* V1 Bulk Delete Progress Modal — developer only */}
+      {isDeveloper && bulkDeleteProgress !== null && (
+        <BulkDeleteProgressModal
+          isOpen
+          progress={bulkDeleteProgress}
+          noun="report"
+          onClose={closeBulkDeleteProgress}
+        />
+      )}
+
+      {/* V2 Bulk Delete Confirmation — developer only */}
+      {isDeveloper && (
+        <AlertDialog
+          open={v2Hook.showBulkDeleteConfirm}
+          onOpenChange={v2Hook.showBulkDeleteConfirm ? () => v2Hook.setShowBulkDeleteConfirm(false) : undefined}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {v2Hook.selectedSessionIds.size} Session{v2Hook.selectedSessionIds.size !== 1 ? 's' : ''}</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-gray-900">{v2Hook.selectedSessionIds.size}</span>{' '}
+                capture session{v2Hook.selectedSessionIds.size !== 1 ? 's' : ''}?
+                <br />
+                <span className="mt-1 block text-xs text-gray-500">
+                  This action cannot be undone. All session data and meter records will be permanently removed.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => v2Hook.setShowBulkDeleteConfirm(false)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={v2Hook.confirmV2BulkDelete}
+                className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* V2 Bulk Delete Progress Modal — developer only */}
+      {isDeveloper && v2Hook.bulkDeleteProgress !== null && (
+        <BulkDeleteProgressModal
+          isOpen
+          progress={v2Hook.bulkDeleteProgress}
+          noun="session"
+          onClose={v2Hook.closeV2BulkDeleteProgress}
+        />
+      )}
     </>
   );
 };

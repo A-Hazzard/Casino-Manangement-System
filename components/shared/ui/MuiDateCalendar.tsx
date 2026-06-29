@@ -304,6 +304,8 @@ export function MuiDateCalendar({
   // Computed
   // ============================================================================
   const isInvalidRange = useMemo(() => {
+    if (mode === 'single') return false;
+
     const start = new Date(fromDate);
     if (showTime) {
       start.setHours(fromTime.hours, fromTime.minutes, 0, 0);

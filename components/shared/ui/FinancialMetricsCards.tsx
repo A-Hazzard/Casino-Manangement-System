@@ -282,20 +282,21 @@ export default function FinancialMetricsCards({
 
       {/* Mobile layout */}
       <div className="block md:hidden">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {/* Money In */}
+        <div className="grid grid-cols-1 gap-3">
+          {/* Money In | Money Out */}
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 to-purple-600"></div>
-            <div className="p-4 sm:p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-medium uppercase tracking-wide text-gray-600">
-                  Money In
-                </h3>
-                <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-              </div>
-              <div className="space-y-2">
+            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 via-purple-500 to-blue-500"></div>
+            <div className="flex divide-x divide-gray-100">
+              {/* Money In */}
+              <div className="flex-1 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                    Money In
+                  </h3>
+                  <div className="h-1.5 w-1.5 rounded-full bg-purple-500"></div>
+                </div>
                 <div
-                  className={`font-bold ${getMoneyInColorClass(totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
+                  className={`font-bold ${getMoneyInColorClass(totals?.moneyIn)} text-base`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.moneyIn}
@@ -305,22 +306,17 @@ export default function FinancialMetricsCards({
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Money Out */}
-          <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-blue-500 to-blue-600"></div>
-            <div className="p-4 sm:p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-medium uppercase tracking-wide text-gray-600">
-                  Money Out
-                </h3>
-                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-              </div>
-              <div className="space-y-2">
+              {/* Money Out */}
+              <div className="flex-1 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                    Money Out
+                  </h3>
+                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                </div>
                 <div
-                  className={`inline-flex items-center font-bold ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}
+                  className={`inline-flex items-center font-bold ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)} text-base`}
                 >
                   <span
                     className={
@@ -342,19 +338,20 @@ export default function FinancialMetricsCards({
             </div>
           </div>
 
-          {/* Jackpot */}
+          {/* Jackpot | Gross */}
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-amber-500 to-yellow-500"></div>
-            <div className="p-4 sm:p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-medium uppercase tracking-wide text-gray-600">
-                  Jackpot
-                </h3>
-                <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-              </div>
-              <div className="space-y-2">
+            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-amber-500 to-orange-500"></div>
+            <div className="flex divide-x divide-gray-100">
+              {/* Jackpot */}
+              <div className="flex-1 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                    Jackpot
+                  </h3>
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-500"></div>
+                </div>
                 <div
-                  className={`font-bold text-amber-600 ${formatCurrencyWithScaling(totals?.jackpot || 0).size}`}
+                  className={`font-bold text-amber-600 text-base`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.jackpot ?? 0}
@@ -364,22 +361,17 @@ export default function FinancialMetricsCards({
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Gross */}
-          <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
-            <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600"></div>
-            <div className="p-4 sm:p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-medium uppercase tracking-wide text-gray-600">
-                  Gross
-                </h3>
-                <div className="h-2 w-2 rounded-full bg-orange-500"></div>
-              </div>
-              <div className="space-y-2">
+              {/* Gross */}
+              <div className="flex-1 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                    Gross
+                  </h3>
+                  <div className="h-1.5 w-1.5 rounded-full bg-orange-500"></div>
+                </div>
                 <div
-                  className={`font-bold ${getGrossColorClass(totals?.gross)} ${formatCurrencyWithScaling(totals?.gross || 0).size}`}
+                  className={`font-bold ${getGrossColorClass(totals?.gross)} text-base`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.gross}

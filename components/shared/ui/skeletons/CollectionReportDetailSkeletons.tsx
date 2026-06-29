@@ -1,7 +1,11 @@
+import { Skeleton } from '@/components/shared/ui/skeleton';
 import PageLayout from '@/components/shared/layout/PageLayout';
 
 /**
  * Main skeleton component for collection report detail page
+ *
+ * Matches exact layout of CollectionReportDetailsPageContent.
+ * Shows loading state for report header, sidebar tabs, and main content.
  */
 export const CollectionReportSkeleton = () => (
   <PageLayout
@@ -20,13 +24,26 @@ export const CollectionReportSkeleton = () => (
         <div className="hidden px-2 pt-6 lg:block lg:px-6">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="skeleton-bg h-10 w-10 rounded-full"></div>
-              <div className="skeleton-bg h-8 w-64 rounded"></div>
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-8 w-64 rounded" />
             </div>
             <div className="flex items-center gap-2">
-              <div className="skeleton-bg h-10 w-32 rounded"></div>
-              <div className="skeleton-bg h-10 w-36 rounded"></div>
+              <Skeleton className="h-10 w-24 rounded" />
+              <Skeleton className="h-10 w-20 rounded" />
+              <Skeleton className="h-10 w-24 rounded" />
+              <Skeleton className="h-10 w-28 rounded" />
             </div>
+          </div>
+        </div>
+
+        {/* Mobile Back Button & Actions */}
+        <div className="flex items-center justify-between px-2 pt-4 lg:hidden">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-9 rounded" />
+            <Skeleton className="h-9 w-9 rounded" />
+            <Skeleton className="h-9 w-9 rounded" />
+            <Skeleton className="h-9 w-24 rounded" />
           </div>
         </div>
 
@@ -34,21 +51,25 @@ export const CollectionReportSkeleton = () => (
         <div className="px-2 pb-6 pt-2 lg:px-6 lg:pt-4">
           <div className="rounded-lg bg-white py-4 shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
             <div className="px-4 py-2 text-center lg:py-4">
-              <div className="skeleton-bg mx-auto mb-2 h-3 w-32 rounded lg:hidden"></div>
-              <div className="skeleton-bg mx-auto mb-2 h-8 w-48 rounded lg:h-12 lg:w-64"></div>
-              <div className="skeleton-bg mx-auto mb-4 h-4 w-40 rounded lg:h-5 lg:w-48"></div>
-              <div className="skeleton-bg mx-auto mb-4 h-6 w-32 rounded"></div>
+              <Skeleton className="mx-auto mb-2 h-3 w-32 rounded lg:hidden" />
+              <Skeleton className="mx-auto mb-2 h-8 w-48 rounded lg:h-12 lg:w-64" />
+              <Skeleton className="mx-auto mb-2 h-4 w-40 rounded lg:h-5 lg:w-48" />
+              <Skeleton className="mx-auto mb-4 h-5 w-56 rounded" />
+              <Skeleton className="mx-auto h-5 w-64 rounded" />
             </div>
           </div>
         </div>
 
-        {/* Desktop Layout */}
+        {/* Desktop Layout: Sidebar (1/4) + Content (3/4) */}
         <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
           <div className="mb-6 lg:mb-0 lg:w-1/4">
             <div className="space-y-2 rounded-lg bg-white p-3 shadow">
-              <div className="skeleton-bg h-10 w-full rounded"></div>
-              <div className="skeleton-bg h-10 w-full rounded"></div>
-              <div className="skeleton-bg h-10 w-full rounded"></div>
+              <Skeleton className="mb-4 h-6 w-32" />
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full rounded-md" />
+                <Skeleton className="h-12 w-full rounded-md" />
+                <Skeleton className="h-12 w-full rounded-md" />
+              </div>
             </div>
           </div>
           <div className="lg:w-3/4">
@@ -56,10 +77,9 @@ export const CollectionReportSkeleton = () => (
           </div>
         </div>
 
-        {/* Mobile Layout */}
-        <div className="space-y-6 px-2 pb-6 lg:hidden lg:px-6">
-          <MobileSectionSkeleton />
-          <MobileSectionSkeleton />
+        {/* Mobile Layout: Select dropdown + content */}
+        <div className="space-y-4 px-2 pb-6 lg:hidden lg:px-6">
+          <Skeleton className="h-12 w-full rounded-lg" />
           <MobileSectionSkeleton />
         </div>
       </main>
@@ -68,23 +88,25 @@ export const CollectionReportSkeleton = () => (
 );
 
 /**
- * Skeleton component for tab content loading state
+ * Skeleton component for tab content loading state (desktop)
  */
 const TabContentSkeleton = () => (
   <div className="rounded-lg bg-white shadow-md">
-    <div className="skeleton-bg mb-4 h-12 w-full rounded-t-lg"></div>
+    <div className="border-b border-gray-200 p-4">
+      <Skeleton className="h-10 w-full rounded-lg" />
+    </div>
     <div className="space-y-4 p-6">
-      <div className="skeleton-bg h-6 w-1/3 rounded"></div>
+      <Skeleton className="h-6 w-1/3 rounded" />
       <div className="space-y-2">
         {[...Array(5)].map((_, index) => (
-          <div key={index} className="skeleton-bg h-12 w-full rounded"></div>
+          <Skeleton key={index} className="h-12 w-full rounded" />
         ))}
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <div className="skeleton-bg h-6 w-32 rounded"></div>
+        <Skeleton className="h-6 w-32 rounded" />
         <div className="flex space-x-2">
-          <div className="skeleton-bg h-8 w-8 rounded"></div>
-          <div className="skeleton-bg h-8 w-8 rounded"></div>
+          <Skeleton className="h-8 w-8 rounded" />
+          <Skeleton className="h-8 w-8 rounded" />
         </div>
       </div>
     </div>
@@ -96,14 +118,13 @@ const TabContentSkeleton = () => (
  */
 const MobileSectionSkeleton = () => (
   <div className="rounded-lg bg-white shadow-md">
-    <div className="skeleton-bg mb-4 h-12 w-full rounded-t-lg"></div>
     <div className="space-y-4 p-4">
-      <div className="skeleton-bg h-5 w-1/2 rounded"></div>
+      <Skeleton className="h-5 w-1/2 rounded" />
       <div className="space-y-3">
         {[...Array(3)].map((_, index) => (
           <div key={index} className="flex justify-between">
-            <div className="skeleton-bg h-4 w-1/3 rounded"></div>
-            <div className="skeleton-bg h-4 w-1/4 rounded"></div>
+            <Skeleton className="h-4 w-1/3 rounded" />
+            <Skeleton className="h-4 w-1/4 rounded" />
           </div>
         ))}
       </div>
