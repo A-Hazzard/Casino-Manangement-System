@@ -88,3 +88,15 @@ export type DevFilterClause = {
 
 /** How multiple clauses are combined at the MongoDB level. */
 export type DevFilterLogic = 'and' | 'or';
+
+/** Query builder mode — JSON filter, visual clause builder, raw shell command. */
+export type DevQueryMode = 'json' | 'visual' | 'shell';
+
+/** Options exposed in JSON / Compass-like Options panel. */
+export type DevJsonQueryOptions = {
+  project?: string;
+  sort?: string;
+  skip?: number;
+  limit?: number;
+  maxTimeMS?: number;
+};

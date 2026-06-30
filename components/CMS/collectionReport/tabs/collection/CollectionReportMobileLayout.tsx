@@ -109,6 +109,9 @@ export default function CollectionReportMobileLayout(
           onDelete={props.onDelete}
           selectedLicencee={props.selectedLicencee}
           editableReportIds={props.editableReportIds}
+          selectedReports={props.selectedReports}
+          onSelectionChange={props.onSelectionChange}
+          showBulkSelection={props.showBulkSelection}
         />
       </div>
     </div>

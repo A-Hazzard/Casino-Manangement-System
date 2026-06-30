@@ -33,7 +33,12 @@ import type {
   DevTimePeriod,
   DevFilterClause,
   DevFilterLogic,
+  DevQueryMode,
+  DevJsonQueryOptions,
 } from '@/lib/types/dev/collectionExplorer';
+import type {
+  DevShellCommandResponse,
+} from '@shared/types/dev';
 import {
   buildHideSet,
   deriveColumns,
@@ -79,13 +84,47 @@ function getDateRange(period: DevTimePeriod): {
   return {};
 }
 
+type DevFetchSortLimit = {
+  sortField: string;
+  sortDir: 'asc' | 'desc';
+  limit: number;
+  jsonSort: string;
+};
+
+function resolveFetchSortAndLimit(
+  queryMode: DevQueryMode,
+  appliedJsonFilter: string,
+  appliedJsonOptions: DevJsonQueryOptions,
+  visualSortField: string,
+  visualSortDir: 'asc' | 'desc',
+  visualLimit: number
+): DevFetchSortLimit {
+  const hasJsonQuery =
+    queryMode === 'json' && appliedJsonFilter.trim().length > 0;
+  if (hasJsonQuery) {
+    return {
+      sortField: '',
+      sortDir: 'desc',
+      limit: appliedJsonOptions.limit ?? 0,
+      jsonSort: appliedJsonOptions.sort?.trim() ?? '',
+    };
+  }
+  return {
+    sortField: visualSortField,
+    sortDir: visualSortDir,
+    limit: visualLimit,
+    jsonSort: '',
+  };
+}
+
 // ============================================================================
 // Main Hook
 // ============================================================================
 export function useDevCollectionExplorer(
   defaultCabinetId?: string,
-  refreshTrigger?: number
+  _refreshTrigger?: number
 ) {
+  // (unused — accepted for API compatibility with parent component)
   // ==========================================================================
   // Local State — model + schema
   // ==========================================================================
@@ -117,6 +156,17 @@ export function useDevCollectionExplorer(
   const [appliedSortField, setAppliedSortField] = useState<string>('');
   const [appliedSortDir, setAppliedSortDir] = useState<'asc' | 'desc'>('desc');
   const [appliedLimit, setAppliedLimit] = useState<number>(0);
+
+  // ==========================================================================
+  // Local State — query mode (JSON / Visual / Shell)
+  // ==========================================================================
+  const [queryMode, setQueryMode] = useState<DevQueryMode>('json');
+  const [jsonFilterText, setJsonFilterText] = useState<string>('{}');
+  const [jsonOptions, setJsonOptions] = useState<DevJsonQueryOptions>({});
+  const [shellCommandText, setShellCommandText] = useState<string>('');
+  const [showOptions, setShowOptions] = useState(false);
+  const [appliedJsonFilter, setAppliedJsonFilter] = useState<string>('');
+  const [appliedJsonOptions, setAppliedJsonOptions] = useState<DevJsonQueryOptions>({});
 
   // ==========================================================================
   // Local State — search
@@ -153,6 +203,7 @@ export function useDevCollectionExplorer(
   // Refs
   // ==========================================================================
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const jsonFetchGuardRef = useRef(false);
 
   // ==========================================================================
   // Computed Values
@@ -241,7 +292,13 @@ export function useDevCollectionExplorer(
       logic: DevFilterLogic = 'and',
       sortField = '',
       sortDir: 'asc' | 'desc' = 'desc',
-      limit = 0
+      limit = 0,
+      // JSON query parameters
+      rawFilter = '',
+      jsonProject = '',
+      jsonSkip = 0,
+      jsonMaxTimeMS = 0,
+      jsonSort = ''
     ) => {
       setLoading(true);
       setError(null);
@@ -279,7 +336,10 @@ export function useDevCollectionExplorer(
           );
           params.set('filterLogic', logic);
         }
-        if (sortField) {
+        const trimmedJsonSort = jsonSort.trim();
+        if (trimmedJsonSort) {
+          params.set('sort', trimmedJsonSort);
+        } else if (sortField) {
           params.set('sortField', sortField);
           params.set('sortDir', sortDir);
         }
@@ -287,14 +347,32 @@ export function useDevCollectionExplorer(
           params.set('limit', String(limit));
         }
 
+        // JSON query params
+        if (rawFilter) {
+          params.set('rawFilter', rawFilter);
+        }
+        if (jsonProject) {
+          params.set('project', jsonProject);
+        }
+        if (jsonSkip > 0) {
+          params.set('skip', String(jsonSkip));
+        }
+        if (jsonMaxTimeMS > 0) {
+          params.set('maxTimeMS', String(jsonMaxTimeMS));
+        }
+
+        const queryString = params.toString();
+        console.log('[fetchRecords] URL:', `/api/dev/collections/${key}?${queryString}`);
         const { data } = await axios.get<DevCollectionListResponse>(
-          `/api/dev/collections/${key}?${params.toString()}`
+          `/api/dev/collections/${key}?${queryString}`
         );
         if (!data.success) {
           setError(data.error || 'API returned failure');
+          console.error('[fetchRecords] API error:', data.error);
           return;
         }
 
+        console.log('[fetchRecords] Response:', { total: data.total, count: data.data?.length, apiPage: data.apiPage });
         setRecords(data.data);
         setTotal(data.total);
         setHasMore(data.hasMore);
@@ -321,6 +399,18 @@ export function useDevCollectionExplorer(
 
   /** Reloads the current view from page 1, keeping the applied search. */
   const reload = useCallback(() => {
+    const extraParams =
+      queryMode === 'json' && appliedJsonFilter
+        ? { rawFilter: appliedJsonFilter, rawOptions: appliedJsonOptions }
+        : { rawFilter: '', rawOptions: {} as DevJsonQueryOptions };
+    const { sortField, sortDir, limit, jsonSort } = resolveFetchSortAndLimit(
+      queryMode,
+      extraParams.rawFilter,
+      extraParams.rawOptions,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit
+    );
     fetchRecords(
       modelKey,
       dateField,
@@ -335,9 +425,14 @@ export function useDevCollectionExplorer(
       appliedMatchMode,
       appliedFilters,
       appliedFilterLogic,
-      appliedSortField,
-      appliedSortDir,
-      appliedLimit
+      sortField,
+      sortDir,
+      limit,
+      extraParams.rawFilter,
+      extraParams.rawOptions.project || '',
+      extraParams.rawOptions.skip || 0,
+      extraParams.rawOptions.maxTimeMS || 0,
+      jsonSort
     );
   }, [
     fetchRecords,
@@ -354,6 +449,9 @@ export function useDevCollectionExplorer(
     appliedSortField,
     appliedSortDir,
     appliedLimit,
+    queryMode,
+    appliedJsonFilter,
+    appliedJsonOptions,
   ]);
 
   // ==========================================================================
@@ -385,6 +483,12 @@ export function useDevCollectionExplorer(
     setAppliedSortField('');
     setAppliedSortDir('desc');
     setAppliedLimit(0);
+    setJsonFilterText('{}');
+    setJsonOptions({});
+    setShellCommandText('');
+    setAppliedJsonFilter('');
+    setAppliedJsonOptions({});
+    setShowOptions(false);
     axios
       .get<DevCollectionSchemaResponse>(
         `/api/dev/collections/${modelKey}/schema`
@@ -411,6 +515,13 @@ export function useDevCollectionExplorer(
   // Context change (model, date field, period, custom range, scope, refresh)
   // reloads the unsearched list and clears any applied search.
   useEffect(() => {
+    // When applyJsonQuery already initiated the fetch, skip this effect to avoid
+    // a race where the effect's call returns unfiltered data.
+    if (jsonFetchGuardRef.current) {
+      jsonFetchGuardRef.current = false;
+      return;
+    }
+
     setAppliedTerm('');
     setAppliedColumn('');
     setAppliedMatchMode('contains');
@@ -432,25 +543,22 @@ export function useDevCollectionExplorer(
       '',
       0,
       'contains',
-      appliedFilters,
-      appliedFilterLogic,
-      appliedSortField,
-      appliedSortDir,
-      appliedLimit
+      [],
+      'and',
+      '',
+      'desc',
+      0
     );
+    // Intentionally sparse deps — this effect only reacts to model/date/scope context changes.
+    // Explicit actions (applyQuery, applyJsonQuery, runSearch, reload) call fetchRecords directly.
+    // NOTE: fetchRecords is intentionally excluded — it would cause an infinite loop. Its
+    // identity is stable (empty deps inside useCallback) so this is safe.
   }, [
     modelKey,
     dateField,
     timePeriod,
     customDateRange,
     scopeToCabinet,
-    refreshTrigger,
-    fetchRecords,
-    appliedFilters,
-    appliedFilterLogic,
-    appliedSortField,
-    appliedSortDir,
-    appliedLimit,
   ]);
 
   // ==========================================================================
@@ -460,6 +568,18 @@ export function useDevCollectionExplorer(
     (zeroBased: number) => {
       const targetApiPage =
         Math.floor((zeroBased * DISPLAY_PAGE_SIZE) / API_BATCH_SIZE) + 1;
+      const extraParams =
+        queryMode === 'json' && appliedJsonFilter
+          ? { rawFilter: appliedJsonFilter, rawOptions: appliedJsonOptions }
+          : { rawFilter: '', rawOptions: {} as DevJsonQueryOptions };
+      const { sortField, sortDir, limit, jsonSort } = resolveFetchSortAndLimit(
+        queryMode,
+        extraParams.rawFilter,
+        extraParams.rawOptions,
+        appliedSortField,
+        appliedSortDir,
+        appliedLimit
+      );
       if (targetApiPage !== loadedApiPage) {
         fetchRecords(
           modelKey,
@@ -475,9 +595,14 @@ export function useDevCollectionExplorer(
           appliedMatchMode,
           appliedFilters,
           appliedFilterLogic,
-          appliedSortField,
-          appliedSortDir,
-          appliedLimit
+          sortField,
+          sortDir,
+          limit,
+          extraParams.rawFilter,
+          extraParams.rawOptions.project || '',
+          extraParams.rawOptions.skip || 0,
+          extraParams.rawOptions.maxTimeMS || 0,
+          jsonSort
         );
       } else {
         setDisplayPage(zeroBased);
@@ -499,6 +624,9 @@ export function useDevCollectionExplorer(
       appliedSortField,
       appliedSortDir,
       appliedLimit,
+      queryMode,
+      appliedJsonFilter,
+      appliedJsonOptions,
       fetchRecords,
     ]
   );
@@ -513,6 +641,18 @@ export function useDevCollectionExplorer(
     setAppliedMatchMode(searchMatchMode);
     setMatchOrdinal(0);
     if (!term) setMatchCount(0);
+    const extraParams =
+      queryMode === 'json' && appliedJsonFilter
+        ? { rawFilter: appliedJsonFilter, rawOptions: appliedJsonOptions }
+        : { rawFilter: '', rawOptions: {} as DevJsonQueryOptions };
+    const { sortField, sortDir, limit, jsonSort } = resolveFetchSortAndLimit(
+      queryMode,
+      extraParams.rawFilter,
+      extraParams.rawOptions,
+      appliedSortField,
+      appliedSortDir,
+      appliedLimit
+    );
     fetchRecords(
       modelKey,
       dateField,
@@ -527,9 +667,14 @@ export function useDevCollectionExplorer(
       searchMatchMode,
       appliedFilters,
       appliedFilterLogic,
-      appliedSortField,
-      appliedSortDir,
-      appliedLimit
+      sortField,
+      sortDir,
+      limit,
+      extraParams.rawFilter,
+      extraParams.rawOptions.project || '',
+      extraParams.rawOptions.skip || 0,
+      extraParams.rawOptions.maxTimeMS || 0,
+      jsonSort
     );
   }, [
     searchQuery,
@@ -545,6 +690,9 @@ export function useDevCollectionExplorer(
     appliedSortField,
     appliedSortDir,
     appliedLimit,
+    queryMode,
+    appliedJsonFilter,
+    appliedJsonOptions,
     fetchRecords,
   ]);
 
@@ -552,6 +700,18 @@ export function useDevCollectionExplorer(
     (ordinal: number) => {
       if (!appliedTerm || ordinal < 0 || ordinal >= matchCount) return;
       setMatchOrdinal(ordinal);
+      const extraParams =
+        queryMode === 'json' && appliedJsonFilter
+          ? { rawFilter: appliedJsonFilter, rawOptions: appliedJsonOptions }
+          : { rawFilter: '', rawOptions: {} as DevJsonQueryOptions };
+      const { sortField, sortDir, limit, jsonSort } = resolveFetchSortAndLimit(
+        queryMode,
+        extraParams.rawFilter,
+        extraParams.rawOptions,
+        appliedSortField,
+        appliedSortDir,
+        appliedLimit
+      );
       fetchRecords(
         modelKey,
         dateField,
@@ -566,9 +726,14 @@ export function useDevCollectionExplorer(
         appliedMatchMode,
         appliedFilters,
         appliedFilterLogic,
-        appliedSortField,
-        appliedSortDir,
-        appliedLimit
+        sortField,
+        sortDir,
+        limit,
+        extraParams.rawFilter,
+        extraParams.rawOptions.project || '',
+        extraParams.rawOptions.skip || 0,
+        extraParams.rawOptions.maxTimeMS || 0,
+        jsonSort
       );
     },
     [
@@ -586,6 +751,9 @@ export function useDevCollectionExplorer(
       appliedSortField,
       appliedSortDir,
       appliedLimit,
+      queryMode,
+      appliedJsonFilter,
+      appliedJsonOptions,
       fetchRecords,
     ]
   );
@@ -925,6 +1093,116 @@ export function useDevCollectionExplorer(
   ]);
 
   // ==========================================================================
+  // Event Handlers — JSON query
+  // ==========================================================================
+  const applyJsonQuery = useCallback(() => {
+    const trimmed = jsonFilterText.trim();
+    if (trimmed && trimmed !== '{}') {
+      try {
+        JSON.parse(trimmed);
+      } catch {
+        toast.error('Invalid JSON filter — keys must be quoted (e.g. "_id")');
+        return;
+      }
+    }
+    const trimmedSort = jsonOptions.sort?.trim();
+    if (trimmedSort) {
+      try {
+        const parsedSort = JSON.parse(trimmedSort);
+        if (
+          typeof parsedSort !== 'object' ||
+          parsedSort === null ||
+          Array.isArray(parsedSort)
+        ) {
+          throw new Error('Sort must be a JSON object');
+        }
+      } catch {
+        toast.error('Invalid JSON sort — use object syntax (e.g. {"_id":-1})');
+        return;
+      }
+    }
+    setAppliedJsonFilter(jsonFilterText);
+    setAppliedJsonOptions(jsonOptions);
+    setAppliedTerm('');
+    setAppliedColumn('');
+    setMatchOrdinal(0);
+    setMatchCount(0);
+
+    jsonFetchGuardRef.current = true;
+
+    fetchRecords(
+      modelKey,
+      dateField,
+      timePeriod,
+      customDateRange,
+      scopeToCabinet,
+      1,
+      0,
+      '',
+      '',
+      0,
+      'contains',
+      [],
+      'and',
+      '',
+      'desc',
+      jsonOptions.limit || 0,
+      jsonFilterText,
+      jsonOptions.project || '',
+      jsonOptions.skip || 0,
+      jsonOptions.maxTimeMS || 0,
+      trimmedSort || ''
+    );
+  }, [
+    fetchRecords,
+    modelKey,
+    dateField,
+    timePeriod,
+    customDateRange,
+    scopeToCabinet,
+    jsonFilterText,
+    jsonOptions,
+  ]);
+
+  // ==========================================================================
+  // Event Handlers — shell command
+  // ==========================================================================
+  const applyShellCommand = useCallback(async (): Promise<boolean> => {
+    const command = shellCommandText.trim();
+    if (!command) {
+      toast.error('Please enter a shell command');
+      return false;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.post<DevShellCommandResponse>(
+        `/api/dev/collections/${modelKey}`,
+        { command }
+      );
+      if (!data.success) {
+        setError(data.error || 'Command failed');
+        return false;
+      }
+      setRecords(data.data || []);
+      setTotal(data.total ?? null);
+      setHasMore(false);
+      setLoadedApiPage(1);
+      setDisplayPage(0);
+      setSelectedIds(new Set());
+      toast.success(`${data.commandType}: ${data.total ?? 0} result(s)`);
+      return true;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Command execution failed';
+      setError(msg);
+      toast.error(msg);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [shellCommandText, modelKey]);
+
+  // ==========================================================================
   // Return
   // ==========================================================================
   return {
@@ -944,7 +1222,7 @@ export function useDevCollectionExplorer(
     scopeToCabinet,
     setScopeToCabinet,
     cabinetScopable,
-    // query builder
+    // query builder (visual)
     filterClauses,
     setFilterClauses,
     filterLogic,
@@ -962,6 +1240,21 @@ export function useDevCollectionExplorer(
     appliedLimit,
     applyQuery,
     clearQuery,
+    // query mode (JSON / Visual / Shell)
+    queryMode,
+    setQueryMode,
+    jsonFilterText,
+    setJsonFilterText,
+    jsonOptions,
+    setJsonOptions,
+    shellCommandText,
+    setShellCommandText,
+    showOptions,
+    setShowOptions,
+    appliedJsonFilter,
+    appliedJsonOptions,
+    applyJsonQuery,
+    applyShellCommand,
     // search
     searchQuery,
     setSearchQuery,

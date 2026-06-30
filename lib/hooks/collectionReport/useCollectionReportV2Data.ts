@@ -65,6 +65,20 @@ export function useCollectionReportV2Data(
   const [sortField, setSortField] = useState<string>('created');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // Bulk selection state
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteProgress, setBulkDeleteProgress] = useState<{
+    current: number;
+    total: number;
+    currentLabel: string;
+    failedCount: number;
+    isDone: boolean;
+  } | null>(null);
+
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -165,14 +179,6 @@ export function useCollectionReportV2Data(
   }, [fetchSessions]);
 
   // ============================================================================
-  // Effects
-  // ============================================================================
-
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
-  // ============================================================================
   // Computed
   // ============================================================================
 
@@ -186,6 +192,95 @@ export function useCollectionReportV2Data(
     }
     return sessions.filter(session => session.locationId === selectedLocation);
   }, [sessions, selectedLocation]);
+
+  // Bulk selection handlers
+  const handleSelectAllSessions = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        const allIds = new Set(
+          filteredSessions
+            .map(s => s.sessionId)
+            .filter(Boolean) as string[]
+        );
+        setSelectedSessionIds(allIds);
+      } else {
+        setSelectedSessionIds(new Set());
+      }
+    },
+    [filteredSessions]
+  );
+
+  const handleSessionSelectionChange = useCallback(
+    (sessionId: string, checked: boolean) => {
+      if (sessionId === '__select_all__') {
+        handleSelectAllSessions(checked);
+        return;
+      }
+      setSelectedSessionIds(prev => {
+        const next = new Set(prev);
+        if (checked) {
+          next.add(sessionId);
+        } else {
+          next.delete(sessionId);
+        }
+        return next;
+      });
+    },
+    [handleSelectAllSessions]
+  );
+
+  const clearV2Selection = useCallback(() => {
+    setSelectedSessionIds(new Set());
+    setShowBulkDeleteConfirm(false);
+  }, []);
+
+  const confirmV2BulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedSessionIds);
+    if (ids.length === 0) return;
+
+    setShowBulkDeleteConfirm(false);
+    setIsBulkDeleting(true);
+    setBulkDeleteProgress({ current: 0, total: ids.length, currentLabel: '', failedCount: 0, isDone: false });
+
+    let failedCount = 0;
+
+    for (let index = 0; index < ids.length; index++) {
+      const id = ids[index];
+      const session = sessions.find(s => s.sessionId === id);
+      const label = session
+        ? `${session.locationName} (${new Date(session.createdAt).toLocaleDateString()})`
+        : id;
+
+      setBulkDeleteProgress({ current: index + 1, total: ids.length, currentLabel: label, failedCount, isDone: false });
+
+      try {
+        await axios.delete(`/api/collection-reports-v2/sessions/${id}`);
+      } catch (error) {
+        failedCount++;
+        console.error(
+          `[confirmV2BulkDelete] Failed to delete session ${id}:`,
+          error instanceof Error ? error.message : 'Unknown error'
+        );
+      }
+    }
+
+    setBulkDeleteProgress(prev => prev ? { ...prev, isDone: true, failedCount } : null);
+    setIsBulkDeleting(false);
+  }, [selectedSessionIds, sessions]);
+
+  const closeV2BulkDeleteProgress = useCallback(async () => {
+    setBulkDeleteProgress(null);
+    setSelectedSessionIds(new Set());
+    await onRefresh();
+  }, [onRefresh]);
+
+  // ============================================================================
+  // Effects
+  // ============================================================================
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
 
   const totalPages = useMemo(
     () => Math.ceil(totalSessions / ITEMS_PER_PAGE) || 1,
@@ -213,5 +308,15 @@ export function useCollectionReportV2Data(
     sortField,
     sortDirection,
     handleSort,
+    selectedSessionIds,
+    handleSessionSelectionChange,
+    handleSelectAllSessions,
+    clearV2Selection,
+    confirmV2BulkDelete,
+    closeV2BulkDeleteProgress,
+    bulkDeleteProgress,
+    showBulkDeleteConfirm,
+    setShowBulkDeleteConfirm,
+    isBulkDeleting,
   };
 }

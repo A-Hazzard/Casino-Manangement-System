@@ -29,6 +29,8 @@ import {
   getNestedValue,
 } from '@/lib/utils/dev/tableColumns';
 
+import CellValueRenderer from './CellValueRenderer';
+
 const DevCollectionTable = forwardRef<HTMLDivElement, DevCollectionTableProps>(
   function DevCollectionTable(
     {
@@ -106,7 +108,6 @@ const DevCollectionTable = forwardRef<HTMLDivElement, DevCollectionTableProps>(
 
                     {columns.map(col => {
                       const value = getNestedValue(record, col);
-                      const display = formatCellValue(col, value);
                       const isCellMatch = matchedCols?.has(col) ?? false;
 
                       // `_id` shows the primary date (e.g. readAt) beneath it.
@@ -122,7 +123,7 @@ const DevCollectionTable = forwardRef<HTMLDivElement, DevCollectionTableProps>(
                             key={col}
                             className={`whitespace-nowrap px-3 py-2 font-mono text-[10px] text-grayHighlight ${isCellMatch ? 'bg-amber-200/70 font-semibold' : ''}`}
                           >
-                            <span>{display}</span>
+                            <CellValueRenderer value={value} col={col} />
                             <br />
                             <span className="text-[10px] text-gray-400">
                               {dateDisplay}
@@ -147,7 +148,7 @@ const DevCollectionTable = forwardRef<HTMLDivElement, DevCollectionTableProps>(
                               : ''
                           } ${isCellMatch ? 'bg-amber-200/70 font-semibold' : ''}`}
                         >
-                          <span className="whitespace-pre-line">{display}</span>
+                          <CellValueRenderer value={value} col={col} />
                           {movValue != null && (
                             <>
                               <br />

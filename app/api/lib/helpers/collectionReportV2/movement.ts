@@ -152,8 +152,14 @@ export async function computeMovement(
   // === STEP 3: Resolve previous values ===
   // Priority:
   //   1. collectionMetersHistory entry for this session (edit mode ground truth)
-  //   2. Most recent collectionMetersHistory entry before this session (unified V1+V2)
+  //   2. Most recent collectionMetersHistory entry before this session (unified V1+V2),
+  //      cross-checked against Machine.collectionMeters to guard against stale history
   //   3. Machine.collectionMeters (first-ever capture fallback)
+  //
+  // Math.max guards: collectionMeters is the ground truth updated by every report
+  // finalization. History entries can lag behind when meters advance via orphan V1
+  // documents or other paths that don't update history. Using the larger value
+  // ensures we never go backwards.
   let prevSasIn: number;
   let prevSasOut: number;
 
@@ -162,8 +168,14 @@ export async function computeMovement(
     prevSasIn = historyEntryForSession.prevMetersIn;
     prevSasOut = historyEntryForSession.prevMetersOut ?? 0;
   } else if (previousHistoryEntry) {
-    prevSasIn = previousHistoryEntry.metersIn ?? 0;
-    prevSasOut = previousHistoryEntry.metersOut ?? 0;
+    prevSasIn = Math.max(
+      previousHistoryEntry.metersIn ?? 0,
+      machineForHistory?.collectionMeters?.metersIn ?? 0
+    );
+    prevSasOut = Math.max(
+      previousHistoryEntry.metersOut ?? 0,
+      machineForHistory?.collectionMeters?.metersOut ?? 0
+    );
   } else {
     // First-time report: use the collection meters stored on the Machine document
     prevSasIn = machineForHistory?.collectionMeters?.metersIn ?? 0;

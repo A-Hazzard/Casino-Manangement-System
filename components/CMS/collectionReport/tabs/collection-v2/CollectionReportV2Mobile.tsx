@@ -16,6 +16,9 @@ type V2MobileProps = {
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  selectedSessions?: Set<string>;
+  onSessionSelectionChange?: (sessionId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 };
 
 function CollectorHover({ session }: { session: V2Session }) {
@@ -59,6 +62,9 @@ function SessionCard({
   onEditSession,
   onSubmitSession,
   onDeleteSession,
+  selectedSessions,
+  onSessionSelectionChange,
+  showBulkSelection,
 }: {
   session: V2Session;
   canManage?: boolean;
@@ -66,6 +72,9 @@ function SessionCard({
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  selectedSessions?: Set<string>;
+  onSessionSelectionChange?: (sessionId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 }) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -80,6 +89,16 @@ function SessionCard({
       <div className="bg-lighterBlueHighlight px-4 py-3 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {showBulkSelection && (
+              <input
+                type="checkbox"
+                className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+                checked={selectedSessions?.has(session.sessionId) ?? false}
+                onChange={e =>
+                  onSessionSelectionChange?.(session.sessionId, e.target.checked)
+                }
+              />
+            )}
             <span className="font-semibold">Session:</span>
             <Link
               href={`/locations/${session.locationId}`}
@@ -226,6 +245,9 @@ export default function CollectionReportV2Mobile({
   onSubmitSession,
   onDeleteSession,
   isRefreshing,
+  selectedSessions,
+  onSessionSelectionChange,
+  showBulkSelection = false,
 }: V2MobileProps) {
   // ============================================================================
   // Render
@@ -247,8 +269,33 @@ export default function CollectionReportV2Mobile({
     );
   }
 
+  const selectedCount = showBulkSelection
+    ? selectedSessions?.size ?? 0
+    : 0;
+
+  const allVisibleSelected =
+    sessions.length > 0 &&
+    sessions.every(s => selectedSessions?.has(s.sessionId));
+
   return (
     <div className="space-y-4 md:hidden">
+      {showBulkSelection && (
+        <div className="flex items-center justify-between rounded-lg bg-blue-50 px-4 py-2">
+          <label className="flex items-center gap-2 text-sm text-blue-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+              checked={allVisibleSelected}
+              onChange={e =>
+                onSessionSelectionChange?.('__select_all__', e.target.checked)
+              }
+            />
+            {selectedCount > 0
+              ? `${selectedCount} selected`
+              : 'Select all'}
+          </label>
+        </div>
+      )}
       {sessions.map(session => (
         <SessionCard
           key={session.sessionId}
@@ -258,6 +305,9 @@ export default function CollectionReportV2Mobile({
           onEditSession={onEditSession}
           onSubmitSession={onSubmitSession}
           onDeleteSession={onDeleteSession}
+          selectedSessions={selectedSessions}
+          onSessionSelectionChange={onSessionSelectionChange}
+          showBulkSelection={showBulkSelection}
         />
       ))}
     </div>

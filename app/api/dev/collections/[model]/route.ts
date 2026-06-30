@@ -22,15 +22,18 @@ import {
   deriveExportColumns,
   exportCsv,
   exportJson,
+  parseShellCommand,
   queryBatch,
   resolveCollectionMatch,
   type MatchMode,
+  type ParsedShellCommand,
 } from '@/app/api/lib/helpers/dev/collectionQuery';
 import {
   getDevModel,
   type DevModelEntry,
 } from '@/app/api/lib/helpers/dev/modelRegistry';
 import { describeSchema } from '@/app/api/lib/helpers/dev/schemaIntrospection';
+import type { DevCollectionRecord, DevShellCommandResponse } from '@shared/types/dev';
 import type { ObjectId } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -185,6 +188,13 @@ export async function GET(
     const sortDirParam = searchParams.get('sortDir') === 'asc' ? 1 : -1;
     const limitParam = parseInt(searchParams.get('limit') || '0');
 
+    // --- JSON query params (Compass mode) ---
+    const rawFilterParam = searchParams.get('rawFilter');
+    const projectParam = searchParams.get('project');
+    const sortJsonParam = searchParams.get('sort');
+    const skipParam = parseInt(searchParams.get('skip') || '0');
+    const maxTimeMSParam = parseInt(searchParams.get('maxTimeMS') || '0');
+
     let filterClauses: FilterClause[] = [];
     if (filtersParam) {
       try {
@@ -201,13 +211,50 @@ export async function GET(
     };
     if (machine) baseFilter.machine = machine;
 
-    // Merge query-builder clauses into baseFilter
-    baseFilter = applyFilterClauses(baseFilter, filterClauses, filterLogic);
+    // If rawFilter is provided, parse and merge it (overrides clause builder)
+    if (rawFilterParam) {
+      try {
+        const rawFilter = JSON.parse(rawFilterParam) as Record<string, unknown>;
+        const baseKeys = Object.keys(baseFilter);
+        if (baseKeys.length === 0) {
+          baseFilter = rawFilter;
+        } else {
+          baseFilter = { $and: [baseFilter, rawFilter] };
+        }
+      } catch {
+        console.error(
+          '[DevCollection] Failed to parse rawFilter — returning unfiltered results.',
+          rawFilterParam
+        );
+      }
+    }
 
-    // Sort override (only when query builder specifies a sort field)
-    const effectiveSort: Record<string, 1 | -1> = sortFieldParam
-      ? { [sortFieldParam]: sortDirParam as 1 | -1 }
-      : (entry.defaultSort as Record<string, 1 | -1>);
+    // Merge query-builder clauses into baseFilter (only when no rawFilter)
+    if (!rawFilterParam) {
+      baseFilter = applyFilterClauses(baseFilter, filterClauses, filterLogic);
+    }
+
+    // Sort override — JSON mode passes a full sort object; query builder passes field + dir
+    let effectiveSort = entry.defaultSort as Record<string, 1 | -1>;
+    if (sortJsonParam) {
+      try {
+        const parsedSort = JSON.parse(sortJsonParam) as Record<string, 1 | -1>;
+        if (
+          parsedSort &&
+          typeof parsedSort === 'object' &&
+          !Array.isArray(parsedSort)
+        ) {
+          effectiveSort = parsedSort;
+        }
+      } catch {
+        console.error(
+          '[DevCollection] Failed to parse sort param — using default sort.',
+          sortJsonParam
+        );
+      }
+    } else if (sortFieldParam) {
+      effectiveSort = { [sortFieldParam]: sortDirParam as 1 | -1 };
+    }
 
     // Limit override for query builder (0 = use default batch)
     const effectiveLimit = limitParam > 0 ? limitParam : undefined;
@@ -217,11 +264,21 @@ export async function GET(
     // ==========================================================================
     if (searchParams.get('export') === 'true') {
       const format = searchParams.get('format') === 'json' ? 'json' : 'csv';
-      const allDocs = (await entry.model.collection
+      const cursor = entry.model.collection
         .find(baseFilter)
-        .sort(effectiveSort)
-        .limit(effectiveLimit ?? 0)
-        .toArray()) as Record<string, unknown>[];
+        .sort(effectiveSort);
+
+      // Apply project/skip/limit/maxTimeMS to export
+      if (projectParam) {
+        try {
+          cursor.project(JSON.parse(projectParam));
+        } catch { /* ignore */ }
+      }
+      if (skipParam > 0) cursor.skip(skipParam);
+      if (effectiveLimit) cursor.limit(effectiveLimit);
+      if (maxTimeMSParam > 0) cursor.maxTimeMS(maxTimeMSParam);
+
+      const allDocs = (await cursor.toArray()) as Record<string, unknown>[];
 
       const filename = `${entry.key}-${new Date().toISOString().split('T')[0]}`;
       if (format === 'json') return exportJson(allDocs, filename);
@@ -263,7 +320,10 @@ export async function GET(
       apiPage,
       hasDateRange || filterClauses.length > 0,
       effectiveSort,
-      effectiveLimit
+      effectiveLimit,
+      projectParam || undefined,
+      skipParam > 0 ? skipParam : undefined,
+      maxTimeMSParam > 0 ? maxTimeMSParam : undefined
     );
 
     if (Date.now() - startTime > 1000) {
@@ -404,5 +464,137 @@ export async function DELETE(
       success: true,
       deletedCount: result.deletedCount,
     });
+  });
+}
+
+/**
+ * POST /api/dev/collections/[model]
+ *
+ * Executes a MongoDB shell command against the selected collection.
+ * Read-only operations only (find, aggregate, count, distinct).
+ * Mutations (update, delete, insert) are rejected.
+ *
+ * Body: { command: string }
+ *
+ * Flow:
+ * 1. Authenticate — developer role required
+ * 2. Resolve model + parse body
+ * 3. Parse shell command
+ * 4. Execute against native collection
+ * 5. Return results
+ */
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ model: string }> }
+) {
+  return withApiAuth(req, async ({ userRoles }) => {
+    // ==========================================================================
+    // STEP 1: Enforce developer-only access
+    // ==========================================================================
+    if (!userRoles?.includes('developer')) return forbidden();
+
+    // ==========================================================================
+    // STEP 2: Resolve model + parse body
+    // ==========================================================================
+    const { model } = await params;
+    const resolved = resolveEntry(model);
+    if ('error' in resolved) return resolved.error;
+    const { entry } = resolved;
+
+    const body = (await req.json().catch(() => null)) as {
+      command?: string;
+    } | null;
+    const command = body?.command?.trim();
+    if (!command) {
+      return NextResponse.json(
+        { success: false, error: 'command is required' },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================================================
+    // STEP 3: Parse shell command
+    // ==========================================================================
+    const parsed: ParsedShellCommand = parseShellCommand(command);
+    if (parsed.type === 'unknown') {
+      return NextResponse.json(
+        { success: false, error: 'Unrecognised command. Supported: find(), aggregate(), countDocuments(), distinct()' },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================================================
+    // STEP 4: Execute
+    // ==========================================================================
+    const collection = entry.model.collection;
+
+    try {
+      if (parsed.type === 'find') {
+        let cursor = collection.find(parsed.filter || {});
+        if (parsed.options?.sort) cursor = cursor.sort(parsed.options.sort);
+        if (parsed.options?.skip) cursor = cursor.skip(parsed.options.skip);
+        if (parsed.options?.limit) cursor = cursor.limit(parsed.options.limit);
+        if (parsed.options?.project) cursor = cursor.project(parsed.options.project);
+        cursor.maxTimeMS(60000);
+        const data = (await cursor.toArray()) as DevCollectionRecord[];
+        const response: DevShellCommandResponse = {
+          success: true,
+          data,
+          total: data.length,
+          commandType: 'find',
+        };
+        return NextResponse.json(response);
+      }
+
+      if (parsed.type === 'aggregate') {
+        const cursor = collection.aggregate(parsed.pipeline || [], {
+          allowDiskUse: true,
+          maxTimeMS: 60000,
+        });
+        const data = (await cursor.toArray()) as DevCollectionRecord[];
+        return NextResponse.json({
+          success: true,
+          data,
+          total: data.length,
+          commandType: 'aggregate',
+        } satisfies DevShellCommandResponse);
+      }
+
+      if (parsed.type === 'count') {
+        const total = await collection.countDocuments(parsed.filter || {});
+        return NextResponse.json({
+          success: true,
+          data: [{ count: total }],
+          total,
+          commandType: 'count',
+        } satisfies DevShellCommandResponse);
+      }
+
+      if (parsed.type === 'distinct') {
+        const values = await collection.distinct(parsed.field || '_id', parsed.filter || {});
+        const data = values.map((value: unknown, index: number) => ({
+          _id: String(index),
+          distinctValue: value,
+        })) as DevCollectionRecord[];
+        return NextResponse.json({
+          success: true,
+          data,
+          total: data.length,
+          commandType: 'distinct',
+        } satisfies DevShellCommandResponse);
+      }
+
+      return NextResponse.json(
+        { success: false, error: 'Unsupported command type' },
+        { status: 400 }
+      );
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Command execution failed';
+      console.error('[POST /api/dev/collections] Shell error:', errorMessage);
+      return NextResponse.json(
+        { success: false, error: errorMessage },
+        { status: 500 }
+      );
+    }
   });
 }

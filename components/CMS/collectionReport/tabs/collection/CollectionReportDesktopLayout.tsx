@@ -113,6 +113,9 @@ export default function CollectionReportDesktopLayout(
           onSort={props.onSort}
           editableReportIds={props.editableReportIds}
           selectedLicencee={props.selectedLicencee}
+          selectedReports={props.selectedReports}
+          onSelectionChange={props.onSelectionChange}
+          showBulkSelection={props.showBulkSelection}
         />
       </div>
     </div>

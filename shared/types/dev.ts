@@ -49,3 +49,11 @@ export type DevMutationResponse = {
   deletedCount?: number;
   error?: string;
 };
+
+export type DevShellCommandResponse = {
+  success: boolean;
+  data?: DevCollectionRecord[];
+  total?: number;
+  error?: string;
+  commandType?: 'find' | 'aggregate' | 'count' | 'distinct' | 'unknown';
+};

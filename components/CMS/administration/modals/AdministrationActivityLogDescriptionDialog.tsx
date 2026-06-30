@@ -142,6 +142,8 @@ const RESOURCE_BADGE: Record<string, string> = {
   collection: 'bg-yellow-100 text-yellow-700',
   'collection-report': 'bg-yellow-100 text-yellow-700',
   collection_report: 'bg-yellow-100 text-yellow-700',
+  'collection-report-v2': 'bg-amber-100 text-amber-700',
+  'collection-report-v2-machine': 'bg-orange-100 text-orange-700',
   member: 'bg-pink-100 text-pink-700',
   licencee: 'bg-cyan-100 text-cyan-700',
   country: 'bg-lime-100 text-lime-700',
@@ -651,6 +653,246 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
   );
 }
 
+type V2MachineData = {
+  _id?: string;
+  machineId?: string;
+  machineCustomName?: string;
+  machineName?: string;
+  serialNumber?: string;
+  game?: string;
+  locationName?: string;
+  sasStartTime?: string | null;
+  sasEndTime?: string | null;
+  sasMetersIn?: number | null;
+  sasMetersOut?: number | null;
+  sasGross?: number | null;
+  prevSasMetersIn?: number | null;
+  prevSasMetersOut?: number | null;
+  metersMatch?: boolean;
+  ramClear?: boolean;
+  ramClearMetersIn?: number | null;
+  ramClearMetersOut?: number | null;
+  manualMetersIn?: number | null;
+  manualMetersOut?: number | null;
+  movement?: { manualMetersIn?: number; manualMetersOut?: number; machineGross?: number } | null;
+  notes?: string | null;
+  status?: string;
+  createdAt?: string | null;
+};
+
+function CollectionReportV2View({ log }: { log: ActivityLog }) {
+  const { displayCurrency } = useCurrencyFormat();
+
+  const metadata = (log.metadata || {}) as Record<string, unknown>;
+  const previousData = (metadata.previousData || {}) as Record<string, unknown>;
+  const newData = (metadata.newData || {}) as Record<string, unknown>;
+
+  const isDelete = log.actionType?.toLowerCase() === 'delete';
+  const data = isDelete ? previousData : newData;
+
+  const machines: V2MachineData[] = Array.isArray(data.machines)
+    ? (data.machines as V2MachineData[])
+    : [];
+  const locationName = String(data.locationName || log.resourceName || 'Unknown');
+  const sessionStartTime = String(data.sessionStartTime || '');
+  const sessionEndTime = String(data.sessionEndTime || '');
+  const machineCount = machines.length || Number(data.machineCount) || 0;
+
+  const formatCurrency = (val: number) => formatCurrencyWithCodeString(val, displayCurrency);
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '—';
+    try {
+      return safeFormatDate(new Date(dateStr));
+    } catch {
+      return dateStr;
+    }
+  };
+
+  let totalDrop = 0;
+  let totalCancelled = 0;
+  let totalGross = 0;
+  machines.forEach(m => {
+    const mIn = m.sasMetersIn ?? m.manualMetersIn ?? 0;
+    const mOut = m.sasMetersOut ?? m.manualMetersOut ?? 0;
+    totalDrop += mIn;
+    totalCancelled += mOut;
+    totalGross += mIn - mOut;
+  });
+
+  return (
+    <div className="space-y-5">
+      {/* Session Overview */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Location</p>
+          <p className="text-sm font-bold text-gray-800">{locationName}</p>
+        </div>
+        <div className="rounded-lg border border-gray-300 bg-gray-50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Machines</p>
+          <p className="text-sm font-bold text-gray-800">{machineCount}</p>
+        </div>
+        {sessionStartTime && (
+          <div className="rounded-lg border border-gray-300 bg-gray-50 p-3 sm:col-span-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Session Time</p>
+            <p className="text-xs font-semibold text-gray-800">{formatDate(sessionStartTime)} → {formatDate(sessionEndTime)}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Operations Summary */}
+      <div className="rounded-lg border border-slate-300 bg-white p-3">
+        <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operations Summary</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+          <div>
+            <p className="text-[9px] font-medium text-gray-400">Total Drop</p>
+            <p className="font-semibold text-gray-800">{formatCurrency(totalDrop)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-medium text-gray-400">Total Cancelled</p>
+            <p className="font-semibold text-gray-800">{formatCurrency(totalCancelled)}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-medium text-gray-400">Total Gross</p>
+            <p className="font-semibold text-gray-800">{formatCurrency(totalGross)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Machine Details */}
+      {machines.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Recorded Machines ({machines.length})
+          </h4>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {machines.map((machine, index) => {
+              const machineName = machine.machineCustomName || machine.machineName || machine.serialNumber || `Machine ${index + 1}`;
+              return (
+                <div
+                  key={machine._id || index}
+                  className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm transition-all hover:bg-white hover:shadow-md"
+                >
+                  <div className="mb-2 flex items-center justify-between border-b border-indigo-200 pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
+                      {machineName}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {machine.ramClear && (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-red-700 ring-1 ring-red-500/20">
+                          RAM Clear
+                        </span>
+                      )}
+                      {!machine.metersMatch && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-blue-700 ring-1 ring-blue-500/20">
+                          Manual
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* SAS Times */}
+                    {(machine.sasStartTime || machine.sasEndTime) && (
+                      <div className="rounded bg-indigo-50/50 p-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-indigo-400">SAS Period</p>
+                        <p className="text-[11px] font-medium text-indigo-800">
+                          {formatDate(machine.sasStartTime)} → {formatDate(machine.sasEndTime)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Current Values */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Current In</p>
+                        <p className="font-mono text-[11px] font-medium text-gray-800">
+                          {machine.sasMetersIn?.toLocaleString() ?? 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Current Out</p>
+                        <p className="font-mono text-[11px] font-medium text-gray-800">
+                          {machine.sasMetersOut?.toLocaleString() ?? 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Previous Values */}
+                    {(machine.prevSasMetersIn !== undefined && machine.prevSasMetersIn !== null) && (
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Previous In</p>
+                          <p className="font-mono text-[11px] font-medium text-gray-600">
+                            {machine.prevSasMetersIn?.toLocaleString() ?? '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">Previous Out</p>
+                          <p className="font-mono text-[11px] font-medium text-gray-600">
+                            {machine.prevSasMetersOut?.toLocaleString() ?? '—'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Movement */}
+                    {machine.movement && (
+                      <div className="rounded bg-green-50/50 p-2">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-green-500">Movement</p>
+                        <div className="flex gap-3 text-[11px] font-medium text-green-800">
+                          {machine.movement.machineGross !== undefined && (
+                            <span>Gross: {formatCurrency(machine.movement.machineGross)}</span>
+                          )}
+                          {machine.movement.manualMetersIn !== undefined && (
+                            <span>In: {machine.movement.manualMetersIn?.toLocaleString()}</span>
+                          )}
+                          {machine.movement.manualMetersOut !== undefined && (
+                            <span>Out: {machine.movement.manualMetersOut?.toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SAS Gross */}
+                    {machine.sasGross !== null && machine.sasGross !== undefined && (
+                      <div className="text-[11px]">
+                        <span className="font-semibold text-gray-500">SAS Gross: </span>
+                        <span className="font-medium text-gray-800">{formatCurrency(machine.sasGross)}</span>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {machine.notes && (
+                      <div className="rounded bg-amber-50/50 p-2">
+                        <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-500">Notes</p>
+                        <p className="text-[11px] italic text-amber-900">{machine.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Created At */}
+                    {machine.createdAt && (
+                      <div className="text-[10px] text-gray-400">
+                        Captured: {formatDate(machine.createdAt)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Fallback for single machine (collection-report-v2-machine) */}
+      {machines.length === 0 && (
+        <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center">
+          <p className="text-xs text-gray-400">No machine data available</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdministrationActivityLogDescriptionDialog({
   isOpen,
   onClose,
@@ -738,7 +980,9 @@ function AdministrationActivityLogDescriptionDialog({
         className={`flex h-full flex-col gap-0 overflow-hidden rounded-none p-0 shadow-2xl transition-all duration-300 sm:h-auto sm:max-h-[85vh] sm:rounded-xl ${
           generalChanges.length > 0 ||
           resourceKey === 'collection-report' ||
-          resourceKey === 'collection_report'
+          resourceKey === 'collection_report' ||
+          resourceKey === 'collection-report-v2' ||
+          resourceKey === 'collection-report-v2-machine'
             ? 'sm:max-w-4xl'
             : 'sm:max-w-lg'
         }`}
@@ -795,6 +1039,11 @@ function AdministrationActivityLogDescriptionDialog({
           resourceKey === 'collection_report' ? (
             <Section title="Collection Report Overview">
               <CollectionReportView log={log} />
+            </Section>
+          ) : resourceKey === 'collection-report-v2' ||
+            resourceKey === 'collection-report-v2-machine' ? (
+            <Section title={resourceKey === 'collection-report-v2' ? 'V2 Collection Session' : 'V2 Machine Capture'}>
+              <CollectionReportV2View log={log} />
             </Section>
           ) : (
             <>

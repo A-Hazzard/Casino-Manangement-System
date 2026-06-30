@@ -2,10 +2,11 @@
  * Last Collection Time API Route (V2)
  *
  * Returns the sasEndTime of the most recent submitted collection session
- * for a given machine. Used by the V2 session detail page to pre-populate
- * chronological boundaries and check for middle-date captures.
+ * for a given machine at a given location. Used by the V2 session detail
+ * page to pre-populate chronological boundaries and check for middle-date
+ * captures.
  *
- * GET /api/collection-reports-v2/machines/last-collection-time?machineId=<id>
+ * GET /api/collection-reports-v2/machines/last-collection-time?machineId=<id>&locationId=<id>
  *
  * @module app/api/collection-reports-v2/machines/last-collection-time/route
  */
@@ -31,6 +32,8 @@ export const dynamic = 'force-dynamic';
  * Main GET handler for finding the last collection time in V2
  *
  * @param {string} machineId - REQUIRED. Query param: The MongoDB ID of the machine
+ * @param {string} [locationId] - Query param: Filter by location ID (prevents cross-location boundary pollution)
+ * @param {string} [excludeSessionId] - Query param: Exclude a specific session ID from results
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = request.nextUrl;
     const machineId = searchParams.get('machineId');
+    const locationId = searchParams.get('locationId');
     const excludeSessionId = searchParams.get('excludeSessionId');
 
     if (!machineId) {
@@ -66,6 +70,10 @@ export async function GET(request: NextRequest) {
       sessionStatus: 'submitted',
       $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
     };
+
+    if (locationId) {
+      baseFilter.locationId = locationId;
+    }
 
     if (excludeSessionId) {
       baseFilter.sessionId = { $ne: excludeSessionId };

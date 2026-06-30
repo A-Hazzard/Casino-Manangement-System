@@ -72,12 +72,12 @@ function formatCustomRangeLabel(from?: Date, to?: Date): string {
 
 export default function DevCollectionExplorer({
   defaultCabinetId,
-  refreshTrigger,
+  refreshTrigger: _refreshTrigger,
 }: DevExplorerProps) {
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const explorer = useDevCollectionExplorer(defaultCabinetId, refreshTrigger);
+  const explorer = useDevCollectionExplorer(defaultCabinetId, _refreshTrigger);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<DevCollectionRecord | null>(null);
@@ -300,7 +300,7 @@ export default function DevCollectionExplorer({
         </Popover>
       </div>
 
-      {/* Collapsible Visual Query Builder */}
+      {/* Collapsible Query Builder (JSON / Visual / Shell) */}
       {showQueryBuilder && (
         <div className="my-3">
           <DevQueryBuilder
@@ -318,6 +318,18 @@ export default function DevCollectionExplorer({
             onLimitChange={explorer.setQueryLimit}
             onRun={explorer.applyQuery}
             onClear={explorer.clearQuery}
+            queryMode={explorer.queryMode}
+            onModeChange={explorer.setQueryMode}
+            jsonFilterText={explorer.jsonFilterText}
+            onJsonFilterChange={explorer.setJsonFilterText}
+            jsonOptions={explorer.jsonOptions}
+            onJsonOptionsChange={explorer.setJsonOptions}
+            shellCommandText={explorer.shellCommandText}
+            onShellCommandChange={explorer.setShellCommandText}
+            showOptions={explorer.showOptions}
+            onShowOptionsChange={explorer.setShowOptions}
+            onRunShell={explorer.applyShellCommand}
+            onRunJson={explorer.applyJsonQuery}
           />
         </div>
       )}

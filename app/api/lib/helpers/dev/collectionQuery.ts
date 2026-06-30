@@ -66,7 +66,10 @@ export async function queryBatch(
   apiPage: number,
   hasDateRange: boolean,
   effectiveSort?: Record<string, 1 | -1>,
-  effectiveLimit?: number
+  effectiveLimit?: number,
+  projectOption?: string,
+  skipOverride?: number,
+  maxTimeMS?: number
 ): Promise<CollectionBatch> {
   const skip = (apiPage - 1) * BATCH_SIZE;
   const collection = entry.model.collection;
@@ -75,13 +78,20 @@ export async function queryBatch(
   // If a custom limit is set, we need exact count to page correctly, so treat it similarly to having a date range
   const forceCount = hasDateRange || effectiveLimit !== undefined;
 
+  // Build cursor with optional project/maxTimeMS
+  function applyCursorOptions(cursor: ReturnType<typeof collection.find>) {
+    if (projectOption) {
+      try { cursor.project(JSON.parse(projectOption)); } catch { /* ignore */ }
+    }
+    if (maxTimeMS && maxTimeMS > 0) cursor.maxTimeMS(maxTimeMS);
+    return cursor;
+  }
+
   if (!forceCount) {
-    const rows = await collection
-      .find(filter)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(BATCH_SIZE + 1)
-      .toArray();
+    const cursor = applyCursorOptions(
+      collection.find(filter).sort(sortOption).skip(skip).limit(BATCH_SIZE + 1)
+    );
+    const rows = await cursor.toArray();
     const hasMore = rows.length > BATCH_SIZE;
     return {
       data: hasMore ? rows.slice(0, BATCH_SIZE) : rows,
@@ -97,12 +107,9 @@ export async function queryBatch(
   }
 
   const [rows, totalCount] = await Promise.all([
-    collection
-      .find(filter)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(queryLimit > 0 ? queryLimit : 0)
-      .toArray(),
+    applyCursorOptions(
+      collection.find(filter).sort(sortOption).skip(skip).limit(queryLimit > 0 ? queryLimit : 0)
+    ).toArray(),
     collection.countDocuments(filter),
   ]);
 
@@ -316,6 +323,178 @@ export function exportJson(
       'Content-Disposition': `attachment; filename="${filename}.json"`,
     },
   });
+}
+
+// ============================================================================
+// Shell command parsing
+// ============================================================================
+
+export type ParsedShellCommand = {
+  type: 'find' | 'aggregate' | 'count' | 'distinct' | 'unknown';
+  filter?: Record<string, unknown>;
+  pipeline?: Record<string, unknown>[];
+  field?: string;
+  options?: {
+    sort?: Record<string, 1 | -1>;
+    limit?: number;
+    skip?: number;
+    project?: Record<string, 0 | 1>;
+  };
+  raw: string;
+};
+
+/**
+ * Safely parse a JSON value from a shell command argument.
+ */
+function parseShellArg(text: string, start: number): { value: unknown; end: number } | null {
+  if (start >= text.length) return null;
+  // Object
+  if (text[start] === '{') {
+    let depth = 0;
+    let end = start;
+    for (let index = start; index < text.length; index++) {
+      if (text[index] === '{') depth++;
+      if (text[index] === '}') depth--;
+      if (depth === 0) { end = index + 1; break; }
+    }
+    if (depth !== 0) return null;
+    try {
+      return { value: JSON.parse(text.slice(start, end)), end };
+    } catch {
+      const unquoted = text.slice(start, end).replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+      try {
+        return { value: JSON.parse(unquoted), end };
+      } catch {
+        return null;
+      }
+    }
+  }
+  // Array
+  if (text[start] === '[') {
+    let depth = 0;
+    let end = start;
+    for (let index = start; index < text.length; index++) {
+      if (text[index] === '[') depth++;
+      if (text[index] === ']') depth--;
+      if (depth === 0) { end = index + 1; break; }
+    }
+    if (depth !== 0) return null;
+    try {
+      return { value: JSON.parse(text.slice(start, end)), end };
+    } catch {
+      return null;
+    }
+  }
+  // String
+  if (text[start] === "'" || text[start] === '"') {
+    const quote = text[start];
+    let end = start + 1;
+    while (end < text.length && text[end] !== quote) {
+      if (text[end] === '\\') end++;
+      end++;
+    }
+    if (end >= text.length) return null;
+    return { value: text.slice(start + 1, end), end: end + 1 };
+  }
+  return null;
+}
+
+/**
+ * Extract chained methods (`.sort()`, `.limit()`, `.skip()`, `.project()`)
+ * from a shell command string after the base call.
+ */
+function extractChainMethods(text: string, afterCall: number): ParsedShellCommand['options'] {
+  const options: ParsedShellCommand['options'] = {};
+  const chainRegex = /\.(sort|limit|skip|project)\s*\(/g;
+  let match: RegExpExecArray | null;
+  while ((match = chainRegex.exec(text)) !== null) {
+    if (match.index < afterCall) continue;
+    const argStart = match.index + match[0].length;
+    const arg = parseShellArg(text, argStart);
+    if (!arg) continue;
+    switch (match[1]) {
+      case 'sort':
+        options.sort = arg.value as Record<string, 1 | -1>;
+        break;
+      case 'limit':
+        options.limit = Number(arg.value);
+        break;
+      case 'skip':
+        options.skip = Number(arg.value);
+        break;
+      case 'project':
+        options.project = arg.value as Record<string, 0 | 1>;
+        break;
+    }
+  }
+  return options;
+}
+
+/**
+ * Parses a MongoDB shell command string into a structured operation.
+ *
+ * Supports:
+ *   db.collection.find({ filter }).sort({}).limit(N).skip(N)
+ *   db.collection.aggregate([...])
+ *   db.collection.countDocuments({ filter })
+ *   db.collection.distinct('field', { filter })
+ */
+export function parseShellCommand(command: string): ParsedShellCommand {
+  const trimmed = command.trim();
+  const result: ParsedShellCommand = { type: 'unknown', raw: trimmed };
+
+  const stripped = trimmed.replace(/^db\.\w+\s*\.\s*/, '');
+
+  // find({...})
+  const findMatch = stripped.match(/^find\s*\(/);
+  if (findMatch) {
+    const argStart = findMatch.index! + findMatch[0].length;
+    const arg = parseShellArg(stripped, argStart);
+    if (!arg) return result;
+    result.type = 'find';
+    result.filter = arg.value as Record<string, unknown>;
+    result.options = extractChainMethods(stripped, arg.end);
+    return result;
+  }
+
+  // aggregate([...])
+  const aggMatch = stripped.match(/^aggregate\s*\(/);
+  if (aggMatch) {
+    const argStart = aggMatch.index! + aggMatch[0].length;
+    const arg = parseShellArg(stripped, argStart);
+    if (!arg) return result;
+    result.type = 'aggregate';
+    result.pipeline = arg.value as Record<string, unknown>[];
+    return result;
+  }
+
+  // countDocuments({...})
+  const countMatch = stripped.match(/^countDocuments\s*\(/);
+  if (countMatch) {
+    const argStart = countMatch.index! + countMatch[0].length;
+    const arg = parseShellArg(stripped, argStart);
+    if (!arg) return result;
+    result.type = 'count';
+    result.filter = arg.value as Record<string, unknown>;
+    return result;
+  }
+
+  // distinct('field', {...})
+  const distinctMatch = stripped.match(/^distinct\s*\(/);
+  if (distinctMatch) {
+    const argStart = distinctMatch.index! + distinctMatch[0].length;
+    const fieldArg = parseShellArg(stripped, argStart);
+    if (!fieldArg || typeof fieldArg.value !== 'string') return result;
+    result.field = fieldArg.value;
+    const filterArg = parseShellArg(stripped, fieldArg.end + 1);
+    if (filterArg) {
+      result.filter = filterArg.value as Record<string, unknown>;
+    }
+    result.type = 'distinct';
+    return result;
+  }
+
+  return result;
 }
 
 // ============================================================================

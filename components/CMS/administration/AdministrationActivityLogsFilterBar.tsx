@@ -144,6 +144,8 @@ export function AdministrationActivityLogsFilterBar({
               <SelectItem value="location">Location</SelectItem>
               <SelectItem value="collection">Collection</SelectItem>
               <SelectItem value="collection-report">Collection Report</SelectItem>
+              <SelectItem value="collection-report-v2">Collection Report V2</SelectItem>
+              <SelectItem value="collection-report-v2-machine">V2 Machine Capture</SelectItem>
               <SelectItem value="licencee">Licencee</SelectItem>
               <SelectItem value="member">Member</SelectItem>
               <SelectItem value="session">Session</SelectItem>

@@ -9,9 +9,7 @@ type LocationsCabinetCardsSkeletonProps = {
  * Locations Cabinet Cards Skeleton Loader
  * Matches the exact structure of LocationsCabinetCardMobile component
  */
-const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
-  includeJackpot = false,
-}) => {
+const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = () => {
   // ============================================================================
   // Render
   // ============================================================================

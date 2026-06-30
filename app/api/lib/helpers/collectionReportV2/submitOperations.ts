@@ -78,17 +78,32 @@ type MachineForMeterPersistence = {
 
 type MachineForActivityLog = {
   locationName: string;
+  locationId?: string;
   collectorName?: string;
   collector?: string;
   machineCustomName?: string;
   machineName?: string;
+  machineId?: string;
   serialNumber?: string;
+  game?: string;
   sasMetersIn?: number | null;
   sasMetersOut?: number | null;
+  sasGross?: number | null;
+  sasStartTime?: Date | null;
+  sasEndTime?: Date | null;
+  prevSasMetersIn?: number;
+  prevSasMetersOut?: number;
   manualMetersIn?: number;
   manualMetersOut?: number;
   metersMatch?: boolean;
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
+  movement?: { manualMetersIn?: number; manualMetersOut?: number; machineGross?: number } | null;
   notes?: string;
+  status?: string;
+  createdAt?: Date;
+  _id?: string;
 };
 
 type ActivityChange = {
@@ -797,9 +812,36 @@ export async function logSubmitActivity(
     createChanges.push({
       field: `machine_${index}_details`,
       oldValue: null,
-      newValue: `${machineName}: In: ${machineItem.sasMetersIn}, Out: ${machineItem.sasMetersOut}${machineItem.manualMetersIn !== undefined ? ` (Manual: ${machineItem.manualMetersIn} In, ${machineItem.manualMetersOut} Out)` : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
+      newValue: `${machineName}: In: ${machineItem.sasMetersIn}, Out: ${machineItem.sasMetersOut}${machineItem.prevSasMetersIn !== undefined ? ` (Prev: ${machineItem.prevSasMetersIn} In, ${machineItem.prevSasMetersOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.manualMetersIn !== undefined ? ` (Manual: ${machineItem.manualMetersIn} In, ${machineItem.manualMetersOut} Out)` : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
     });
   });
+
+  const enrichedMachines = reportMachines.map(machineItem => ({
+    _id: machineItem._id,
+    machineId: machineItem.machineId || '',
+    machineCustomName: machineItem.machineCustomName || '',
+    machineName: machineItem.machineName || '',
+    serialNumber: machineItem.serialNumber || '',
+    game: machineItem.game || '',
+    locationName: machineItem.locationName || '',
+    sasStartTime: machineItem.sasStartTime?.toISOString?.() ?? null,
+    sasEndTime: machineItem.sasEndTime?.toISOString?.() ?? null,
+    sasMetersIn: machineItem.sasMetersIn,
+    sasMetersOut: machineItem.sasMetersOut,
+    sasGross: machineItem.sasGross ?? null,
+    prevSasMetersIn: machineItem.prevSasMetersIn ?? null,
+    prevSasMetersOut: machineItem.prevSasMetersOut ?? null,
+    metersMatch: machineItem.metersMatch,
+    ramClear: machineItem.ramClear ?? false,
+    ramClearMetersIn: machineItem.ramClearMetersIn ?? null,
+    ramClearMetersOut: machineItem.ramClearMetersOut ?? null,
+    manualMetersIn: machineItem.manualMetersIn ?? null,
+    manualMetersOut: machineItem.manualMetersOut ?? null,
+    movement: machineItem.movement ?? null,
+    notes: machineItem.notes || null,
+    status: machineItem.status || '',
+    createdAt: machineItem.createdAt?.toISOString?.() ?? null,
+  }));
 
   await logActivity({
     action: 'CREATE',
@@ -816,6 +858,9 @@ export async function logSubmitActivity(
       resourceId: sessionId,
       resourceName: `${locationName} - ${collectorName}`,
       changes: createChanges,
+      newData: {
+        machines: enrichedMachines,
+      },
     },
   });
 }

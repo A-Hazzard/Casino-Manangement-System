@@ -29,6 +29,9 @@ type V2DesktopProps = {
   sortField?: string;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: string) => void;
+  selectedSessions?: Set<string>;
+  onSessionSelectionChange?: (sessionId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 };
 
 function CollectorHover({ session }: { session: V2Session }) {
@@ -72,6 +75,9 @@ function SessionRow({
   onEditSession,
   onSubmitSession,
   onDeleteSession,
+  selectedSessions,
+  onSessionSelectionChange,
+  showBulkSelection,
 }: {
   session: V2Session;
   canManage?: boolean;
@@ -79,6 +85,9 @@ function SessionRow({
   onEditSession?: (sessionId: string) => void;
   onSubmitSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  selectedSessions?: Set<string>;
+  onSessionSelectionChange?: (sessionId: string, checked: boolean) => void;
+  showBulkSelection?: boolean;
 }) {
   const { formatAmount } = useCurrencyFormat();
 
@@ -98,7 +107,19 @@ function SessionRow({
   // ============================================================================
   return (
     <TableRow className="hover:bg-lighterGreenHighlight">
-      <TableCell isFirstColumn={true} centered={false}>
+      {showBulkSelection && (
+        <TableCell centered={false} isFirstColumn={true} className="w-10 px-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+            checked={selectedSessions?.has(session.sessionId) ?? false}
+            onChange={e =>
+              onSessionSelectionChange?.(session.sessionId, e.target.checked)
+            }
+          />
+        </TableCell>
+      )}
+      <TableCell centered={false} isFirstColumn={!showBulkSelection}>
         <Link
           href={`/locations/${session.locationId}`}
           className="text-buttonActive hover:underline"
@@ -250,7 +271,14 @@ export default function CollectionReportV2Desktop({
   sortDirection,
   onSort,
   isRefreshing,
+  selectedSessions,
+  onSessionSelectionChange,
+  showBulkSelection = false,
 }: V2DesktopProps) {
+  const selectedCount = showBulkSelection
+    ? selectedSessions?.size ?? 0
+    : 0;
+
   // ============================================================================
   // Render
   // ============================================================================
@@ -273,9 +301,39 @@ export default function CollectionReportV2Desktop({
 
   return (
     <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow md:block">
+      {showBulkSelection && selectedCount > 0 && (
+        <div className="flex items-center justify-between bg-blue-50 px-4 py-2">
+          <span className="text-sm text-blue-700">
+            {selectedCount} session{selectedCount !== 1 ? 's' : ''} selected
+          </span>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
+            {showBulkSelection && (
+              <TableHead
+                centered={false}
+                isFirstColumn={true}
+                className="w-10 px-2 font-semibold text-white"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-button focus:ring-button"
+                  checked={
+                    sessions.length > 0 &&
+                    sessions.every(s => selectedSessions?.has(s.sessionId))
+                  }
+                  onChange={e =>
+                    onSessionSelectionChange &&
+                    onSessionSelectionChange(
+                      '__select_all__',
+                      e.target.checked
+                    )
+                  }
+                />
+              </TableHead>
+            )}
             {HEADERS.map(header => {
               const isActive = sortField === header.key;
               const isSortable = header.sortable;
@@ -314,15 +372,18 @@ export default function CollectionReportV2Desktop({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sessions.map(session => (
+           {sessions.map(session => (
               <SessionRow
                 key={session.sessionId}
                 session={session}
                 canManage={canManage}
                 onViewSession={onViewSession}
-              onEditSession={onEditSession}
-              onSubmitSession={onSubmitSession}
-              onDeleteSession={onDeleteSession}
+                onEditSession={onEditSession}
+                onSubmitSession={onSubmitSession}
+                onDeleteSession={onDeleteSession}
+                selectedSessions={selectedSessions}
+                onSessionSelectionChange={onSessionSelectionChange}
+                showBulkSelection={showBulkSelection}
             />
           ))}
         </TableBody>
