@@ -35,12 +35,13 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { toast } from 'sonner';
 
 type NewCollectionLocationMachineSelectionProps = {
-  locations: Array<{ _id: string; name: string }>;
+  locations: Array<{ _id: string; name: string; isLocalServer?: boolean; noSMIBLocation?: boolean }>;
   selectedLocationId: string | undefined;
   lockedLocationId: string | undefined;
   machinesOfSelectedLocation: CollectionReportMachineSummary[];
@@ -127,6 +128,17 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
           />
         )}
       </div>
+
+      {(selectedLocationId || lockedLocationId) && (() => {
+        const loc = locations.find(l => l._id === (lockedLocationId || selectedLocationId));
+        if (!loc) return null;
+        const badge = getLocationTypeBadge(loc.isLocalServer, loc.noSMIBLocation);
+        return (
+          <span className={`inline-flex w-fit items-center rounded-sm px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+            {badge.label}
+          </span>
+        );
+      })()}
 
       {autoReport?.enabled && (
         <WowAutoReportButton control={autoReport} disabled={isProcessing} />

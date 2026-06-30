@@ -15,7 +15,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Search, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/shared/ui/button';
 import ConfirmationModal from '@/components/shared/ui/ConfirmationModal';
@@ -86,7 +86,6 @@ export default function DevCollectionExplorer({
     null
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [showQueryBuilder, setShowQueryBuilder] = useState(false);
 
   // ============================================================================
   // Computed
@@ -106,6 +105,60 @@ export default function DevCollectionExplorer({
   // ============================================================================
   // Handlers
   // ============================================================================
+  /**
+   * Mode transition handler — "Single Filter Source" model.
+   *
+   * When switching modes, we ensure the correct filter source is active:
+   *   - → Visual: clear applied JSON filter so date dropdown takes over
+   *   - → JSON: keep visual filter state; pre-fill JSON textarea if empty
+   *   - → Shell: just switch (shell is standalone)
+   */
+  const handleModeChange = (newMode: 'json' | 'visual' | 'shell') => {
+    const currentMode = explorer.queryMode;
+
+    if (newMode === 'visual' && currentMode === 'json') {
+      // JSON → Visual: clear JSON filter so date dropdown becomes active again
+      explorer.setAppliedJsonFilter('');
+      explorer.setAppliedJsonOptions({});
+    }
+
+    if (newMode === 'json' && currentMode === 'visual') {
+      // Visual → JSON: pre-fill JSON textarea from visual filter if empty
+      const currentFilterText = explorer.jsonFilterText.trim();
+      if (!currentFilterText || currentFilterText === '{}') {
+        // Build a JSON filter from the active visual clauses
+        const clauses = explorer.appliedFilters;
+        if (clauses.length > 0) {
+          const logic = explorer.appliedFilterLogic;
+          const clauseFilters = clauses.map(clause => {
+            const clauseFilter: Record<string, unknown> = {};
+            switch (clause.op) {
+              case 'eq': clauseFilter[clause.field] = clause.value; break;
+              case 'ne': clauseFilter[clause.field] = { $ne: clause.value }; break;
+              case 'gt': clauseFilter[clause.field] = { $gt: clause.value }; break;
+              case 'gte': clauseFilter[clause.field] = { $gte: clause.value }; break;
+              case 'lt': clauseFilter[clause.field] = { $lt: clause.value }; break;
+              case 'lte': clauseFilter[clause.field] = { $lte: clause.value }; break;
+              case 'contains': clauseFilter[clause.field] = { $regex: clause.value, $options: 'i' }; break;
+              case 'startsWith': clauseFilter[clause.field] = { $regex: `^${clause.value}`, $options: 'i' }; break;
+              case 'exists': clauseFilter[clause.field] = { $exists: true }; break;
+              case 'notExists': clauseFilter[clause.field] = { $exists: false }; break;
+              case 'in': clauseFilter[clause.field] = { $in: Array.isArray(clause.value) ? clause.value : [clause.value] }; break;
+              default: clauseFilter[clause.field] = clause.value;
+            }
+            return clauseFilter;
+          });
+          const jsonText = clauseFilters.length === 1
+            ? JSON.stringify(clauseFilters[0], null, 2)
+            : JSON.stringify({ [`$${logic}`]: clauseFilters }, null, 2);
+          explorer.setJsonFilterText(jsonText);
+        }
+      }
+    }
+
+    explorer.setQueryMode(newMode);
+  };
+
   const handlePeriodClick = (period: DevTimePeriod) => {
     if (period === 'Custom') {
       explorer.setTimePeriod('Custom');
@@ -133,6 +186,10 @@ export default function DevCollectionExplorer({
     const ok = await explorer.deleteRecords(Array.from(explorer.selectedIds));
     if (ok) setBulkDeleteOpen(false);
   };
+
+  // JSON mode = user has full control over filters. Date dropdown/time period
+  // are dimmed to signal they're inactive (user's filter is primary).
+  const dateControlsDisabled = explorer.queryMode === 'json';
 
   // ============================================================================
   // Render
@@ -179,131 +236,112 @@ export default function DevCollectionExplorer({
         )}
       </div>
 
-      {/* Date filters + date field + export */}
-      <div className="flex flex-wrap items-center gap-2">
-        {TIME_PERIODS.filter(period => period !== 'Custom').map(period => (
-          <Button
-            key={period}
-            onClick={() => handlePeriodClick(period)}
-            className={`rounded-md px-3 py-1 text-sm transition-colors ${
-              explorer.timePeriod === period
-                ? 'bg-buttonActive text-white'
-                : 'bg-button text-white hover:bg-button/90'
-            }`}
-          >
-            {FILTER_LABELS[period]}
-          </Button>
-        ))}
-
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-          <PopoverTrigger asChild>
+      {/* Date filters + date field + query builder + export */}
+      {/* In JSON mode, date controls are dimmed — user's filter is primary */}
+      <div className={`flex flex-wrap items-center justify-between gap-2 ${dateControlsDisabled ? 'opacity-50' : ''}`}>
+        {/* Left: period buttons + date field */}
+        <div className="flex flex-wrap items-center gap-2">
+          {TIME_PERIODS.filter(period => period !== 'Custom').map(period => (
             <Button
+              key={period}
+              onClick={() => handlePeriodClick(period)}
+              disabled={dateControlsDisabled}
+              title={dateControlsDisabled ? 'Date filters are inactive in JSON mode. Switch to Visual mode to use date dropdown.' : undefined}
               className={`rounded-md px-3 py-1 text-sm transition-colors ${
-                explorer.timePeriod === 'Custom'
+                explorer.timePeriod === period
                   ? 'bg-buttonActive text-white'
                   : 'bg-button text-white hover:bg-button/90'
               }`}
             >
-              {explorer.timePeriod === 'Custom' &&
-              explorer.customDateRange.from &&
-              explorer.customDateRange.to
-                ? formatCustomRangeLabel(
-                    explorer.customDateRange.from,
-                    explorer.customDateRange.to
-                  )
-                : 'Custom'}
+              {FILTER_LABELS[period]}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start" side="bottom">
-            <MuiDateCalendar
-              date={explorer.customDateRange.from}
-              endDate={explorer.customDateRange.to}
-              showTime={true}
-              buttonLabel="Apply"
-              onSelect={handleCustomApply}
-            />
-          </PopoverContent>
-        </Popover>
+          ))}
 
-        {explorer.dateFields.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="devDateFieldSelect"
-              className="whitespace-nowrap text-sm font-medium text-gray-600"
-            >
-              Date Field
-            </label>
-            <select
-              id="devDateFieldSelect"
-              value={explorer.dateField}
-              onChange={e => explorer.setDateField(e.target.value)}
-              className="h-9 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-            >
-              {explorer.dateFields.map(field => (
-                <option key={field} value={field}>
-                  {field}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                disabled={dateControlsDisabled}
+                title={dateControlsDisabled ? 'Date filters are inactive in JSON mode. Switch to Visual mode to use date dropdown.' : undefined}
+                className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                  explorer.timePeriod === 'Custom'
+                    ? 'bg-buttonActive text-white'
+                    : 'bg-button text-white hover:bg-button/90'
+                }`}
+              >
+                {explorer.timePeriod === 'Custom' &&
+                explorer.customDateRange.from &&
+                explorer.customDateRange.to
+                  ? formatCustomRangeLabel(
+                      explorer.customDateRange.from,
+                      explorer.customDateRange.to
+                    )
+                  : 'Custom'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start" side="bottom">
+              <MuiDateCalendar
+                date={explorer.customDateRange.from}
+                endDate={explorer.customDateRange.to}
+                showTime={true}
+                buttonLabel="Apply"
+                onSelect={handleCustomApply}
+              />
+            </PopoverContent>
+          </Popover>
 
-        <Button
-          onClick={() => setShowQueryBuilder(prev => !prev)}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold text-white shadow-sm transition-colors ${
-            showQueryBuilder
-              ? 'bg-purple-700 hover:bg-purple-800'
-              : explorer.appliedFilters.length > 0
-                ? 'bg-purple-600 hover:bg-purple-700 ring-2 ring-purple-300'
-                : 'bg-purple-500 hover:bg-purple-600'
-          }`}
-          title="Toggle Visual Query Builder"
-        >
-          <Filter className="h-4 w-4" />
-          Query Builder
-          {explorer.appliedFilters.length > 0 && (
-            <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
-              {explorer.appliedFilters.length}
-            </span>
+          {explorer.dateFields.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="devDateFieldSelect"
+                className="whitespace-nowrap text-sm font-medium text-gray-600"
+              >
+                Date Field
+              </label>
+              <select
+                id="devDateFieldSelect"
+                value={explorer.dateField}
+                onChange={e => explorer.setDateField(e.target.value)}
+                disabled={dateControlsDisabled}
+                title={dateControlsDisabled ? 'Date filters are inactive in JSON mode. Switch to Visual mode to use date dropdown.' : undefined}
+                className="h-9 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-700 focus:border-buttonActive focus:ring-buttonActive disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {explorer.dateFields.map(field => (
+                  <option key={field} value={field}>
+                    {field}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
-        </Button>
+        </div>
 
-        <Popover open={exportOpen} onOpenChange={setExportOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              className="ml-auto flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700"
-              title="Export all matching records (no pagination limit)"
-            >
-              <Download className="h-4 w-4" /> Export
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-36 p-1" align="end" side="bottom">
-            <button
-              onClick={() => {
-                setExportOpen(false);
-                explorer.exportRecords('csv');
-              }}
-              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              CSV
-            </button>
-            <button
-              onClick={() => {
-                setExportOpen(false);
-                explorer.exportRecords('json');
-              }}
-              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              JSON
-            </button>
-          </PopoverContent>
-        </Popover>
       </div>
 
-      {/* Collapsible Query Builder (JSON / Visual / Shell) */}
-      {showQueryBuilder && (
-        <div className="my-3">
-          <DevQueryBuilder
+      {/* Filter mode indicator — explains which filter source is active */}
+      <div className="mb-2 flex items-center gap-2 text-xs">
+        {explorer.queryMode === 'json' && (
+          <span className="flex items-center gap-1 rounded px-2 py-1 text-amber-700 bg-amber-50 border border-amber-200">
+            <span className="font-mono text-amber-600">JSON</span>
+            <span className="text-amber-800">mode: your filter is primary. Date dropdown/time period are inactive.</span>
+          </span>
+        )}
+        {explorer.queryMode === 'visual' && (
+          <span className="flex items-center gap-1 rounded px-2 py-1 text-emerald-700 bg-emerald-50 border border-emerald-200">
+            <span className="font-mono text-emerald-600">Visual</span>
+            <span className="text-emerald-800">mode: date dropdown + time period define the time scope, clauses filter within it.</span>
+          </span>
+        )}
+        {explorer.queryMode === 'shell' && (
+          <span className="flex items-center gap-1 rounded px-2 py-1 text-violet-700 bg-violet-50 border border-violet-200">
+            <span className="font-mono text-violet-600">Shell</span>
+            <span className="text-violet-800">mode: full MongoDB shell command. All UI filters ignored.</span>
+          </span>
+        )}
+      </div>
+
+      {/* Query Builder (JSON / Visual / Shell) */}
+      <div className="my-3">
+        <DevQueryBuilder
             columns={explorer.columns}
             fields={explorer.fields}
             filterClauses={explorer.filterClauses}
@@ -319,7 +357,7 @@ export default function DevCollectionExplorer({
             onRun={explorer.applyQuery}
             onClear={explorer.clearQuery}
             queryMode={explorer.queryMode}
-            onModeChange={explorer.setQueryMode}
+            onModeChange={handleModeChange}
             jsonFilterText={explorer.jsonFilterText}
             onJsonFilterChange={explorer.setJsonFilterText}
             jsonOptions={explorer.jsonOptions}
@@ -331,10 +369,9 @@ export default function DevCollectionExplorer({
             onRunShell={explorer.applyShellCommand}
             onRunJson={explorer.applyJsonQuery}
           />
-        </div>
-      )}
+      </div>
 
-      {/* Search */}
+      {/* Search + Export */}
       <div className="my-3 flex flex-wrap items-center gap-2">
         <div className="flex h-9 w-full max-w-xl items-center overflow-hidden rounded-md border border-gray-300 bg-white focus-within:border-buttonActive focus-within:ring-1 focus-within:ring-buttonActive">
           <input
@@ -422,6 +459,37 @@ export default function DevCollectionExplorer({
               No matches
             </span>
           )}
+
+        <Popover open={exportOpen} onOpenChange={setExportOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              className="ml-auto flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-700"
+              title="Export all matching records (no pagination limit)"
+            >
+              <Download className="h-4 w-4" /> Export
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-36 p-1" align="end" side="bottom">
+            <button
+              onClick={() => {
+                setExportOpen(false);
+                explorer.exportRecords('csv');
+              }}
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              CSV
+            </button>
+            <button
+              onClick={() => {
+                setExportOpen(false);
+                explorer.exportRecords('json');
+              }}
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              JSON
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Bulk action bar */}

@@ -127,6 +127,7 @@ export async function fetchLocationsWithMachines(
         collectionBalance: 1,
         gameDayOffset: 1,
         noSMIBLocation: 1,
+        isLocalServer: 1,
         'rel.licencee': 1,
       },
     },

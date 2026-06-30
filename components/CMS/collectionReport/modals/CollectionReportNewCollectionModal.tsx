@@ -529,7 +529,7 @@ export default function CollectionReportNewCollectionModal({
           onEscapeKeyDown={e => e.preventDefault()}
         >
           {/* Top Left Of the Container */}
-          <DialogHeader className="p-4 pb-0 md:p-6">
+          <DialogHeader className="p-4 pb-0 md:p-6 pr-10">
             <DialogTitle className="text-xl font-bold md:text-2xl">
               Collection Report Form
             </DialogTitle>
@@ -547,6 +547,8 @@ export default function CollectionReportNewCollectionModal({
                   (loc: CollectionReportLocationWithMachines) => ({
                     _id: String(loc._id),
                     name: loc.name,
+                    isLocalServer: loc.isLocalServer,
+                    noSMIBLocation: loc.noSMIBLocation,
                   })
                 )}
                 selectedLocationId={selectedLocationId}
@@ -646,6 +648,18 @@ export default function CollectionReportNewCollectionModal({
                         : undefined
                     }
                     machineHasRelay={!!machineForDataEntry?.relayId}
+                    isLocalServer={
+                      locations.find(
+                        (l: CollectionReportLocationWithMachines) =>
+                          String(l._id) === selectedLocationId
+                      )?.isLocalServer
+                    }
+                    noSMIBLocation={
+                      locations.find(
+                        (l: CollectionReportLocationWithMachines) =>
+                          String(l._id) === selectedLocationId
+                      )?.noSMIBLocation
+                    }
                   />
 
                   {/* Variations/Reconciliation section when minimized - Centered between form and financials */}

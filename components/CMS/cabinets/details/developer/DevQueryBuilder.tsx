@@ -6,10 +6,17 @@ import SyntaxHighlightedEditor, {
   tokenizeJson,
   tokenizeShell,
 } from './SyntaxHighlightedEditor';
+import ValidatedJsonInput, {
+  ValidatedNumericInput,
+} from './ValidatedJsonInput';
 import {
   validateShellCommand,
   formatShellCommand,
 } from '@/lib/utils/dev/parseShell';
+import {
+  validateSortJson,
+  validateProjectJson,
+} from '@/lib/utils/dev/parseJsonOption';
 
 // ============================================================================
 // Error details helpers — extract position, line:column, and context from
@@ -408,7 +415,7 @@ export default function DevQueryBuilder({
   };
 
   return (
-    <div className="rounded-lg border border-purple-100 bg-purple-50/40 p-4 transition-all">
+    <div className="max-w-4xl rounded-lg border border-purple-100 bg-purple-50/40 p-4 transition-all">
       {/* Mode tabs + Options toggle + Action buttons */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         {/* Mode tabs */}
@@ -499,69 +506,52 @@ export default function DevQueryBuilder({
                 Query Options
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Project</label>
-                  <input
-                    type="text"
-                    value={jsonOptions.project || ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, project: e.target.value })}
-                    placeholder='{ "field": 0 }'
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Sort</label>
-                  <input
-                    type="text"
-                    value={jsonOptions.sort || ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, sort: e.target.value })}
-                    placeholder='{ "field": -1 }'
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
+                <ValidatedJsonInput
+                  label="Project"
+                  value={jsonOptions.project || ''}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, project: v })}
+                  placeholder='{ "field": 0 }'
+                  validate={validateProjectJson}
+                  minHeight="36px"
+                />
+                <ValidatedJsonInput
+                  label="Sort"
+                  value={jsonOptions.sort || ''}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, sort: v })}
+                  placeholder='{ "createdAt": -1 }'
+                  validate={validateSortJson}
+                  minHeight="36px"
+                />
                 <div>
                   <label className="mb-1 block text-[10px] font-medium text-gray-600">Collation</label>
                   <input
                     type="text"
-                    value={jsonOptions.project || ''}
                     readOnly
                     className="h-8 w-full rounded border border-gray-200 bg-gray-50 px-2 font-mono text-xs text-gray-400"
                     placeholder="Not supported"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Skip</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={jsonOptions.skip ?? ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, skip: parseInt(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Limit</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={jsonOptions.limit ?? ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, limit: parseInt(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Max Time MS</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={jsonOptions.maxTimeMS ?? ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, maxTimeMS: parseInt(e.target.value) || 0 })}
-                    placeholder="60000"
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
+                <ValidatedNumericInput
+                  label="Skip"
+                  value={jsonOptions.skip}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, skip: v })}
+                  placeholder="0"
+                  min={0}
+                />
+                <ValidatedNumericInput
+                  label="Limit"
+                  value={jsonOptions.limit}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, limit: v })}
+                  placeholder="0"
+                  min={0}
+                />
+                <ValidatedNumericInput
+                  label="Max Time MS"
+                  value={jsonOptions.maxTimeMS}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, maxTimeMS: v })}
+                  placeholder="60000"
+                  min={0}
+                />
               </div>
             </div>
           )}
@@ -816,17 +806,13 @@ export default function DevQueryBuilder({
                 Shell Options (override chain methods)
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-gray-600">Max Time MS</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={jsonOptions.maxTimeMS ?? ''}
-                    onChange={e => onJsonOptionsChange({ ...jsonOptions, maxTimeMS: parseInt(e.target.value) || 0 })}
-                    placeholder="60000"
-                    className="h-8 w-full rounded border border-gray-300 px-2 font-mono text-xs text-gray-700 focus:border-purple-500 focus:ring-purple-500"
-                  />
-                </div>
+                <ValidatedNumericInput
+                  label="Max Time MS"
+                  value={jsonOptions.maxTimeMS}
+                  onChange={v => onJsonOptionsChange({ ...jsonOptions, maxTimeMS: v })}
+                  placeholder="60000"
+                  min={0}
+                />
               </div>
             </div>
           )}

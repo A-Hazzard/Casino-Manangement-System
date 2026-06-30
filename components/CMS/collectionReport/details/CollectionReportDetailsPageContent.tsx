@@ -428,48 +428,50 @@ export default function CollectionReportDetailsPageContent() {
 
         {/* Report Header Section: Location name, report ID, and financial summary */}
         <div className="px-2 pb-6 pt-2 lg:px-6 lg:pt-4">
-          <div className="rounded-lg bg-white py-4 shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container lg:py-8">
-            <div className="px-4 py-2 text-center lg:py-4">
-              <div className="mb-2 text-xs text-gray-500 lg:hidden">
-                COLLECTION REPORT
+          <div className="rounded-lg bg-white shadow lg:border-t-4 lg:border-lighterBlueHighlight lg:bg-container">
+            <div className="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-5">
+              {/* Left — location name + meta */}
+              <div className="min-w-0">
+                <p className="mb-0.5 text-xs font-medium uppercase tracking-wide text-gray-400 lg:hidden">
+                  Collection Report
+                </p>
+                <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">
+                  {reportData.locationName}
+                </h1>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  ID: {reportData.reportId}
+                </p>
               </div>
-              <h1 className="mb-2 text-2xl font-bold text-gray-800 lg:text-4xl">
-                {reportData.locationName}
-              </h1>
-              <p className="mb-2 text-sm text-gray-600 lg:text-base">
-                {/* TODO Change to Compound field later to a more understandable report ID rather than using _id*/}
-                Report ID: {reportData.reportId}
-              </p>
-              <div className="mb-4 space-y-1 text-sm font-medium text-gray-600 lg:text-base">
-                <p>
-                  Collector:{' '}
+
+              {/* Center — collector / created / timeframe */}
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600 lg:justify-center">
+                <span>
+                  <span className="font-medium text-gray-700">Collector</span>{' '}
                   {reportData.collectorName || reportData.collector || '—'}
-                </p>
-                <p>
-                  Created:{' '}
-                  {reportData.createdAt
-                    ? formatDateWithOrdinal(reportData.createdAt)
-                    : '—'}
-                </p>
+                </span>
+                <span>
+                  <span className="font-medium text-gray-700">Created</span>{' '}
+                  {reportData.createdAt ? formatDateWithOrdinal(reportData.createdAt) : '—'}
+                </span>
                 {(reportData.timeframeStart || reportData.timeframeEnd) && (
-                  <p>
-                    Timeframe:{' '}
-                    {reportData.timeframeStart
-                      ? formatDateWithOrdinal(reportData.timeframeStart)
-                      : '—'}{' '}
-                    →{' '}
-                    {reportData.timeframeEnd
-                      ? formatDateWithOrdinal(reportData.timeframeEnd)
-                      : '—'}
-                  </p>
+                  <span>
+                    <span className="font-medium text-gray-700">Timeframe</span>{' '}
+                    {reportData.timeframeStart ? formatDateWithOrdinal(reportData.timeframeStart) : '—'}
+                    {' → '}
+                    {reportData.timeframeEnd ? formatDateWithOrdinal(reportData.timeframeEnd) : '—'}
+                  </span>
                 )}
               </div>
-              <p className={`text-lg font-semibold`}>
-                Collection Report Machine Total Gross:{' '}
-                <span className={textColorClass}>
+
+              {/* Right — total gross */}
+              <div className="flex flex-col items-start lg:items-end">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Machine Total Gross
+                </p>
+                <p className={`text-2xl font-bold lg:text-3xl ${textColorClass}`}>
                   {locationTotal?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
-                </span>
-              </p>
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -4,12 +4,31 @@
  * Utility functions for filtering and sorting locations on the locations page.
  *
  * Features:
+ * - Location type badge resolution (SMIB / No SMIB / Local Server)
  * - Location filtering by SMIB status
  * - Location sorting
  * - Pagination utilities
  */
 
 import type { AggregatedLocation } from '@/lib/types/location';
+
+// ============================================================================
+// Location Type Badge
+// ============================================================================
+
+type LocationTypeBadge = {
+  label: string;
+  className: string;
+};
+
+export function getLocationTypeBadge(
+  isLocalServer?: boolean,
+  noSMIBLocation?: boolean
+): LocationTypeBadge {
+  if (isLocalServer) return { label: 'Local Server', className: 'bg-blue-100 text-blue-700' };
+  if (noSMIBLocation) return { label: 'No SMIB', className: 'bg-amber-100 text-amber-700' };
+  return { label: 'SMIB', className: 'bg-green-100 text-green-700' };
+}
 
 // ============================================================================
 // Filtering Functions

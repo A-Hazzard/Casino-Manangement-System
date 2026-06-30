@@ -165,9 +165,9 @@ export function deriveColumns(
     }
   }
 
-  // Guarantee _id leads even when no preferred order was supplied.
-  if (result.includes('_id')) {
-    return ['_id', ...result.filter(col => col !== '_id')];
-  }
-  return result;
+  // Guarantee _id leads, followed immediately by the primary timestamp column.
+  const DATE_PRIORITY = ['createdAt', 'readAt'];
+  const dateCol = DATE_PRIORITY.find(col => result.includes(col));
+  const withoutPinned = result.filter(col => col !== '_id' && col !== dateCol);
+  return ['_id', ...(dateCol ? [dateCol] : []), ...withoutPinned];
 }

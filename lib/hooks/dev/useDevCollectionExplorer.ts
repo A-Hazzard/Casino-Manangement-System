@@ -514,11 +514,22 @@ export function useDevCollectionExplorer(
 
   // Context change (model, date field, period, custom range, scope, refresh)
   // reloads the unsearched list and clears any applied search.
+  //
+  // "Single Filter Source" model:
+  //   - JSON mode: user's filter IS the query. Date dropdown changes are ignored
+  //     (the user controls everything via their filter).
+  //   - Visual mode: date dropdown + time period are the primary time scope.
   useEffect(() => {
     // When applyJsonQuery already initiated the fetch, skip this effect to avoid
     // a race where the effect's call returns unfiltered data.
     if (jsonFetchGuardRef.current) {
       jsonFetchGuardRef.current = false;
+      return;
+    }
+
+    // JSON mode: user's filter is primary — date dropdown changes don't reset it.
+    // The user can include date filters in their JSON if they want date scoping.
+    if (queryMode === 'json' && appliedJsonFilter) {
       return;
     }
 
@@ -559,6 +570,8 @@ export function useDevCollectionExplorer(
     timePeriod,
     customDateRange,
     scopeToCabinet,
+    queryMode,
+    appliedJsonFilter,
   ]);
 
   // ==========================================================================
@@ -1252,7 +1265,9 @@ export function useDevCollectionExplorer(
     showOptions,
     setShowOptions,
     appliedJsonFilter,
+    setAppliedJsonFilter,
     appliedJsonOptions,
+    setAppliedJsonOptions,
     applyJsonQuery,
     applyShellCommand,
     // search

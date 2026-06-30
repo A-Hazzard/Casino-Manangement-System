@@ -65,6 +65,7 @@ import {
   TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import { formatDate } from '@/lib/utils/formatting';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import { ExternalLink } from 'lucide-react';
 
 type NewCollectionFormFieldsProps = {
@@ -116,6 +117,8 @@ type NewCollectionFormFieldsProps = {
   jackpot?: number;
   machineIsOnline?: boolean;
   machineHasRelay?: boolean;
+  isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
 };
 
 export default function CollectionReportNewCollectionFormFields({
@@ -162,6 +165,8 @@ export default function CollectionReportNewCollectionFormFields({
   jackpot = 0,
   machineIsOnline,
   machineHasRelay,
+  isLocalServer = false,
+  noSMIBLocation = false,
 }: NewCollectionFormFieldsProps) {
   // ============================================================================
   // Render
@@ -171,7 +176,16 @@ export default function CollectionReportNewCollectionFormFields({
       {/* Location Info & Previous Collection Banner */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-grayHighlight">
-          {selectedLocationName} (Prev. Collection:{' '}
+          {selectedLocationName}
+          {selectedLocationName && (() => {
+            const badge = getLocationTypeBadge(isLocalServer, noSMIBLocation);
+            return (
+              <span className={`ml-1.5 inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                {badge.label}
+              </span>
+            );
+          })()}
+          {' '}(Prev. Collection:{' '}
           {previousCollectionTime ? formatDate(previousCollectionTime) : 'N/A'})
         </p>
       </div>

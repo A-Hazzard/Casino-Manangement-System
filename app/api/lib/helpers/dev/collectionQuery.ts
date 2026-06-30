@@ -15,6 +15,7 @@
 
 import { NextResponse } from 'next/server';
 import type { DevFieldDescriptor } from '@shared/types/dev';
+import { lenientParseJson } from '@/lib/utils/dev/parseJsonOption';
 import type { DevModelEntry } from './modelRegistry';
 
 export const BATCH_SIZE = 100;
@@ -71,7 +72,8 @@ export async function queryBatch(
   skipOverride?: number,
   maxTimeMS?: number
 ): Promise<CollectionBatch> {
-  const skip = (apiPage - 1) * BATCH_SIZE;
+  const pageSkip = (apiPage - 1) * BATCH_SIZE;
+  const skip = pageSkip + (skipOverride ?? 0);
   const collection = entry.model.collection;
   const sortOption = effectiveSort || entry.defaultSort;
 
@@ -81,7 +83,10 @@ export async function queryBatch(
   // Build cursor with optional project/maxTimeMS
   function applyCursorOptions(cursor: ReturnType<typeof collection.find>) {
     if (projectOption) {
-      try { cursor.project(JSON.parse(projectOption)); } catch { /* ignore */ }
+      const { parsed: parsedProject } = lenientParseJson(projectOption);
+      if (parsedProject && typeof parsedProject === 'object' && !Array.isArray(parsedProject)) {
+        cursor.project(parsedProject as Record<string, unknown>);
+      }
     }
     if (maxTimeMS && maxTimeMS > 0) cursor.maxTimeMS(maxTimeMS);
     return cursor;

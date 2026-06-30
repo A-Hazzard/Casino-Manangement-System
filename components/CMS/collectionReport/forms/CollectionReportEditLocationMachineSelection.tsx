@@ -39,6 +39,7 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import { toast } from 'sonner';
 
@@ -116,6 +117,16 @@ export default function CollectionReportEditLocationMachineSelection({
           />
         )}
       </div>
+      {selectedLocationId && (() => {
+        const loc = locations.find(l => String(l._id) === selectedLocationId);
+        if (!loc) return null;
+        const badge = getLocationTypeBadge(loc.isLocalServer, loc.noSMIBLocation);
+        return (
+          <span className={`inline-flex w-fit items-center rounded-sm px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+            {badge.label}
+          </span>
+        );
+      })()}
 
       {autoReport?.enabled && (
         <WowAutoReportButton control={autoReport} disabled={isProcessing} />

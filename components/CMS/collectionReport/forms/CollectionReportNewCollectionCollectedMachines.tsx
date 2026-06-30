@@ -264,27 +264,26 @@ export default function CollectionReportNewCollectionCollectedMachines({
                   </div>
                 </div>
 
-                {/* Stats row */}
-                <div className={`flex items-center gap-3 border-t px-3 py-1.5 text-[11px] ${hasVariation ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 bg-gray-50'}`}>
-                  <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
-                    In: <span className="text-green-700">{displayIn?.toLocaleString()}</span>
-                  </span>
-                  <span className="text-gray-300">|</span>
-                  <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
-                    Out: <span className="text-red-600">{displayOut?.toLocaleString()}</span>
-                  </span>
+                {/* Stats: meters + SAS times */}
+                <div className={`border-t px-3 py-1.5 text-[11px] ${hasVariation ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                    <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
+                      In: <span className="text-green-700">{displayIn?.toLocaleString()}</span>
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span className={`font-semibold ${isSelected ? 'text-blue-800' : 'text-gray-700'}`}>
+                      Out: <span className="text-red-600">{displayOut?.toLocaleString()}</span>
+                    </span>
+                  </div>
                   {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span className={`truncate ${hasVariation ? 'text-amber-700' : 'text-gray-500'}`}>
-                        {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
-                      </span>
-                    </>
+                    <p
+                      className={`mt-1 break-words text-[10px] leading-snug ${hasVariation ? 'text-amber-700' : 'text-gray-500'}`}
+                    >
+                      {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
+                      {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                    </p>
                   ) : (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span className="italic text-gray-400">No time set</span>
-                    </>
+                    <p className="mt-1 text-[10px] italic text-gray-400">No time set</p>
                   )}
                 </div>
 

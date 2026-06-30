@@ -213,24 +213,28 @@ export default function CollectionReportEditCollectedMachines({
                       : 'border-gray-200 bg-white'
                 }`}
               >
-                {/* Header: checkbox · name · badges · actions */}
-                <div className="flex items-center gap-2 px-3 py-2">
-                  {onToggleSelect && (
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => onToggleSelect(String(entry._id))}
-                      className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  )}
-                  <p className={`min-w-0 flex-1 truncate text-xs font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
-                    {formatMachineDisplayNameWithBold({
-                      serialNumber: entry.serialNumber,
-                      custom: { name: entry.machineCustomName },
-                      game: entry.game,
-                    })}
-                  </p>
-                  <div className="flex shrink-0 items-center gap-1">
+                {/* Header: name row + actions row */}
+                <div className="px-3 pt-2 pb-1.5">
+                  {/* Row 1: checkbox + name */}
+                  <div className="flex items-start gap-2">
+                    {onToggleSelect && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => onToggleSelect(String(entry._id))}
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    )}
+                    <p className={`min-w-0 flex-1 text-xs font-bold leading-snug ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
+                      {formatMachineDisplayNameWithBold({
+                        serialNumber: entry.serialNumber,
+                        custom: { name: entry.machineCustomName },
+                        game: entry.game,
+                      })}
+                    </p>
+                  </div>
+                  {/* Row 2: badges + action buttons */}
+                  <div className="mt-1 flex items-center justify-end gap-1">
                     {hasVariation && (
                       <span className="flex items-center gap-0.5 rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">
                         <Info className="h-2.5 w-2.5" />
@@ -264,29 +268,28 @@ export default function CollectionReportEditCollectedMachines({
                   </div>
                 </div>
 
-                {/* Stats row: meters + prev + time */}
-                <div className={`flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t px-3 py-1.5 text-[11px] ${hasVariation ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 bg-gray-50'}`}>
-                  <span className="font-semibold text-gray-700">
-                    In: <span className="text-green-700">{displayIn?.toLocaleString()}</span>
-                    <span className="ml-1 text-gray-400">(prev {entry.prevIn ?? 0})</span>
-                  </span>
-                  <span className="text-gray-300">|</span>
-                  <span className="font-semibold text-gray-700">
-                    Out: <span className="text-red-600">{displayOut?.toLocaleString()}</span>
-                    <span className="ml-1 text-gray-400">(prev {entry.prevOut ?? 0})</span>
-                  </span>
+                {/* Stats: meters + SAS times */}
+                <div className={`border-t px-3 py-1.5 text-[11px] ${hasVariation ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                    <span className="font-semibold text-gray-700">
+                      In: <span className="text-green-700">{displayIn?.toLocaleString()}</span>
+                      <span className="ml-1 text-gray-400">(prev {entry.prevIn ?? 0})</span>
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span className="font-semibold text-gray-700">
+                      Out: <span className="text-red-600">{displayOut?.toLocaleString()}</span>
+                      <span className="ml-1 text-gray-400">(prev {entry.prevOut ?? 0})</span>
+                    </span>
+                  </div>
                   {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span className={`truncate ${hasVariation ? 'text-amber-700' : 'text-gray-500'}`}>
-                        {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} → {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
-                      </span>
-                    </>
+                    <p
+                      className={`mt-1 break-words text-[10px] leading-snug ${hasVariation ? 'text-amber-700' : 'text-gray-500'}`}
+                    >
+                      {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
+                      {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                    </p>
                   ) : (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span className="italic text-gray-400">No time set</span>
-                    </>
+                    <p className="mt-1 text-[10px] italic text-gray-400">No time set</p>
                   )}
                 </div>
 

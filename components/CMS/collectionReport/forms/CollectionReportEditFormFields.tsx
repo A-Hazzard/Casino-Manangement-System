@@ -65,6 +65,7 @@ import {
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { formatDate } from '@/lib/utils/formatting';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ExternalLink } from 'lucide-react';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
@@ -106,6 +107,8 @@ type EditCollectionFormFieldsProps = {
   includeJackpot?: boolean;
   jackpot?: number;
   machineIsOnline?: boolean;
+  isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
 };
 
 export default function CollectionReportEditFormFields({
@@ -144,6 +147,8 @@ export default function CollectionReportEditFormFields({
   includeJackpot = false,
   jackpot = 0,
   machineIsOnline,
+  isLocalServer = false,
+  noSMIBLocation = false,
 }: EditCollectionFormFieldsProps) {
   // ============================================================================
   // Computed
@@ -158,7 +163,16 @@ export default function CollectionReportEditFormFields({
     <>
       <div className="flex items-center justify-between">
         <p className="text-sm text-grayHighlight">
-          {selectedLocationName} (Prev. Collection:{' '}
+          {selectedLocationName}
+          {selectedLocationName && (() => {
+            const badge = getLocationTypeBadge(isLocalServer, noSMIBLocation);
+            return (
+              <span className={`ml-1.5 inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                {badge.label}
+              </span>
+            );
+          })()}
+          {' '}(Prev. Collection:{' '}
           {machineForDataEntry?.collectionTime
             ? formatDate(machineForDataEntry.collectionTime)
             : 'N/A'}

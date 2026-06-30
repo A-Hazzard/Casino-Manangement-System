@@ -191,6 +191,7 @@ export type CollectionReportLocationWithMachines = {
   gameDayOffset?: number;
   includeJackpot?: boolean;
   noSMIBLocation?: boolean;
+  isLocalServer?: boolean;
 };
 
 export type MachineMetric = {

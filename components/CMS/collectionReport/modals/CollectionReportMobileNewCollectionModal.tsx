@@ -44,6 +44,7 @@ import { persistWowCollection } from '@/lib/helpers/collectionReport/wowAutoRepo
 import { useUserStore } from '@/lib/store/userStore';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -504,6 +505,14 @@ export default function CollectionReportMobileNewCollectionModal({
                         <p className="text-sm font-semibold text-gray-900">
                           {selectedLocationName || 'Location'}
                         </p>
+                        {selectedLoc && (() => {
+                          const badge = getLocationTypeBadge(selectedLoc.isLocalServer, selectedLoc.noSMIBLocation);
+                          return (
+                            <span className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="rounded-full bg-green-100 px-3 py-1 text-right">
                         <p className="text-xs font-bold text-green-700">
@@ -601,6 +610,14 @@ export default function CollectionReportMobileNewCollectionModal({
                         />
                       )}
                     </div>
+                    {selectedLoc && (() => {
+                      const badge = getLocationTypeBadge(selectedLoc.isLocalServer, selectedLoc.noSMIBLocation);
+                      return (
+                        <span className={`mt-2 inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
                     {autoReport.enabled && (
                       <div className="mt-3">
                         <WowAutoReportButton control={autoReport} />

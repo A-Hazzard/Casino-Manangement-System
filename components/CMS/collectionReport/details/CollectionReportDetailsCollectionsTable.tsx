@@ -12,8 +12,7 @@ import { formatSasTime } from '@/lib/utils/collection';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { Zap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
 // === Sub-components ===
 import {
@@ -81,11 +80,6 @@ export function CollectionReportDetailsCollectionsTable({
   useNetGross = false,
 }: CollectionReportDetailsCollectionsTableProps) {
   // ============================================================================
-  // State & Hooks
-  // ============================================================================
-  const router = useRouter();
-
-  // ============================================================================
   // Helpers
   // ============================================================================
   // Show decimals only when the fractional part is >= 0.1 (e.g. 78596 → "78,596", 26440.50 → "26,440.50")
@@ -115,18 +109,6 @@ export function CollectionReportDetailsCollectionsTable({
   // Computed
   // ============================================================================
   const hasRamClears = metrics.some(metric => metric.ramClear);
-
-  // ============================================================================
-  // Handlers
-  // ============================================================================
-  const handleMachineClick = useCallback(
-    (metric: MachineMetric) => {
-      if (metric.actualMachineId) {
-        router.push(`/cabinets/${metric.actualMachineId}`);
-      }
-    },
-    [router]
-  );
 
   // ============================================================================
   // Render
@@ -236,7 +218,11 @@ export function CollectionReportDetailsCollectionsTable({
                   <div className="flex flex-col gap-1">
                     <CollectionReportDetailsMachineDisplay
                       name={metric.machineId}
-                      onClick={() => handleMachineClick(metric)}
+                      href={
+                        metric.actualMachineId
+                          ? `/cabinets/${metric.actualMachineId}`
+                          : undefined
+                      }
                     />
                     <div className="flex items-center gap-1.5">
                       {metric.actualMachineId && (
@@ -338,7 +324,11 @@ export function CollectionReportDetailsCollectionsTable({
               <div className="mb-3 flex flex-col gap-1">
                 <CollectionReportDetailsMachineDisplay
                   name={metric.machineId}
-                  onClick={() => handleMachineClick(metric)}
+                  href={
+                    metric.actualMachineId
+                      ? `/cabinets/${metric.actualMachineId}`
+                      : undefined
+                  }
                 />
                 <div className="flex items-center gap-1.5">
                   {metric.actualMachineId && (

@@ -598,12 +598,12 @@ export function ModernCalendar({
             disabled={disabled}
             variant={'outline'}
             className={cn(
-              'w-full min-w-[200px] max-w-full justify-start border-gray-200 bg-white text-left text-xs font-normal shadow-sm transition-all hover:bg-gray-50 sm:text-sm',
+              'w-full min-w-[280px] max-w-full justify-start border-gray-200 bg-white text-left text-xs font-normal shadow-sm transition-all hover:bg-gray-50 sm:text-sm',
               !date?.from && 'text-muted-foreground'
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0 text-blue-500" />
-            <span className="truncate font-medium text-gray-700">
+            <span className="font-medium text-gray-700">
               {headerText}
             </span>
           </Button>

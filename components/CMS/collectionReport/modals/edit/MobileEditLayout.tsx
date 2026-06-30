@@ -10,6 +10,7 @@ import { Calculator, ClipboardList } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
+import { getLocationTypeBadge } from '@/lib/utils/location/page';
 import type { WowAutoReportControl } from '@/lib/hooks/collectionReport/useWowAutoReport';
 import type {
   MachineVariationData,
@@ -63,6 +64,8 @@ type MobileEditLayoutProps = {
   selectedIds?: string[];
   onToggleSelect?: (id: string) => void;
   onDeleteSelected?: () => void;
+  isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
 };
 
 export default function MobileEditLayout(props: MobileEditLayoutProps) {
@@ -103,6 +106,8 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
     selectedIds,
     onToggleSelect,
     onDeleteSelected,
+    isLocalServer,
+    noSMIBLocation,
   } = props;
   const machineStatusMap = props.machineStatusMap ?? {};
 
@@ -168,9 +173,19 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
         <div className="flex-shrink-0 space-y-3 p-4">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-bold text-gray-900">Add Collection</h2>
-            <p className="text-sm text-gray-500">
-              {selectedLocationName ?? 'Select a machine to record its counts.'}
-            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="text-sm text-gray-500">
+                {selectedLocationName ?? 'Select a machine to record its counts.'}
+              </p>
+              {selectedLocationName && (() => {
+                const badge = getLocationTypeBadge(isLocalServer, noSMIBLocation);
+                return (
+                  <span className={`inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium ${badge.className}`}>
+                    {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
 
           {props.autoReport?.enabled && (

@@ -33,6 +33,7 @@ import {
   type DevModelEntry,
 } from '@/app/api/lib/helpers/dev/modelRegistry';
 import { describeSchema } from '@/app/api/lib/helpers/dev/schemaIntrospection';
+import { lenientParseJson } from '@/lib/utils/dev/parseJsonOption';
 import type { DevCollectionRecord, DevShellCommandResponse } from '@shared/types/dev';
 import type { ObjectId } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
@@ -206,51 +207,45 @@ export async function GET(
     }
 
     const hasDateRange = Boolean(startDate || endDate);
-    let baseFilter: Record<string, unknown> = {
-      ...buildDateFilter(dateField, startDate, endDate),
-    };
-    if (machine) baseFilter.machine = machine;
 
-    // If rawFilter is provided, parse and merge it (overrides clause builder)
+    // ==========================================================================
+    // Filter assembly — "Single Filter Source" model
+    // ==========================================================================
+    // JSON mode (rawFilter provided): user's filter IS the complete filter.
+    //   The date dropdown/time period are ignored — the user controls everything.
+    //   Machine scope is still applied as a structural constraint.
+    // Visual mode (no rawFilter): date filter is the base, visual clauses merge on top.
+    let baseFilter: Record<string, unknown> = {};
+
     if (rawFilterParam) {
+      // --- JSON mode: user's filter is primary ---
       try {
-        const rawFilter = JSON.parse(rawFilterParam) as Record<string, unknown>;
-        const baseKeys = Object.keys(baseFilter);
-        if (baseKeys.length === 0) {
-          baseFilter = rawFilter;
-        } else {
-          baseFilter = { $and: [baseFilter, rawFilter] };
-        }
+        baseFilter = JSON.parse(rawFilterParam) as Record<string, unknown>;
       } catch {
         console.error(
           '[DevCollection] Failed to parse rawFilter — returning unfiltered results.',
           rawFilterParam
         );
       }
-    }
-
-    // Merge query-builder clauses into baseFilter (only when no rawFilter)
-    if (!rawFilterParam) {
+      // Machine scope is a structural constraint, always applied
+      if (machine) baseFilter.machine = machine;
+    } else {
+      // --- Visual mode: date filter + clause builder ---
+      baseFilter = { ...buildDateFilter(dateField, startDate, endDate) };
+      if (machine) baseFilter.machine = machine;
       baseFilter = applyFilterClauses(baseFilter, filterClauses, filterLogic);
     }
 
     // Sort override — JSON mode passes a full sort object; query builder passes field + dir
     let effectiveSort = entry.defaultSort as Record<string, 1 | -1>;
     if (sortJsonParam) {
-      try {
-        const parsedSort = JSON.parse(sortJsonParam) as Record<string, 1 | -1>;
-        if (
-          parsedSort &&
-          typeof parsedSort === 'object' &&
-          !Array.isArray(parsedSort)
-        ) {
-          effectiveSort = parsedSort;
-        }
-      } catch {
-        console.error(
-          '[DevCollection] Failed to parse sort param — using default sort.',
-          sortJsonParam
-        );
+      const { parsed: parsedSort } = lenientParseJson<Record<string, unknown>>(sortJsonParam);
+      if (
+        parsedSort &&
+        typeof parsedSort === 'object' &&
+        !Array.isArray(parsedSort)
+      ) {
+        effectiveSort = parsedSort as Record<string, 1 | -1>;
       }
     } else if (sortFieldParam) {
       effectiveSort = { [sortFieldParam]: sortDirParam as 1 | -1 };
@@ -270,9 +265,10 @@ export async function GET(
 
       // Apply project/skip/limit/maxTimeMS to export
       if (projectParam) {
-        try {
-          cursor.project(JSON.parse(projectParam));
-        } catch { /* ignore */ }
+        const { parsed: parsedProject } = lenientParseJson(projectParam);
+        if (parsedProject && typeof parsedProject === 'object' && !Array.isArray(parsedProject)) {
+          cursor.project(parsedProject as Record<string, unknown>);
+        }
       }
       if (skipParam > 0) cursor.skip(skipParam);
       if (effectiveLimit) cursor.limit(effectiveLimit);

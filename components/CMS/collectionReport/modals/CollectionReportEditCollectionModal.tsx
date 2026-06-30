@@ -628,7 +628,7 @@ function DesktopEditWrapper({
   return (
     <>
       {/* Desktop Header */}
-      <DialogHeader className="flex-shrink-0 p-4 pb-0 md:p-6">
+      <DialogHeader className="flex-shrink-0 p-4 pb-0 md:p-6 pr-10">
         <DialogTitle className="text-xl font-bold md:text-2xl">
           Edit Collection Report
         </DialogTitle>
@@ -651,6 +651,8 @@ function DesktopEditWrapper({
         selectedIds={selectedIds}
         onToggleSelect={handleToggleSelect}
         onDeleteSelected={() => setShowBulkDeleteConfirmation(true)}
+        isLocalServer={selectedLoc?.isLocalServer}
+        noSMIBLocation={selectedLoc?.noSMIBLocation}
       />
 
       <DialogFooter className="flex flex-shrink-0 flex-col items-center gap-3 border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4">
@@ -1293,6 +1295,8 @@ function MobileEditWrapper({
           selectedIds={mobileSelectedIds}
           onToggleSelect={handleMobileToggleSelect}
           onDeleteSelected={() => setShowMobileBulkDeleteConfirmation(true)}
+          isLocalServer={selectedMobileLoc?.isLocalServer}
+          noSMIBLocation={selectedMobileLoc?.noSMIBLocation}
         />
       )}
 

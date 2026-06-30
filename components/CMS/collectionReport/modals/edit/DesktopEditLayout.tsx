@@ -99,6 +99,8 @@ type DesktopEditLayoutProps = {
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onDeleteSelected: () => void;
+  isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
 };
 
 export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
@@ -169,6 +171,8 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     selectedIds,
     onToggleSelect,
     onDeleteSelected,
+    isLocalServer,
+    noSMIBLocation,
   } = props;
 
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -275,6 +279,8 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
                   ? desktopMachineStatusMap[String(machineForDataEntry._id)]
                   : undefined
               }
+              isLocalServer={isLocalServer}
+              noSMIBLocation={noSMIBLocation}
             />
 
             <CollectionReportEditFinancials
