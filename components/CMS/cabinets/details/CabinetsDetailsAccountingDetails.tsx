@@ -34,9 +34,12 @@ import CabinetsDetailsUnifiedBillValidator from './CabinetsDetailsUnifiedBillVal
 import { CollectionSettingsContent } from './CollectionSettingsContent';
 import { ConfigurationCard } from './ConfigurationCard';
 import DevCollectionExplorer from './developer/DevCollectionExplorer';
+import TransferMetersContent from './TransferMetersContent';
+import CabinetLiveMetricsCards from './CabinetLiveMetricsCards';
 
 // Hooks & Store
 import { containerVariants, itemVariants } from '@/lib/constants';
+import { getCabinetLiveMeterValues } from '@/lib/helpers/cabinets/liveMeters';
 import { useCabinetAccountingData } from '@/lib/hooks/cabinets/useCabinetAccountingData';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
@@ -45,13 +48,13 @@ import {
   ConfigurationsSkeleton,
   LiveMetricsSkeleton,
   MetricsSkeleton,
+  TransferMetersSkeleton,
 } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 import CabinetsDetailsActivityLogSkeleton from './CabinetsDetailsActivityLogSkeleton';
 import CabinetsDetailsCollectionHistorySkeleton from './CabinetsDetailsCollectionHistorySkeleton';
 
 // Utils & Types
 import type { AccountingDetailsProps } from '@/lib/types/cabinet/details';
-import { formatCurrency } from '@/lib/utils';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
@@ -67,6 +70,7 @@ const CabinetsDetailsAccountingDetails = ({
   setActiveMetricsTabContent,
   onRefresh,
   isDeveloper = false,
+  canTransferMeters = false,
   refreshTrigger,
 }: AccountingDetailsProps) => {
   // ============================================================================
@@ -102,6 +106,9 @@ const CabinetsDetailsAccountingDetails = ({
   // ============================================================================
   // Computed
   // ============================================================================
+  const liveMeterValues =
+    cabinet != null ? getCabinetLiveMeterValues(cabinet) : null;
+
   const menuItems = [
     'Movements',
     'Live Meters',
@@ -110,6 +117,7 @@ const CabinetsDetailsAccountingDetails = ({
     'Collection History',
     'Collection Settings',
     'Configurations',
+    ...(canTransferMeters ? ['Transfer Meters'] : []),
     ...(isDeveloper ? ['Developer Options'] : []),
   ];
 
@@ -317,7 +325,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
+                            {formatAmount(
                               Number(
                                 cabinet?.jackpot ??
                                   cabinet?.sasMeters?.jackpot ??
@@ -336,193 +344,122 @@ const CabinetsDetailsAccountingDetails = ({
                   ) : (
                     <motion.div
                       key="live-meters"
-                      className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3"
+                      className="space-y-4"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      {/* Coin In */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Coin In
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(machine?.sasMeters?.coinIn ?? 0)
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
+                      {liveMeterValues && (
+                        <CabinetLiveMetricsCards values={liveMeterValues} />
+                      )}
 
-                      {/* Coin Out */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Coin Out
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(machine?.sasMeters?.coinOut ?? 0)
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
+                      <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+                        {/* Coin In */}
+                        <motion.div
+                          className="rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                            Coin In
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              {formatAmount(liveMeterValues?.coinIn ?? 0)}
+                            </p>
+                          </div>
+                        </motion.div>
 
-                      {/* Drop */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Drop
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(machine?.sasMeters?.drop ?? 0)
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
+                        {/* Coin Out */}
+                        <motion.div
+                          className="rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                            Coin Out
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              {formatAmount(liveMeterValues?.coinOut ?? 0)}
+                            </p>
+                          </div>
+                        </motion.div>
 
-                      {/* Jackpot */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Jackpot
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(machine?.sasMeters?.jackpot ?? 0)
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
+                        {/* Current Credits */}
+                        <motion.div
+                          className="rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                            Current Credits
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              {formatAmount(liveMeterValues?.currentCredits ?? 0)}
+                            </p>
+                          </div>
+                        </motion.div>
 
-                      {/* Total Cancelled Credits */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Total Cancelled Credits
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(
-                                machine?.sasMeters?.totalCancelledCredits ?? 0
-                              )
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
+                        {/* Games Played */}
+                        <motion.div
+                          className="rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                            Games Played
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              {liveMeterValues?.gamesPlayed ?? 0}
+                            </p>
+                          </div>
+                        </motion.div>
 
-                      {/* Current Credits */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Current Credits
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(
-                              Number(machine?.sasMeters?.currentCredits ?? 0)
-                            )}
-                          </p>
-                        </div>
-                      </motion.div>
-
-                      {/* Games Played */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Games Played
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {machine?.sasMeters?.gamesPlayed ?? 0}
-                          </p>
-                        </div>
-                      </motion.div>
-
-                      {/* Games Won */}
-                      <motion.div
-                        className="rounded-lg bg-container p-4 shadow md:p-6"
-                        variants={itemVariants}
-                        whileHover={{
-                          y: -5,
-                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                        }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
-                          Games Won
-                        </h4>
-                        <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
-                        <div className="flex items-center justify-center">
-                          <p className="text-center text-base font-bold md:text-xl">
-                            {machine?.sasMeters?.gamesWon ?? 0}
-                          </p>
-                        </div>
-                      </motion.div>
+                        {/* Games Won */}
+                        <motion.div
+                          className="rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                            Games Won
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className="text-center text-base font-bold md:text-xl">
+                              {liveMeterValues?.gamesWon ?? 0}
+                            </p>
+                          </div>
+                        </motion.div>
+                      </div>
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === 'Bill Validator' ? (
@@ -764,6 +701,24 @@ const CabinetsDetailsAccountingDetails = ({
                             }}
                           />
                         )}
+                    </motion.div>
+                  )
+                ) : activeMetricsTabContent === 'Transfer Meters' ? (
+                  loading ? (
+                    <TransferMetersSkeleton />
+                  ) : (
+                    <motion.div
+                      key="transfer-meters"
+                      className="w-full"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <TransferMetersContent
+                        cabinet={cabinet}
+                        onRefresh={onRefresh}
+                      />
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === 'Developer Options' ? (

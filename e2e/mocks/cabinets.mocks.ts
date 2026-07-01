@@ -49,6 +49,7 @@ export const MOCK_CABINET_1 = {
     gamesPlayed: 9_800,
     gamesWon: 4_900,
     currentCredits: 0,
+    totalWonCredits: 4_823_000,
   },
 };
 

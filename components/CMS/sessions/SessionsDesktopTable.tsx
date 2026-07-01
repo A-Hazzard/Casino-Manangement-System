@@ -12,6 +12,7 @@ import {
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { SessionsTableProps } from '@/lib/types/sessions';
 import { formatDate } from '@/lib/utils/date';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { ExternalLink, Eye } from 'lucide-react';
 import Link from 'next/link';
@@ -169,6 +170,11 @@ export function SessionsDesktopTable({
                     <span className="break-all text-xs text-gray-600">
                       ID: {session.machineId || 'N/A'}
                     </span>
+                    <CopyMachineFieldsButtons
+                      machineId={session.machineId}
+                      gmNumber={session.machineCustomName}
+                      serialNumber={session.machineSerialNumber}
+                    />
                     {session.machineId && (
                       <button
                         type="button"

@@ -19,6 +19,7 @@
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import { Checkbox } from '@/components/shared/ui/checkbox';
 import { ClipboardList, Eye, EyeOff, Copy, Check, Trash2 } from 'lucide-react';
 import { safeFormatDate } from '@/lib/utils/formatting';
 import { toast } from 'sonner';
@@ -30,6 +31,8 @@ type AdministrationActivityLogCardProps = {
   onDescriptionClick?: (log: ActivityLog) => void;
   canDelete?: boolean;
   onDelete?: (log: ActivityLog) => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 };
 
 function AdministrationActivityLogCard({
@@ -37,6 +40,8 @@ function AdministrationActivityLogCard({
   onDescriptionClick,
   canDelete = false,
   onDelete,
+  isSelected = false,
+  onToggleSelect,
 }: AdministrationActivityLogCardProps) {
   // ============================================================================
   // State
@@ -155,11 +160,22 @@ function AdministrationActivityLogCard({
   // Render
   // ============================================================================
   return (
-    <Card className="w-full">
+    <Card
+      className={`w-full ${isSelected ? 'border-buttonActive bg-buttonActive/5' : ''}`}
+    >
       <CardContent className="p-4">
         {/* Header Row */}
         <div className="mb-3 flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            {onToggleSelect && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={onToggleSelect}
+                aria-label={`Select activity log ${log._id}`}
+                className="mt-1"
+              />
+            )}
+            <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <Badge className={getActionBadgeStyle(log.action || 'unknown')}>
                 {(log.action || 'unknown').toUpperCase()}
@@ -172,6 +188,7 @@ function AdministrationActivityLogCard({
             </div>
             <div className="mt-1 font-mono text-xs text-gray-500">
               {safeFormatDate(log.timestamp)}
+            </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">

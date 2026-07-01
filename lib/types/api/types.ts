@@ -198,6 +198,8 @@ export type MachineMetric = {
   id: string;
   machineId: string;
   actualMachineId?: string;
+  serialNumber?: string;
+  machineCustomName?: string;
   dropCancelled: string;
   metersGross: number;
   jackpot?: number;
@@ -265,6 +267,8 @@ export type CollectionReportData = {
 export type MachineVariationData = {
   machineId: string;
   machineName: string;
+  serialNumber?: string;
+  machineCustomName?: string;
   variation: number | null;
   sasGross: number | null;
   meterGross: number;

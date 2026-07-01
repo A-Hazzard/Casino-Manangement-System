@@ -6,6 +6,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal, X, CheckSquare } from 'lucide-react';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 
 type MobileCollectedListPanelProps = {
   isVisible: boolean;
@@ -641,13 +642,19 @@ export default function CollectionReportMobileCollectedListPanel({
                                       />
                                     )}
                                     <h4
-                                      className={`text-sm font-black leading-tight ${hasVariation ? 'text-amber-950' : isNewMachine ? 'text-green-900' : 'text-gray-900'}`}
+                                      className={`flex items-start gap-1 text-sm font-black leading-tight ${hasVariation ? 'text-amber-950' : isNewMachine ? 'text-green-900' : 'text-gray-900'}`}
                                     >
                                       {formatMachineDisplayNameWithBold({
                                         serialNumber: machine.serialNumber,
                                         custom: { name: machine.machineCustomName },
                                         game: machine.game,
                                       })}
+                                      <CopyMachineFieldsButtons
+                                        machine={machine}
+                                        machineId={machine.machineId}
+                                        gmNumber={machine.machineCustomName}
+                                        serialNumber={machine.serialNumber}
+                                      />
                                     </h4>
                                   </div>
                                   {hasVariation && (

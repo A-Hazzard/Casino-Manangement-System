@@ -3,6 +3,7 @@
 import ReportsMachineCard, {
   type ReportsMachineCardMetric,
 } from '@/components/CMS/reports/common/ReportsMachineCard';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 
 type SasMachineCardData = {
@@ -86,7 +87,12 @@ export default function ReportsSasMachineMobileCard({
 
   return (
     <ReportsMachineCard
-      title={machineTitle}
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          {machineTitle}
+          <CopyMachineFieldsButtons machine={machine} />
+        </span>
+      }
       machineHref={
         machine.machineId ? `/cabinets/${machine.machineId}` : undefined
       }

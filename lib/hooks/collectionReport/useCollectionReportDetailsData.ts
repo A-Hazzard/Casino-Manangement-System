@@ -94,6 +94,7 @@ export function useCollectionReportDetailsData() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reportId = params.reportId as string;
+  const highlightMachineId = searchParams?.get('highlightMachine') ?? undefined;
 
   // ==========================================================================
   // Data Loading — resilient fetch with retry, timeout, and countdown
@@ -196,6 +197,7 @@ export function useCollectionReportDetailsData() {
   // Local State - Tab Navigation
   // ==========================================================================
   const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (searchParams?.get('highlightMachine')) return 'Machine Metrics';
     const section = searchParams?.get('section');
     if (section === 'location') return 'Location Metrics';
     if (section === 'sas') return 'SAS Metrics Compare';
@@ -360,6 +362,12 @@ export function useCollectionReportDetailsData() {
    */
   useEffect(() => {
     const section = searchParams?.get('section');
+    if (searchParams?.get('highlightMachine')) {
+      if (activeTab !== 'Machine Metrics') {
+        setActiveTab('Machine Metrics');
+      }
+      return;
+    }
     if (section === 'location' && activeTab !== 'Location Metrics') {
       setActiveTab('Location Metrics');
     } else if (section === 'sas' && activeTab !== 'SAS Metrics Compare') {
@@ -370,6 +378,25 @@ export function useCollectionReportDetailsData() {
       setActiveTab('Machine Metrics');
     }
   }, [searchParams, activeTab]);
+
+  useEffect(() => {
+    if (!highlightMachineId || filteredSortedAndSearchedData.length === 0) {
+      return;
+    }
+
+    const machineIndex = filteredSortedAndSearchedData.findIndex(
+      metric => metric.actualMachineId === highlightMachineId
+    );
+
+    if (machineIndex < 0) {
+      return;
+    }
+
+    const targetPage = Math.floor(machineIndex / ITEMS_PER_PAGE) + 1;
+    setMachinePage(previousPage =>
+      previousPage === targetPage ? previousPage : targetPage
+    );
+  }, [highlightMachineId, filteredSortedAndSearchedData]);
 
   // ==========================================================================
   // Return
@@ -396,6 +423,7 @@ export function useCollectionReportDetailsData() {
     paginatedMetricsData,
     machineTotalPages,
     tabContentRef,
+    highlightMachineId,
     // Setters
     setMachinePage,
     setSearchTerm,

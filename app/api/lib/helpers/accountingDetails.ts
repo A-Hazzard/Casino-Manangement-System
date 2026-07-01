@@ -803,6 +803,8 @@ export async function getCollectionReportById(
         id: String(idx + 1),
         machineId: machineDisplayName,
         actualMachineId: collection.machineId,
+        serialNumber: serialNumberRaw || undefined,
+        machineCustomName: customName || undefined,
         dropCancelled: `${formatSmartDecimal(scaled.drop)} / ${formatSmartDecimal(scaled.cancelled)}`,
         metersIn: Math.round((collection.metersIn ?? 0) * 100) / 100,
         metersOut: Math.round((collection.metersOut ?? 0) * 100) / 100,

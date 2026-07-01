@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/shared/ui/button';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import type {
   MachineVariationRow,
   VariationCheckResult,
@@ -175,7 +176,14 @@ export function VariationCheckPanel({
                     {variationMachines.map(machine => (
                       <tr key={machine.machineId} className="border-t border-gray-100">
                         <td className="max-w-[8rem] truncate px-2 py-1.5 sm:max-w-[18rem]">
-                          {machine.machineName}
+                          <span className="flex items-center gap-1">
+                            <span className="truncate">{machine.machineName}</span>
+                            <CopyMachineFieldsButtons
+                              machineId={machine.machineId}
+                              gmNumber={machine.machineCustomName}
+                              serialNumber={machine.serialNumber}
+                            />
+                          </span>
                         </td>
                         <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">
                           {fmt(machine.meterGross)}

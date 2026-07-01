@@ -38,6 +38,7 @@ import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Badge } from '@/components/shared/ui/badge';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -1115,7 +1116,11 @@ export function SessionsEventsPageContent({
               Viewing audit events for session{' '}
               <span className="font-mono text-gray-700">{sessionId}</span> on
               machine{' '}
-              <span className="font-mono text-gray-700">{machineId}</span>.
+              <span className="inline-flex items-center gap-1 font-mono text-gray-700">
+                {machineId}
+                <CopyMachineFieldsButtons machineId={machineId} />
+              </span>
+              .
             </p>
           </div>
 

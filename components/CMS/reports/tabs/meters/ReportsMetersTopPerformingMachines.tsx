@@ -1,6 +1,7 @@
 'use client';
 
 import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type { TopPerformingItem } from '@/lib/types';
@@ -150,10 +151,16 @@ export default function ReportsMetersTopPerformingMachines({
                 machineHref={item._id ? `/cabinets/${item._id}` : undefined}
                 locationName={item.location}
                 headerAdornment={
-                  <div
-                    className="mt-1.5 h-3 w-3 flex-shrink-0 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="h-3 w-3 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <CopyMachineFieldsButtons
+                      machineId={item._id ?? item.machineId ?? item.id}
+                      gmNumber={item.customName}
+                    />
+                  </div>
                 }
                 metrics={[
                   {
@@ -207,15 +214,20 @@ export default function ReportsMetersTopPerformingMachines({
                       {item.name}
                     </p>
                   )}
-                  {item._id ? (
-                    <Link
-                      href={`/cabinets/${item._id}`}
-                      className="mt-0.5 flex-shrink-0"
-                      title="View machine details"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 text-buttonActive" />
-                    </Link>
-                  ) : null}
+                  <div className="flex flex-shrink-0 items-center gap-1">
+                    <CopyMachineFieldsButtons
+                      machineId={item._id ?? item.machineId ?? item.id}
+                      gmNumber={item.customName}
+                    />
+                    {item._id ? (
+                      <Link
+                        href={`/cabinets/${item._id}`}
+                        title="View machine details"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 text-buttonActive" />
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
                 {item.location ? (
                   <p className="mt-0.5 break-words text-xs text-gray-500">

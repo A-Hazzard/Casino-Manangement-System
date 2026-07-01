@@ -20,11 +20,11 @@ import {
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import {
   mapCabinetUpdateFields,
-  deduplicateCabinetChanges,
+  buildCabinetActivityChanges,
+  type CabinetUpdatePayload,
 } from '@/app/api/lib/helpers/cabinetUpdate';
 import {
   logActivity,
-  calculateChanges,
   mapDeletedFieldsToChanges,
 } from '@/app/api/lib/helpers/activityLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -404,11 +404,9 @@ export async function performCabinetUpdate(
   const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress && updatedMachine) {
     try {
-      const changes = deduplicateCabinetChanges(
-        calculateChanges(
-          originalCabinet.toObject(),
-          updateFields as Record<string, unknown>
-        )
+      const changes = await buildCabinetActivityChanges(
+        originalCabinet.toObject() as Record<string, unknown>,
+        data as CabinetUpdatePayload
       );
       await logActivity({
         action: 'UPDATE',
@@ -498,11 +496,9 @@ export async function performCabinetPatch(
 
   if (originalCabinet && currentUser.emailAddress) {
     try {
-      const changes = deduplicateCabinetChanges(
-        calculateChanges(
-          originalCabinet.toObject(),
-          updateFields as Record<string, unknown>
-        )
+      const changes = await buildCabinetActivityChanges(
+        originalCabinet.toObject() as Record<string, unknown>,
+        data as CabinetUpdatePayload
       );
       await logActivity({
         action: 'UPDATE',

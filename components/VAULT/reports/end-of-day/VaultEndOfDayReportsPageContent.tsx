@@ -16,6 +16,7 @@
 
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import DebugSection from '@/components/shared/debug/DebugSection';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
@@ -991,7 +992,10 @@ export default function VaultEndOfDayReportsPageContent() {
                         {paginatedMidDayCounts.map(slot => (
                           <TableRow key={`${slot.machineId}-${slot.countedAt}`}>
                             <TableCell isFirstColumn className="font-medium">
-                              {slot.machineId}
+                              <span className="inline-flex items-center gap-1">
+                                {slot.machineId}
+                                <CopyMachineFieldsButtons machineId={slot.machineId} />
+                              </span>
                             </TableCell>
                             <TableCell className="text-sm text-gray-600">
                               {slot.location}
@@ -1111,7 +1115,10 @@ export default function VaultEndOfDayReportsPageContent() {
                         {paginatedEndOfDayCounts.map(slot => (
                           <TableRow key={`${slot.machineId}-${slot.countedAt}`}>
                             <TableCell isFirstColumn className="font-medium">
-                              {slot.machineId}
+                              <span className="inline-flex items-center gap-1">
+                                {slot.machineId}
+                                <CopyMachineFieldsButtons machineId={slot.machineId} />
+                              </span>
                             </TableCell>
                             <TableCell className="text-sm text-gray-600">
                               {slot.location}

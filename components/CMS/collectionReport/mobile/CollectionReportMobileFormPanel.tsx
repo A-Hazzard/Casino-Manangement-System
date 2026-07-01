@@ -5,6 +5,7 @@ import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionRep
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import { ArrowLeft, X } from 'lucide-react';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 
 type MobileFormPanelProps = {
   isVisible: boolean;
@@ -147,12 +148,15 @@ export default function CollectionReportMobileFormPanel({
               >
                 <ArrowLeft className="h-6 w-6" />
               </button>
-              <h3 className="line-clamp-1 pr-2 text-lg font-bold text-gray-900">
+              <h3 className="flex items-center gap-1 line-clamp-1 pr-2 text-lg font-bold text-gray-900">
                 {isManager
                   ? 'Report Financials'
                   : selectedMachineData
                     ? formatMachineDisplay(selectedMachineData)
                     : 'Machine'}
+                {!isManager && selectedMachineData && (
+                  <CopyMachineFieldsButtons machine={selectedMachineData} machineId={String(selectedMachineData._id)} />
+                )}
               </h3>
             </div>
             <div className="flex items-center gap-2">
@@ -184,6 +188,13 @@ export default function CollectionReportMobileFormPanel({
                     ? formatMachineDisplay(selectedMachineData)
                     : 'N/A'
                 }
+                machineId={
+                  selectedMachineData?._id
+                    ? String(selectedMachineData._id)
+                    : undefined
+                }
+                gmNumber={selectedMachineData?.custom?.name}
+                serialNumber={selectedMachineData?.serialNumber}
                 smibId={
                   selectedMachineData?.relayId ||
                   selectedMachineData?.smbId ||

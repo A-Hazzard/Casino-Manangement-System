@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import type { MachineVariationData } from '@/lib/types/api';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 
 type VariationsListDisplayProps = {
   machines: MachineVariationData[];
@@ -111,8 +112,13 @@ export function VariationsListDisplay({
               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
                 Machine Entry
               </p>
-              <h4 className="text-base font-black text-gray-900">
+              <h4 className="flex items-center gap-1 text-base font-black text-gray-900">
                 {machine.machineName}
+                <CopyMachineFieldsButtons
+                  machineId={machine.machineId}
+                  gmNumber={machine.machineCustomName}
+                  serialNumber={machine.serialNumber}
+                />
               </h4>
               <p className="font-mono text-[10px] text-gray-400">
                 ID: {machine.machineId.substring(0, 8)}
@@ -205,8 +211,13 @@ export function VariationsListDisplay({
                 >
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-bold text-gray-900">
+                      <span className="flex items-center gap-1 font-bold text-gray-900">
                         {machine.machineName}
+                        <CopyMachineFieldsButtons
+                  machineId={machine.machineId}
+                  gmNumber={machine.machineCustomName}
+                  serialNumber={machine.serialNumber}
+                />
                       </span>
                       <span className="font-mono text-[10px] text-gray-400">
                         ID: {machine.machineId.substring(0, 8)}...

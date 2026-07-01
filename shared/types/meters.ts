@@ -44,6 +44,42 @@ export type MetersHourlyChartData = {
   coinOut: number;
 };
 
+export type TransferMetersTargetLocation = {
+  id: string;
+  name: string;
+};
+
+export type TransferMetersStats = {
+  total: number;
+  transferred: number;
+  pending: number;
+  eligibleCount: number;
+  targetLocation: TransferMetersTargetLocation;
+  defaultFromDateTime: string;
+  defaultToDateTime: string;
+  gameDayOffset: number;
+  defaultConcurrency: number;
+  defaultBatchSize: number;
+};
+
+export type TransferMetersBatchRequest = {
+  fromDateTime: string;
+  toDateTime: string;
+  batchSize?: number;
+  cursor?: string;
+  concurrency?: number;
+  activityTotal?: number;
+  logActivity?: boolean;
+};
+
+export type TransferMetersBatchResult = {
+  updated: number;
+  remaining: number;
+  totalEligible: number;
+  nextCursor?: string;
+  concurrency?: number;
+};
+
 export type MetersReportResponse = {
   data: MetersReportData[];
   totalCount: number;

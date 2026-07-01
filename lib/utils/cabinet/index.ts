@@ -15,5 +15,18 @@ export { mapToCabinetProps } from './mapping';
 // Form normalization
 export { normalizeGameTypeValue, normalizeStatusValue } from './normalization';
 
+// Edit modal comparison & payload
+export {
+  buildCabinetEditComparisonSnapshot,
+  buildCabinetEditUpdatePayload,
+  mergeComparisonBaseline,
+  resolveCabinetMeterStrings,
+  resolveOtherGameTypeFromCabinet,
+} from './editComparisonSnapshot';
+export type {
+  CabinetEditComparisonSnapshot,
+  CabinetEditFormLike,
+} from './editComparisonSnapshot';
+
 // RAM Clear validation
 export { validateRamClearMeters } from './validation';

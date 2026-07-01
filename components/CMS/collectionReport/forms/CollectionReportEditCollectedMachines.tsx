@@ -6,6 +6,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Edit3, Trash2, Info, Search, CheckSquare, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { CollectionReportDetailsJackpotIndicator } from '@/components/CMS/collectionReport/details/components/CollectionReportDetailsIndicators';
 
@@ -225,13 +226,20 @@ export default function CollectionReportEditCollectedMachines({
                         className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     )}
-                    <p className={`min-w-0 flex-1 text-xs font-bold leading-snug ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
-                      {formatMachineDisplayNameWithBold({
-                        serialNumber: entry.serialNumber,
-                        custom: { name: entry.machineCustomName },
-                        game: entry.game,
-                      })}
-                    </p>
+                    <div className="flex min-w-0 flex-1 items-start gap-1">
+                      <p className={`min-w-0 flex-1 text-xs font-bold leading-snug ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
+                        {formatMachineDisplayNameWithBold({
+                          serialNumber: entry.serialNumber,
+                          custom: { name: entry.machineCustomName },
+                          game: entry.game,
+                        })}
+                      </p>
+                      <CopyMachineFieldsButtons
+                        machineId={entry.machineId}
+                        gmNumber={entry.machineCustomName}
+                        serialNumber={entry.serialNumber}
+                      />
+                    </div>
                   </div>
                   {/* Row 2: badges + action buttons */}
                   <div className="mt-1 flex items-center justify-end gap-1">

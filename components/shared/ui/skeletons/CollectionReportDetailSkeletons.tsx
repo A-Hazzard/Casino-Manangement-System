@@ -131,3 +131,33 @@ const MobileSectionSkeleton = () => (
     </div>
   </div>
 );
+
+export const MachineReportHistorySkeleton = () => (
+  <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="flex max-h-[42vh] min-h-0 flex-col space-y-2 overflow-hidden lg:max-h-full">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-lg border border-gray-200 bg-white p-3"
+        >
+          <Skeleton className="mb-2 h-4 w-32" />
+          <Skeleton className="mb-1 h-3 w-full" />
+          <Skeleton className="h-3 w-2/3" />
+        </div>
+      ))}
+    </div>
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <Skeleton className="mb-4 h-12 w-full rounded-lg" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index}>
+            <Skeleton className="mb-2 h-3 w-20" />
+            <Skeleton className="h-5 w-28" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="mt-6 h-24 w-full rounded-lg" />
+      <Skeleton className="mt-6 ml-auto h-10 w-44 rounded" />
+    </div>
+  </div>
+);

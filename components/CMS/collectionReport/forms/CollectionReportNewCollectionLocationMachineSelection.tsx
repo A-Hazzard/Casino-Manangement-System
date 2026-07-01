@@ -33,6 +33,7 @@ import { Input } from '@/components/shared/ui/input';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import WowAutoReportButton from '@/components/CMS/collectionReport/forms/WowAutoReportButton';
 import { getLocationTypeBadge } from '@/lib/utils/location/page';
@@ -281,7 +282,10 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
                     }
                   >
                     <span className="flex min-w-0 flex-col gap-1">
-                      {formatMachineDisplayNameWithBold(machine)}
+                      <span className="flex items-start gap-1">
+                        {formatMachineDisplayNameWithBold(machine)}
+                        <CopyMachineFieldsButtons machine={machine} machineId={String(machine._id)} />
+                      </span>
                       <span className="flex items-center gap-1.5">
                         <MachineOnlineStatusDot
                           isOnline={machineStatusMap[String(machine._id)]}

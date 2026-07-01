@@ -39,11 +39,19 @@ import {
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
 import { safeFormatDate } from '@/lib/utils/formatting';
+import { Checkbox } from '@/components/shared/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
+import { exportActivityLogs } from '@/lib/helpers/administration/activityLogExport';
 import {
   Activity,
   ArrowUpDown,
   Check,
   Copy,
+  Download,
   ExternalLink,
   Trash2,
 } from 'lucide-react';
@@ -51,6 +59,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogCard from '../cards/AdministrationActivityLogCard';
 import AdministrationActivityLogDescriptionDialog from '../modals/AdministrationActivityLogDescriptionDialog';
+import AdministrationBulkDeleteActivityLogsModal from '../modals/AdministrationBulkDeleteActivityLogsModal';
 import AdministrationDeleteActivityLogModal from '../modals/AdministrationDeleteActivityLogModal';
 import AdministrationClearActivityLogsModal from '../modals/AdministrationClearActivityLogsModal';
 import { AdministrationActivityLogsFilterBar } from '../AdministrationActivityLogsFilterBar';
@@ -117,7 +126,9 @@ function AdministrationActivityLogsTable({
   } | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
-
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Copy to clipboard function
   const copyToClipboard = async (
@@ -192,6 +203,7 @@ function AdministrationActivityLogsTable({
     setAllLogs([]);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
+    setSelectedIds(new Set());
 
     try {
       const params = new URLSearchParams({
@@ -374,6 +386,112 @@ function AdministrationActivityLogsTable({
     const endIndex = startIndex + itemsPerPage;
     return allLogs.slice(startIndex, endIndex);
   }, [allLogs, currentPage, itemsPerPage, pagesPerBatch]);
+
+  const pageIds = useMemo(
+    () =>
+      logs
+        .map(log => log._id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    [logs]
+  );
+
+  const selectedCount = selectedIds.size;
+
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+
+  const selectedLogs = useMemo(
+    () =>
+      allLogs.filter(
+        log => typeof log._id === 'string' && selectedIds.has(log._id)
+      ),
+    [allLogs, selectedIds]
+  );
+
+  const emptyStateColSpan = isDeveloper ? 8 : 7;
+
+  const toggleRowSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAllPageSelection = useCallback(() => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      const everySelected =
+        pageIds.length > 0 && pageIds.every(id => next.has(id));
+      if (everySelected) {
+        for (const id of pageIds) next.delete(id);
+      } else {
+        for (const id of pageIds) next.add(id);
+      }
+      return next;
+    });
+  }, [pageIds]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleExportSelected = useCallback(
+    (format: 'csv' | 'json') => {
+      if (selectedLogs.length === 0) return;
+      exportActivityLogs(selectedLogs, format, 'activity-logs-selected');
+      toast.success(
+        `Exported ${selectedLogs.length} activity log${selectedLogs.length !== 1 ? 's' : ''} as ${format.toUpperCase()}`
+      );
+    },
+    [selectedLogs]
+  );
+
+  const handleCopySelectedIds = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      await navigator.clipboard.writeText(Array.from(selectedIds).join('\n'));
+      toast.success(
+        `Copied ${selectedIds.size} log ID${selectedIds.size !== 1 ? 's' : ''} to clipboard`
+      );
+    } catch {
+      toast.error('Failed to copy log IDs');
+    }
+  }, [selectedIds]);
+
+  const handleBulkDelete = useCallback(
+    async (deleteType: 'soft' | 'hard') => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+
+      setIsBulkDeleting(true);
+      try {
+        const response = await fetch('/api/activity-logs/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, deleteType }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          toast.success(
+            `${data.data.deletedCount} activity log${data.data.deletedCount !== 1 ? 's' : ''} ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`
+          );
+          setIsBulkDeleteModalOpen(false);
+          clearSelection();
+          fetchInitialBatch();
+        } else {
+          toast.error(data.message || 'Failed to delete selected activity logs');
+        }
+      } catch (error) {
+        console.error('[handleBulkDelete] Error:', error instanceof Error ? error.message : 'Unknown error');
+        toast.error('An error occurred while deleting selected logs');
+      } finally {
+        setIsBulkDeleting(false);
+      }
+    },
+    [selectedIds, clearSelection, fetchInitialBatch]
+  );
 
   // Fetch initial batch when filters change
   useEffect(() => {
@@ -617,6 +735,61 @@ function AdministrationActivityLogsTable({
             disabled={loading}
           />
 
+          {selectedCount > 0 && (
+            <div className="mb-3 mt-4 flex flex-wrap items-center gap-2 rounded-md border border-buttonActive/30 bg-buttonActive/5 px-3 py-2">
+              <span className="text-sm font-medium text-gray-700">
+                {selectedCount} selected
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-sm text-white hover:bg-emerald-700">
+                    <Download className="h-4 w-4" /> Export Selected
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-36 p-1" align="start" side="bottom">
+                  <button
+                    type="button"
+                    onClick={() => handleExportSelected('csv')}
+                    className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportSelected('json')}
+                    className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    JSON
+                  </button>
+                </PopoverContent>
+              </Popover>
+              <Button
+                onClick={handleCopySelectedIds}
+                variant="outline"
+                className="h-8 rounded-md px-3 text-sm"
+              >
+                <Copy className="mr-1.5 h-4 w-4" />
+                Copy IDs
+              </Button>
+              {isDeveloper && (
+                <Button
+                  onClick={() => setIsBulkDeleteModalOpen(true)}
+                  disabled={isBulkDeleting}
+                  className="flex h-8 items-center gap-1.5 rounded-md bg-destructive px-3 text-sm text-white hover:bg-destructive/90"
+                >
+                  <Trash2 className="h-4 w-4" /> Delete Selected
+                </Button>
+              )}
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="ml-1 text-sm text-gray-500 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           {/* Desktop Table View */}
           <div className="hidden rounded-lg border lg:block">
             {loading ? (
@@ -626,6 +799,13 @@ function AdministrationActivityLogsTable({
                 <Table className="min-w-full">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allPageSelected}
+                          onCheckedChange={toggleAllPageSelection}
+                          aria-label="Select all activity logs on this page"
+                        />
+                      </TableHead>
                       <TableHead>
                         <Button
                           variant="ghost"
@@ -675,8 +855,28 @@ function AdministrationActivityLogsTable({
                   </TableHeader>
                   <TableBody>
                     {logs && logs.length > 0 ? (
-                      logs.map((log: ActivityLog) => (
-                        <TableRow key={log._id}>
+                      logs.map((log: ActivityLog) => {
+                        const logId = log._id ?? '';
+                        const isRowSelected =
+                          logId.length > 0 && selectedIds.has(logId);
+                        return (
+                        <TableRow
+                          key={log._id}
+                          className={
+                            isRowSelected
+                              ? 'border-l-4 border-l-buttonActive bg-buttonActive/5'
+                              : undefined
+                          }
+                        >
+                          <TableCell>
+                            {logId ? (
+                              <Checkbox
+                                checked={isRowSelected}
+                                onCheckedChange={() => toggleRowSelection(logId)}
+                                aria-label={`Select activity log ${logId}`}
+                              />
+                            ) : null}
+                          </TableCell>
                           <TableCell className="font-mono text-sm">
                             {safeFormatDate(log.timestamp)}
                           </TableCell>
@@ -844,10 +1044,11 @@ function AdministrationActivityLogsTable({
                             </TableCell>
                           )}
                         </TableRow>
-                      ))
+                      );
+                      })
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center">
+                        <TableCell colSpan={emptyStateColSpan} className="py-8 text-center">
                           <div className="text-gray-500">
                             <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                             <p className="text-lg font-medium">
@@ -873,15 +1074,24 @@ function AdministrationActivityLogsTable({
                 <AdministrationActivityLogCardSkeleton key={i} />
               ))
             ) : logs && logs.length > 0 ? (
-              logs.map(log => (
+              logs.map(log => {
+                const logId = log._id ?? '';
+                const isRowSelected =
+                  logId.length > 0 && selectedIds.has(logId);
+                return (
                 <AdministrationActivityLogCard
                   key={log._id}
                   log={log}
                   onDescriptionClick={handleDescriptionClick}
                   canDelete={isDeveloper}
                   onDelete={handleDeleteClick}
+                  isSelected={isRowSelected}
+                  onToggleSelect={
+                    logId ? () => toggleRowSelection(logId) : undefined
+                  }
                 />
-              ))
+              );
+              })
             ) : (
               <div className="py-8 text-center text-gray-500">
                 <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300" />
@@ -940,6 +1150,13 @@ function AdministrationActivityLogsTable({
             toast.error('An error occurred while deleting');
           }
         }}
+      />
+
+      <AdministrationBulkDeleteActivityLogsModal
+        open={isBulkDeleteModalOpen}
+        onOpenChange={setIsBulkDeleteModalOpen}
+        selectedCount={selectedCount}
+        onDelete={handleBulkDelete}
       />
 
       <AdministrationClearActivityLogsModal

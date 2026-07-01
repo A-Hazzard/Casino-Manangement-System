@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import CollectionReportV2SessionReportMachinesTab from './CollectionReportV2SessionReportMachinesTab';
 import CollectionReportV2SessionReportSummaryTab from './CollectionReportV2SessionReportSummaryTab';
 
@@ -73,11 +73,14 @@ export default function CollectionReportV2SessionReport({
   onEdit,
   onBack,
 }: ReportProps) {
+  const searchParams = useSearchParams();
+  const highlightMachineId = searchParams?.get('highlightMachine') ?? undefined;
+
   // ============================================================================
   // State & Hooks
   // ============================================================================
-  const [activeTab, setActiveTab] = useState<'machines' | 'summary'>(
-    'machines'
+  const [activeTab, setActiveTab] = useState<'machines' | 'summary'>(() =>
+    highlightMachineId ? 'machines' : 'machines'
   );
 
   // ============================================================================
@@ -243,6 +246,7 @@ export default function CollectionReportV2SessionReport({
               <CollectionReportV2SessionReportMachinesTab
                 machines={session.machines}
                 noSMIBLocation={session.noSMIBLocation}
+                highlightMachineId={highlightMachineId}
               />
             )}
             {activeTab === 'summary' && (
@@ -273,6 +277,7 @@ export default function CollectionReportV2SessionReport({
             <CollectionReportV2SessionReportMachinesTab
               machines={session.machines}
               noSMIBLocation={session.noSMIBLocation}
+              highlightMachineId={highlightMachineId}
             />
           )}
           {activeTab === 'summary' && (

@@ -26,6 +26,7 @@ import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
 
 // Custom Hooks
 import { useCabinetPageData } from '@/lib/hooks/cabinets/useCabinetPageData';
+import { useLocationMachineSwitcher } from '@/lib/hooks/cabinets/useLocationMachineSwitcher';
 
 // Extracted Sections
 import CabinetsDetailsAccountingSection from '@/components/CMS/cabinets/details/CabinetsDetailsAccountingSection';
@@ -41,7 +42,8 @@ export default function CabinetsDetailsPageContent() {
   // ============================================================================
   const hook = useCabinetPageData();
   const { user } = useUserStore();
-  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
+  const { setSelectedLicencee, selectedLicencee, customDateRange } =
+    useDashBoardStore();
   const { openEditModal } = useCabinetsActionsStore();
   const {
     cabinet,
@@ -67,7 +69,33 @@ export default function CabinetsDetailsPageContent() {
     copyToClipboard,
     onBack,
     onLocationClick,
+    locationId,
+    handleMachineSelect,
   } = hook;
+
+  const hasValidLocation =
+    Boolean(locationId) &&
+    Boolean(cabinet) &&
+    !['Location Not Found', 'No Location Assigned'].includes(
+      locationName ?? ''
+    );
+
+  const {
+    machines: locationMachines,
+    loading: locationMachinesLoading,
+    refetch: refetchLocationMachines,
+  } = useLocationMachineSwitcher({
+    locationId,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    enabled: hasValidLocation,
+  });
+
+  const handleCabinetUpdatedWithSwitcher = () => {
+    handleCabinetUpdated();
+    void refetchLocationMachines();
+  };
 
   useRegisterRefresh(handleRefresh, refreshing);
 
@@ -103,7 +131,9 @@ export default function CabinetsDetailsPageContent() {
 
   return (
     <>
-      <CabinetsEditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
+      <CabinetsEditCabinetModal
+        onCabinetUpdated={handleCabinetUpdatedWithSwitcher}
+      />
       <CabinetsDeleteCabinetModal />
 
       {/* ============================================================================ */}
@@ -119,6 +149,10 @@ export default function CabinetsDetailsPageContent() {
           {/* Header & Summary */}
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
+            locationId={locationId}
+            locationMachines={locationMachines}
+            locationMachinesLoading={locationMachinesLoading}
+            onMachineSelect={handleMachineSelect}
             locationName={locationName}
             selectedLicencee={selectedLicencee}
             isOnline={isOnline}

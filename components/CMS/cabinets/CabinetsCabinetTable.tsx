@@ -16,6 +16,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
@@ -28,6 +29,7 @@ import {
 } from '@/components/shared/ui/table';
 import { IMAGES } from '@/lib/constants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { copyToClipboard } from '@/lib/utils/common/clipboard';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
   getGrossColorClass,
@@ -43,7 +45,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
-import { toast } from 'sonner';
 
 type CabinetsCabinetTableProps = Omit<
   DataTableProps<Cabinet>,
@@ -110,40 +111,6 @@ export default function CabinetsCabinetTable({
   // Navigate to cabinet detail page
   const navigateToCabinet = (cabinetId: string) => {
     router.push(`/cabinets/${cabinetId}`);
-  };
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    if (!text || text.trim() === '' || text === 'N/A') {
-      toast.error(`No ${label} value to copy`);
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text.trim());
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      // Fallback for older browsers or when clipboard API is not available
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = text.trim();
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        if (successful) {
-          toast.success(`${label} copied to clipboard`);
-        } else {
-          throw new Error('execCommand failed');
-        }
-      } catch (fallbackError) {
-        console.error('Failed to copy to clipboard:', fallbackError);
-        toast.error(`Failed to copy ${label}. Please try again.`);
-      }
-    }
   };
 
   // ============================================================================
@@ -288,6 +255,7 @@ export default function CabinetsCabinetTable({
                       >
                         {formatMachineDisplayNameWithBold(cab)}
                       </button>
+                      <CopyMachineFieldsButtons machine={cab} machineId={cab._id} />
                       {isArchived && (
                         <Badge className="border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] text-amber-700 hover:bg-amber-100">
                           ARCHIVED
@@ -330,7 +298,7 @@ export default function CabinetsCabinetTable({
                           onClick={e => {
                             e.stopPropagation();
                             if (smbId) {
-                              copyToClipboard(smbId, 'SMIB');
+                              void copyToClipboard(smbId, 'SMIB');
                             }
                           }}
                           className={`whitespace-normal break-words text-left text-xs ${smbId ? 'cursor-pointer text-gray-500 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}

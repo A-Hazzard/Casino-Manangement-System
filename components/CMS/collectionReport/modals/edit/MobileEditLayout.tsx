@@ -1,6 +1,7 @@
 import CollectionReportMobileCollectedListPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileCollectedListPanel';
 import CollectionReportMobileFormPanel from '@/components/CMS/collectionReport/mobile/CollectionReportMobileFormPanel';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
@@ -260,11 +261,12 @@ export default function MobileEditLayout(props: MobileEditLayoutProps) {
                       }`}
                     >
                       <div className="min-w-0 flex-1 pr-2">
-                        <p className="truncate text-sm font-bold text-gray-900">
+                        <p className="flex items-start gap-1 truncate text-sm font-bold text-gray-900">
                           {formatMachineDisplayNameWithBold({
                             ...machine,
                             serialNumber: getSerialNumberIdentifier(machine),
                           })}
+                          <CopyMachineFieldsButtons machine={machine} machineId={String(machine._id)} />
                         </p>
                         <span className="flex items-center gap-2">
                           <MachineOnlineStatusDot

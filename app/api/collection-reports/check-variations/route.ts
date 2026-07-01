@@ -53,6 +53,8 @@ type CheckVariationsBody = {
 type MachineVariationRow = {
   machineId: string;
   machineName: string;
+  serialNumber?: string;
+  machineCustomName?: string;
   meterGross: number;
   sasGross: number | null;
   variation: number | null;
@@ -195,6 +197,8 @@ export async function POST(request: NextRequest): Promise<NextResponse | Respons
       rows.push({
         machineId: machine.machineId,
         machineName,
+        serialNumber: (detail?.serialNumber || '').trim() || undefined,
+        machineCustomName: (detail?.custom?.name || '').trim() || undefined,
         meterGross: result.meterGross,
         sasGross: result.sasGross,
         variation: result.variation,

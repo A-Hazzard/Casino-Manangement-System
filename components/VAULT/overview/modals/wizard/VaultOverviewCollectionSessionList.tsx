@@ -7,6 +7,7 @@
  */
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,9 +118,15 @@ export default function VaultOverviewCollectionSessionList({
                   )}
                 >
                   <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                    <h4 className="line-clamp-2 min-w-[120px] flex-1 text-[13px] font-black tracking-tight text-gray-800">
-                      {entry.machineName || 'Unknown Machine'}
-                    </h4>
+                    <div className="flex min-w-[120px] flex-1 items-center gap-1">
+                      <h4 className="line-clamp-2 text-[13px] font-black tracking-tight text-gray-800">
+                        {entry.machineName || 'Unknown Machine'}
+                      </h4>
+                      <CopyMachineFieldsButtons
+                        machineId={entry.machineId}
+                        gmNumber={entry.machineName}
+                      />
+                    </div>
                     <span className="shrink-0 text-sm font-black text-gray-900">
                       {formatAmount(entry.totalAmount)}
                     </span>

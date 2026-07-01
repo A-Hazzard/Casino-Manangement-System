@@ -1,6 +1,7 @@
 'use client';
 
 import type { ActivityLog } from '@/shared/types/activityLog';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
@@ -313,6 +314,7 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
   // Extract machines
   let machinesList: Array<{
     name: string;
+    machineId?: string;
     metersIn: number;
     metersOut: number;
     prevIn?: number;
@@ -345,6 +347,9 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
           );
         return {
           name: resolvedName,
+          machineId: String(
+            machine._id || machine.machineId || ''
+          ).trim() || undefined,
           metersIn: Number(machine.metersIn || 0),
           metersOut: Number(machine.metersOut || 0),
           prevIn:
@@ -576,9 +581,15 @@ function CollectionReportView({ log }: { log: ActivityLog }) {
               className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm transition-all hover:bg-white hover:shadow-md"
             >
               <div className="mb-2 flex items-center justify-between border-b border-indigo-200 pb-2">
-                <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
-                  {machine.name}
-                </span>
+                <div className="flex min-w-0 items-center gap-1">
+                  <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
+                    {machine.name}
+                  </span>
+                  <CopyMachineFieldsButtons
+                    machineId={machine.machineId}
+                    gmNumber={machine.name}
+                  />
+                </div>
                 {machine.ramClear && (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-red-700 ring-1 ring-red-500/20">
                     RAM Clear
@@ -773,9 +784,16 @@ function CollectionReportV2View({ log }: { log: ActivityLog }) {
                   className="rounded-xl border border-indigo-200 bg-indigo-50/10 p-3 shadow-sm transition-all hover:bg-white hover:shadow-md"
                 >
                   <div className="mb-2 flex items-center justify-between border-b border-indigo-200 pb-2">
-                    <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
-                      {machineName}
-                    </span>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <span className="text-xs font-bold uppercase tracking-wide text-indigo-900">
+                        {machineName}
+                      </span>
+                      <CopyMachineFieldsButtons
+                        machineId={machine._id || machine.machineId}
+                        gmNumber={machine.machineCustomName ?? machine.machineName}
+                        serialNumber={machine.serialNumber}
+                      />
+                    </div>
                     <div className="flex items-center gap-1">
                       {machine.ramClear && (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-red-700 ring-1 ring-red-500/20">
@@ -918,15 +936,15 @@ function AdministrationActivityLogDescriptionDialog({
     (async () => {
       try {
         const resolved = await Promise.all(
-          log
-            .changes!.filter(c => !isIdValue(c.newValue))
-            .map(async c => ({
-              field: c.field,
-              oldValue: isIdValue(c.oldValue)
-                ? await resolveIdToName(c.oldValue, c.field)
-                : formatValue(c.oldValue, c.field),
-              newValue: formatValue(c.newValue, c.field),
-            }))
+          log.changes!.map(async change => ({
+            field: change.field,
+            oldValue: isIdValue(change.oldValue)
+              ? await resolveIdToName(change.oldValue, change.field)
+              : formatValue(change.oldValue, change.field),
+            newValue: isIdValue(change.newValue)
+              ? await resolveIdToName(change.newValue, change.field)
+              : formatValue(change.newValue, change.field),
+          }))
         );
         if (alive) setResolvedChanges(resolved);
       } catch {

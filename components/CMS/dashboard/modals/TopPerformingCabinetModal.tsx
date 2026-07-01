@@ -31,6 +31,7 @@ import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { formatCurrencyWithCode } from '@/lib/utils/currency';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { formatMachineDisplayName } from '@/components/shared/ui/machineDisplay';
 import { TimePeriod } from '@/shared/types/common';
 import gsap from 'gsap';
@@ -326,7 +327,14 @@ export default function TopPerformingCabinetModal({
             <h2 className="text-2xl font-bold text-gray-900">
               Cabinet Preview
             </h2>
-            <p className="mt-1 text-sm text-gray-500">{formattedMachineName}</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <p className="text-sm text-gray-500">{formattedMachineName}</p>
+              <CopyMachineFieldsButtons
+                machineId={machineId}
+                gmNumber={machineName}
+                serialNumber={machineData?.serialNumber}
+              />
+            </div>
             {locationName && (
               <p className="mt-1 text-sm text-gray-500">
                 Location: {locationName}

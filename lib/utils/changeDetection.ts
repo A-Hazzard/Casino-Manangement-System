@@ -185,8 +185,12 @@ export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
   return changes.filter(change => {
     const { oldValue, newValue, path } = change;
 
-    // Always include gamingLocation changes (it's a required field)
-    if (path === 'gamingLocation') {
+    // Always include location changes (required field / common edit target)
+    if (
+      path === 'gamingLocation' ||
+      path === 'locationId' ||
+      path === 'location'
+    ) {
       return true;
     }
 

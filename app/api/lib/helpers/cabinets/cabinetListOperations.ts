@@ -396,7 +396,7 @@ function buildNewCabinetDocument(
 // ============================================================================
 
 async function logCabinetCreationActivity(
-  cabinetData: Record<string, unknown>,
+  data: MachinePayload,
   normalizedSerial: string,
   gamingLocation: string,
   machineId: string
@@ -410,20 +410,65 @@ async function logCabinetCreationActivity(
   const currentUser = await getUserFromServer();
   if (!currentUser) return;
 
-  const changes = Object.entries(cabinetData)
-    .filter(
-      ([key]) =>
-        !['_id', '__v', 'createdAt', 'updatedAt', 'deletedAt'].includes(key)
-    )
-    .map(([key, val]) => {
-      let stringVal = String(val);
-      if (val instanceof Date) {
-        stringVal = val.toISOString();
-      } else if (typeof val === 'object' && val !== null) {
-        stringVal = JSON.stringify(val);
-      }
-      return { field: key, oldValue: null, newValue: stringVal };
-    });
+  const changes: Array<{
+    field: string;
+    oldValue: null;
+    newValue: unknown;
+  }> = [];
+
+  const addChange = (field: string, value: unknown) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    changes.push({ field, oldValue: null, newValue: value });
+  };
+
+  addChange('assetNumber', normalizedSerial);
+  addChange('installedGame', data.game || data.installedGame);
+  addChange('gameType', data.gameType);
+  addChange('location', locName);
+  addChange('manufacturer', data.manufacturer || data.manuf);
+  addChange('cabinetType', data.cabinetType);
+  addChange('status', data.assetStatus || data.status);
+  addChange(
+    'accountingDenomination',
+    data.accountingDenomination ?? data.gameConfig?.accountingDenomination
+  );
+  addChange(
+    'collectionMultiplier',
+    data.collectionMultiplier ?? data.collectorDenomination
+  );
+  addChange('relayId', data.relayId || data.smibBoard || data.smbId);
+  if (data.isCronosMachine !== undefined) {
+    addChange('isCronosMachine', data.isCronosMachine);
+  }
+  if (data.custom?.name) {
+    addChange('custom.name', data.custom.name);
+  }
+  if (data.collectionSettings?.lastCollectionTime || data.collectionTime) {
+    addChange(
+      'collectionSettings.lastCollectionTime',
+      data.collectionSettings?.lastCollectionTime || data.collectionTime
+    );
+  }
+  if (
+    data.collectionSettings?.lastMetersIn !== undefined ||
+    data.collectionMeters?.metersIn !== undefined
+  ) {
+    addChange(
+      'collectionSettings.lastMetersIn',
+      data.collectionSettings?.lastMetersIn ?? data.collectionMeters?.metersIn
+    );
+  }
+  if (
+    data.collectionSettings?.lastMetersOut !== undefined ||
+    data.collectionMeters?.metersOut !== undefined
+  ) {
+    addChange(
+      'collectionSettings.lastMetersOut',
+      data.collectionSettings?.lastMetersOut ?? data.collectionMeters?.metersOut
+    );
+  }
 
   await logActivity({
     action: 'CREATE',
@@ -478,7 +523,7 @@ export async function createCabinet(
   await cabinet.save();
 
   await logCabinetCreationActivity(
-    cabinet.toObject() as Record<string, unknown>,
+    data,
     normalizedSerial,
     data.gamingLocation || '',
     machineId

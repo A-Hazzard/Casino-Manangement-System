@@ -27,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -404,22 +405,29 @@ export const ReportsMachinesOverview = ({
                       className="border-b hover:bg-gray-50"
                     >
                       <td className="p-3 text-left">
-                        <button
-                          onClick={() => {
-                            router.push(`/cabinets/${machine.machineId}`);
-                          }}
-                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                        >
-                          <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                            {formatMachineDisplayNameWithBold({
-                              serialNumber:
-                                machine.serialNumber || machine.machineId,
-                              custom: { name: machine.machineName },
-                              game: machine.gameTitle,
-                            })}
-                          </span>
-                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              router.push(`/cabinets/${machine.machineId}`);
+                            }}
+                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {formatMachineDisplayNameWithBold({
+                                serialNumber:
+                                  machine.serialNumber || machine.machineId,
+                                custom: { name: machine.machineName },
+                                game: machine.gameTitle,
+                              })}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                          <CopyMachineFieldsButtons
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineName}
+                            serialNumber={machine.serialNumber}
+                          />
+                        </div>
                       </td>
                       <td className="p-3 text-left">
                         {machine.gameTitle || (
@@ -508,11 +516,20 @@ export const ReportsMachinesOverview = ({
               {overviewMachines.map((machine: MachineData) => (
                 <ReportsMachineCard
                   key={machine.machineId}
-                  title={formatMachineDisplayNameWithBold({
-                    serialNumber: machine.serialNumber || machine.machineId,
-                    custom: { name: machine.machineName },
-                    game: machine.gameTitle,
-                  })}
+                  title={
+                    <span className="inline-flex items-center gap-1.5">
+                      {formatMachineDisplayNameWithBold({
+                        serialNumber: machine.serialNumber || machine.machineId,
+                        custom: { name: machine.machineName },
+                        game: machine.gameTitle,
+                      })}
+                      <CopyMachineFieldsButtons
+                        machineId={machine.machineId}
+                        gmNumber={machine.machineName}
+                        serialNumber={machine.serialNumber}
+                      />
+                    </span>
+                  }
                   machineHref={`/cabinets/${machine.machineId}`}
                   subtitle={
                     machine.gameTitle || (

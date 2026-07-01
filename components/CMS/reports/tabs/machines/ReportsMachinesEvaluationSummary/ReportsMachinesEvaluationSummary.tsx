@@ -34,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
@@ -276,17 +277,23 @@ function MachinesWithDataModal({
                         }`}
                       >
                         <td className="p-3">
-                          <button
-                            onClick={() => {
-                              router.push(`/cabinets/${machine.machineId}`);
-                            }}
-                            className="group flex items-center gap-1.5 text-left font-medium text-gray-900 transition-opacity hover:opacity-80"
-                          >
-                            <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
-                              {machine.machineName}
-                            </span>
-                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                router.push(`/cabinets/${machine.machineId}`);
+                              }}
+                              className="group flex items-center gap-1.5 text-left font-medium text-gray-900 transition-opacity hover:opacity-80"
+                            >
+                              <span className="underline decoration-blueHighlight decoration-dotted decoration-2 underline-offset-2">
+                                {machine.machineName}
+                              </span>
+                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blueHighlight group-hover:text-blueHighlight/80" />
+                            </button>
+                            <CopyMachineFieldsButtons
+                              machineId={machine.machineId}
+                              gmNumber={machine.machineName}
+                            />
+                          </div>
                         </td>
                         <td className="p-3 text-sm text-gray-700">
                           {machine.locationName ? (
@@ -446,7 +453,15 @@ function MachinesWithDataModal({
                   <ReportsMachineCard
                     key={machine.machineId}
                     highlighted={isInTopMachines}
-                    title={machine.machineName}
+                    title={
+                      <span className="inline-flex items-center gap-1.5">
+                        {machine.machineName}
+                        <CopyMachineFieldsButtons
+                          machineId={machine.machineId}
+                          gmNumber={machine.machineName}
+                        />
+                      </span>
+                    }
                     machineHref={`/cabinets/${machine.machineId}`}
                     subtitle={
                       <>
@@ -623,7 +638,13 @@ function VerificationDetailsSection({
                         }`}
                       >
                         <td className="p-2 text-gray-900">
-                          {machine.machineName}
+                          <span className="inline-flex items-center gap-1">
+                            {machine.machineName}
+                            <CopyMachineFieldsButtons
+                              machineId={machine.machineId}
+                              gmNumber={machine.machineName}
+                            />
+                          </span>
                           {isThresholdReached && (
                             <span className="ml-1 text-greenHighlight">✓</span>
                           )}

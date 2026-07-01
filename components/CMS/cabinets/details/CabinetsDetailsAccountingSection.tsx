@@ -18,6 +18,8 @@
 import CabinetsDetailsAccountingDetails from '@/components/CMS/cabinets/details/CabinetsDetailsAccountingDetails';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import { useUserStore } from '@/lib/store/userStore';
+import { hasAdminAccess } from '@/lib/utils/permissions';
+import type { UserRole } from '@/lib/constants';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 type CabinetsDetailsAccountingSectionProps = {
@@ -47,6 +49,7 @@ export default function CabinetsDetailsAccountingSection({
   // ============================================================================
   const isTechnicianOnly = user?.roles?.[0] == 'technician';
   const isDeveloper = user?.roles?.includes('developer') ?? false;
+  const canTransferMeters = hasAdminAccess((user?.roles ?? []) as UserRole[]);
 
   // ============================================================================
   // Render
@@ -81,6 +84,7 @@ export default function CabinetsDetailsAccountingSection({
           activeMetricsTabContent={activeTab}
           setActiveMetricsTabContent={onTabChange}
           isDeveloper={isDeveloper}
+          canTransferMeters={canTransferMeters}
           refreshTrigger={refreshTrigger}
           onRefresh={onRefresh}
         />

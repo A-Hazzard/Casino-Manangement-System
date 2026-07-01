@@ -7,6 +7,7 @@
 
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import axios from 'axios';
@@ -1584,10 +1585,16 @@ export default function CollectionReportV2SessionDetail({
               <div className="flex-1 min-w-0">
                 {/* Machine Name + Status */}
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-gray-900 truncate">
+                  <h2 className="truncate text-lg font-bold text-gray-900">
                     {currentMachine.machineCustomName ||
                       currentMachine.machineName}
                   </h2>
+                  <CopyMachineFieldsButtons
+                    machine={currentMachine}
+                    machineId={currentMachine.machineId}
+                    gmNumber={currentMachine.machineCustomName}
+                    serialNumber={currentMachine.serialNumber}
+                  />
                   <MachineOnlineStatusDot
                     isOnline={machineStatusMap[currentMachine.machineId]}
                     hasRelay={currentMachine.hasRelay}
@@ -2623,6 +2630,12 @@ function ReviewView({
                           <h3 className="truncate font-semibold text-gray-900">
                             {machine.machineCustomName || machine.machineName}
                           </h3>
+                          <CopyMachineFieldsButtons
+                            machine={machine}
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineCustomName}
+                            serialNumber={machine.serialNumber}
+                          />
                           <MachineOnlineStatusDot
                             isOnline={machineStatusMap[machine.machineId]}
                             hasRelay={machine.hasRelay}
@@ -2681,6 +2694,12 @@ function ReviewView({
                           <h3 className="font-semibold text-gray-900">
                             {machine.machineCustomName || machine.machineName}
                           </h3>
+                          <CopyMachineFieldsButtons
+                            machine={machine}
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineCustomName}
+                            serialNumber={machine.serialNumber}
+                          />
                           <MachineOnlineStatusDot
                             isOnline={machineStatusMap[machine.machineId]}
                             hasRelay={machine.hasRelay}

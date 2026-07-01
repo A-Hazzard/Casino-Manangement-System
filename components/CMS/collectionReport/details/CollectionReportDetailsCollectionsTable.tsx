@@ -11,8 +11,9 @@ import type { MachineMetric } from '@/lib/types/api';
 import { formatSasTime } from '@/lib/utils/collection';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
-import { Zap } from 'lucide-react';
-import { useMemo } from 'react';
+import { ExternalLink, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useMemo } from 'react';
 
 // === Sub-components ===
 import {
@@ -39,6 +40,9 @@ type CollectionReportDetailsCollectionsTableProps = {
   onPageChange: (page: number) => void;
   /** When true, deduct jackpot from SAS Gross display and show indicator */
   useNetGross?: boolean;
+  currentReportId?: string;
+  highlightMachineId?: string;
+  onMachineHistoryClick?: (metric: MachineMetric) => void;
 };
 
 /**
@@ -78,6 +82,8 @@ export function CollectionReportDetailsCollectionsTable({
   totalPages,
   onPageChange,
   useNetGross = false,
+  highlightMachineId,
+  onMachineHistoryClick,
 }: CollectionReportDetailsCollectionsTableProps) {
   // ============================================================================
   // Helpers
@@ -109,6 +115,71 @@ export function CollectionReportDetailsCollectionsTable({
   // Computed
   // ============================================================================
   const hasRamClears = metrics.some(metric => metric.ramClear);
+
+  useEffect(() => {
+    if (!highlightMachineId) return;
+    const highlightedRow = document.querySelector(
+      `[data-machine-id="${highlightMachineId}"]`
+    );
+    if (highlightedRow instanceof HTMLElement) {
+      highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightMachineId, paginatedMetrics]);
+
+  const isHighlighted = (metric: MachineMetric): boolean =>
+    Boolean(
+      highlightMachineId &&
+        metric.actualMachineId &&
+        metric.actualMachineId === highlightMachineId
+    );
+
+  const renderMachineCell = (metric: MachineMetric) => (
+    <div className="flex items-start gap-2">
+      <div className="flex flex-col gap-1">
+        <CollectionReportDetailsMachineDisplay
+          name={metric.machineId}
+          machineId={metric.actualMachineId}
+          gmNumber={metric.machineCustomName}
+          serialNumber={metric.serialNumber}
+          onClick={
+            metric.actualMachineId && onMachineHistoryClick
+              ? () => onMachineHistoryClick(metric)
+              : undefined
+          }
+          href={
+            metric.actualMachineId && !onMachineHistoryClick
+              ? `/cabinets/${metric.actualMachineId}`
+              : undefined
+          }
+        />
+        <div className="flex items-center gap-1.5">
+          {metric.actualMachineId && (
+            <MachineOnlineStatusDot
+              isOnline={detailsMachineStatusMap[metric.actualMachineId]}
+            />
+          )}
+          {metric.ramClear && <CollectionReportDetailsRamClearIndicator />}
+          {useNetGross && (metric.jackpot ?? 0) > 0 && (
+            <CollectionReportDetailsJackpotIndicator />
+          )}
+          {metric.notes && (
+            <CollectionReportDetailsNoteIndicator note={metric.notes} />
+          )}
+        </div>
+      </div>
+      {metric.actualMachineId && onMachineHistoryClick && (
+        <Link
+          href={`/cabinets/${metric.actualMachineId}`}
+          className="mt-0.5 flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title="Open cabinet"
+          aria-label="Open cabinet"
+          onClick={event => event.stopPropagation()}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </div>
+  );
 
   // ============================================================================
   // Render
@@ -209,42 +280,17 @@ export function CollectionReportDetailsCollectionsTable({
             {paginatedMetrics.map(metric => (
               <TableRow
                 key={metric.id}
-                data-machine-id={metric.machineId}
+                data-machine-id={metric.actualMachineId ?? metric.id}
                 className={`group transition-colors hover:bg-gray-50/80 ${
                   metric.ramClear ? 'bg-orange-50/30' : ''
+                } ${
+                  isHighlighted(metric)
+                    ? 'bg-purple-50/60 ring-2 ring-inset ring-purple-500'
+                    : ''
                 }`}
               >
                 <TableCell className="px-4 py-4">
-                  <div className="flex flex-col gap-1">
-                    <CollectionReportDetailsMachineDisplay
-                      name={metric.machineId}
-                      href={
-                        metric.actualMachineId
-                          ? `/cabinets/${metric.actualMachineId}`
-                          : undefined
-                      }
-                    />
-                    <div className="flex items-center gap-1.5">
-                      {metric.actualMachineId && (
-                        <MachineOnlineStatusDot
-                          isOnline={
-                            detailsMachineStatusMap[metric.actualMachineId]
-                          }
-                        />
-                      )}
-                      {metric.ramClear && (
-                        <CollectionReportDetailsRamClearIndicator />
-                      )}
-                      {useNetGross && (metric.jackpot ?? 0) > 0 && (
-                        <CollectionReportDetailsJackpotIndicator />
-                      )}
-                      {metric.notes && (
-                        <CollectionReportDetailsNoteIndicator
-                          note={metric.notes}
-                        />
-                      )}
-                    </div>
-                  </div>
+                  {renderMachineCell(metric)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4 text-gray-600">
@@ -317,36 +363,16 @@ export function CollectionReportDetailsCollectionsTable({
           return (
             <div
               key={metric.id}
+              data-machine-id={metric.actualMachineId ?? metric.id}
               className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${
                 metric.ramClear ? 'border-l-4 border-l-orange-500' : ''
+              } ${
+                isHighlighted(metric)
+                  ? 'ring-2 ring-purple-500 ring-offset-1'
+                  : ''
               }`}
             >
-              <div className="mb-3 flex flex-col gap-1">
-                <CollectionReportDetailsMachineDisplay
-                  name={metric.machineId}
-                  href={
-                    metric.actualMachineId
-                      ? `/cabinets/${metric.actualMachineId}`
-                      : undefined
-                  }
-                />
-                <div className="flex items-center gap-1.5">
-                  {metric.actualMachineId && (
-                    <MachineOnlineStatusDot
-                      isOnline={detailsMachineStatusMap[metric.actualMachineId]}
-                    />
-                  )}
-                  {metric.ramClear && (
-                    <CollectionReportDetailsRamClearIndicator />
-                  )}
-                  {hasJackpotDeduction && (
-                    <CollectionReportDetailsJackpotIndicator />
-                  )}
-                  {metric.notes && (
-                    <CollectionReportDetailsNoteIndicator note={metric.notes} />
-                  )}
-                </div>
-              </div>
+              <div className="mb-3">{renderMachineCell(metric)}</div>
               <div className="grid grid-cols-2 gap-y-3 text-sm">
                 <CollectionReportDetailsMobileField
                   label="Meter In/Out"

@@ -15,9 +15,11 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import { copyToClipboard } from '@/lib/utils/common/clipboard';
 import { CabinetCardProps } from '@/lib/types/components';
 import { isWowMachine } from '@/shared/utils/wowMachine';
 import { formatCurrency } from '@/lib/utils';
@@ -38,7 +40,6 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
 
 export default function CabinetsCabinetCard(props: CabinetCardProps) {
   const showArchived = props.showArchived || false;
@@ -91,16 +92,6 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
     }
   };
 
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
-    }
-  };
-
   // ============================================================================
   // Computed & Guard
   // ============================================================================
@@ -147,6 +138,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           >
             {formatMachineDisplayNameWithBold(props)}
           </button>
+          <CopyMachineFieldsButtons machine={props} machineId={props._id} />
           {isArchived && (
             <div className="ml-1 inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] font-semibold text-amber-700">
               ARCHIVED
@@ -190,7 +182,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           onClick={e => {
             e.stopPropagation();
             if (smbId) {
-              copyToClipboard(smbId, 'SMIB');
+              void copyToClipboard(smbId, 'SMIB');
             }
           }}
           className={`mb-1 text-sm ${smbId ? 'cursor-pointer text-green-600 hover:text-blue-600 hover:underline' : 'text-gray-400'}`}

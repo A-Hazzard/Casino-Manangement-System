@@ -15,6 +15,7 @@
 'use client';
 
 import { FormEvent } from 'react';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
@@ -236,6 +237,7 @@ export default function SoftCountForm({
             >
               {machine.assetNumber || machine.serialNumber}
             </Badge>
+            <CopyMachineFieldsButtons machine={machine} />
           </div>
           <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-gray-400">
             {machine.locationName || 'Unknown Location'}

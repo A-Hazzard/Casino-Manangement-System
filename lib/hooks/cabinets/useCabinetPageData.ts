@@ -98,6 +98,7 @@ export function useCabinetPageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
+    if (section === 'transfer-meters') return 'Transfer Meters';
     if (section === 'developer-options') return 'Developer Options';
     return 'Movement Metrics';
   });
@@ -199,6 +200,7 @@ export function useCabinetPageData() {
         'Collection History': 'collection-history',
         'Collection Settings': 'collection-settings',
         Configurations: 'configurations',
+        'Transfer Meters': 'transfer-meters',
         'Developer Options': 'developer-options',
       };
 
@@ -652,8 +654,30 @@ export function useCabinetPageData() {
     smibHook.fetchSmibConfiguration,
   ]);
 
+  const locationId = cabinet?.gamingLocation ?? '';
+
+  const handleMachineSelect = useCallback(
+    (machineId: string) => {
+      if (!machineId || machineId === slug) return;
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      router.push(`/cabinets/${machineId}?${params.toString()}`, {
+        scroll: false,
+      });
+    },
+    [router, searchParams, slug]
+  );
+
+  const handleBack = useCallback(() => {
+    if (cabinet?.gamingLocation) {
+      router.push(`/locations/${cabinet.gamingLocation}`);
+      return;
+    }
+    router.push('/cabinets');
+  }, [cabinet?.gamingLocation, router]);
+
   return {
     slug,
+    locationId,
     cabinet,
     locationName,
     error,
@@ -692,7 +716,8 @@ export function useCabinetPageData() {
     handleRefresh,
     handleCabinetUpdated,
     copyToClipboard,
-    onBack: () => router.push('/cabinets'),
+    onBack: handleBack,
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
+    handleMachineSelect,
   };
 }

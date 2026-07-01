@@ -2,10 +2,14 @@
 
 import { ReactElement } from 'react';
 import { ExternalLink } from 'lucide-react';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 
 type MachineInfoDisplayProps = {
   machineName?: string | ReactElement;
+  machineId?: string;
+  gmNumber?: string;
+  serialNumber?: string;
   smibId?: string;
   currentMetersIn?: number | null;
   currentMetersOut?: number | null;
@@ -22,6 +26,9 @@ type MachineInfoDisplayProps = {
  */
 export default function CollectionReportFormMachineInfoDisplay({
   machineName = 'N/A',
+  machineId,
+  gmNumber,
+  serialNumber,
   smibId = 'N/A',
   currentMetersIn = 0,
   currentMetersOut = 0,
@@ -38,14 +45,23 @@ export default function CollectionReportFormMachineInfoDisplay({
     <div className={`relative rounded-lg bg-gray-100 p-3 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          {typeof machineName === 'string' ? (
-            <p
-              className="font-semibold"
-              dangerouslySetInnerHTML={{ __html: machineName }}
-            />
-          ) : (
-            <p className="font-semibold">{machineName}</p>
-          )}
+          <div className="flex items-start gap-1">
+            {typeof machineName === 'string' ? (
+              <p
+                className="font-semibold"
+                dangerouslySetInnerHTML={{ __html: machineName }}
+              />
+            ) : (
+              <p className="font-semibold">{machineName}</p>
+            )}
+            {machineId && (
+              <CopyMachineFieldsButtons
+                machineId={machineId}
+                gmNumber={gmNumber}
+                serialNumber={serialNumber}
+              />
+            )}
+          </div>
           <div className="mt-0.5 flex items-center gap-2">
             <p className="text-xs text-gray-500">SMIB: {smibId}</p>
             <MachineOnlineStatusDot isOnline={isOnline} hasRelay={hasRelay} />

@@ -1,8 +1,9 @@
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type ReportedMachineMovement = {
@@ -51,6 +52,7 @@ type SessionMachine = {
 type MachinesTabProps = {
   machines: SessionMachine[];
   noSMIBLocation?: boolean;
+  highlightMachineId?: string;
 };
 
 type SortField =
@@ -69,6 +71,7 @@ const ITEMS_PER_PAGE = 20;
 export default function CollectionReportV2SessionReportMachinesTab({
   machines,
   noSMIBLocation,
+  highlightMachineId,
 }: MachinesTabProps) {
   // ============================================================================
   // State & Hooks
@@ -193,6 +196,33 @@ export default function CollectionReportV2SessionReportMachinesTab({
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sorted.slice(start, start + ITEMS_PER_PAGE);
   }, [sorted, currentPage]);
+
+  useEffect(() => {
+    if (!highlightMachineId || sorted.length === 0) return;
+
+    const machineIndex = sorted.findIndex(
+      machine => machine.machineId === highlightMachineId
+    );
+    if (machineIndex < 0) return;
+
+    const targetPage = Math.floor(machineIndex / ITEMS_PER_PAGE) + 1;
+    setCurrentPage(previousPage =>
+      previousPage === targetPage ? previousPage : targetPage
+    );
+  }, [highlightMachineId, sorted]);
+
+  useEffect(() => {
+    if (!highlightMachineId) return;
+    const highlightedRow = document.querySelector(
+      `[data-machine-id="${highlightMachineId}"]`
+    );
+    if (highlightedRow instanceof HTMLElement) {
+      highlightedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightMachineId, paginated]);
+
+  const isHighlighted = (machine: SessionMachine): boolean =>
+    Boolean(highlightMachineId && machine.machineId === highlightMachineId);
 
   useMemo(() => {
     if (currentPage > Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1) {
@@ -518,7 +548,12 @@ export default function CollectionReportV2SessionReportMachinesTab({
                   return (
                     <tr
                       key={machine.reportedMachineId}
-                      className="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/80"
+                      data-machine-id={machine.machineId}
+                      className={`border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/80 ${
+                        isHighlighted(machine)
+                          ? 'bg-purple-50/60 ring-2 ring-inset ring-purple-500'
+                          : ''
+                      }`}
                     >
                       {/* Col 1 — Photo */}
                       <td className="border-r border-gray-100 px-3 py-3 last:border-r-0">
@@ -551,6 +586,12 @@ export default function CollectionReportV2SessionReportMachinesTab({
                                 {machine.machineCustomName ||
                                   machine.machineName}
                               </button>
+                              <CopyMachineFieldsButtons
+                                machine={machine}
+                                machineId={machine.machineId}
+                                gmNumber={machine.machineCustomName}
+                                serialNumber={machine.serialNumber}
+                              />
                               {machine.isSupplemental && <SupplementalBadge />}
                               {!isMachineNoSMIB && (
                                 <MachineOnlineStatusDot
@@ -649,7 +690,12 @@ export default function CollectionReportV2SessionReportMachinesTab({
               return (
                 <div
                   key={machine.reportedMachineId}
-                  className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+                  data-machine-id={machine.machineId}
+                  className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${
+                    isHighlighted(machine)
+                      ? 'ring-2 ring-purple-500 ring-offset-1'
+                      : ''
+                  }`}
                 >
                   {/* Card header — photo + match icon + name + subtext */}
                   <div className="mb-3 flex items-start gap-3">
@@ -677,6 +723,12 @@ export default function CollectionReportV2SessionReportMachinesTab({
                           >
                             {machine.machineCustomName || machine.machineName}
                           </button>
+                          <CopyMachineFieldsButtons
+                            machine={machine}
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineCustomName}
+                            serialNumber={machine.serialNumber}
+                          />
                           {!isMachineNoSMIB && (
                             <MachineOnlineStatusDot
                               isOnline={machineStatusMap[machine.machineId]}

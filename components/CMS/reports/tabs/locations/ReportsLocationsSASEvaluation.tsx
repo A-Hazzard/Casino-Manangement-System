@@ -36,6 +36,7 @@ import ReportsLocationsTable from '@/components/CMS/reports/tabs/locations/Repor
 import { ReportsLocationTrendChart } from '@/components/CMS/reports/tabs/locations/ReportsLocationTrendChart';
 import { Button } from '@/components/shared/ui/button';
 import ReportsSasMachineMobileCard from '@/components/CMS/reports/common/ReportsSasMachineMobileCard';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import {
   Card,
   CardContent,
@@ -726,21 +727,24 @@ export default function ReportsLocationsSASEvaluation({
                                   </td>
                                   <td className="p-3 text-left">
                                     {machine.machineId ? (
-                                      <button
-                                        onClick={() => {
-                                          router.push(
-                                            `/cabinets/${machine.machineId}`
-                                          );
-                                        }}
-                                        className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                                      >
-                                        <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                          {machine.serialNumber ||
-                                            machine.customName ||
-                                            machine.machineId}
-                                        </span>
-                                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                                      </button>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() => {
+                                            router.push(
+                                              `/cabinets/${machine.machineId}`
+                                            );
+                                          }}
+                                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                        >
+                                          <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                            {machine.serialNumber ||
+                                              machine.customName ||
+                                              machine.machineId}
+                                          </span>
+                                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                        </button>
+                                        <CopyMachineFieldsButtons machine={machine} />
+                                      </div>
                                     ) : (
                                       <div className="font-mono text-sm text-gray-900">
                                         {machine.serialNumber ||

@@ -16,6 +16,9 @@ export default function AdministrationActivityLogTableSkeleton() {
       <Table className="min-w-full">
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10 font-semibold">
+              <Skeleton className="h-4 w-4 rounded" />
+            </TableHead>
             <TableHead className="font-semibold">Timestamp</TableHead>
             <TableHead centered className="font-semibold">User</TableHead>
             <TableHead centered className="font-semibold">Action</TableHead>
@@ -28,6 +31,9 @@ export default function AdministrationActivityLogTableSkeleton() {
         <TableBody>
           {Array.from({ length: 10 }).map((_, i) => (
             <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-4 w-4 rounded" />
+              </TableCell>
               <TableCell className="font-mono text-sm">
                 <Skeleton className="h-4 w-28" />
               </TableCell>

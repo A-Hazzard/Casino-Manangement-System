@@ -25,6 +25,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -112,6 +113,7 @@ export default function CollectionReportMobileMachineList({
                 <span className="flex flex-col gap-1">
                   <span className="flex items-center gap-1.5">
                     {formatMachineDisplayNameWithBold(machine)}
+                    <CopyMachineFieldsButtons machine={machine} machineId={String(machine._id)} />
                     {collectedMachines.find(
                       c => c.machineId === machine._id
                     ) && (

@@ -56,8 +56,33 @@ async function resolveCountryId(countryId: string): Promise<string> {
 }
 
 /**
+ * Resolves a location ID to its display name
+ */
+async function resolveLocationId(locationId: string): Promise<string> {
+  const cacheKey = `location:${locationId}`;
+  if (idCache.has(cacheKey)) {
+    return idCache.get(cacheKey) || locationId;
+  }
+
+  try {
+    const response = await axios.get(`/api/locations?ids=${locationId}`);
+    const locations = response.data.locations || [];
+    const location = locations.find(
+      (entry: { location?: string; _id?: string; name?: string }) =>
+        entry.location === locationId || entry._id === locationId
+    );
+    const name = location?.name || locationId;
+    idCache.set(cacheKey, name);
+    return name;
+  } catch (error) {
+    console.error('Error resolving location ID:', error);
+    return locationId;
+  }
+}
+
+/**
  * Resolves an ID based on field name
- * Currently supports: country, countryName
+ * Currently supports: country, countryName, location, gamingLocation, locationId
  */
 export async function resolveIdToName(
   value: unknown,
@@ -70,12 +95,19 @@ export async function resolveIdToName(
   const id = String(value);
   const field = fieldName.toLowerCase();
 
-  // Resolve country IDs
   if (field === 'country' || field === 'countryname') {
     return await resolveCountryId(id);
   }
 
-  // For other IDs, return as-is for now (can be extended later)
+  if (
+    field === 'location' ||
+    field === 'gaminglocation' ||
+    field === 'locationid' ||
+    field === 'gaminglocationid'
+  ) {
+    return await resolveLocationId(id);
+  }
+
   return id;
 }
 

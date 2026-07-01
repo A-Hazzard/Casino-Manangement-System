@@ -10,6 +10,9 @@ import CollectionReportFormSharedFinancials from '@/components/CMS/collectionRep
 type MachineDataEntryFormProps = {
   // Machine display data
   machineName?: string | ReactElement;
+  machineId?: string;
+  gmNumber?: string;
+  serialNumber?: string;
   smibId?: string;
   currentMetersIn?: number | null;
   currentMetersOut?: number | null;
@@ -66,6 +69,9 @@ type MachineDataEntryFormProps = {
  */
 export default function CollectionReportFormMachineDataEntry({
   machineName,
+  machineId,
+  gmNumber,
+  serialNumber,
   smibId,
   currentMetersIn,
   currentMetersOut,
@@ -131,6 +137,9 @@ export default function CollectionReportFormMachineDataEntry({
       {/* Machine Info Display */}
       <CollectionReportFormMachineInfoDisplay
         machineName={machineName}
+        machineId={machineId}
+        gmNumber={gmNumber}
+        serialNumber={serialNumber}
         smibId={smibId}
         currentMetersIn={currentMetersIn}
         currentMetersOut={currentMetersOut}

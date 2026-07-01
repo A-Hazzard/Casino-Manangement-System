@@ -19,6 +19,7 @@ import { CollectionReportDetailsCollectionsTable } from '@/components/CMS/collec
 import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab';
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
+import MachineReportHistoryModal from '@/components/CMS/collectionReport/modals/MachineReportHistoryModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { useRegisterRefresh } from '@/lib/contexts/RefreshContext';
 import { Button } from '@/components/shared/ui/button';
@@ -41,7 +42,7 @@ import {
 import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetching';
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
 import { useUserStore } from '@/lib/store/userStore';
-import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
+import type { CollectionReportLocationWithMachines, MachineMetric } from '@/lib/types/api';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import {
   ArrowLeft,
@@ -108,6 +109,12 @@ export default function CollectionReportDetailsPageContent() {
   );
 
   const [showEditModal, setShowEditModal] = useState(false);
+  const [historyModal, setHistoryModal] = useState<{
+    machineId: string;
+    machineDisplayName: string;
+    gmNumber?: string;
+    serialNumber?: string;
+  } | null>(null);
   const [editLocations, setEditLocations] = useState<
     CollectionReportLocationWithMachines[]
   >([]);
@@ -149,7 +156,18 @@ export default function CollectionReportDetailsPageContent() {
     setShowEditModal(true);
   }, [loadingLocations]);
 
+  const handleMachineHistoryClick = useCallback((metric: MachineMetric) => {
+    if (!metric.actualMachineId) return;
+    setHistoryModal({
+      machineId: metric.actualMachineId,
+      machineDisplayName: metric.machineId,
+      gmNumber: metric.machineCustomName,
+      serialNumber: metric.serialNumber,
+    });
+  }, []);
+
   const {
+    reportId,
     reportData,
     loading,
     error,
@@ -161,6 +179,7 @@ export default function CollectionReportDetailsPageContent() {
     machineTotalPages,
     machinePage,
     tabContentRef,
+    highlightMachineId,
     collections,
     errorDetail,
     isRetrying,
@@ -522,6 +541,9 @@ export default function CollectionReportDetailsPageContent() {
                 totalPages={machineTotalPages}
                 onPageChange={setMachinePage}
                 useNetGross={reportData.useNetGross || false}
+                currentReportId={reportId}
+                highlightMachineId={highlightMachineId}
+                onMachineHistoryClick={handleMachineHistoryClick}
               />
             )}
 
@@ -570,6 +592,9 @@ export default function CollectionReportDetailsPageContent() {
                 totalPages={machineTotalPages}
                 onPageChange={setMachinePage}
                 useNetGross={reportData.useNetGross || false}
+                currentReportId={reportId}
+                highlightMachineId={highlightMachineId}
+                onMachineHistoryClick={handleMachineHistoryClick}
               />
             )}
 
@@ -585,6 +610,18 @@ export default function CollectionReportDetailsPageContent() {
           </div>
         </div>
       </PageLayout>
+
+      {historyModal && (
+        <MachineReportHistoryModal
+          isOpen={Boolean(historyModal)}
+          machineId={historyModal.machineId}
+          machineDisplayName={historyModal.machineDisplayName}
+          gmNumber={historyModal.gmNumber}
+          serialNumber={historyModal.serialNumber}
+          currentReportId={reportId}
+          onClose={() => setHistoryModal(null)}
+        />
+      )}
 
       {/* Edit Collection Report Modal — developer / admin only */}
       {canEdit && showEditModal && reportData && (

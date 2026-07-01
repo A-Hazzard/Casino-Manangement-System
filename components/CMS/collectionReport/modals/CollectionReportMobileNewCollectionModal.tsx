@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
@@ -779,8 +780,9 @@ export default function CollectionReportMobileNewCollectionModal({
                                 }`}
                               >
                                 {/* Machine Name */}
-                                <p className="line-clamp-2 min-h-[40px] break-words text-sm font-bold text-gray-900">
+                                <p className="flex items-start gap-1 line-clamp-2 min-h-[40px] break-words text-sm font-bold text-gray-900">
                                   {formatMachineDisplayNameWithBold(machine)}
+                                  <CopyMachineFieldsButtons machine={machine} machineId={String(machine._id)} />
                                 </p>
 
                                 {/* Previous Meters Display */}

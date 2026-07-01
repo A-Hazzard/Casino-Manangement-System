@@ -1,6 +1,7 @@
 'use client';
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useCollectionReportUIStore } from '@/lib/store/collectionReportUIStore';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,8 +56,11 @@ export function useCollectionReportV2Data(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
-  const [selectedLocation, setSelectedLocation] = useState<string | string[]>(
-    'all'
+  const selectedLocation = useCollectionReportUIStore(
+    state => state.selectedLocation
+  );
+  const setSelectedLocation = useCollectionReportUIStore(
+    state => state.setSelectedLocation
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<
@@ -293,9 +297,7 @@ export function useCollectionReportV2Data(
     isRefreshing,
     locations,
     selectedLocation,
-    setSelectedLocation: setSelectedLocation as React.Dispatch<
-      React.SetStateAction<string | string[]>
-    >,
+    setSelectedLocation,
     currentPage,
     setCurrentPage,
     totalPages,

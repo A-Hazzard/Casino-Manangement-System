@@ -6,6 +6,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Edit3, Trash2, Search, Info, CheckSquare, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { CollectionReportDetailsJackpotIndicator } from '@/components/CMS/collectionReport/details/components/CollectionReportDetailsIndicators';
 
@@ -223,13 +224,20 @@ export default function CollectionReportNewCollectionCollectedMachines({
                       className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   )}
-                  <p className={`min-w-0 flex-1 truncate text-xs font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
-                    {formatMachineDisplayNameWithBold({
-                      serialNumber: entry.serialNumber,
-                      custom: { name: entry.machineCustomName },
-                      game: entry.game,
-                    })}
-                  </p>
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <p className={`min-w-0 flex-1 truncate text-xs font-bold ${isSelected ? 'text-blue-900' : hasVariation ? 'text-amber-900' : 'text-gray-900'}`}>
+                      {formatMachineDisplayNameWithBold({
+                        serialNumber: entry.serialNumber,
+                        custom: { name: entry.machineCustomName },
+                        game: entry.game,
+                      })}
+                    </p>
+                    <CopyMachineFieldsButtons
+                      machineId={entry.machineId}
+                      gmNumber={entry.machineCustomName}
+                      serialNumber={entry.serialNumber}
+                    />
+                  </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {hasVariation && (
                       <span className="flex items-center gap-0.5 rounded bg-amber-500 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">

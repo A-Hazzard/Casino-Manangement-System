@@ -8,6 +8,7 @@
  */
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
@@ -225,6 +226,7 @@ export default function VaultOverviewCollectionEntryForm({
                 <span className="truncate rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-gray-400 md:text-[10px]">
                   {machine.assetNumber || machine.serialNumber}
                 </span>
+                <CopyMachineFieldsButtons machine={machine} />
                 <span className="truncate text-[9px] font-black uppercase tracking-widest text-gray-300 md:text-[10px]">
                   • {machine.locationName || 'Forest View'}
                 </span>

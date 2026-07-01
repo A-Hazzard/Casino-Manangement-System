@@ -16,6 +16,7 @@
 
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import ReportsMachineCard from '@/components/CMS/reports/common/ReportsMachineCard';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Button } from '@/components/shared/ui/button';
@@ -197,15 +198,43 @@ export default function ReportsMetersTable({
                   <tr key={index} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-left">
                       {formatted.hasLink && formatted.machineDocumentId ? (
-                        <button
-                          onClick={() => {
-                            router.push(
-                              `/cabinets/${formatted.machineDocumentId}`
-                            );
-                          }}
-                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                        >
-                          <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              router.push(
+                                `/cabinets/${formatted.machineDocumentId}`
+                              );
+                            }}
+                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                          >
+                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                              {formatted.mainIdentifier} (
+                              {formatted.displayParts.map((part, idx) => (
+                                <span key={idx}>
+                                  {part.isError ? (
+                                    <span className="text-red-600">
+                                      {part.text}
+                                    </span>
+                                  ) : (
+                                    part.text
+                                  )}
+                                  {idx < formatted.displayParts.length - 1 &&
+                                    ', '}
+                                </span>
+                              ))}
+                              )
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                          </button>
+                          <CopyMachineFieldsButtons
+                            machineId={formatted.machineDocumentId}
+                            gmNumber={item.customName}
+                            serialNumber={item.serialNumber}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <div className="font-mono text-sm text-gray-900">
                             {formatted.mainIdentifier} (
                             {formatted.displayParts.map((part, idx) => (
                               <span key={idx}>
@@ -221,25 +250,16 @@ export default function ReportsMetersTable({
                               </span>
                             ))}
                             )
-                          </span>
-                          <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                        </button>
-                      ) : (
-                        <div className="font-mono text-sm text-gray-900">
-                          {formatted.mainIdentifier} (
-                          {formatted.displayParts.map((part, idx) => (
-                            <span key={idx}>
-                              {part.isError ? (
-                                <span className="text-red-600">
-                                  {part.text}
-                                </span>
-                              ) : (
-                                part.text
-                              )}
-                              {idx < formatted.displayParts.length - 1 && ', '}
-                            </span>
-                          ))}
-                          )
+                          </div>
+                          {formatted.machineDocumentId ? (
+                            <>
+                              <CopyMachineFieldsButtons
+                                machineId={formatted.machineDocumentId}
+                                gmNumber={item.customName}
+                                serialNumber={item.serialNumber}
+                              />
+                            </>
+                          ) : null}
                         </div>
                       )}
                     </td>
@@ -336,6 +356,9 @@ export default function ReportsMetersTable({
                 </>
               }
               machineHref={machineHref}
+              copyMachineId={formatted.machineDocumentId}
+              copyGmNumber={item.customName}
+              copySerialNumber={item.serialNumber}
               subtitle={new Date(item.createdAt).toLocaleDateString()}
               locationName={item.location}
               locationHref={

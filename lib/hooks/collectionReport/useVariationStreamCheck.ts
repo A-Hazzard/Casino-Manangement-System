@@ -35,6 +35,8 @@ export type VariationCheckMachine = {
 export type MachineVariationRow = {
   machineId: string;
   machineName: string;
+  serialNumber?: string;
+  machineCustomName?: string;
   meterGross: number;
   sasGross: number | null;
   variation: number | null;

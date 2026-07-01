@@ -16,10 +16,15 @@
 // ============================================================================
 
 import { filterCollectionReports } from '@/lib/helpers/collectionReport';
+import {
+  areCollectionReportLocationFiltersEqual,
+  sanitizeCollectionReportLocationFilter,
+} from '@/lib/helpers/collectionReport/locationFilter';
+import { useCollectionReportUIStore } from '@/lib/store/collectionReportUIStore';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { dateRange as DashboardDateRange } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // ============================================================================
 // Type Definitions
@@ -45,11 +50,21 @@ export function useCollectionReportFilters({
   dateRange,
 }: UseCollectionReportFiltersProps) {
   // ==========================================================================
+  // Store State - Persisted Location Filter
+  // ==========================================================================
+  const selectedLocation = useCollectionReportUIStore(
+    state => state.selectedLocation
+  );
+  const setSelectedLocation = useCollectionReportUIStore(
+    state => state.setSelectedLocation
+  );
+  const resetSelectedLocation = useCollectionReportUIStore(
+    state => state.resetSelectedLocation
+  );
+
+  // ==========================================================================
   // Local State - Filters
   // ==========================================================================
-  const [selectedLocation, setSelectedLocation] = useState<string | string[]>(
-    'all'
-  );
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
@@ -58,6 +73,30 @@ export function useCollectionReportFilters({
   // ==========================================================================
   const [sortField, setSortField] = useState<keyof CollectionReportRow>('time');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // ==========================================================================
+  // Effects
+  // ==========================================================================
+
+  useEffect(() => {
+    if (locations.length === 0) {
+      return;
+    }
+
+    const sanitizedLocation = sanitizeCollectionReportLocationFilter(
+      selectedLocation,
+      locations
+    );
+
+    if (
+      !areCollectionReportLocationFiltersEqual(
+        sanitizedLocation,
+        selectedLocation
+      )
+    ) {
+      setSelectedLocation(sanitizedLocation);
+    }
+  }, [locations, selectedLocation, setSelectedLocation]);
 
   // ==========================================================================
   // Computed
@@ -185,7 +224,7 @@ export function useCollectionReportFilters({
    * Reset all filters to defaults
    */
   const clearFilters = () => {
-    setSelectedLocation('all');
+    resetSelectedLocation();
     setShowUncollectedOnly(false);
     setSelectedFilters([]);
   };

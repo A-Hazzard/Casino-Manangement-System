@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 
 type MobileEditMachineListProps = {
@@ -186,8 +187,9 @@ export default function CollectionReportMobileEditMachineList({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="break-words text-sm font-semibold text-primary">
+                    <p className="flex items-start gap-1 break-words text-sm font-semibold text-primary">
                       {formatMachineDisplayNameWithBold(machine)}
+                      <CopyMachineFieldsButtons machine={machine} machineId={String(machine._id)} />
                     </p>
                     <MachineOnlineStatusDot
                       isOnline={machineStatusMap[String(machine._id)]}

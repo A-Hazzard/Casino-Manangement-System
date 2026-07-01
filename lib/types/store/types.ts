@@ -89,3 +89,11 @@ export type DashBoardStore = {
   gameDayOffset: number;
   setGameDayOffset: (state: number) => void;
 };
+
+export type CollectionReportLocationFilter = string | string[];
+
+export type CollectionReportUIStore = {
+  selectedLocation: CollectionReportLocationFilter;
+  setSelectedLocation: (location: CollectionReportLocationFilter) => void;
+  resetSelectedLocation: () => void;
+};

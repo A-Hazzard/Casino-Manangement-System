@@ -1,5 +1,6 @@
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Button } from '@/components/shared/ui/button';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { SessionsTableProps } from '@/lib/types/sessions';
@@ -57,6 +58,16 @@ export function SessionsMobileCards({
                   <span className="font-medium text-gray-900">
                     {session.machineSerialNumber || 'N/A'}
                   </span>
+                  <div className="mt-0.5 flex items-center gap-1">
+                    <span className="break-all text-xs text-gray-500">
+                      ID: {session.machineId || 'N/A'}
+                    </span>
+                    <CopyMachineFieldsButtons
+                      machineId={session.machineId}
+                      gmNumber={session.machineCustomName}
+                      serialNumber={session.machineSerialNumber}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500">Duration</span>

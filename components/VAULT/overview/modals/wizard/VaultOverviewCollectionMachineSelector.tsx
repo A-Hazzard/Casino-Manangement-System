@@ -8,6 +8,7 @@
  */
 'use client';
 
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { Input } from '@/components/shared/ui/input';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -168,6 +169,7 @@ export default function VaultOverviewCollectionMachineSelector({
                           >
                             {machine.assetNumber || machine.serialNumber}
                           </span>
+                          <CopyMachineFieldsButtons machine={machine} />
                         </div>
                       </div>
 

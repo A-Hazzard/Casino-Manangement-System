@@ -6,6 +6,8 @@
  * @module app/api/lib/helpers/cabinetUpdate
  */
 
+import { calculateChanges } from '@/app/api/lib/helpers/activityLogger';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { ActivityLogChange } from '@shared/types/activityLog';
 
 export type CabinetUpdatePayload = {
@@ -188,6 +190,28 @@ export function mapCabinetUpdateFields(data: CabinetUpdatePayload) {
 // and drop the redundant aliases so the user sees a single row.
 const SMIB_ALIAS_FIELDS = new Set(['smibBoard', 'smbId']);
 
+const MANUFACTURER_ALIAS_FIELDS = new Set(['manuf']);
+
+const CABINET_FIELD_DISPLAY_NAMES: Record<string, string> = {
+  gamingLocation: 'location',
+  serialNumber: 'assetNumber',
+  game: 'installedGame',
+  assetStatus: 'status',
+  isSasMachine: 'isCronosMachine',
+  manuf: 'manufacturer',
+  collectorDenomination: 'collectionMultiplier',
+  'gameConfig.accountingDenomination': 'accountingDenomination',
+  'collectionMeters.metersIn': 'collectionSettings.lastMetersIn',
+  'collectionMeters.metersOut': 'collectionSettings.lastMetersOut',
+  collectionTime: 'collectionSettings.lastCollectionTime',
+};
+
+const LOCATION_ACTIVITY_FIELDS = new Set([
+  'gamingLocation',
+  'location',
+  'locationId',
+]);
+
 /**
  * Removes redundant alias fields from a cabinet change list so the activity
  * log shows one clean 'Relay Id' row instead of three identical rows.
@@ -195,5 +219,118 @@ const SMIB_ALIAS_FIELDS = new Set(['smibBoard', 'smbId']);
 export function deduplicateCabinetChanges(
   changes: ActivityLogChange[]
 ): ActivityLogChange[] {
-  return changes.filter(change => !SMIB_ALIAS_FIELDS.has(change.field));
+  return changes.filter(
+    change =>
+      !SMIB_ALIAS_FIELDS.has(change.field) &&
+      !MANUFACTURER_ALIAS_FIELDS.has(change.field)
+  );
+}
+
+function stringifyActivityValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return value;
+}
+
+function mapCabinetChangeForDisplay(change: ActivityLogChange): ActivityLogChange {
+  let { field, oldValue, newValue } = change;
+
+  if (field === 'isSasMachine') {
+    field = 'isCronosMachine';
+    if (typeof oldValue === 'boolean') {
+      oldValue = !oldValue;
+    }
+    if (typeof newValue === 'boolean') {
+      newValue = !newValue;
+    }
+  } else if (CABINET_FIELD_DISPLAY_NAMES[field]) {
+    field = CABINET_FIELD_DISPLAY_NAMES[field];
+  }
+
+  return {
+    field,
+    oldValue: stringifyActivityValue(oldValue),
+    newValue: stringifyActivityValue(newValue),
+  };
+}
+
+async function resolveLocationNamesForChanges(
+  changes: ActivityLogChange[]
+): Promise<ActivityLogChange[]> {
+  const locationIds = new Set<string>();
+
+  for (const change of changes) {
+    if (!LOCATION_ACTIVITY_FIELDS.has(change.field)) {
+      continue;
+    }
+    if (typeof change.oldValue === 'string' && change.oldValue.length === 24) {
+      locationIds.add(change.oldValue);
+    }
+    if (typeof change.newValue === 'string' && change.newValue.length === 24) {
+      locationIds.add(change.newValue);
+    }
+  }
+
+  if (locationIds.size === 0) {
+    return changes;
+  }
+
+  const locationDocs = await GamingLocations.find({
+    _id: { $in: Array.from(locationIds) },
+  })
+    .select('_id name')
+    .lean<Array<{ _id: string; name: string }>>();
+
+  const locationNameById = new Map(
+    locationDocs.map(location => [String(location._id), location.name])
+  );
+
+  return changes.map(change => {
+    if (!LOCATION_ACTIVITY_FIELDS.has(change.field)) {
+      return change;
+    }
+
+    const oldId =
+      typeof change.oldValue === 'string' ? change.oldValue : undefined;
+    const newId =
+      typeof change.newValue === 'string' ? change.newValue : undefined;
+
+    return {
+      ...change,
+      oldValue:
+        oldId && locationNameById.has(oldId)
+          ? locationNameById.get(oldId)
+          : change.oldValue,
+      newValue:
+        newId && locationNameById.has(newId)
+          ? locationNameById.get(newId)
+          : change.newValue,
+    };
+  });
+}
+
+/**
+ * Builds user-facing activity log changes for a cabinet update by diffing the
+ * original machine document against the mapped update fields from the payload.
+ */
+export async function buildCabinetActivityChanges(
+  originalDoc: Record<string, unknown>,
+  incomingPayload: CabinetUpdatePayload
+): Promise<ActivityLogChange[]> {
+  const updateFields = mapCabinetUpdateFields(incomingPayload);
+  delete updateFields.updatedAt;
+
+  const rawChanges = deduplicateCabinetChanges(
+    calculateChanges(originalDoc, updateFields)
+  );
+
+  const displayChanges = rawChanges.map(mapCabinetChangeForDisplay);
+  return resolveLocationNamesForChanges(displayChanges);
 }

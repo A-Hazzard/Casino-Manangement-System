@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
@@ -107,6 +108,7 @@ export default function LocationsCabinetCardMobile({
           <div className="truncate text-sm font-semibold">
             {formatMachineDisplayNameWithBold(cabinet)}
           </div>
+          <CopyMachineFieldsButtons machine={cabinet} machineId={cabinet._id} />
           {isArchived && (
             <Badge className="border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] text-amber-700 hover:bg-amber-100">
               ARCHIVED

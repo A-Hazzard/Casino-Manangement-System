@@ -175,6 +175,12 @@ export class CabinetDetailPage {
   /** Live Meters tab content — SAS meter cards unique to this tab. */
   async expectLiveMetersVisible() {
     await expect(
+      this.accountingSection.getByText('Drop', { exact: true }).first()
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      this.accountingSection.getByText('Total Won Credits', { exact: true }).first()
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
       this.accountingSection.getByText('Coin In', { exact: true }).first()
     ).toBeVisible({ timeout: 10_000 });
     await expect(

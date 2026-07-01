@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/shared/ui/card';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import {
   DropdownMenu,
@@ -117,11 +118,19 @@ function EvaluationMachineMobileCards({
       {machines.map(machine => (
         <ReportsMachineCard
           key={machine.machineId}
-          title={formatMachineDisplayNameWithBold({
-            serialNumber: machine.machineId,
-            custom: { name: machine.machineName },
-            game: machine.gameTitle,
-          })}
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {formatMachineDisplayNameWithBold({
+                serialNumber: machine.machineId,
+                custom: { name: machine.machineName },
+                game: machine.gameTitle,
+              })}
+              <CopyMachineFieldsButtons
+                machineId={machine.machineId}
+                gmNumber={machine.machineName}
+              />
+            </span>
+          }
           machineHref={`/cabinets/${machine.machineId}`}
           subtitle={
             machine.gameTitle || (
@@ -444,21 +453,27 @@ export const ReportsMachinesEvaluation = ({
                         </button>
                       </td>
                       <td className="p-3 text-left">
-                        <button
-                          onClick={() =>
-                            router.push(`/cabinets/${machine.machineId}`)
-                          }
-                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900"
-                        >
-                          <span className="underline decoration-gray-400 decoration-1 underline-offset-4 hover:decoration-gray-900">
-                            {formatMachineDisplayNameWithBold({
-                              serialNumber: machine.machineId,
-                              custom: { name: machine.machineName },
-                              game: machine.gameTitle,
-                            })}
-                          </span>
-                          <ExternalLink className="h-3 w-3 text-blue-600" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() =>
+                              router.push(`/cabinets/${machine.machineId}`)
+                            }
+                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900"
+                          >
+                            <span className="underline decoration-gray-400 decoration-1 underline-offset-4 hover:decoration-gray-900">
+                              {formatMachineDisplayNameWithBold({
+                                serialNumber: machine.machineId,
+                                custom: { name: machine.machineName },
+                                game: machine.gameTitle,
+                              })}
+                            </span>
+                            <ExternalLink className="h-3 w-3 text-blue-600" />
+                          </button>
+                          <CopyMachineFieldsButtons
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineName}
+                          />
+                        </div>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span
@@ -590,21 +605,27 @@ export const ReportsMachinesEvaluation = ({
                         </button>
                       </td>
                       <td className="p-3 text-left">
-                        <button
-                          onClick={() =>
-                            router.push(`/cabinets/${machine.machineId}`)
-                          }
-                          className="group flex items-center gap-1.5 font-mono text-sm text-gray-900"
-                        >
-                          <span className="underline decoration-gray-400 decoration-1 underline-offset-4 hover:decoration-gray-900">
-                            {formatMachineDisplayNameWithBold({
-                              serialNumber: machine.machineId,
-                              custom: { name: machine.machineName },
-                              game: machine.gameTitle,
-                            })}
-                          </span>
-                          <ExternalLink className="h-3 w-3 text-blue-600" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() =>
+                              router.push(`/cabinets/${machine.machineId}`)
+                            }
+                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900"
+                          >
+                            <span className="underline decoration-gray-400 decoration-1 underline-offset-4 hover:decoration-gray-900">
+                              {formatMachineDisplayNameWithBold({
+                                serialNumber: machine.machineId,
+                                custom: { name: machine.machineName },
+                                game: machine.gameTitle,
+                              })}
+                            </span>
+                            <ExternalLink className="h-3 w-3 text-blue-600" />
+                          </button>
+                          <CopyMachineFieldsButtons
+                            machineId={machine.machineId}
+                            gmNumber={machine.machineName}
+                          />
+                        </div>
                       </td>
                       <td className="p-3 text-left text-sm">
                         <span

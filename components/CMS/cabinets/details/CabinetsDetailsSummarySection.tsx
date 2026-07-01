@@ -4,7 +4,8 @@
  * Displays the header and summary information for a cabinet.
  *
  * Features:
- * - Back to Cabinets navigation
+ * - Back to location navigation
+ * - Location machine switcher
  * - Cabinet name and manufacturing info
  * - Online/Offline status indicator
  * - Refresh button
@@ -17,13 +18,19 @@
 import { Button } from '@/components/shared/ui/button';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ArrowLeftIcon, Pencil2Icon } from '@radix-ui/react-icons';
-import { Copy, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import RefreshButton from '@/components/shared/ui/RefreshButton';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { formatMachineDisplayName } from '@/components/shared/ui/machineDisplay';
+import CabinetsDetailsMachineSwitcher from './CabinetsDetailsMachineSwitcher';
 
 type CabinetsDetailsSummarySectionProps = {
   cabinet: Cabinet | null;
+  locationId: string;
+  locationMachines: Cabinet[];
+  locationMachinesLoading: boolean;
+  onMachineSelect: (machineId: string) => void;
   locationName: string;
   selectedLicencee: string | null;
   isOnline: boolean;
@@ -38,6 +45,10 @@ type CabinetsDetailsSummarySectionProps = {
 
 export default function CabinetsDetailsSummarySection({
   cabinet,
+  locationId,
+  locationMachines,
+  locationMachinesLoading,
+  onMachineSelect,
   locationName,
   selectedLicencee,
   isOnline,
@@ -46,7 +57,7 @@ export default function CabinetsDetailsSummarySection({
   onBack,
   onRefresh,
   onEdit,
-  onCopyToClipboard,
+  onCopyToClipboard: _onCopyToClipboard,
   onLocationClick,
 }: CabinetsDetailsSummarySectionProps) {
   // ============================================================================
@@ -56,26 +67,45 @@ export default function CabinetsDetailsSummarySection({
     ? formatMachineDisplayName(cabinet)
     : 'Unknown';
 
+  const hasValidLocation =
+    Boolean(locationId) &&
+    !['Location Not Found', 'No Location Assigned'].includes(locationName);
+
+  const backLabel = hasValidLocation
+    ? `Back to ${locationName}`
+    : 'Back to Cabinets';
+
   // ============================================================================
   // Render
   // ============================================================================
   return (
     <div className="space-y-6">
-      {/* Back Button */}
+      {/* Back + machine switcher */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="mb-2 mt-4"
+        className="mb-2 mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <Button
           onClick={onBack}
           variant="outline"
-          className="flex items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
+          className="flex w-fit max-w-full items-center border-buttonActive bg-container text-buttonActive transition-colors duration-300 hover:bg-buttonActive hover:text-container"
           size="sm"
         >
-          <ArrowLeftIcon className="mr-2 h-4 w-4" />
-          Back to Cabinets
+          <ArrowLeftIcon className="mr-2 h-4 w-4 shrink-0" />
+          <span className="truncate">{backLabel}</span>
         </Button>
+
+        {hasValidLocation && cabinet && (
+          <div className="w-full sm:max-w-xs sm:flex-shrink-0">
+            <CabinetsDetailsMachineSwitcher
+              machines={locationMachines}
+              currentMachineId={String(cabinet._id)}
+              loading={locationMachinesLoading}
+              onMachineSelect={onMachineSelect}
+            />
+          </div>
+        )}
       </motion.div>
 
       {/* Header Info */}
@@ -190,16 +220,15 @@ export default function CabinetsDetailsSummarySection({
                 Edit
               </Button>
             )}
-            <button
-              onClick={() =>
-                onCopyToClipboard(cabinetCopyName, 'Cabinet Name')
-              }
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-white px-3 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50"
-              title="Copy cabinet name"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Copy Name
-            </button>
+            {cabinet && (
+              <CopyMachineFieldsButtons
+                machine={cabinet}
+                machineId={cabinet._id}
+                displayName={cabinetCopyName}
+                showDisplayName
+                variant="button"
+              />
+            )}
           </div>
         </div>
       </motion.div>

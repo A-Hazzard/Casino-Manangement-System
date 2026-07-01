@@ -54,6 +54,7 @@ import { Button } from '@/components/shared/ui/button';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import CopyMachineFieldsButtons from '@/components/shared/ui/CopyMachineFieldsButtons';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
@@ -182,13 +183,20 @@ export default function CollectionReportEditFormFields({
 
       <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="text-sm font-medium">
+          <span className="flex items-center gap-1 text-sm font-medium">
             {machineForDataEntry
               ? formatMachineDisplayNameWithBold({
                   ...machineForDataEntry,
                   serialNumber: getSerialNumberIdentifier(machineForDataEntry),
                 })
               : 'Select a machine to edit'}
+            {machineForDataEntry && (
+              <CopyMachineFieldsButtons
+                machine={machineForDataEntry}
+                machineId={String(machineForDataEntry._id)}
+                className="text-white/70 hover:bg-white/20 hover:text-white"
+              />
+            )}
           </span>
           {machineForDataEntry && (
             <MachineOnlineStatusDot

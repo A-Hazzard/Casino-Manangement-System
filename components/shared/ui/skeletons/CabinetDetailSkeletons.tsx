@@ -9,6 +9,7 @@
 
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Skeleton } from '@/components/shared/ui/skeleton';
+import { DashboardFinancialMetricsSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 
 type CabinetDetailsLoadingStateProps = {
   selectedLicencee: string;
@@ -21,7 +22,7 @@ const CabinetDetailPageSkeleton = () => (
     {/* Summary Section */}
     <div className="space-y-6">
       <div className="mb-2 mt-4">
-        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-44" />
       </div>
 
       <div className="relative mb-6">
@@ -200,16 +201,19 @@ export const MetricsSkeleton = () => (
 );
 
 export const LiveMetricsSkeleton = () => (
-  <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
-    {Array.from({ length: 8 }).map((_, index) => (
-      <div key={index} className="rounded-lg bg-container p-4 shadow md:p-6">
-        <Skeleton className="mb-2 h-4 w-20 md:mb-4" />
-        <div className="mb-4 h-1 w-full bg-gray-200 md:mb-6" />
-        <div className="flex items-center justify-center">
-          <Skeleton className="h-6 w-24" />
+  <div className="space-y-4">
+    <DashboardFinancialMetricsSkeleton count={4} />
+    <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="rounded-lg bg-container p-4 shadow md:p-6">
+          <Skeleton className="mb-2 h-4 w-20 md:mb-4" />
+          <div className="mb-4 h-1 w-full bg-gray-200 md:mb-6" />
+          <div className="flex items-center justify-center">
+            <Skeleton className="h-6 w-24" />
+          </div>
         </div>
-      </div>
-    ))}
+      ))}
+    </div>
   </div>
 );
 
@@ -228,6 +232,46 @@ export const ConfigurationsSkeleton = () => (
         </div>
       </div>
     ))}
+  </div>
+);
+
+export const LocationMachineSwitcherSkeleton = () => (
+  <Skeleton className="h-9 w-full max-w-xs rounded-md" />
+);
+
+export const TransferMetersSkeleton = () => (
+  <div className="mx-auto w-full max-w-3xl">
+    <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="mb-6 flex items-start gap-3">
+        <Skeleton className="h-9 w-9 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+      </div>
+      <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <Skeleton className="mb-2 h-3 w-24" />
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="mt-2 h-4 w-64" />
+      </div>
+      <div className="mb-6 space-y-2">
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-16 w-full" />
+      </div>
+      <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Skeleton className="h-10 w-32" />
+      </div>
+    </div>
   </div>
 );
 

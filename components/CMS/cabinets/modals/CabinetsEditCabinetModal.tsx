@@ -14,9 +14,15 @@ import { fetchManufacturers } from '@/lib/helpers/cabinets';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import {
+  buildCabinetEditComparisonSnapshot,
+  buildCabinetEditUpdatePayload,
+  mergeComparisonBaseline,
   normalizeGameTypeValue,
   normalizeStatusValue,
+  resolveCabinetMeterStrings,
+  resolveOtherGameTypeFromCabinet,
 } from '@/lib/utils/cabinet';
+import type { CabinetEditComparisonSnapshot } from '@/lib/utils/cabinet';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -53,6 +59,9 @@ export default function CabinetsEditCabinetModal({
     new Set()
   );
   const userModifiedFieldsRef = useRef<Set<string>>(new Set());
+  const initialComparisonRef = useRef<CabinetEditComparisonSnapshot | null>(
+    null
+  );
   const [locations, setLocations] = useState<
     { id: string; name: string; sasEnabled: boolean }[]
   >([]);
@@ -276,18 +285,7 @@ export default function CabinetsEditCabinetModal({
         : new Date();
       setCollectionTime(initialCollectionTime);
 
-      console.log(
-        `[CabinetsEditCabinetModal] selectedCabinet status:`,
-        selectedCabinet.status
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] selectedCabinet assetStatus:`,
-        selectedCabinet.assetStatus
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] selectedCabinet machineStatus:`,
-        selectedCabinet.machineStatus
-      );
+      const initialCollectionMeters = resolveCabinetMeterStrings(selectedCabinet);
       const initialFormData: ExtendedCabinetFormData = {
         _id: selectedCabinet._id,
         assetNumber: selectedCabinet.assetNumber || '',
@@ -296,7 +294,9 @@ export default function CabinetsEditCabinetModal({
         accountingDenomination: String(
           selectedCabinet.accountingDenomination || '1'
         ),
-        collectionMultiplier: selectedCabinet.collectionMultiplier || '1',
+        collectionMultiplier: String(
+          selectedCabinet.collectionMultiplier || '1'
+        ),
         locationId: selectedCabinet.locationId || '',
         smbId: selectedCabinet.smbId || '',
         status: normalizeStatusValue(
@@ -307,23 +307,23 @@ export default function CabinetsEditCabinetModal({
         custom: selectedCabinet.custom || { name: '' },
         createdAt: selectedCabinet.createdAt,
         cabinetType: selectedCabinet.cabinetType || 'Standing',
-        otherGameType: !['slot', 'roulette', 'pulse'].includes(
-          normalizeGameTypeValue(selectedCabinet.gameType)
-        )
-          ? selectedCabinet.gameType
-          : '',
+        otherGameType: resolveOtherGameTypeFromCabinet(
+          selectedCabinet.gameType
+        ),
         collectionSettings: {
-          multiplier: selectedCabinet.collectionMultiplier || '1',
+          multiplier: String(
+            selectedCabinet.collectionMultiplier || '1'
+          ),
           lastCollectionTime: initialCollectionTime.toISOString(),
-          lastMetersIn: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersIn ?? 0)
-            : '0',
-          lastMetersOut: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersOut ?? 0)
-            : '0',
+          lastMetersIn: initialCollectionMeters.lastMetersIn,
+          lastMetersOut: initialCollectionMeters.lastMetersOut,
         },
       };
       setFormData(initialFormData);
+      initialComparisonRef.current = buildCabinetEditComparisonSnapshot(
+        initialFormData,
+        { collectionTimeIso: initialCollectionTime.toISOString() }
+      );
 
       // Fetch locations and manufacturers data when modal opens
       fetchLocations();
@@ -402,45 +402,46 @@ export default function CabinetsEditCabinetModal({
                     cabinetDetails.accountingDenomination ||
                       prevData.accountingDenomination
                   ),
-                  collectionMultiplier:
+                  collectionMultiplier: String(
                     cabinetDetails.collectionMultiplier ||
-                    prevData.collectionMultiplier,
+                      prevData.collectionMultiplier ||
+                      '1'
+                  ),
                   status: normalizeStatusValue(
-                    cabinetDetails.status || prevData.status
+                    cabinetDetails.assetStatus ||
+                      cabinetDetails.status ||
+                      prevData.status
                   ),
                   isCronosMachine:
                     cabinetDetails.isCronosMachine || prevData.isCronosMachine,
                   createdAt: cabinetDetails.createdAt || prevData.createdAt,
                   cabinetType:
                     cabinetDetails.cabinetType || prevData.cabinetType,
-                  collectionSettings: {
-                    multiplier:
-                      cabinetDetails.collectionMultiplier ||
-                      prevData.collectionSettings?.multiplier ||
-                      '1',
-                    lastCollectionTime:
-                      (cabinetDetails.collectionTime
-                        ? new Date(cabinetDetails.collectionTime).toISOString()
-                        : prevData.collectionSettings?.lastCollectionTime) ||
-                      initialCollectionTime.toISOString(),
-                    lastMetersIn:
-                      cabinetDetails.collectionMeters?.metersIn !== undefined
-                        ? String(cabinetDetails.collectionMeters.metersIn)
-                        : prevData.collectionSettings?.lastMetersIn || '0',
-                    lastMetersOut:
-                      cabinetDetails.collectionMeters?.metersOut !== undefined
-                        ? String(cabinetDetails.collectionMeters.metersOut)
-                        : prevData.collectionSettings?.lastMetersOut || '0',
-                  },
+                  collectionSettings: (() => {
+                    const detailMeters =
+                      resolveCabinetMeterStrings(cabinetDetails);
+                    return {
+                      multiplier: String(
+                        cabinetDetails.collectionMultiplier ||
+                          prevData.collectionSettings?.multiplier ||
+                          '1'
+                      ),
+                      lastCollectionTime:
+                        (cabinetDetails.collectionTime
+                          ? new Date(
+                              cabinetDetails.collectionTime
+                            ).toISOString()
+                          : prevData.collectionSettings?.lastCollectionTime) ||
+                        initialCollectionTime.toISOString(),
+                      lastMetersIn: detailMeters.lastMetersIn,
+                      lastMetersOut: detailMeters.lastMetersOut,
+                    };
+                  })(),
                   otherGameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.otherGameType
-                    : !['slot', 'roulette', 'pulse'].includes(
-                          normalizeGameTypeValue(
-                            cabinetDetails.gameType || prevData.gameType
-                          )
-                        )
-                      ? cabinetDetails.gameType || prevData.gameType
-                      : '',
+                    : resolveOtherGameTypeFromCabinet(
+                        cabinetDetails.gameType || prevData.gameType
+                      ),
                   // Ensure SMIB board fields are updated from detail fetch
                   smbId:
                     userModifiedFieldsRef.current.has('smbId') ||
@@ -484,12 +485,11 @@ export default function CabinetsEditCabinetModal({
                       '',
                   },
                 };
-                // console.log(
-                //   "Updated form data with gameType:",
-                //   newData.gameType,
-                //   "User modified gameType:",
-                //   userModifiedFields.has("gameType")
-                // );
+                initialComparisonRef.current = mergeComparisonBaseline(
+                  initialComparisonRef.current,
+                  buildCabinetEditComparisonSnapshot(newData),
+                  userModifiedFieldsRef.current
+                );
                 return newData;
               });
               if (cabinetDetails.collectionTime) {
@@ -542,8 +542,8 @@ export default function CabinetsEditCabinetModal({
   // Additional Handlers
   // ============================================================================
   const handleClose = () => {
-    // Clear user modified fields when closing modal
     setUserModifiedFields(new Set());
+    initialComparisonRef.current = null;
 
     gsap.to(modalRef.current, {
       opacity: 0,
@@ -627,191 +627,28 @@ export default function CabinetsEditCabinetModal({
       // console.log("Submitting form data:", JSON.stringify(formData, null, 2));
       // console.log("Sending to updateCabinet:", formData);
 
-      // Build comparison objects with ONLY editable fields
-      const originalData = {
-        assetNumber: selectedCabinet.assetNumber,
-        installedGame: selectedCabinet.installedGame,
-        gameType: selectedCabinet.gameType,
-        accountingDenomination: selectedCabinet.accountingDenomination,
-        collectionMultiplier: selectedCabinet.collectionMultiplier,
-        locationId: selectedCabinet.locationId,
-        smbId: selectedCabinet.smbId,
-        status: normalizeStatusValue(selectedCabinet.status),
-        isCronosMachine: selectedCabinet.isCronosMachine,
-        manufacturer: selectedCabinet.manufacturer,
-        custom: selectedCabinet.custom,
-        cabinetType: selectedCabinet.cabinetType,
-        collectionSettings: {
-          lastCollectionTime: selectedCabinet.collectionTime
-            ? new Date(selectedCabinet.collectionTime).toISOString()
-            : '',
-          // Align with the initialization logic in useEffect and detail fetch:
-          // Prefer sasMeters (source of truth for CR baseline) over collectionMeters.
-          lastMetersIn:
-            selectedCabinet.sasMeters?.drop != null &&
-            selectedCabinet.sasMeters.drop > 0
-              ? String(selectedCabinet.sasMeters.drop)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-                : '',
-          lastMetersOut:
-            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
-            selectedCabinet.sasMeters.totalCancelledCredits > 0
-              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
-              : selectedCabinet.collectionMeters
-                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-                : '',
-        },
-      };
+      const originalData =
+        initialComparisonRef.current ??
+        buildCabinetEditComparisonSnapshot(formData);
+      const formDataComparison = buildCabinetEditComparisonSnapshot(formData);
 
-      const formDataComparison = {
-        assetNumber: formData.assetNumber,
-        installedGame: formData.installedGame,
-        gameType: (
-          (formData.gameType === 'other'
-            ? formData.otherGameType
-            : formData.gameType) || ''
-        )
-          .toLowerCase()
-          .trim(),
-        accountingDenomination: formData.accountingDenomination,
-        collectionMultiplier: formData.collectionMultiplier,
-        locationId: formData.locationId,
-        smbId: formData.smbId,
-        status: formData.status,
-        isCronosMachine: formData.isCronosMachine,
-        manufacturer: formData.manufacturer,
-        custom: formData.custom,
-        cabinetType: formData.cabinetType,
-        collectionSettings: {
-          lastCollectionTime:
-            formData.collectionSettings?.lastCollectionTime || '',
-          lastMetersIn: formData.collectionSettings?.lastMetersIn || '',
-          lastMetersOut: formData.collectionSettings?.lastMetersOut || '',
-        },
-        gameConfig: {
-          theoreticalRtp: formData.gameConfig?.theoreticalRtp || '',
-          maxBet: formData.gameConfig?.maxBet || '',
-          payTableId: formData.gameConfig?.payTableId || '',
-          additionalId: formData.gameConfig?.additionalId || '',
-          gameOptions: formData.gameConfig?.gameOptions || '',
-          progressiveGroup: formData.gameConfig?.progressiveGroup || '',
-        },
-      };
-
-      // Detect changes by comparing ONLY editable fields
-      const changes = detectChanges(originalData, formDataComparison);
+      const changes = detectChanges(
+        originalData as Record<string, unknown>,
+        formDataComparison as Record<string, unknown>
+      );
       const meaningfulChanges = filterMeaningfulChanges(changes);
 
-      // Only proceed if there are actual changes
       if (meaningfulChanges.length === 0) {
         toast.info('No changes detected');
         setLoading(false);
         return;
       }
 
-      console.log(
-        `[CabinetsEditCabinetModal] Meaningful changes:`,
-        JSON.stringify(meaningfulChanges, null, 2)
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Form data status:`,
-        formData.status
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Form data assetStatus:`,
-        formData.assetStatus
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Selected cabinet status:`,
-        selectedCabinet.status
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Selected cabinet assetStatus:`,
-        selectedCabinet.assetStatus
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Original data normalized status:`,
-        normalizeStatusValue(selectedCabinet.status)
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Form data comparison status:`,
-        formData.status
-      );
-      console.log(
-        `[CabinetsEditCabinetModal] Status fields are equal:`,
-        normalizeStatusValue(selectedCabinet.status) === formData.status
+      const updatePayload = buildCabinetEditUpdatePayload(
+        meaningfulChanges,
+        formData
       );
 
-      // Build update payload with only changed fields + required _id
-      const updatePayload: Record<string, unknown> = { _id: formData._id };
-      let pendingCollectionSettings: Partial<CollectionSettingsForm> | null =
-        null;
-
-      meaningfulChanges.forEach(change => {
-        const fieldPath = change.path; // Use full path for nested fields
-
-        // Handle nested fields (e.g., "custom.name")
-        if (fieldPath.includes('.')) {
-          const [parent, child] = fieldPath.split('.');
-
-          // Special handling for objects that must be sent whole
-          if (parent === 'custom') {
-            updatePayload.custom = formData.custom;
-          } else if (parent === 'gameConfig') {
-            updatePayload.gameConfig = formData.gameConfig;
-          } else if (parent === 'collectionSettings') {
-            if (!pendingCollectionSettings) {
-              pendingCollectionSettings = {};
-            }
-            const key = child as keyof CollectionSettingsForm;
-            (pendingCollectionSettings as Partial<CollectionSettingsForm>)[
-              key
-            ] = formData.collectionSettings?.[key];
-          } else {
-            if (!updatePayload[parent]) {
-              updatePayload[parent] = {};
-            }
-            (updatePayload[parent] as Record<string, unknown>)[child] =
-              change.newValue;
-          }
-        } else {
-          // Special handling for gameType to ensure it's lowercased and uses otherGameType if needed
-          if (fieldPath === 'gameType') {
-            updatePayload.gameType = (
-              (formData.gameType === 'other'
-                ? formData.otherGameType
-                : formData.gameType) || ''
-            )
-              .toLowerCase()
-              .trim();
-          } else {
-            updatePayload[fieldPath] =
-              formData[fieldPath as keyof typeof formData];
-          }
-        }
-      });
-
-      if (pendingCollectionSettings) {
-        // Map collectionSettings back to backend-expected format
-        // We send what's in formData.collectionSettings if ANY part of it changed
-        updatePayload.collectionTime =
-          formData.collectionSettings?.lastCollectionTime ||
-          formData.collectionTime;
-
-        updatePayload.collectionMeters = {
-          metersIn: Number(formData.collectionSettings?.lastMetersIn) || 0,
-          metersOut: Number(formData.collectionSettings?.lastMetersOut) || 0,
-        };
-      }
-
-      console.log(
-        `[CabinetsEditCabinetModal] Update payload being sent:`,
-        JSON.stringify(updatePayload, null, 2)
-      );
-
-      // Pass only the changed fields to reduce unnecessary updates and logging
-      // Convert customDateRange to DateRange format expected by updateCabinet
       const success = await updateCabinet(updatePayload);
       if (success) {
         // Call the callback to refresh data
@@ -1001,10 +838,6 @@ export default function CabinetsEditCabinetModal({
                     }
 
                     if (updates.status) {
-                      console.log(
-                        `[CabinetsEditCabinetModal] Status change detected in onFormDataChange:`,
-                        updates.status
-                      );
                       formDataUpdates.status = updates.status;
                       formDataUpdates.assetStatus = updates.status;
                     }
